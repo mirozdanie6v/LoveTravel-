@@ -1,10 +1,10 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "max-tour-demo",
+  "name": "love-travel-demo",
   "main": "./src/worker/index.ts",
   "compatibility_date": "2026-09-08",
   "vars": {
-    "TELEGRAM_MINIAPP_URL": "https://max-tour-demo.viiversion.com",
+    "TELEGRAM_MINIAPP_URL": "https://lovetravel.viiversion.com",
     "AUTH_MODE": "demo"
   },
   "assets": {
@@ -16,13 +16,13 @@
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "max-tour-demo",
-      "database_id": "b399588a-25de-415e-957e-bdb8dbdb07c9"
+      "database_name": "love-travel-demo",
+      "database_id": "REPLACE_WITH_LOVETRAVEL_D1_DATABASE_ID"
     }
   ],
   "routes": [
     {
-      "pattern": "max-tour.viiversion.com",
+      "pattern": "lovetravel.viiversion.com",
       "custom_domain": true
     }
   ]
