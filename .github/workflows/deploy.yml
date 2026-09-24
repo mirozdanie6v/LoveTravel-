@@ -1,4 +1,4 @@
-name: MAX TOUR Deploy
+name: LoveTravel Deploy
 
 on:
   workflow_dispatch:
@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: max-tour-production
+  group: lovetravel-production
   cancel-in-progress: false
 
 jobs:
@@ -52,7 +52,7 @@ jobs:
       - name: Apply production D1 migrations
         run: npm run db:migrate:remote
 
-      - name: Apply idempotent verified MAX TOUR seed
+      - name: Apply idempotent verified baseline seed
         run: npm run db:seed:remote
 
       - name: Deploy Worker and assets
@@ -62,8 +62,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          base='https://max-tour.viiversion.com'
-          jar=/tmp/max-tour-cookies.txt
+          base='https://lovetravel.viiversion.com'
+          jar=/tmp/lovetravel-cookies.txt
           curl -L -fsS --retry 5 --retry-delay 3 --connect-timeout 5 --max-time 30 "$base/" -o /tmp/home.html
           grep -q 'MAX TOUR' /tmp/home.html
           grep -q 'telegram-web-app.js?63' /tmp/home.html
@@ -82,4 +82,4 @@ jobs:
           jq -e '.quote.demo == true and .quote.totalMinor > 0 and .quote.payNowMinor > 0' /tmp/quote.json >/dev/null
           curl -L -fsS -c "$jar" -b "$jar" -H 'Content-Type: application/json' -d '{}' "$base/api/demo/reset" -o /tmp/reset.json
           jq -e '.ok == true and .reset == true' /tmp/reset.json >/dev/null
-          echo 'MAX TOUR production smoke passed.'
+          echo 'LoveTravel production smoke passed.'
