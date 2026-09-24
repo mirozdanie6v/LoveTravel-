@@ -85,7 +85,7 @@ export default {
     try {
       if (path === '/api/health' && request.method === 'GET') {
         const probe = await env.DB.prepare('SELECT 1 AS ok').first<{ok:number}>();
-        return json({ ok: probe?.ok === 1, service: 'max-tour-demo', database: 'D1', time: new Date().toISOString() });
+        return json({ ok: probe?.ok === 1, service: 'love-travel-demo', database: 'D1', time: new Date().toISOString() });
       }
 
       if (path === '/api/telegram/webhook' && request.method === 'POST') {
