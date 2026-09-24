@@ -1,0 +1,167 @@
+/* Production-only typography and control alignment for max-tour.viiversion.com */
+html.is-max-tour-production *,
+html.is-max-tour-production *::before,
+html.is-max-tour-production *::after {
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+  hyphens: none !important;
+  -webkit-hyphens: none !important;
+}
+
+/* Never split short interface labels inside a word. */
+html.is-max-tour-production button,
+html.is-max-tour-production [role='button'],
+html.is-max-tour-production .px-status,
+html.is-max-tour-production .px-demo-pill,
+html.is-max-tour-production .px-source-badge,
+html.is-max-tour-production .px-count-pill,
+html.is-max-tour-production .px-promo,
+html.is-max-tour-production .px-floating-label,
+html.is-max-tour-production .px-bottom-nav small,
+html.is-max-tour-production .px-tour-footer em {
+  word-break: keep-all !important;
+  overflow-wrap: normal !important;
+  hyphens: none !important;
+  -webkit-hyphens: none !important;
+}
+
+/* The hero contains deliberate <br> breaks; each authored line stays intact. */
+html.is-max-tour-production .px-hero-copy h1 {
+  white-space: nowrap !important;
+}
+
+/* Normalize action buttons throughout tourist, manager, admin and owner UIs. */
+html.is-max-tour-production button:not(.px-brand-button):not(.px-menu-button):not(.px-close),
+html.is-max-tour-production [role='button'],
+html.is-max-tour-production a.px-button {
+  text-align: center !important;
+  line-height: 1.2 !important;
+}
+
+html.is-max-tour-production .px-button,
+html.is-max-tour-production a.px-button,
+html.is-max-tour-production .px-text-button,
+html.is-max-tour-production .px-link,
+html.is-max-tour-production .px-channel-link,
+html.is-max-tour-production .px-office-tabs button,
+html.is-max-tour-production .px-filter-row button,
+html.is-max-tour-production .px-admin-group-actions button,
+html.is-max-tour-production .px-trip-banner button {
+  white-space: nowrap !important;
+}
+
+html.is-max-tour-production .px-button,
+html.is-max-tour-production a.px-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+}
+
+html.is-max-tour-production .px-block.px-button {
+  display: flex;
+}
+
+/* Bottom navigation: icon and text share the same optical center. */
+html.is-max-tour-production .px-bottom-nav button {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  justify-content: stretch;
+  text-align: center !important;
+}
+
+html.is-max-tour-production .px-bottom-nav button > * {
+  justify-self: center;
+  text-align: center;
+}
+
+/* Pills/badges are true centered flex items instead of only centered text. */
+html.is-max-tour-production .px-status,
+html.is-max-tour-production .px-demo-pill,
+html.is-max-tour-production .px-source-badge,
+html.is-max-tour-production .px-count-pill,
+html.is-max-tour-production .px-promo,
+html.is-max-tour-production .px-floating-label {
+  text-align: center;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Destination tiles use one stable two-column grid on every mobile width. */
+html.is-max-tour-production .px-destination-strip button {
+  grid-template-columns: minmax(0, 1fr) 28px;
+  grid-template-rows: auto 1fr;
+  grid-template-areas: "n e" "b e";
+  column-gap: 8px;
+  align-items: stretch;
+  text-align: left !important;
+}
+
+html.is-max-tour-production .px-destination-strip span {
+  grid-area: n;
+  align-self: start;
+  justify-self: start;
+  line-height: 1;
+  text-align: left;
+}
+
+html.is-max-tour-production .px-destination-strip b {
+  grid-area: b;
+  align-self: end;
+  justify-self: start;
+  line-height: 1.08;
+  text-align: left;
+  white-space: normal;
+  word-break: keep-all !important;
+  overflow-wrap: normal !important;
+}
+
+html.is-max-tour-production .px-destination-strip em {
+  grid-area: e;
+  align-self: center;
+  justify-self: end;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  text-align: center;
+}
+
+/* Drawer rows are navigation rows, not CTA pills: keep their copy aligned as a block. */
+html.is-max-tour-production .px-menu-list button,
+html.is-max-tour-production .px-role-stack button {
+  text-align: left !important;
+}
+
+html.is-max-tour-production .px-menu-list button b,
+html.is-max-tour-production .px-menu-list button span,
+html.is-max-tour-production .px-role-stack button b,
+html.is-max-tour-production .px-role-stack button span {
+  text-align: left;
+}
+
+/* Metric values must never be broken into fragments. */
+html.is-max-tour-production .px-metric b {
+  word-break: keep-all !important;
+  overflow-wrap: normal !important;
+  white-space: nowrap;
+}
+
+@media (max-width: 420px) {
+  html.is-max-tour-production .px-hero-copy h1 {
+    font-size: clamp(36px, 10.8vw, 46px);
+    letter-spacing: -0.04em;
+  }
+
+  html.is-max-tour-production .px-button,
+  html.is-max-tour-production .px-text-button,
+  html.is-max-tour-production .px-link,
+  html.is-max-tour-production .px-office-tabs button,
+  html.is-max-tour-production .px-filter-row button,
+  html.is-max-tour-production .px-admin-group-actions button {
+    max-width: 100%;
+  }
+}
