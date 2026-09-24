@@ -1,0 +1,13 @@
+import { useEffect, useState } from 'react';
+import { api } from './lib/api';
+
+export function ManagerWorkflowPanel({ orderId, currentDate }: { orderId: string; currentDate: string }) {
+  const [workflow,setWorkflow]=useState<any>(null);
+  const [saving,setSaving]=useState(false);
+  const load=()=>api.orderWorkflow(orderId).then(r=>setWorkflow(r.workflow));
+  useEffect(()=>{void load()},[orderId]);
+  if(!workflow)return <section className="px-section px-manager-editor"><p>Загружаем операции по заказу…</p></section>;
+  const save=async()=>{setSaving(true);try{const r=await api.patchOrderWorkflow(orderId,workflow);setWorkflow(r.workflow)}finally{setSaving(false)}};
+  const setType=(operationType:string)=>setWorkflow({...workflow,operationType,workflowStatus:operationType==='none'?'Нет запроса':'Запрошено',requestedDate:operationType==='reschedule'?(workflow.requestedDate||currentDate):''});
+  return <section className="px-section px-manager-editor"><div><span className="px-kicker">DEMO ОПЕРАЦИЯ</span><h2>Перенос или отмена</h2><p>Здесь менеджер ведёт операционный запрос. Реальный возврат денег намеренно не выполняется и будет подключён только вместе с платёжным провайдером.</p></div><div className="px-operation-choice"><button className={workflow.operationType==='none'?'active':''} onClick={()=>setType('none')}>Без запроса</button><button className={workflow.operationType==='reschedule'?'active':''} onClick={()=>setType('reschedule')}>Перенос</button><button className={workflow.operationType==='cancel'?'active':''} onClick={()=>setType('cancel')}>Отмена</button></div>{workflow.operationType==='reschedule'&&<label className="px-field"><span>Новая дата</span><input type="date" value={workflow.requestedDate||''} onChange={e=>setWorkflow({...workflow,requestedDate:e.target.value})}/></label>}{workflow.operationType!=='none'&&<><label className="px-field"><span>Причина / запрос клиента</span><textarea rows={3} value={workflow.reason||''} onChange={e=>setWorkflow({...workflow,reason:e.target.value})}/></label><label className="px-field"><span>Решение менеджера</span><select value={workflow.workflowStatus||'Запрошено'} onChange={e=>setWorkflow({...workflow,workflowStatus:e.target.value})}><option>Запрошено</option><option>Согласовано</option><option>Отклонено</option></select></label><label className="px-field"><span>Комментарий</span><textarea rows={3} value={workflow.managerNote||''} onChange={e=>setWorkflow({...workflow,managerNote:e.target.value})}/></label></>}<button className="px-button px-button-dark" onClick={save} disabled={saving}>{saving?'Сохраняем…':'Сохранить операцию'}</button><p className="px-form-note">Текущая дата заказа: {currentDate}. Все действия DEMO и попадают в журнал владельца.</p></section>;
+}
