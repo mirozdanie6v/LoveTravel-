@@ -1,5 +1,5 @@
 {
-  "name": "max-tour-telegram-miniapp",
+  "name": "love-travel-miniapp",
   "version": "1.0.0",
   "private": true,
   "type": "module",
@@ -11,10 +11,10 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "cf:types": "wrangler types",
-    "db:migrate:local": "wrangler d1 migrations apply max-tour-demo --local",
-    "db:migrate:remote": "wrangler d1 migrations apply max-tour-demo --remote",
-    "db:seed:local": "wrangler d1 execute max-tour-demo --local --file=seed/verified-max-tour-data.sql",
-    "db:seed:remote": "wrangler d1 execute max-tour-demo --remote --file=seed/verified-max-tour-data.sql",
+    "db:migrate:local": "wrangler d1 migrations apply love-travel-demo --local",
+    "db:migrate:remote": "wrangler d1 migrations apply love-travel-demo --remote",
+    "db:seed:local": "wrangler d1 execute love-travel-demo --local --file=seed/verified-max-tour-data.sql",
+    "db:seed:remote": "wrangler d1 execute love-travel-demo --remote --file=seed/verified-max-tour-data.sql",
     "deploy": "npm run build && wrangler deploy"
   },
   "dependencies": {
