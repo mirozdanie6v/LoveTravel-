@@ -1,0 +1,126 @@
+name: MAX TOUR Production Smoke
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/production-smoke.yml'
+      - '.production-smoke-trigger'
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Verify complete public production business flow
+        shell: bash
+        run: |
+          set -euo pipefail
+          base='https://max-tour.viiversion.com'
+          jar=/tmp/max-tour-cookies.txt
+
+          curl -L -fsS --retry 5 --retry-delay 2 --connect-timeout 5 --max-time 30 "$base/" -o /tmp/home.html
+          grep -q 'MAX TOUR' /tmp/home.html
+          curl -L -fsS --retry 5 --retry-delay 2 --connect-timeout 5 --max-time 30 "$base/api/health" -o /tmp/health.json
+          jq -e '.ok == true and .service == "max-tour-demo" and .database == "D1"' /tmp/health.json >/dev/null
+          curl -L -fsS -c "$jar" -b "$jar" "$base/api/session" -o /tmp/session.json
+          jq -e '.ok == true and .demoSession == true' /tmp/session.json >/dev/null
+
+          echo '--- Structured and source catalog ---'
+          curl -L -fsS -c "$jar" -b "$jar" "$base/api/tours" -o /tmp/tours.json
+          jq -e '.items | length >= 8' /tmp/tours.json >/dev/null
+          jq -e '.items[] | select(.id == "dalat-premium") | .pricingRules.adultMinor == 5200 and (.pricingRules.privateTiers | length) >= 1' /tmp/tours.json >/dev/null
+          curl -L -fsS -c "$jar" -b "$jar" "$base/api/site-catalog" -o /tmp/site-catalog.json
+          jq -e '.catalog.tours | length > 0' /tmp/site-catalog.json >/dev/null
+          node - <<'NODE'
+          const fs=require('fs');
+          const d=JSON.parse(fs.readFileSync('/tmp/site-catalog.json','utf8'));
+          const item=d.catalog.tours[0];
+          const id=String(item.path||'').replace(/^\/+|\/+$/g,'');
+          if(!id) process.exit(1);
+          fs.writeFileSync('/tmp/source-tour-id',id);
+          NODE
+          source_tour_id=$(cat /tmp/source-tour-id)
+
+          echo '--- Individual 30% / 100% quote contract ---'
+          curl -L -fsS -c "$jar" -b "$jar" "$base/api/tours/dalat-premium/availability" -o /tmp/availability.json
+          private_date=$(jq -r '.items[-1].date // empty' /tmp/availability.json)
+          test -n "$private_date"
+          jq -n --arg date "$private_date" '{tourId:"dalat-premium",format:"private",date:$date,adults:2,children:[{height:112,age:null}],hotel:"Amiana Resort",transferZoneId:"north",participants:[{fullName:"Acceptance Adult A",birthDate:"1990-01-01"},{fullName:"Acceptance Adult B",birthDate:"1991-01-01"},{fullName:"Acceptance Child",birthDate:"2020-01-01"}],contact:{name:"Acceptance User",telegram:"@acceptance_smoke",phone:"+8400000000"},paymentChoice:"deposit",paymentMethod:"sbp",source:"Telegram"}' > /tmp/private-deposit.json
+          jq '.paymentChoice="full"' /tmp/private-deposit.json > /tmp/private-full.json
+          curl -L -fsS -c "$jar" -b "$jar" -H 'Content-Type: application/json' --data-binary @/tmp/private-deposit.json "$base/api/booking/quote" -o /tmp/deposit-quote.json
+          curl -L -fsS -c "$jar" -b "$jar" -H 'Content-Type: application/json' --data-binary @/tmp/private-full.json "$base/api/booking/quote" -o /tmp/full-quote.json
+          jq -e '.quote.totalMinor > 0 and .quote.payNowMinor == ((.quote.totalMinor * 0.3) | round)' /tmp/deposit-quote.json >/dev/null
+          jq -e '.quote.totalMinor > 0 and .quote.payNowMinor == .quote.totalMinor' /tmp/full-quote.json >/dev/null
+          test "$(jq -r '.quote.totalMinor' /tmp/deposit-quote.json)" = "$(jq -r '.quote.totalMinor' /tmp/full-quote.json)"
+
+          echo '--- Order, payment and refund policy ---'
+          order_key="acceptance-order-${GITHUB_RUN_ID}"
+          curl -L -fsS -c "$jar" -b "$jar" -H 'Content-Type: application/json' -H "Idempotency-Key: ${order_key}" --data-binary @/tmp/private-deposit.json "$base/api/orders" -o /tmp/order.json
+          order_id=$(jq -r '.order.id // empty' /tmp/order.json)
+          test -n "$order_id"
+          curl -L -fsS -c "$jar" -b "$jar" -H 'Content-Type: application/json' -H "Idempotency-Key: acceptance-pay-${GITHUB_RUN_ID}" -d "{\"orderId\":\"${order_id}\"}" "$base/api/payments/demo" -o /tmp/payment.json
+          jq -e '.order.paidMinor > 0 and .order.remainingMinor >= 0' /tmp/payment.json >/dev/null
+          curl -L -fsS -c "$jar" -b "$jar" -H 'Content-Type: application/json' -X PATCH \
+            -d '{"operationType":"cancel","reason":"Production acceptance cancellation","managerNote":"QA","workflowStatus":"Запрошено"}' \
+            "$base/api/manager/orders/${order_id}/workflow" -o /tmp/workflow.json
+          jq -e '.workflow.refundCase != null and .workflow.refundCase.retentionPercent == 0 and .workflow.refundCase.requestedRefundMinor > 0' /tmp/workflow.json >/dev/null
+
+          echo '--- Source-only group collection ---'
+          curl -L -fsS -c "$jar" -b "$jar" --get --data-urlencode "tourId=${source_tour_id}" "$base/api/group-departures" -o /tmp/source-groups.json
+          jq -e '.items | length >= 1' /tmp/source-groups.json >/dev/null
+          group_date=$(date -u -d '+20 days' +%F)
+          jq -n --arg tourId "$source_tour_id" --arg date "$group_date" '{tourId:$tourId,departureDate:$date,targetPeople:8,member:{customerName:"Group Acceptance",telegram:"@group_acceptance",adults:2,children:[]}}' > /tmp/group-create.json
+          curl -L -fsS -c "$jar" -b "$jar" -H 'Content-Type: application/json' --data-binary @/tmp/group-create.json "$base/api/group-departures" -o /tmp/group.json
+          group_id=$(jq -r '.item.id // empty' /tmp/group.json)
+          test -n "$group_id"
+          jq -e '.item.status == "gathering" and .item.seats == 2' /tmp/group.json >/dev/null
+          curl -L -fsS -c "$jar" -b "$jar" -H 'Content-Type: application/json' -X PATCH \
+            -d '{"status":"cancelled","cancellationReason":"Группа не набрана — production acceptance"}' \
+            "$base/api/admin/group-departures/${group_id}" -o /tmp/group-cancel.json
+          jq -e '.item.status == "cancelled"' /tmp/group-cancel.json >/dev/null
+
+          echo '--- Unified CRM, refunds and broadcast preparation ---'
+          curl -L -fsS -c "$jar" -b "$jar" "$base/api/admin/refunds" -o /tmp/refunds.json
+          jq -e '.items | any(.rule_code == "GROUP_NOT_FORMED_FULL_DEPOSIT_REFUND")' /tmp/refunds.json >/dev/null
+          curl -L -fsS -c "$jar" -b "$jar" "$base/api/admin/customers" -o /tmp/customers.json
+          jq -e '.items | length >= 5' /tmp/customers.json >/dev/null
+          curl -L -fsS -c "$jar" -b "$jar" -H 'Content-Type: application/json' \
+            -d '{"title":"Production acceptance","message":"Тест подготовленной CRM-рассылки","segment":"paid"}' \
+            "$base/api/admin/campaigns" -o /tmp/campaign.json
+          campaign_id=$(jq -r '.item.id // empty' /tmp/campaign.json)
+          test -n "$campaign_id"
+          curl -L -fsS -c "$jar" -b "$jar" "$base/api/admin/campaigns/${campaign_id}/recipients" -o /tmp/recipients.json
+          jq -e '.items | length >= 1' /tmp/recipients.json >/dev/null
+
+          echo '--- Admin change -> future site sync outbox ---'
+          curl -L -fsS -c "$jar" -b "$jar" -H 'Content-Type: application/json' -X PATCH \
+            -d '{"description":"Production acceptance session override"}' \
+            "$base/api/admin/tours/dalat-premium" -o /tmp/tour-patch.json
+          jq -e '.item.id == "dalat-premium"' /tmp/tour-patch.json >/dev/null
+          curl -L -fsS -c "$jar" -b "$jar" "$base/api/admin/site-sync" -o /tmp/site-sync.json
+          jq -e '.items | length >= 1' /tmp/site-sync.json >/dev/null
+
+          echo '--- Session isolation ---'
+          second_jar=/tmp/max-tour-second.cookies
+          curl -L -fsS -c "$second_jar" -b "$second_jar" "$base/api/session" >/tmp/second-session.json
+          curl -L -fsS -c "$second_jar" -b "$second_jar" "$base/api/admin/campaigns" -o /tmp/second-campaigns.json
+          jq -e '.items | length == 0' /tmp/second-campaigns.json >/dev/null
+
+          echo '--- Full reset of new group / CRM / refund / sync state ---'
+          curl -L -fsS -c "$jar" -b "$jar" -H 'Content-Type: application/json' -d '{}' "$base/api/demo/reset" -o /tmp/reset.json
+          jq -e '.ok == true and .reset == true' /tmp/reset.json >/dev/null
+          curl -L -fsS -c "$jar" -b "$jar" "$base/api/admin/refunds" -o /tmp/refunds-after-reset.json
+          curl -L -fsS -c "$jar" -b "$jar" "$base/api/admin/campaigns" -o /tmp/campaigns-after-reset.json
+          curl -L -fsS -c "$jar" -b "$jar" "$base/api/admin/site-sync" -o /tmp/sync-after-reset.json
+          curl -L -fsS -c "$jar" -b "$jar" "$base/api/admin/group-departures" -o /tmp/groups-after-reset.json
+          jq -e '.items | length == 0' /tmp/refunds-after-reset.json >/dev/null
+          jq -e '.items | length == 0' /tmp/campaigns-after-reset.json >/dev/null
+          jq -e '.items | length == 0' /tmp/sync-after-reset.json >/dev/null
+          jq -e '.items | length == 0' /tmp/groups-after-reset.json >/dev/null
+
+          echo 'MAX TOUR full production business acceptance passed; QA sessions isolated and reset.'
