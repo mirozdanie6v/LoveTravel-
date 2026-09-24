@@ -1,0 +1,55 @@
+name: Sync MAX TOUR site catalog
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.sync-site-catalog'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: max-tour-site-catalog-sync
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Crawl official MAX TOUR website
+        run: node tools/sync-maxtour-site.mjs
+      - name: Bundle source catalog for Worker
+        run: cp seed/site-catalog.generated.json src/shared/site-catalog.generated.json
+      - name: Validate manifest
+        run: |
+          node - <<'NODE'
+          const fs=require('fs');
+          const x=JSON.parse(fs.readFileSync('seed/site-catalog.generated.json','utf8'));
+          const pub=JSON.parse(fs.readFileSync('public/site-catalog.json','utf8'));
+          const shared=JSON.parse(fs.readFileSync('src/shared/site-catalog.generated.json','utf8'));
+          if(x.pagesScanned<10||x.tourDetailPages<5||x.uniqueTourPhotoUrls<10||pub.tours.length!==x.tourDetailPages||shared.generatedAt!==x.generatedAt){console.error({pages:x.pagesScanned,tours:x.tourDetailPages,photos:x.uniqueTourPhotoUrls,publicTours:pub.tours.length,shared:shared.generatedAt});process.exit(1)}
+          console.log({pages:x.pagesScanned,tourPages:x.tourDetailPages,photos:x.uniqueTourPhotoUrls,errors:x.errors.length});
+          NODE
+      - name: Commit refreshed catalog manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add seed/site-catalog.generated.json public/site-catalog.json src/shared/site-catalog.generated.json docs/SITE_CATALOG_SYNC_SUMMARY.md
+          if git diff --cached --quiet; then
+            echo 'Catalog manifest unchanged.'
+            exit 0
+          fi
+          git commit -m 'data: refresh MAX TOUR official site catalog manifest'
+          git pull --rebase origin main
+          git push origin HEAD:main
