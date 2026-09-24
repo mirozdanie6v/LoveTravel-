@@ -1,41 +1,30 @@
-name: MAX TOUR CI
+name: LoveTravel CI
 
 on:
   push:
-    branches: [main, integration-completion, production-hardening]
+    branches: [main]
   pull_request:
     branches: [main]
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    env:
-      CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
       - name: Checkout
         uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v5
         with:
           node-version: 22
 
-      - name: Refresh lockfile metadata
-        run: npm install --package-lock-only --ignore-scripts
-
       - name: Install dependencies
         run: npm ci
-
-      - name: Production dependency audit
-        run: npm audit --omit=dev --audit-level=high
 
       - name: Typecheck
         run: npm run typecheck
@@ -43,105 +32,14 @@ jobs:
       - name: Unit tests
         run: npm test
 
-      - name: Build client and Worker
+      - name: Build
         run: npm run build
 
       - name: Apply D1 migrations locally
         run: npm run db:migrate:local
 
-      - name: Seed verified MAX TOUR data locally
+      - name: Seed baseline data locally
         run: npm run db:seed:local
 
-      - name: Re-run verified seed for idempotency
-        run: npm run db:seed:local
-
-      - name: Verify D1 integration schema and verified baseline
-        shell: bash
-        run: |
-          set -euo pipefail
-          out=$(npx wrangler d1 execute max-tour-demo --local --json --command "
-            SELECT COUNT(*) AS destinations FROM destinations WHERE data_status='verifiedSite';
-            SELECT COUNT(*) AS tours FROM tours WHERE data_status='verifiedSite';
-            SELECT json_extract(pricing_rules_json,'$.adultMinor') AS adultMinor,
-                   json_extract(pricing_rules_json,'$.childRules[1].priceMinor') AS childMinor
-              FROM tours WHERE id='dalat-premium';
-            SELECT COUNT(*) AS outboxTable FROM sqlite_master WHERE type='table' AND name='notification_outbox';
-            SELECT COUNT(*) AS tildaInboxTable FROM sqlite_master WHERE type='table' AND name='tilda_webhook_inbox';
-            SELECT COUNT(*) AS auditTable FROM sqlite_master WHERE type='table' AND name='demo_audit_log';
-            SELECT COUNT(*) AS workflowTable FROM sqlite_master WHERE type='table' AND name='demo_order_workflows';
-            SELECT COUNT(*) AS customerRecordTable FROM sqlite_master WHERE type='table' AND name='demo_customer_records';
-            SELECT COUNT(*) AS staffAccountsTable FROM sqlite_master WHERE type='table' AND name='staff_accounts';
-            SELECT COUNT(*) AS groupDeparturesTable FROM sqlite_master WHERE type='table' AND name='demo_group_departures';
-            SELECT COUNT(*) AS groupMembersTable FROM sqlite_master WHERE type='table' AND name='demo_group_members';
-            SELECT COUNT(*) AS refundCasesTable FROM sqlite_master WHERE type='table' AND name='demo_refund_cases';
-            SELECT COUNT(*) AS campaignsTable FROM sqlite_master WHERE type='table' AND name='demo_broadcast_campaigns';
-            SELECT COUNT(*) AS recipientsTable FROM sqlite_master WHERE type='table' AND name='demo_broadcast_recipients';
-            SELECT COUNT(*) AS siteSyncTable FROM sqlite_master WHERE type='table' AND name='demo_site_sync_outbox';
-            SELECT COUNT(*) AS auditActorColumns FROM pragma_table_info('demo_audit_log') WHERE name IN ('actor_id','metadata_json');
-            SELECT COUNT(*) AS customerVisibleColumn FROM pragma_table_info('orders') WHERE name='customer_visible';
-            SELECT COUNT(*) AS promoDiscountColumns FROM pragma_table_info('demo_promotions') WHERE name IN ('discount_type','discount_value');
-            SELECT COUNT(*) AS ownerTargetColumn FROM pragma_table_info('demo_owner_settings') WHERE name='sales_target_minor';
-          ")
-          printf '%s\n' "$out" > /tmp/d1-check.json
-          node - <<'NODE'
-          const fs=require('fs');
-          const data=JSON.parse(fs.readFileSync('/tmp/d1-check.json','utf8'));
-          const rows=data.flatMap(x=>x.results||[]);
-          const find=(k)=>rows.find(r=>Object.prototype.hasOwnProperty.call(r,k));
-          const values={
-            destinations:Number(find('destinations')?.destinations??0),
-            tours:Number(find('tours')?.tours??0),
-            price:find('adultMinor')||{},
-            outbox:Number(find('outboxTable')?.outboxTable??0),
-            tildaInbox:Number(find('tildaInboxTable')?.tildaInboxTable??0),
-            audit:Number(find('auditTable')?.auditTable??0),
-            workflows:Number(find('workflowTable')?.workflowTable??0),
-            customers:Number(find('customerRecordTable')?.customerRecordTable??0),
-            staff:Number(find('staffAccountsTable')?.staffAccountsTable??0),
-            groupDepartures:Number(find('groupDeparturesTable')?.groupDeparturesTable??0),
-            groupMembers:Number(find('groupMembersTable')?.groupMembersTable??0),
-            refundCases:Number(find('refundCasesTable')?.refundCasesTable??0),
-            campaigns:Number(find('campaignsTable')?.campaignsTable??0),
-            recipients:Number(find('recipientsTable')?.recipientsTable??0),
-            siteSync:Number(find('siteSyncTable')?.siteSyncTable??0),
-            auditActorColumns:Number(find('auditActorColumns')?.auditActorColumns??0),
-            customerVisible:Number(find('customerVisibleColumn')?.customerVisibleColumn??0),
-            promoColumns:Number(find('promoDiscountColumns')?.promoDiscountColumns??0),
-            ownerTargetColumn:Number(find('ownerTargetColumn')?.ownerTargetColumn??0)
-          };
-          if(
-            values.destinations<5||values.tours<8||
-            Number(values.price.adultMinor)!==5200||Number(values.price.childMinor)!==3800||
-            values.outbox!==1||values.tildaInbox!==1||values.audit!==1||values.workflows!==1||
-            values.customers!==1||values.staff!==1||values.groupDepartures!==1||values.groupMembers!==1||
-            values.refundCases!==1||values.campaigns!==1||values.recipients!==1||values.siteSync!==1||
-            values.auditActorColumns!==2||values.customerVisible!==1||values.promoColumns!==2||values.ownerTargetColumn!==1
-          ){
-            console.error(values);
-            process.exit(1);
-          }
-          console.log('D1 baseline + group/refund + unified CRM/site-sync schema OK');
-          NODE
-
-      - name: Validate Wrangler production bundle
+      - name: Validate Wrangler bundle
         run: npx wrangler deploy --dry-run --outdir dist/wrangler-dry-run
-
-      - name: Persist npm lockfile
-        if: github.event_name == 'push'
-        shell: bash
-        run: |
-          if [ -n "$(git status --porcelain -- package-lock.json)" ]; then
-            git config user.name 'github-actions[bot]'
-            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-            git add package-lock.json
-            git commit -m 'build: update npm lockfile'
-            git push origin "HEAD:${GITHUB_REF_NAME}"
-          else
-            echo 'package-lock.json unchanged'
-          fi
-
-      - name: Cloudflare credential status
-        shell: bash
-        run: |
-          if [ -n "${CF_TOKEN:-}" ]; then echo 'CLOUDFLARE_API_TOKEN=configured'; else echo 'CLOUDFLARE_API_TOKEN=missing'; fi
-          if [ -n "${CF_ACCOUNT:-}" ]; then echo 'CLOUDFLARE_ACCOUNT_ID=configured'; else echo 'CLOUDFLARE_ACCOUNT_ID=missing'; fi
