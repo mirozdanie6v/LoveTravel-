@@ -17,7 +17,7 @@
     {
       "binding": "DB",
       "database_name": "love-travel-demo",
-      "database_id": "REPLACE_WITH_LOVETRAVEL_D1_DATABASE_ID"
+      "database_id": "082e0c3d-056c-445a-b09d-d91dc05d2b98"
     }
   ],
   "routes": [
