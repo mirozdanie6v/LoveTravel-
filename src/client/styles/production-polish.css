@@ -165,3 +165,85 @@ html.is-max-tour-production .px-metric b {
     max-width: 100%;
   }
 }
+
+
+/* LoveTravel iPhone Safari hardening.
+   Scoped to the dedicated iPhone class so Android rendering is unchanged. */
+html.is-love-travel-iphone .px-header {
+  height: calc(74px + env(safe-area-inset-top));
+  padding-top: calc(12px + env(safe-area-inset-top));
+}
+
+html.is-love-travel-iphone .px-drawer {
+  padding-top: calc(24px + env(safe-area-inset-top));
+}
+
+html.is-love-travel-iphone .px-sticky-cta {
+  bottom: calc(92px + env(safe-area-inset-bottom));
+}
+
+html.is-love-travel-iphone .mt-save-bar {
+  padding-bottom: calc(16px + env(safe-area-inset-bottom));
+}
+
+/* Preserve the existing compact-phone hero treatment on LoveTravel iPhones only. */
+@media (max-width: 420px) {
+  html.is-love-travel-iphone .px-hero-copy h1 {
+    font-size: clamp(36px, 10.8vw, 46px);
+    letter-spacing: -0.04em;
+  }
+
+  html.is-love-travel-iphone .px-button,
+  html.is-love-travel-iphone .px-text-button,
+  html.is-love-travel-iphone .px-link,
+  html.is-love-travel-iphone .px-office-tabs button,
+  html.is-love-travel-iphone .px-filter-row button,
+  html.is-love-travel-iphone .px-admin-group-actions button {
+    max-width: 100%;
+  }
+}
+
+/* Modern iPhones are tablet-wide in landscape but phone-short.
+   Override width-only tablet rules only for that short landscape viewport. */
+@media (orientation: landscape) and (max-height: 500px) {
+  html.is-love-travel-iphone .px-hero {
+    min-height: calc(100dvh - 74px - env(safe-area-inset-top));
+  }
+
+  html.is-love-travel-iphone .px-hero-copy {
+    left: 32px;
+    right: 32px;
+    bottom: 68px;
+  }
+
+  html.is-love-travel-iphone .px-hero-copy h1 {
+    font-size: clamp(32px, 5.2vw, 46px);
+    line-height: .94;
+    margin: 8px 0 10px;
+  }
+
+  html.is-love-travel-iphone .px-hero-copy p {
+    max-width: 520px;
+    font-size: 12px;
+    line-height: 1.4;
+  }
+
+  html.is-love-travel-iphone .px-hero-actions {
+    margin-top: 12px;
+  }
+
+  html.is-love-travel-iphone .px-hero-trust {
+    left: 24px;
+    right: 24px;
+    bottom: 8px;
+  }
+
+  html.is-love-travel-iphone .px-hero-trust span {
+    padding: 7px 6px;
+  }
+
+  html.is-love-travel-iphone .px-hero-trust b {
+    font-size: 16px;
+    margin-bottom: 1px;
+  }
+}
