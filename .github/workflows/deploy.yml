@@ -49,6 +49,31 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Resolve isolated LoveTravel D1
+        shell: bash
+        run: |
+          set -euo pipefail
+          if npx wrangler d1 info love-travel-demo --json > /tmp/lovetravel-d1.json 2>/tmp/lovetravel-d1.err; then
+            echo 'Using existing D1 database love-travel-demo.'
+          else
+            echo 'Creating isolated D1 database love-travel-demo.'
+            npx wrangler d1 create love-travel-demo --location apac
+            npx wrangler d1 info love-travel-demo --json > /tmp/lovetravel-d1.json
+          fi
+          db_id=$(jq -r '.uuid // .database_id // .id // empty' /tmp/lovetravel-d1.json)
+          test -n "$db_id" || { echo 'Could not resolve LoveTravel D1 database ID'; cat /tmp/lovetravel-d1.json; exit 1; }
+          node - "$db_id" <<'NODE'
+          const fs = require('fs');
+          const id = process.argv[2];
+          const path = 'wrangler.jsonc';
+          const text = fs.readFileSync(path, 'utf8');
+          if (!text.includes('REPLACE_WITH_LOVETRAVEL_D1_DATABASE_ID')) {
+            throw new Error('Expected LoveTravel D1 placeholder was not found');
+          }
+          fs.writeFileSync(path, text.replace('REPLACE_WITH_LOVETRAVEL_D1_DATABASE_ID', id));
+          NODE
+          grep -q "$db_id" wrangler.jsonc
+
       - name: Apply production D1 migrations
         run: npm run db:migrate:remote
 
