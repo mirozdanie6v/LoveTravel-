@@ -15,9 +15,15 @@ declare global {
 }
 
 const isProduction = window.location.hostname === 'max-tour.viiversion.com';
+const isLoveTravelHost = window.location.hostname.toLowerCase() === 'lovetravel.viiversion.com';
+const isIPhone = /iPhone/i.test(window.navigator.userAgent);
 
 if (isProduction) {
   document.documentElement.classList.add('is-max-tour-production');
+}
+
+if (isLoveTravelHost && isIPhone) {
+  document.documentElement.classList.add('is-love-travel-iphone');
 }
 
 try {
