@@ -1,37 +1,17 @@
 {
-  "name": "love-travel-miniapp",
-  "version": "1.0.0",
+  "name": "love-travel-v28-standalone",
+  "version": "28.0.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
-    "typecheck": "tsc --noEmit",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "cf:types": "wrangler types",
-    "db:migrate:local": "wrangler d1 migrations apply love-travel-demo --local",
-    "db:migrate:remote": "wrangler d1 migrations apply love-travel-demo --remote",
-    "db:seed:local": "wrangler d1 execute love-travel-demo --local --file=seed/verified-max-tour-data.sql",
-    "db:seed:remote": "wrangler d1 execute love-travel-demo --remote --file=seed/verified-max-tour-data.sql",
-    "deploy": "npm run build && wrangler deploy"
-  },
-  "dependencies": {
-    "react": "latest",
-    "react-dom": "latest",
-    "react-router-dom": "latest",
-    "zod": "latest"
+    "build": "node scripts/validate-tour-media.mjs && node build.mjs",
+    "prepare:tour-media": "node scripts/prepare-tour-media.mjs",
+    "verify:tour-media": "node scripts/verify-live-tour-media.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "check": "npm test && npm run build",
+    "deploy": "wrangler deploy --config wrangler.jsonc"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "latest",
-    "@cloudflare/workers-types": "latest",
-    "@types/react": "latest",
-    "@types/react-dom": "latest",
-    "@vitejs/plugin-react": "latest",
-    "typescript": "latest",
-    "vite": "latest",
-    "vitest": "latest",
-    "wrangler": "latest"
+    "wrangler": "^4.40.0"
   }
 }

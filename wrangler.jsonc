@@ -1,29 +1,36 @@
 {
-  "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "love-travel-demo",
-  "main": "./src/worker/index.ts",
-  "compatibility_date": "2026-09-08",
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "love-travel-v28",
+  "main": "./src/worker-r2.js",
+  "compatibility_date": "2026-09-09",
   "vars": {
-    "TELEGRAM_MINIAPP_URL": "https://lovetravel.viiversion.com",
-    "AUTH_MODE": "demo"
+    "APP_ENV": "love-travel-v28",
+    "APP_URL": "https://lovetravel.viiversion.com",
+    "PUBLIC_ADMIN_DEMO": "true",
+    "AI_MODEL": "@cf/google/gemma-4-26b-a4b-it",
+    "USD_RUB_RATE": "84.2569"
+  },
+  "ai": {
+    "binding": "AI"
   },
   "assets": {
-    "directory": "./dist/client",
-    "not_found_handling": "single-page-application",
+    "directory": "./dist",
     "binding": "ASSETS",
-    "run_worker_first": ["/api/*"]
+    "not_found_handling": "single-page-application",
+    "run_worker_first": true
   },
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "love-travel-demo",
-      "database_id": "082e0c3d-056c-445a-b09d-d91dc05d2b98"
+      "database_name": "love-travel-v28-db",
+      "database_id": "db0ac2cd-d809-4221-a333-fc2b1a09406e"
     }
   ],
-  "routes": [
+  "r2_buckets": [
     {
-      "pattern": "lovetravel.viiversion.com",
-      "custom_domain": true
+      "binding": "TOUR_MEDIA",
+      "bucket_name": "love-travel-v28-media",
+      "preview_bucket_name": "love-travel-v28-media"
     }
   ]
 }

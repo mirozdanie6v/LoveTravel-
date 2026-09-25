@@ -1,0 +1,1707 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MaxTour — Кабинет директора</title>
+<style>
+:root{
+  --bg:#fbf1df;
+  --bg2:#fff8ee;
+  --surface:#fffdf8;
+  --surface2:#fff6e8;
+  --ink:#241006;
+  --muted:#755a45;
+  --muted2:#a48870;
+  --line:#ead6bc;
+  --strong:#e0bd8b;
+  --red:#d81524;
+  --red2:#ff6d23;
+  --gold:#d8a33c;
+  --green:#16744c;
+  --blue:#255bd8;
+  --orange:#b96814;
+  --purple:#7c3aed;
+  --shadow:0 18px 50px rgba(70,35,13,.12);
+  --soft:0 10px 30px rgba(70,35,13,.08);
+  --r:24px;
+  --r2:16px;
+  --side:282px;
+}
+*{box-sizing:border-box}
+html{min-width:320px;background:var(--bg)}
+body{
+  margin:0;
+  color:var(--ink);
+  font-family:Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+  background:
+    radial-gradient(circle at 92% -4%, rgba(255,205,96,.42), transparent 31rem),
+    radial-gradient(circle at 4% 8%, rgba(255,255,255,.9), transparent 22rem),
+    linear-gradient(180deg,#fff7ea 0%,#fbf1df 58%,#fff9ef 100%);
+}
+button,input,select,textarea{font:inherit}
+button{cursor:pointer}
+.app{display:grid;grid-template-columns:var(--side) minmax(0,1fr);min-height:100vh}
+.sidebar{
+  position:sticky;top:0;height:100vh;z-index:10;
+  padding:18px 14px;
+  border-right:1px solid rgba(226,196,155,.76);
+  background:rgba(255,250,241,.82);
+  backdrop-filter:blur(18px);
+}
+.brand{
+  min-height:72px;
+  display:flex;align-items:center;gap:12px;
+  padding:5px 4px 17px;
+}
+.brand-logo{width:146px;max-width:100%;height:auto;display:block;object-fit:contain}
+.brand-sub{margin-top:5px;color:var(--muted);font-weight:850;font-size:12px}
+.nav-label{
+  margin:12px 10px 8px;
+  font-size:11px;text-transform:uppercase;letter-spacing:.13em;
+  color:var(--muted2);font-weight:950;
+}
+.nav{display:flex;flex-direction:column;gap:6px}
+.nav button{
+  min-height:46px;width:100%;border:0;background:transparent;
+  padding:10px 12px;border-radius:16px;
+  display:flex;align-items:center;gap:10px;text-align:left;
+  color:#6e5039;font-weight:900;
+}
+.nav button .ico{
+  width:22px;height:22px;border-radius:9px;
+  display:grid;place-items:center;
+  background:#fff3df;color:#946232;
+}
+.nav button.active{
+  color:#fff;background:linear-gradient(135deg,var(--red),var(--red2));
+  box-shadow:0 12px 24px rgba(216,21,36,.21);
+}
+.nav button.active .ico{background:rgba(255,255,255,.18);color:#fff}
+.sidebar-note{
+  margin-top:16px;border:1px solid rgba(226,196,155,.75);
+  border-radius:22px;padding:14px;background:linear-gradient(135deg,#fff8ec,#f8e5bf);
+  color:#684a32;font-size:12px;line-height:1.38;font-weight:750;
+}
+.sidebar-note b{display:block;margin-bottom:5px;color:#3a2115}
+.main{min-width:0;padding:18px 22px 44px}
+.topbar{
+  position:sticky;top:0;z-index:8;
+  display:flex;justify-content:space-between;gap:16px;align-items:flex-start;
+  padding:9px 0 17px;
+  background:linear-gradient(180deg,rgba(255,247,234,.96),rgba(255,247,234,.78) 72%,rgba(255,247,234,0));
+  backdrop-filter:blur(14px);
+}
+.mobile-brand{display:none}
+.crumbs{color:var(--muted);font-size:13px;font-weight:900;display:flex;gap:8px;align-items:center}
+.title{
+  margin:4px 0 0;
+  font-size:clamp(30px,4.6vw,52px);
+  letter-spacing:-.062em;line-height:.94;font-weight:950;
+}
+.subtitle{
+  max-width:930px;margin:9px 0 0;
+  color:var(--muted);font-size:15px;line-height:1.45;font-weight:700;
+}
+.top-actions{display:flex;gap:10px;align-items:center;flex:0 0 auto}
+.role-switch{
+  display:inline-flex;align-items:center;gap:3px;min-height:46px;padding:4px;
+  border:1px solid var(--line);border-radius:999px;background:rgba(255,255,255,.88);box-shadow:var(--soft)
+}
+.role-switch a{
+  min-height:36px;padding:0 11px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;
+  color:#765641;font-size:12px;font-weight:950;text-decoration:none;white-space:nowrap
+}
+.role-switch a.active{color:#fff;background:linear-gradient(135deg,var(--red),var(--red2));box-shadow:0 8px 18px rgba(216,21,36,.2)}
+.role-short{display:none}
+.search{
+  width:310px;height:46px;border:1px solid var(--line);border-radius:999px;
+  background:rgba(255,255,255,.78);
+  display:flex;align-items:center;gap:8px;padding:0 14px;box-shadow:var(--soft)
+}
+.search input{border:0;background:transparent;outline:0;width:100%;font-weight:800;min-width:0;color:var(--ink)}
+.mobile-search{display:none}
+.search-results{
+  position:sticky;top:88px;z-index:24;display:grid;gap:7px;max-width:720px;margin:0 0 12px auto;
+  padding:10px;border:1px solid var(--line);border-radius:20px;background:rgba(255,253,248,.98);box-shadow:var(--shadow)
+}
+.search-results[hidden]{display:none!important}
+.search-result{
+  width:100%;border:1px solid rgba(226,196,155,.68);border-radius:14px;background:#fffaf2;
+  padding:10px 12px;display:flex;justify-content:space-between;gap:12px;text-align:left;color:var(--ink);font-weight:900
+}
+.search-result span{color:var(--muted);font-size:12px;font-weight:750}
+.person{
+  min-height:46px;border:1px solid var(--line);border-radius:999px;
+  background:rgba(255,255,255,.88);box-shadow:var(--soft);
+  display:flex;align-items:center;gap:9px;padding:6px 12px 6px 7px;font-weight:950;
+}
+.avatar{
+  width:32px;height:32px;border-radius:999px;display:grid;place-items:center;
+  color:#fff;background:linear-gradient(135deg,#4c2715,#cf8631);font-size:13px
+}
+.icon-btn{
+  width:46px;height:46px;border:1px solid var(--line);background:rgba(255,255,255,.86);
+  border-radius:16px;display:grid;place-items:center;box-shadow:var(--soft);font-weight:950;color:#6e5039;
+}
+.mobile-nav{display:none}
+.view{display:none}
+.view.active{display:block}
+.section{margin-top:22px}
+.section-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:13px}
+.section-title{margin:0;font-size:22px;line-height:1.12;letter-spacing:-.035em;font-weight:950}
+.section-caption{margin:5px 0 0;color:var(--muted);font-size:13px;line-height:1.42;font-weight:720}
+.card{
+  border:1px solid rgba(226,196,155,.76);
+  background:rgba(255,253,248,.91);
+  border-radius:var(--r);
+  box-shadow:var(--soft);
+}
+.pad{padding:18px}
+.grid{display:grid;gap:14px}
+.grid-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.grid-3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.grid-4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.kpis{grid-template-columns:repeat(5,minmax(0,1fr))}
+.kpi{position:relative;overflow:hidden;min-height:136px;padding:16px}
+.kpi:after{
+  content:"";position:absolute;right:-34px;bottom:-42px;width:112px;height:112px;border-radius:50%;
+  background:radial-gradient(circle,rgba(216,163,60,.24),transparent 68%);
+}
+.kpi-label{font-size:11px;font-weight:950;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+.kpi-value{margin-top:12px;font-weight:950;font-size:29px;letter-spacing:-.055em;line-height:.96}
+.kpi-note{margin-top:8px;color:var(--muted);font-size:12px;line-height:1.3;font-weight:750}
+.good{color:var(--green)}.bad{color:var(--red)}.warn{color:var(--orange)}.blue{color:var(--blue)}.purple{color:var(--purple)}
+.toolbar{
+  display:flex;flex-wrap:wrap;gap:9px;align-items:center;
+  padding:12px;border:1px solid rgba(226,196,155,.7);border-radius:22px;
+  background:rgba(255,250,242,.75);box-shadow:var(--soft);margin-bottom:14px
+}
+.chip{
+  min-height:38px;border:1px solid var(--line);border-radius:999px;background:#fff;
+  padding:8px 12px;color:#73543c;font-weight:900;font-size:13px;
+}
+.chip.active{color:#fff;border-color:transparent;background:linear-gradient(135deg,var(--red),var(--red2))}
+.field{display:grid;gap:5px;min-width:150px}
+.field label{font-size:11px;font-weight:950;color:var(--muted);margin-left:2px}
+.field select,.field input{
+  height:40px;border:1px solid var(--line);background:#fff;border-radius:14px;
+  padding:0 10px;outline:0;color:var(--ink);font-weight:850;min-width:0;
+}
+.btn{
+  min-height:40px;border:1px solid var(--line);background:#fff;border-radius:14px;
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  padding:8px 12px;color:#6e4d34;font-weight:950;white-space:nowrap;
+  box-shadow:0 8px 16px rgba(87,50,18,.06);
+}
+.btn.primary{color:#fff;border-color:transparent;background:linear-gradient(135deg,var(--red),var(--red2));box-shadow:0 12px 22px rgba(216,21,36,.2)}
+.btn.gold{color:#60390e;background:linear-gradient(135deg,#fff4d7,#f3d179);border-color:#e2bd67}
+.btn.ghost{background:transparent;box-shadow:none}
+.btn.small{min-height:34px;padding:7px 10px;border-radius:12px;font-size:12px}
+.filter-summary{margin-left:auto;color:var(--muted);font-size:12px;font-weight:850}
+.empty-state{padding:28px;text-align:center;color:var(--muted);font-weight:850}
+.drafts-fab{
+  position:fixed;right:18px;bottom:18px;z-index:45;min-height:44px;border:0;border-radius:999px;
+  padding:9px 15px;color:#fff;background:linear-gradient(135deg,#3a2115,#7c4a27);box-shadow:0 16px 34px rgba(58,33,21,.25);font-weight:950
+}
+.drafts-fab span{display:inline-grid;place-items:center;min-width:24px;height:24px;margin-left:7px;border-radius:999px;background:rgba(255,255,255,.18)}
+.draft-list{display:grid;gap:9px}
+.draft-item{padding:12px;border:1px solid var(--line);border-radius:16px;background:#fffaf2}
+.draft-item b{display:block}.draft-item span{display:block;margin-top:4px;color:var(--muted);font-size:12px;font-weight:750}
+.draft-form{display:grid;gap:11px}
+.draft-form input,.draft-form select,.draft-form textarea{width:100%;border:1px solid var(--line);border-radius:14px;background:#fff;padding:11px;color:var(--ink);font-weight:800}
+.draft-form textarea{min-height:110px;resize:vertical}
+.badge{
+  display:inline-flex;align-items:center;gap:5px;min-height:26px;padding:4px 9px;
+  border-radius:999px;font-size:11px;line-height:1;font-weight:950;white-space:nowrap;
+}
+.badge.green{background:#e7f5ed;color:#09623d}.badge.gold{background:#fff2cc;color:#81550c}
+.badge.red{background:#ffe6e8;color:#b00016}.badge.blue{background:#eaf0ff;color:#1d49b8}
+.badge.gray{background:#f1ece5;color:#675447}.badge.purple{background:#f0eaff;color:#5b21b6}
+.badge.dark{background:#3a2115;color:#fff3db}
+.decision-list{display:grid;gap:10px}
+.decision{
+  display:grid;grid-template-columns:auto minmax(0,1fr) minmax(210px,.35fr) auto;
+  gap:12px;align-items:center;
+  padding:14px;border:1px solid rgba(226,196,155,.68);
+  border-radius:20px;background:#fffaf2;
+}
+.sev{
+  width:48px;height:48px;border-radius:16px;display:grid;place-items:center;
+  color:#fff;font-weight:950;background:linear-gradient(135deg,var(--red),var(--red2));
+}
+.sev.warn{background:linear-gradient(135deg,#b96814,#f0aa3d)}
+.sev.good{background:linear-gradient(135deg,#16744c,#4fb783)}
+.sev.blue{background:linear-gradient(135deg,#255bd8,#7194ff)}
+.decision-title{font-size:15px;font-weight:950;line-height:1.18}
+.decision-meta{margin-top:4px;color:var(--muted);font-size:12px;line-height:1.32;font-weight:780}
+.ai-box{
+  padding:11px 12px;border-radius:16px;border:1px solid rgba(226,196,155,.74);
+  background:#fff7ea;color:#64462e;font-size:12px;line-height:1.35;font-weight:790;
+}
+.row-actions{display:flex;flex-direction:column;gap:7px;align-items:stretch}
+.table-card{overflow:hidden}
+.table-scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:880px}
+th,td{padding:13px 12px;border-bottom:1px solid rgba(226,196,155,.58);text-align:left;vertical-align:top}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.04em;font-weight:950;color:var(--muted);background:#fff8ee}
+td{font-size:13px;font-weight:820;line-height:1.35}
+.table-main{font-size:14px;font-weight:950;color:var(--ink)}
+.table-muted{margin-top:3px;color:var(--muted);font-size:12px;font-weight:760}
+.num{white-space:nowrap;font-variant-numeric:tabular-nums}
+.progress{
+  height:10px;border-radius:999px;overflow:hidden;background:#f1dcc0;min-width:90px;
+}
+.progress span{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--red),var(--red2),var(--gold))}
+.progress.good span{background:linear-gradient(90deg,#16744c,#78c89c)}
+.progress.blue span{background:linear-gradient(90deg,#255bd8,#91a8ff)}
+.progress-wrap{display:grid;gap:6px}
+.split{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.split-tile{
+  padding:10px;border-radius:16px;border:1px solid rgba(226,196,155,.66);background:#fff8ee;min-width:0;
+}
+.split-tile b{display:block;font-size:18px;font-weight:950;letter-spacing:-.03em;overflow-wrap:anywhere}
+.split-tile span{display:block;margin-top:4px;color:var(--muted);font-size:11px;font-weight:850;line-height:1.22}
+.timeline{display:grid;gap:10px}
+.time-row{
+  display:grid;grid-template-columns:86px 1fr auto;gap:12px;align-items:center;
+  padding:12px;border:1px solid rgba(226,196,155,.66);border-radius:18px;background:#fffaf2;
+}
+.time{font-size:12px;font-weight:950;color:#75543a}
+.time-title{font-size:14px;font-weight:950}
+.time-meta{margin-top:3px;font-size:12px;color:var(--muted);font-weight:760;line-height:1.32}
+.chart-list{display:grid;gap:10px}
+.bar-row{display:grid;grid-template-columns:140px 1fr 120px;gap:10px;align-items:center;font-size:12px;font-weight:850;color:#6b503d}
+.bar-bg{height:11px;background:#f0ddc4;border-radius:999px;overflow:hidden}
+.bar-bg span{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--red),var(--red2),var(--gold))}
+.analytics-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.analytics-card{padding:18px;min-width:0}
+.analytics-card-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:14px}
+.analytics-card-title{font-size:17px;font-weight:950;line-height:1.18}
+.analytics-card-note{margin-top:4px;color:var(--muted);font-size:12px;line-height:1.35;font-weight:750}
+.donut-layout{display:grid;grid-template-columns:180px minmax(0,1fr);gap:18px;align-items:center}
+.donut{width:174px;height:174px;border-radius:50%;display:grid;place-items:center;position:relative;box-shadow:inset 0 0 0 1px rgba(255,255,255,.5)}
+.donut:after{content:"";width:104px;height:104px;border-radius:50%;background:var(--surface);box-shadow:0 3px 14px rgba(87,50,18,.08);position:absolute}
+.donut-center{position:relative;z-index:1;text-align:center;max-width:84px}
+.donut-center b{display:block;font-size:24px;line-height:1;font-weight:950;letter-spacing:-.06em}
+.donut-center span{display:block;margin-top:5px;color:var(--muted);font-size:11px;line-height:1.15;font-weight:850}
+.analytics-legend{display:grid;gap:9px;min-width:0}
+.legend-row{display:grid;grid-template-columns:10px minmax(0,1fr) auto;gap:8px;align-items:center;font-size:12px;font-weight:850}
+.legend-dot{width:10px;height:10px;border-radius:50%}
+.legend-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.legend-value{font-variant-numeric:tabular-nums;color:var(--muted);white-space:nowrap}
+.analytics-clickable{cursor:pointer;transition:background .16s ease,border-color .16s ease,box-shadow .16s ease,transform .16s ease}
+.analytics-clickable:hover{background:#fff7e5;border-color:#e4bf82;box-shadow:0 6px 16px rgba(87,50,18,.08);transform:translateY(-1px)}
+.analytics-clickable:focus-visible{outline:3px solid rgba(37,91,216,.3);outline-offset:2px}
+.analytics-clickable.active{background:#fff1d1;border-color:#d8a33c;box-shadow:inset 0 0 0 1px rgba(216,163,60,.18)}
+.legend-row.analytics-clickable{padding:7px 8px;border:1px solid transparent;border-radius:11px}
+.analytics-bars{display:grid;gap:12px}
+.analytics-bar-row{display:grid;grid-template-columns:minmax(116px,.7fr) minmax(120px,1fr) 78px;gap:10px;align-items:center;font-size:12px;font-weight:850;padding:7px 8px;border:1px solid transparent;border-radius:12px}
+.analytics-bar-row .bar-bg{height:13px}
+.analytics-bar-row .bar-bg span{background:linear-gradient(90deg,#255bd8,#7f9cff)}
+.analytics-bar-row:nth-child(3n+2) .bar-bg span{background:linear-gradient(90deg,#d81524,#ff8b3d)}
+.analytics-bar-row:nth-child(3n) .bar-bg span{background:linear-gradient(90deg,#16744c,#78c89c)}
+.analytics-value{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.analytics-filter-note{display:flex;flex-wrap:wrap;align-items:center;gap:7px;margin:0 0 12px;color:var(--muted);font-size:12px;font-weight:800}
+.analytics-filter-chip{min-height:28px;padding:5px 9px;border:1px solid #e2bd67;border-radius:999px;background:#fff3d7;color:#6f470e;font-size:11px;font-weight:950}
+.analytics-filter-hint{color:var(--muted2);font-size:12px;font-weight:750}
+.trend-wrap{padding-top:2px}
+.trend-svg{width:100%;height:220px;display:block;overflow:visible}
+.trend-grid{stroke:#ead6bc;stroke-width:1}
+.trend-area{fill:url(#trendFill)}
+.trend-line{fill:none;stroke:#d81524;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.trend-point{fill:#fff8ee;stroke:#d81524;stroke-width:2}
+.trend-label{fill:#755a45;font-size:10px;font-weight:800}
+.analytics-footnote{margin-top:12px;color:var(--muted);font-size:11px;line-height:1.4;font-weight:720}
+.live-crm-card{border-color:rgba(37,91,216,.24);background:linear-gradient(135deg,rgba(255,253,248,.96),rgba(240,246,255,.92))}
+.live-crm-kpis{grid-template-columns:repeat(4,minmax(0,1fr));margin-top:14px}
+.live-analytics-summary{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+.live-analytics-summary span{padding:10px 12px;border:1px solid rgba(37,91,216,.16);border-radius:14px;background:rgba(255,255,255,.72);color:var(--muted);font-size:12px;font-weight:800}
+.live-analytics-summary b{display:block;color:var(--ink);font-size:18px;font-weight:950}
+.live-crm-list{display:grid;gap:8px;margin-top:14px}
+.live-crm-row{display:flex;justify-content:space-between;gap:14px;padding:11px 13px;border:1px solid rgba(226,196,155,.68);border-radius:15px;background:rgba(255,255,255,.72)}
+.live-crm-row>div:last-child{text-align:right}
+.live-crm-row b,.live-crm-row span{display:block}
+.live-crm-row b{font-size:13px;font-weight:950}
+.live-crm-row span{margin-top:3px;color:var(--muted);font-size:11px;font-weight:750}
+.matrix{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.matrix-card{padding:13px;border-radius:18px;border:1px solid rgba(226,196,155,.68);background:#fffdf8}
+.matrix-title{font-size:14px;font-weight:950;line-height:1.2}
+.matrix-meta{margin-top:5px;color:var(--muted);font-size:12px;font-weight:760;line-height:1.35}
+.drawer{
+  position:fixed;inset:0 0 0 auto;width:min(680px,100vw);z-index:40;
+  transform:translateX(110%);transition:.24s ease;
+  overflow-y:auto;padding:16px;
+  background:rgba(255,250,242,.98);border-left:1px solid var(--line);
+  box-shadow:-28px 0 80px rgba(37,16,5,.22);
+}
+.drawer.open{transform:translateX(0)}
+.scrim{position:fixed;inset:0;background:rgba(37,16,5,.23);z-index:38;opacity:0;pointer-events:none;transition:.2s ease}
+.scrim.open{opacity:1;pointer-events:auto}
+.drawer-head{
+  display:flex;justify-content:space-between;gap:12px;align-items:flex-start;
+  position:sticky;top:0;z-index:2;background:rgba(255,250,242,.98);
+  padding:4px 0 12px;
+}
+.drawer-title{font-size:30px;line-height:1.02;letter-spacing:-.045em;font-weight:950;margin:0}
+.drawer-sub{margin:7px 0 0;color:var(--muted);font-weight:800;font-size:13px;line-height:1.35}
+.close{width:42px;height:42px;border-radius:14px;border:1px solid var(--line);background:#fff;font-weight:950;display:grid;place-items:center}
+.detail-grid{display:grid;gap:12px}
+.detail-card{padding:14px;border:1px solid rgba(226,196,155,.72);border-radius:18px;background:#fffdf8}
+.detail-title{font-size:16px;font-weight:950;margin-bottom:8px}
+.detail-text{color:var(--muted);font-size:13px;line-height:1.45;font-weight:760}
+.toast{
+  position:fixed;right:18px;bottom:76px;z-index:70;
+  max-width:380px;padding:14px 16px;border-radius:18px;
+  background:#2c170d;color:#fff;box-shadow:0 20px 48px rgba(0,0,0,.28);
+  transform:translateY(120%);transition:.24s ease;font-weight:850;line-height:1.35;
+}
+.toast.show{transform:translateY(0)}
+@media(max-width:1220px){
+  .kpis{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .grid-4{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .decision{grid-template-columns:auto minmax(0,1fr)}
+  .decision .ai-box,.decision .row-actions{grid-column:2}
+  .row-actions{flex-direction:row;flex-wrap:wrap}
+  .matrix{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:860px){
+  .app{display:block}
+  .sidebar{display:none}
+  .main{padding:12px 14px 30px}
+  .topbar{display:block;padding-top:8px}
+  .mobile-brand{display:flex;align-items:center;gap:9px;margin-bottom:10px}
+  .mobile-brand .brand-logo{width:132px}
+  .top-actions{position:absolute;right:14px;top:14px}
+  .search,.person,.top-actions .icon-btn{display:none}
+  .role-switch{min-height:42px;padding:3px}
+  .role-switch a{min-height:34px;padding:0 8px;font-size:10.5px}
+  .role-long{display:none}.role-short{display:inline}
+  .mobile-nav{
+    display:flex;gap:8px;overflow-x:auto;position:sticky;top:76px;z-index:12;
+    padding:8px 0 12px;background:linear-gradient(180deg,rgba(255,247,234,.96),rgba(255,247,234,.86));
+    scrollbar-width:none;
+  }
+  .mobile-nav::-webkit-scrollbar{display:none}
+  .mobile-nav button{
+    flex:0 0 auto;min-height:42px;border:1px solid var(--line);border-radius:999px;background:#fff;
+    color:#6e5039;padding:8px 12px;font-size:12px;font-weight:950;
+  }
+  .mobile-nav button.active{color:#fff;border-color:transparent;background:linear-gradient(135deg,var(--red),var(--red2))}
+  .mobile-search{display:flex;width:100%;margin:2px 0 8px}
+  .search-results{top:132px;margin:0 0 10px;max-width:none}
+  .title{font-size:36px}
+  .subtitle{font-size:13px}
+  .grid-3,.grid-2{grid-template-columns:1fr}
+  .bar-row{grid-template-columns:96px 1fr 92px}
+  .analytics-grid{grid-template-columns:1fr}
+}
+@media(max-width:620px){
+  .section-head{align-items:flex-start;flex-direction:column;gap:8px}
+  .kpis{grid-template-columns:1fr 1fr;gap:10px}
+  .kpi{min-height:116px;padding:13px}
+  .kpi-value{font-size:24px}
+  .toolbar{gap:7px;padding:10px;border-radius:20px}
+  .field{min-width:calc(50% - 5px)}
+  .field select,.field input{height:40px;font-size:12px}
+  .decision{grid-template-columns:1fr;padding:12px}
+  .decision .ai-box,.decision .row-actions{grid-column:auto}
+  .sev{width:42px;height:42px}
+  .row-actions{display:grid;grid-template-columns:1fr 1fr}
+  .matrix{grid-template-columns:1fr}
+  .split{grid-template-columns:1fr 1fr}
+  .donut-layout{grid-template-columns:1fr;justify-items:center}
+  .analytics-legend{width:100%}
+  .analytics-bar-row{grid-template-columns:104px 1fr 70px}
+  .live-crm-kpis{grid-template-columns:1fr 1fr}
+  .live-crm-row{display:grid;grid-template-columns:1fr}
+  .live-crm-row>div:last-child{text-align:left}
+  .time-row{grid-template-columns:1fr}
+  .drawer{padding:12px}
+  .drawer-title{font-size:25px}
+  .filter-summary{width:100%;margin-left:0}
+  .drafts-fab{right:12px;bottom:12px}
+}
+@media(max-width:370px){
+  .main{padding-left:10px;padding-right:10px}
+  .title{font-size:30px}
+  .kpis{grid-template-columns:1fr}
+  .field{min-width:100%}
+  .row-actions{grid-template-columns:1fr}
+  .split{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <div>
+        <img class="brand-logo" src="/max-tour-logo.svg" alt="Max Tour — Экскурсионное бюро">
+        <div class="brand-sub">кабинет директора</div>
+      </div>
+    </div>
+    <div class="nav-label">Управление</div>
+    <nav class="nav" id="desktopNav"></nav>
+    <div class="sidebar-note">
+      <b>Роль: директор</b>
+      Не операционная очередь администратора. Здесь план, прогноз, источники клиентов, качество продаж, деньги и решения для роста.
+    </div>
+  </aside>
+  <main class="main">
+    <div class="topbar">
+      <div>
+        <div class="mobile-brand">
+          <div>
+            <img class="brand-logo" src="/max-tour-logo.svg" alt="Max Tour — Экскурсионное бюро">
+            <div class="brand-sub">кабинет директора</div>
+          </div>
+        </div>
+        <div class="crumbs"><span>Управление</span><span>›</span><span id="crumbView">Пульт директора</span></div>
+        <h1 class="title" id="pageTitle">Пульт директора</h1>
+        <p class="subtitle" id="pageSubtitle">План, прогноз, слабые места, группы как источник роста и управленческие решения. Админ видит операционку, директор видит систему бизнеса.</p>
+      </div>
+      <div class="top-actions">
+        <div class="role-switch" aria-label="Переключение роли">
+          <a href="/" aria-label="Открыть кабинет туриста"><span class="role-long">Турист</span><span class="role-short">Турист</span></a>
+          <a href="/admin/" aria-label="Открыть кабинет администратора"><span class="role-long">Администратор</span><span class="role-short">Админ</span></a>
+          <a href="/director/" class="active" aria-current="page"><span class="role-long">Директор</span><span class="role-short">Директор</span></a>
+        </div>
+        <div class="search">⌕ <input id="globalSearch" placeholder="Поиск города, тура, сегмента..."></div>
+        <button class="icon-btn" data-toast="Отчёт подготовлен к выгрузке">⇩</button>
+        <div class="person"><span class="avatar">Д</span><span>Директор</span></div>
+      </div>
+    </div>
+    <div class="search mobile-search">⌕ <input id="mobileGlobalSearch" placeholder="Поиск города, тура, сегмента..."></div>
+    <div class="search-results" id="searchResults" hidden></div>
+    <div class="mobile-nav" id="mobileNav"></div>
+    <section id="content"></section>
+  </main>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" aria-hidden="true">
+  <div class="drawer-head">
+    <div>
+      <h2 class="drawer-title" id="drawerTitle">Детали</h2>
+      <p class="drawer-sub" id="drawerSub"></p>
+    </div>
+    <button class="close" id="closeDrawer">×</button>
+  </div>
+  <div id="drawerBody" class="detail-grid"></div>
+</aside>
+<div class="toast" id="toast"></div>
+<button class="drafts-fab" id="draftsButton" type="button">Черновики <span id="draftCount">0</span></button>
+
+<script>
+(function(){
+"use strict";
+
+var NAV = [
+  {id:"dashboard", label:"Пульт директора", ico:"◆", sub:"Главные управленческие решения"},
+  {id:"plan", label:"План и прогноз", ico:"▦", sub:"План, факт, разрыв, прогноз"},
+  {id:"cities", label:"Города", ico:"⌖", sub:"Где растём и где просели"},
+  {id:"tours", label:"Экскурсии", ico:"☀", sub:"Какие продукты дают деньги"},
+  {id:"groups", label:"Группы и спрос", ico:"◌", sub:"Что открыть, добрать, закрыть"},
+  {id:"money", label:"Деньги", ico:"₽", sub:"Рубли, остатки гиду, возвраты"},
+  {id:"customers", label:"Клиенты и источники", ico:"◎", sub:"Откуда пришли, кто они, что делать"},
+  {id:"analytics", label:"Аналитика", ico:"◔", sub:"Источники, портреты, места и динамика"},
+  {id:"team", label:"Команда", ico:"♙", sub:"Гиды, качество, подтверждения"},
+  {id:"ai", label:"AI-помощник", ico:"✦", sub:"Рекомендации, не автодействия"}
+];
+
+var summary = {
+  plan:15000000,
+  fact:9420000,
+  forecast:13800000,
+  online:6280000,
+  guideDue:1845000,
+  guideCollected:760000,
+  refunds:210000,
+  manualReview:420000
+};
+
+var decisions = [
+  {
+    id:"gap-phuquoc",
+    sev:"bad",
+    tag:"План месяца",
+    title:"Фукуок отстаёт от плана на 1 120 000 ₽",
+    meta:"Факт 980 000 ₽ при плане 2 100 000 ₽. Прогноз месяца 1 450 000 ₽, риск недовыполнения высокий.",
+    impact:"Риск: −650 000 ₽ к прогнозу",
+    ai:"AI: открыть 2 групповые даты, запустить сегмент «смотрели острова / не купили», предложить депозит 30%.",
+    type:"city",
+    ref:"phuquoc"
+  },
+  {
+    id:"group-fuyen",
+    sev:"warn",
+    tag:"Группа под риском",
+    title:"Фуйен 13 сентября: не хватает 3 туристов до минимума",
+    meta:"8 из 14 мест занято, минимум для выезда 11. До решения 2 дня.",
+    impact:"Под риском: 8 туристов",
+    ai:"AI: добрать из 21 клиента, кто смотрел Фуйен, и предложить перенос тем, кто уже оплатил депозит.",
+    type:"group",
+    ref:"fuyen-13"
+  },
+  {
+    id:"demand-dalat",
+    sev:"good",
+    tag:"Новая дата",
+    title:"Есть спрос на Далат в субботу, но дата не открыта",
+    meta:"34 просмотра, 11 сохранений, 6 вопросов в диалогах за 5 дней.",
+    impact:"Потенциал: 520 000 ₽",
+    ai:"AI: открыть групповую дату на субботу, лимит 14 мест, старт с листа интереса.",
+    type:"demand",
+    ref:"dalat-sat"
+  },
+  {
+    id:"manual-pay",
+    sev:"blue",
+    tag:"Деньги",
+    title:"420 000 ₽ оплат ждут ручной проверки",
+    meta:"7 чеков по СБП/переводу, 3 из них относятся к выездам ближайших 48 часов.",
+    impact:"Нужно подтвердить сегодня",
+    ai:"AI: назначить задачу бухгалтеру и поднять 3 срочных платежа выше остальных.",
+    type:"money",
+    ref:"manual"
+  },
+  {
+    id:"source-instagram",
+    sev:"warn",
+    tag:"Источник клиентов",
+    title:"Instagram даёт интерес, но слабее доводит до оплаты",
+    meta:"146 клиентов за месяц, но только 19% оплатили. Сайт даёт меньше клиентов, зато выше средний чек и повторность.",
+    impact:"Потеря: примерно 680 000 ₽ потенциала",
+    ai:"AI: разделить сценарии: Instagram вести в короткий выбор тура, сайт усиливать премиум-индивидуальными предложениями.",
+    type:"source",
+    ref:"instagram"
+  },
+  {
+    id:"team-guide",
+    sev:"warn",
+    tag:"Команда",
+    title:"2 гида часто поздно подтверждают выезды",
+    meta:"По 4 задержки подтверждения за месяц. Это создаёт утренние риски для администратора.",
+    impact:"Качество операций",
+    ai:"AI: включить обязательное подтверждение до 20:00 накануне и эскалацию директору.",
+    type:"team",
+    ref:"guide-confirm"
+  }
+];
+
+var cities = [
+  {id:"nhatrang", city:"Нячанг", plan:8200000, fact:5860000, forecast:8500000, orders:112, conv:18, trend:"выше плана", status:"good", insight:"Сильные продажи Далата и Фуйена, но есть риск недобора двух вечерних групп."},
+  {id:"danang", city:"Дананг", plan:2700000, fact:1580000, forecast:2380000, orders:39, conv:13, trend:"ниже плана", status:"warn", insight:"Просадка по Ба На Хилл: много просмотров, но мало оплат после выбора даты."},
+  {id:"phuquoc", city:"Фукуок", plan:2100000, fact:980000, forecast:1450000, orders:24, conv:9, trend:"критично", status:"bad", insight:"Мало открытых групповых дат и слабая рассылка по тёплому спросу."},
+  {id:"hanoi", city:"Ханой", plan:2000000, fact:1000000, forecast:1470000, orders:18, conv:11, trend:"ниже плана", status:"warn", insight:"Запросы есть, но каталог недостаточно объясняет отличие маршрутов на 1 и 2 дня."}
+];
+
+var tours = [
+  {id:"dalat", name:"Далат Премиум", city:"Нячанг", plan:3600000, fact:2880000, forecast:3940000, margin:"высокая", groups:"1 риск", conv:22, action:"открыть субботнюю группу"},
+  {id:"fuyen", name:"Фуйен", city:"Нячанг", plan:2600000, fact:1710000, forecast:2380000, margin:"средняя", groups:"2 риска", conv:16, action:"добор ближайших дат"},
+  {id:"bana", name:"Ба На Хилл", city:"Дананг", plan:2100000, fact:1080000, forecast:1710000, margin:"средняя", groups:"нет", conv:10, action:"упростить оплату и дату"},
+  {id:"islands", name:"Острова Фукуока", city:"Фукуок", plan:1850000, fact:780000, forecast:1220000, margin:"высокая", groups:"спрос без даты", conv:8, action:"открыть 2 даты"},
+  {id:"hanoi2", name:"Ханой 2 дня", city:"Ханой", plan:1600000, fact:840000, forecast:1290000, margin:"высокая", groups:"нет", conv:12, action:"сравнительная карточка"}
+];
+
+var groups = [
+  {id:"fuyen-13", tour:"Фуйен", city:"Нячанг", date:"13 сентября", time:"16:00", cap:14, min:11, booked:8, paidFull:3, deposit:4, waiting:1, demand:21, status:"под риском", trigger:"T-2", ai:"Добрать 3 туристов из тех, кто смотрел Фуйен и Далат за 7 дней."},
+  {id:"dalat-14", tour:"Далат Премиум", city:"Нячанг", date:"14 сентября", time:"05:00", cap:14, min:10, booked:12, paidFull:6, deposit:5, waiting:1, demand:34, status:"почти полная", trigger:"T-3", ai:"Закрыть остаток мест по высокой цене или открыть вторую дату."},
+  {id:"islands-15", tour:"Острова Фукуока", city:"Фукуок", date:"15 сентября", time:"09:00", cap:12, min:8, booked:5, paidFull:2, deposit:2, waiting:1, demand:18, status:"не набрана", trigger:"T-3", ai:"Открыть рассылку по Фукуоку и предложить депозит 30%."},
+  {id:"bana-16", tour:"Ба На Хилл", city:"Дананг", date:"16 сентября", time:"08:00", cap:18, min:12, booked:12, paidFull:5, deposit:6, waiting:1, demand:9, status:"подтверждена", trigger:"OK", ai:"Группа подтверждена. Контроль только по оплатам и гиду."}
+];
+
+var moneyRows = [
+  {id:"online", kind:"Подтверждено онлайн", amount:6280000, orders:96, desc:"СБП / перевод / подтверждённые чеки"},
+  {id:"manual", kind:"Ручная проверка", amount:420000, orders:7, desc:"Чек есть, деньги ещё не подтверждены"},
+  {id:"guideDue", kind:"К оплате гиду", amount:1845000, orders:31, desc:"Остаток по депозитным заказам"},
+  {id:"guideCollected", kind:"Гид уже отметил получено", amount:760000, orders:12, desc:"Попадёт в закрытие выезда"},
+  {id:"refunds", kind:"Возвраты к решению", amount:210000, orders:4, desc:"Отмена группы / спорные случаи"}
+];
+
+var segments = [
+  {id:"warm-fuyen", name:"Смотрели Фуйен, не купили", count:21, value:430000, action:"добор группы 13 сентября"},
+  {id:"repeat", name:"Повторные клиенты", count:48, value:1260000, action:"VIP-предложение на Далат"},
+  {id:"families", name:"Семейные туристы", count:73, value:1840000, action:"мягкая рассылка на индивидуальные туры"},
+  {id:"cancelled", name:"Отменили, можно вернуть в продажу", count:12, value:310000, action:"предложить альтернативные даты"},
+  {id:"phuquoc-watch", name:"Интерес к Фукуоку без даты", count:34, value:720000, action:"открыть группу и собрать лист"}
+];
+
+var sourceChannels = [
+  {id:"telegram", name:"Telegram Mini App", clients:184, paid:62, revenue:2860000, avg:46100, conv:34, repeat:12, cancel:5, top:"Далат / Фуйен", insight:"Самый быстрый канал: много бронирований на ближайшие даты, но часть клиентов бросает оплату.", action:"усилить сценарий депозита 30% и автонапоминание об оплате"},
+  {id:"site", name:"Сайт MaxTour", clients:138, paid:58, revenue:3420000, avg:59000, conv:42, repeat:18, cancel:3, top:"Далат Премиум / индивидуальные", insight:"Меньше клиентов, но выше средний чек и лучше покупают индивидуальные туры.", action:"вести на премиум-маршруты и персональный подбор"},
+  {id:"instagram", name:"Instagram / соцсети", clients:146, paid:28, revenue:1190000, avg:42500, conv:19, repeat:6, cancel:7, top:"Острова / красивые маршруты", insight:"Много интереса и сохранений, но слабая оплата после выбора даты.", action:"короткий оффер, визуальная подборка, депозит вместо полной оплаты"},
+  {id:"hotelqr", name:"QR отелей", clients:71, paid:31, revenue:1510000, avg:48700, conv:44, repeat:4, cancel:4, top:"завтра / сегодня", insight:"Клиенты горячие, часто выбирают ближайшие выезды.", action:"держать блок мест на 24–48 часов и показывать быстрые экскурсии"},
+  {id:"referral", name:"Рекомендации", clients:54, paid:29, revenue:1760000, avg:60700, conv:54, repeat:21, cancel:2, top:"индивидуальные / семейные", insight:"Самый качественный источник: высокая конверсия, высокий средний чек, низкие отмены.", action:"запустить реферальный сценарий и VIP-повторные предложения"},
+  {id:"manager", name:"Ручной ввод менеджера", clients:39, paid:16, revenue:690000, avg:43100, conv:41, repeat:5, cancel:2, top:"разные запросы", insight:"Нужен контроль источника: часть клиентов теряется как «ручной ввод» без реального канала.", action:"обязать менеджера выбирать исходный канал и причину обращения"}
+];
+
+var customerTypes = [
+  {id:"families", name:"Семьи с детьми", count:126, revenue:3420000, share:27, buys:"Далат, Винперл, индивидуальные", behavior:"чаще выбирают безопасность, комфорт и понятную точку встречи", action:"упаковать семейные маршруты и предложить допродажу фото/комфорт"},
+  {id:"couples", name:"Пары", count:98, revenue:2210000, share:21, buys:"Далат, острова, красивые локации", behavior:"много смотрят фото, часто сохраняют и выбирают дату позже", action:"ретаргет по сохранённым турам и романтическим маршрутам"},
+  {id:"friends", name:"Компании друзей", count:86, revenue:1960000, share:18, buys:"Фуйен, острова, вечерние программы", behavior:"хорошо добирают группы, но дольше согласовывают оплату", action:"предлагать групповую дату и делить оплату по людям"},
+  {id:"solo", name:"Одиночные туристы", count:74, revenue:970000, share:16, buys:"групповые выезды", behavior:"ищут присоединение к группе и понятный минимум выезда", action:"показывать ближайшие сборные группы и лист ожидания"},
+  {id:"repeat-vip", name:"Повторные / VIP", count:48, revenue:1260000, share:10, buys:"индивидуальные и премиум", behavior:"быстрее оплачивают, меньше задают базовых вопросов", action:"персональные предложения и раннее открытие дат"},
+  {id:"cancelled-warm", name:"Отменившие, но тёплые", count:35, revenue:610000, share:8, buys:"переносы / альтернативы", behavior:"часть можно вернуть, если быстро предложить новую дату", action:"AI-сценарий возврата клиента после отмены"}
+];
+
+var sourceFunnel = [
+  {stage:"Новые обращения", value:632, rate:"100%", problem:"нет", action:"смотреть качество каналов, а не только количество"},
+  {stage:"Выбрали экскурсию", value:318, rate:"50%", problem:"часть теряется на выборе даты", action:"лучше показывать ближайшие выезды и наличие мест"},
+  {stage:"Начали оплату", value:186, rate:"29%", problem:"падает на способе оплаты", action:"предлагать депозит 30% и понятную инструкцию"},
+  {stage:"Оплатили", value:224, rate:"35%", problem:"часть чеков ждёт ручной проверки", action:"поднять срочные платежи перед выездом"},
+  {stage:"Повторно купили", value:66, rate:"10%", problem:"повторные продажи не выделены в отдельный процесс", action:"запустить VIP/повторный сегмент"}
+];
+
+/* The director prototype keeps the analytical dimensions explicit. In production
+   these same series are populated by CRM/D1 events, not hardcoded fixtures. */
+var analyticsGender = [
+  {name:"Женщины", value:54, color:"#d81524"},
+  {name:"Мужчины", value:42, color:"#255bd8"},
+  {name:"Не указан", value:4, color:"#d8a33c"}
+];
+var analyticsAge = [
+  {name:"18–24", value:12, color:"#7c3aed"},
+  {name:"25–34", value:34, color:"#d81524"},
+  {name:"35–44", value:29, color:"#255bd8"},
+  {name:"45–54", value:17, color:"#16744c"},
+  {name:"55+", value:8, color:"#d8a33c"}
+];
+var analyticsOrigins = [
+  {name:"Москва", value:148},
+  {name:"Санкт-Петербург", value:112},
+  {name:"Новосибирск", value:61},
+  {name:"Екатеринбург", value:48},
+  {name:"Хабаровск", value:37},
+  {name:"Другие города", value:226}
+];
+var analyticsDestinations = [
+  {name:"Нячанг", value:193},
+  {name:"Далат", value:121},
+  {name:"Фукуок", value:76},
+  {name:"Дананг", value:64},
+  {name:"Ханой", value:42},
+  {name:"Другие маршруты", value:136}
+];
+var analyticsTrend = [
+  {label:"Апр", value:1420000},
+  {label:"Май", value:1880000},
+  {label:"Июн", value:2310000},
+  {label:"Июл", value:2780000},
+  {label:"Авг", value:3210000},
+  {label:"Сен", value:3940000}
+];
+var analyticsColors = ['#d81524','#255bd8','#16744c','#d8a33c','#7c3aed','#b96814'];
+var analyticsDimensions = {
+  source: sourceChannels.map(function(source,index){return {id:source.id,name:source.name,color:analyticsColors[index % analyticsColors.length]};}),
+  gender: [
+    {id:"women",name:"Женщины",color:"#d81524"},
+    {id:"men",name:"Мужчины",color:"#255bd8"},
+    {id:"unknown",name:"Не указан",color:"#d8a33c"}
+  ],
+  age: [
+    {id:"18-24",name:"18–24",color:"#7c3aed"},
+    {id:"25-34",name:"25–34",color:"#d81524"},
+    {id:"35-44",name:"35–44",color:"#255bd8"},
+    {id:"45-54",name:"45–54",color:"#16744c"},
+    {id:"55-plus",name:"55+",color:"#d8a33c"}
+  ],
+  origin: [
+    {id:"moscow",name:"Москва"},
+    {id:"spb",name:"Санкт-Петербург"},
+    {id:"novosibirsk",name:"Новосибирск"},
+    {id:"ekaterinburg",name:"Екатеринбург"},
+    {id:"khabarovsk",name:"Хабаровск"},
+    {id:"other-origin",name:"Другие города"}
+  ],
+  destination: [
+    {id:"nhatrang",name:"Нячанг"},
+    {id:"dalat",name:"Далат"},
+    {id:"phuquoc",name:"Фукуок"},
+    {id:"danang",name:"Дананг"},
+    {id:"hanoi",name:"Ханой"},
+    {id:"other-destination",name:"Другие маршруты"}
+  ]
+};
+/* Small deterministic profiles keep the demo slices meaningful until CRM/D1
+   supplies real customer dimensions. Each profile is normalized per source. */
+var analyticsSourceProfiles = {
+  telegram:{gender:{women:.58,men:.38,unknown:.04},age:{"18-24":.16,"25-34":.38,"35-44":.28,"45-54":.13,"55-plus":.05},originShift:0,destinationShift:1},
+  site:{gender:{women:.50,men:.47,unknown:.03},age:{"18-24":.08,"25-34":.38,"35-44":.31,"45-54":.16,"55-plus":.07},originShift:1,destinationShift:2},
+  instagram:{gender:{women:.63,men:.34,unknown:.03},age:{"18-24":.22,"25-34":.42,"35-44":.24,"45-54":.09,"55-plus":.03},originShift:2,destinationShift:0},
+  hotelqr:{gender:{women:.55,men:.42,unknown:.03},age:{"18-24":.10,"25-34":.31,"35-44":.31,"45-54":.19,"55-plus":.09},originShift:3,destinationShift:3},
+  referral:{gender:{women:.52,men:.45,unknown:.03},age:{"18-24":.07,"25-34":.32,"35-44":.33,"45-54":.20,"55-plus":.08},originShift:4,destinationShift:4},
+  manager:{gender:{women:.51,men:.45,unknown:.04},age:{"18-24":.09,"25-34":.36,"35-44":.29,"45-54":.18,"55-plus":.08},originShift:5,destinationShift:5}
+};
+
+var team = [
+  {id:"guide-minh", name:"Минь", role:"гид", score:4.8, confirms:"98%", issue:"нет", action:"оставить на премиум"},
+  {id:"guide-anna", name:"Анна", role:"гид", score:4.6, confirms:"91%", issue:"2 поздних подтверждения", action:"напоминание до 20:00"},
+  {id:"guide-victor", name:"Виктор", role:"гид", score:4.4, confirms:"86%", issue:"4 поздних подтверждения", action:"эскалация администратору"},
+  {id:"driver-nam", name:"Нам", role:"водитель", score:4.7, confirms:"94%", issue:"1 жалоба на точку встречи", action:"проверить маршрут"}
+];
+
+var PERIOD_FACTORS = {september:1, october:.78, week:.24};
+var HORIZON_FACTORS = {now:.08, today:.11, days3:.18, week:.34, month:1};
+var state = {
+  view:"dashboard",
+  horizon:"month",
+  filters:{period:"september",city:"all",status:"all",margin:"all"},
+  analyticsFilters:{source:"all",gender:"all",age:"all",origin:"all",destination:"all"},
+  drafts:loadDrafts()
+};
+
+/* The director cabinet is a presentational prototype, but its demo scenario
+   reads the same D1 bootstrap as the admin cabinet. Static fixtures remain as
+   a fallback so the cabinet still explains the future CRM when the database is
+   empty. As soon as a tourist or admin creates an order, live CRM numbers take
+   over the source and revenue views below. */
+var liveCrm = {loaded:false, orders:[], customers:[], departures:[], events:[], consultations:[]};
+function moneyNumber(value){
+  if(typeof value === "number"){return Number.isFinite(value) ? value : 0;}
+  var raw = String(value || "").replace(/\s/g,"").replace(",",".");
+  var n = Number.parseFloat(raw.replace(/[^0-9.-]/g,""));
+  return Number.isFinite(n) ? n : 0;
+}
+function rubles(value){return Math.round(moneyNumber(value)).toLocaleString("ru-RU")+" ₽";}
+function sourceId(value){
+  var text = String(value || "Источник");
+  var known = {"Telegram Mini App":"telegram","Сайт MaxTour":"site","Instagram / соцсети":"instagram","QR отеля":"hotelqr","Рекомендация":"referral","Офис":"manager","Телефон менеджера":"manager"};
+  return known[text] || text.toLowerCase().replace(/[^a-zа-яё0-9]+/gi,"-").replace(/^-|-$/g,"") || "other";
+}
+function sourceLabel(value){
+  var text = String(value || "Офис");
+  return text === "Mini App" ? "Telegram Mini App" : text;
+}
+function hydrateLiveCrm(data){
+  liveCrm.loaded = true;
+  liveCrm.orders = Array.isArray(data.orders) ? data.orders : [];
+  liveCrm.customers = Array.isArray(data.customers) ? data.customers : [];
+  liveCrm.departures = Array.isArray(data.departures) ? data.departures : [];
+  liveCrm.events = Array.isArray(data.events) ? data.events : [];
+  liveCrm.consultations = Array.isArray(data.consultations) ? data.consultations : [];
+  if(!liveCrm.orders.length){return;}
+  var grouped = {};
+  var customerOrders = {};
+  liveCrm.orders.forEach(function(order){
+    var label = sourceLabel(order.source || "Офис");
+    var id = sourceId(label);
+    if(!grouped[id]){grouped[id] = {id:id,name:label,clients:{},paid:0,revenue:0,repeat:0,cancel:0,top:{}};}
+    var row = grouped[id];
+    var customerId = order.sessionId || order.customer || order.id;
+    row.clients[customerId] = true;
+    customerOrders[customerId] = (customerOrders[customerId] || 0) + 1;
+    var paid = moneyNumber(order.paid);
+    row.revenue += paid;
+    if(paid > 0){row.paid += 1;}
+    if(/отмен|возврат/i.test(String(order.orderStatus || ""))){row.cancel += 1;}
+    var tour = order.tour || "Экскурсия";
+    row.top[tour] = (row.top[tour] || 0) + 1;
+  });
+  Object.keys(grouped).forEach(function(id){
+    var row = grouped[id];
+    row.repeat = Object.keys(row.clients).filter(function(customerId){return customerOrders[customerId] > 1;}).length;
+  });
+  var sourceRows = Object.keys(grouped).map(function(id){
+    var row = grouped[id];
+    var clients = Object.keys(row.clients).length;
+    var top = Object.keys(row.top).sort(function(a,b){return row.top[b]-row.top[a];})[0] || "—";
+    return {id:id,name:row.name,clients:clients,paid:row.paid,revenue:row.revenue,avg:row.paid ? Math.round(row.revenue/row.paid) : 0,conv:clients ? Math.round(row.paid/clients*100) : 0,repeat:row.repeat,cancel:row.cancel,top:top,insight:"Данные обновлены по последним заказам.",action:"Проверить качество канала и создать задачу при необходимости"};
+  }).sort(function(a,b){return b.clients-a.clients;});
+  if(sourceRows.length){
+    sourceChannels = sourceRows;
+    analyticsDimensions.source = sourceChannels.map(function(source,index){return {id:source.id,name:source.name,color:analyticsColors[index % analyticsColors.length]};});
+    if(state.analyticsFilters.source !== "all" && !sourceChannels.some(function(source){return source.id === state.analyticsFilters.source;})){state.analyticsFilters.source = "all";}
+  }
+  var destinations = {};
+  liveCrm.orders.forEach(function(order){
+    var destination = order.city || "Другие маршруты";
+    destinations[destination] = (destinations[destination] || 0) + 1;
+  });
+  if(Object.keys(destinations).length){
+    var destinationRows = Object.keys(destinations).sort(function(a,b){return destinations[b]-destinations[a];}).slice(0,6).map(function(name){return {name:name,value:destinations[name]};});
+    analyticsDestinations = destinationRows;
+    analyticsDimensions.destination = destinationRows.map(function(row,index){return {id:sourceId(row.name),name:row.name,color:analyticsColors[index % analyticsColors.length]};});
+    if(state.analyticsFilters.destination !== "all" && !analyticsDimensions.destination.some(function(item){return item.id === state.analyticsFilters.destination;})){state.analyticsFilters.destination = "all";}
+  }
+}
+function liveCrmBlock(){
+  var received = liveCrm.orders.reduce(function(sum,order){return sum+moneyNumber(order.paid);},0);
+  var customers = liveCrm.customers.length || new Set(liveCrm.orders.map(function(order){return order.sessionId || order.customer;})).size;
+  var rows = liveCrm.orders.slice().sort(function(a,b){return String(b.createdAt || "").localeCompare(String(a.createdAt || ""));}).slice(0,5);
+  var openConsultations = liveCrm.consultations.filter(function(item){return item.status !== "closed";});
+  var consultationRows = openConsultations.slice(0,3);
+  return '<section class="section"><div class="card pad live-crm-card"><div class="section-head"><div><h2 class="section-title">Все продажи и заявки</h2><p class="section-caption">Здесь собраны заказы, оплаты, обращения AI-консультанта и записи администратора.</p></div><span class="badge green">Обновлено сейчас</span></div><div class="grid grid-4 live-crm-kpis"><div class="split-tile"><b>'+liveCrm.orders.length+'</b><span>заказов</span></div><div class="split-tile"><b>'+customers+'</b><span>клиентов</span></div><div class="split-tile"><b>'+rubles(received)+'</b><span>оплачено</span></div><div class="split-tile"><b>'+openConsultations.length+'</b><span>обращений менеджеру</span></div><div class="split-tile"><b>'+liveCrm.departures.length+'</b><span>выездов</span></div></div>'+(consultationRows.length ? '<div class="detail-card" style="margin-top:14px"><div class="detail-title">Последние обращения</div>'+consultationRows.map(function(item){var p=item.payload || {};return '<div class="live-crm-row"><div><b>'+safeText(p.contact && (p.contact.name || p.contact.telegram) || p.destination || "Новый запрос")+'</b><span>'+safeText(p.destination || "Направление уточняется")+' · '+safeText(p.date || "дата уточняется")+'</span></div><div><b>'+safeText(item.id || "Обращение")+'</b><span>'+safeText(p.tripType === "group" ? "групповой" : "индивидуальный")+' · '+safeText(item.status || "новое")+'</span></div></div>';}).join("")+'</div>' : '')+(rows.length ? '<div class="live-crm-list">'+rows.map(function(order){return '<div class="live-crm-row"><div><b>'+safeText(order.id || "Заказ")+'</b><span>'+safeText(order.customer || "Клиент")+' · '+safeText(order.tour || "Экскурсия")+'</span></div><div><b>'+safeText(order.date || order.iso || "—")+'</b><span>'+safeText(sourceLabel(order.source || "Офис"))+' · '+rubles(order.paid)+' / '+rubles(order.total)+'</span></div></div>';}).join("")+'</div>' : '<div class="detail-card" style="margin-top:14px"><div class="detail-text">Создайте заказ в приложении или нажмите «Создать офлайн-заказ» в админке — он появится здесь автоматически.</div></div>')+'</div></section>';
+}
+function liveAnalyticsCard(){
+  var received = liveCrm.orders.reduce(function(sum,order){return sum+moneyNumber(order.paid);},0);
+  var paid = liveCrm.orders.filter(function(order){return moneyNumber(order.paid) > 0;}).length;
+  return '<section class="section"><div class="card pad live-crm-card"><div class="section-head"><div><h2 class="section-title">Фактические продажи</h2><p class="section-caption">Заказы, оплаты, обращения и источники обновляются вместе с продажами. Используйте фильтры, чтобы увидеть нужный срез.</p></div><span class="badge blue">'+liveCrm.orders.length+' заказов · '+liveCrm.consultations.length+' обращений</span></div><div class="live-analytics-summary"><span><b>'+rubles(received)+'</b> оплачено</span><span><b>'+paid+'</b> оплативших</span><span><b>'+liveCrm.customers.length+'</b> клиентов</span><span><b>'+liveCrm.consultations.filter(function(item){return item.status !== "closed";}).length+'</b> открытых обращений</span><span><b>'+liveCrm.events.length+'</b> событий</span></div><p class="analytics-footnote">Нажмите «Офис», «Telegram Mini App» или другой источник в диаграмме ниже, затем добавьте «Женщины», возраст или направление — фильтры комбинируются.</p></div></section>';
+}
+function loadLiveCrm(){
+  if(typeof fetch !== "function"){return;}
+  fetch("/api/admin/bootstrap", {credentials:"same-origin",cache:"no-store"}).then(function(response){if(!response.ok){throw new Error("bootstrap");}return response.json();}).then(function(data){
+    if(data && data.ok !== false){hydrateLiveCrm(data);render();}
+  }).catch(function(){liveCrm.loaded = true;render();});
+}
+
+function loadDrafts(){
+  try{return JSON.parse(sessionStorage.getItem("maxtourDirectorDrafts") || "[]");}
+  catch(e){return [];}
+}
+function saveDrafts(){
+  try{sessionStorage.setItem("maxtourDirectorDrafts", JSON.stringify(state.drafts));}
+  catch(e){}
+}
+function periodFactor(){
+  var base = PERIOD_FACTORS[state.filters.period] || 1;
+  var horizon = state.view === "dashboard" ? (HORIZON_FACTORS[state.horizon] || 1) : 1;
+  return base * horizon;
+}
+function periodLabel(){
+  return {september:"Сентябрь",october:"Октябрь · прогноз",week:"Последние 7 дней"}[state.filters.period] || "Сентябрь";
+}
+function horizonLabel(){
+  return {now:"Сейчас",today:"Сегодня",days3:"Ближайшие 3 дня",week:"Неделя",month:"Месяц"}[state.horizon] || "Месяц";
+}
+function statusKey(row){
+  var status = String(row.status || row.trend || "").toLowerCase();
+  if(status.includes("крит") || status.includes("не набрана") || status.includes("под риском") || row.forecast < row.plan * .75 || Number(row.confirms && row.confirms.replace("%","")) < 90){return "critical";}
+  if(status.includes("ниже") || status.includes("вним") || status.includes("почти") || (row.issue && row.issue !== "нет") || (row.forecast && row.plan && row.forecast < row.plan)){return "attention";}
+  return "normal";
+}
+function filteredRows(rows){
+  return rows.filter(function(row){
+    if(state.filters.city !== "all" && row.city && row.city !== state.filters.city){return false;}
+    if(state.filters.status !== "all" && statusKey(row) !== state.filters.status){return false;}
+    if(state.filters.margin !== "all" && row.margin && row.margin !== state.filters.margin){return false;}
+    return true;
+  });
+}
+function emptyState(label){
+  return '<div class="card empty-state">По выбранным фильтрам '+label+' не найдено.</div>';
+}
+function safeText(value){
+  return String(value || "").replace(/[&<>"']/g,function(ch){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch];});
+}
+
+function fmt(n){
+  return new Intl.NumberFormat("ru-RU", {maximumFractionDigits:0}).format(Math.round(n * periodFactor())) + " ₽";
+}
+function int(n){
+  return new Intl.NumberFormat("ru-RU", {maximumFractionDigits:0}).format(Math.round(n * periodFactor()));
+}
+function percent(value,total){
+  if(!total){return 0;}
+  return Math.max(0, Math.min(100, Math.round(value / total * 100)));
+}
+function statusBadge(status){
+  if(status === "good" || status === "выше плана" || status === "подтверждена"){
+    return '<span class="badge green">норма</span>';
+  }
+  if(status === "bad" || status === "критично" || status === "не набрана"){
+    return '<span class="badge red">критично</span>';
+  }
+  if(status === "под риском"){
+    return '<span class="badge red">под риском</span>';
+  }
+  if(status === "почти полная"){
+    return '<span class="badge green">почти полная</span>';
+  }
+  return '<span class="badge gold">внимание</span>';
+}
+function moneyStatus(row){
+  if(row.forecast >= row.plan){return "good";}
+  if(row.forecast < row.plan * 0.78){return "bad";}
+  return "warn";
+}
+function progressHtml(value,total,cls){
+  return '<div class="progress-wrap"><div class="progress '+(cls || "")+'"><span style="width:'+percent(value,total)+'%"></span></div><div class="table-muted">'+percent(value,total)+'% от плана</div></div>';
+}
+
+function navHtml(){
+  return NAV.map(function(item){
+    var active = item.id === state.view ? "active" : "";
+    return '<button class="'+active+'" data-view="'+item.id+'"><span class="ico">'+item.ico+'</span><span>'+item.label+'</span></button>';
+  }).join("");
+}
+function mountNav(){
+  document.getElementById("desktopNav").innerHTML = navHtml();
+  document.getElementById("mobileNav").innerHTML = NAV.map(function(item){
+    var active = item.id === state.view ? "active" : "";
+    return '<button class="'+active+'" data-view="'+item.id+'">'+item.label+'</button>';
+  }).join("");
+  document.querySelectorAll("[data-view]").forEach(function(btn){
+    btn.addEventListener("click", function(){
+      state.view = btn.getAttribute("data-view");
+      if(state.view !== "dashboard"){state.horizon = "month";}
+      render();
+    });
+  });
+}
+
+function header(){
+  var found = NAV.find(function(n){return n.id === state.view;}) || NAV[0];
+  document.getElementById("crumbView").textContent = found.label;
+  document.getElementById("pageTitle").textContent = found.label;
+  document.getElementById("pageSubtitle").textContent = found.sub;
+}
+
+function horizonBar(){
+  var items = [
+    ["now","Сейчас"],
+    ["today","Сегодня"],
+    ["days3","3 дня"],
+    ["week","Неделя"],
+    ["month","Месяц"]
+  ];
+  return '<div class="toolbar">'+items.map(function(x){
+    var active = state.horizon === x[0] ? "active" : "";
+    return '<button class="chip '+active+'" data-horizon="'+x[0]+'">'+x[1]+'</button>';
+  }).join("")+'<button class="btn gold" data-toast="Задача создана и отправлена администратору">Создать задачу админу</button><span class="filter-summary">Показатели: '+horizonLabel()+'</span></div>';
+}
+function bindHorizon(){
+  document.querySelectorAll("[data-horizon]").forEach(function(btn){
+    btn.addEventListener("click", function(){
+      state.horizon = btn.getAttribute("data-horizon");
+      render();
+    });
+  });
+}
+
+function renderDashboard(){
+  var gap = summary.plan - summary.forecast;
+  var visibleDecisions = decisions.slice(0,{now:2,today:3,days3:4,week:5,month:decisions.length}[state.horizon] || decisions.length);
+  return horizonBar()+
+  '<section class="section">'+
+    '<div class="grid kpis">'+
+      '<div class="card kpi"><div class="kpi-label">План месяца</div><div class="kpi-value">'+fmt(summary.plan)+'</div><div class="kpi-note">директорский план по всем городам</div></div>'+
+      '<div class="card kpi"><div class="kpi-label">Факт</div><div class="kpi-value good">'+fmt(summary.fact)+'</div><div class="kpi-note">'+percent(summary.fact, summary.plan)+'% выполнено</div></div>'+
+      '<div class="card kpi"><div class="kpi-label">Прогноз</div><div class="kpi-value '+(gap > 0 ? "warn" : "good")+'">'+fmt(summary.forecast)+'</div><div class="kpi-note">'+(gap > 0 ? "разрыв "+fmt(gap) : "выше плана")+'</div></div>'+
+      '<div class="card kpi"><div class="kpi-label">Группы под риском</div><div class="kpi-value bad">3</div><div class="kpi-note">нужен добор или решение</div></div>'+
+      '<div class="card kpi"><div class="kpi-label">Деньги на контроле</div><div class="kpi-value blue">'+fmt(summary.manualReview + summary.refunds)+'</div><div class="kpi-note">проверка оплат + возвраты</div></div>'+
+    '</div>'+
+  '</section>'+ (liveCrm.loaded ? liveCrmBlock() : '')+
+  '<section class="section">'+
+    '<div class="section-head"><div><h2 class="section-title">Управленческие решения</h2><p class="section-caption">Не вся операционка. Только то, что влияет на план, деньги, группы, качество или рост.</p></div><button class="btn primary" data-toast="AI-сводка подготовлена">Получить AI-сводку</button></div>'+
+    '<div class="decision-list">'+visibleDecisions.map(decisionCard).join("")+'</div>'+
+  '</section>'+
+  '<section class="section">'+
+    '<div class="grid grid-3">'+
+      '<div class="card pad"><div class="section-title">Временные горизонты</div><p class="section-caption">Директор видит не только сегодня, а то, что влияет на неделю и месяц.</p>'+timelineHtml()+'</div>'+
+      '<div class="card pad"><div class="section-title">План по городам</div><p class="section-caption">Где растём и где нужно создать действие.</p>'+cityChartHtml()+'</div>'+
+      '<div class="card pad"><div class="section-title">Клиенты и источники</div><p class="section-caption">Не только сколько пришло, а кто пришёл, откуда, оплатил ли и что ему предложить дальше.</p>'+sourceMiniHtml()+'</div>'+
+    '</div>'+
+  '</section>';
+}
+function decisionCard(d){
+  var sevClass = d.sev === "bad" ? "" : d.sev;
+  return '<div class="decision">'+
+    '<div class="sev '+sevClass+'">'+d.tag.slice(0,1)+'</div>'+
+    '<div><div class="meta-row">'+statusForDecision(d)+'<span class="badge gray">'+d.tag+'</span></div><div class="decision-title">'+d.title+'</div><div class="decision-meta">'+d.meta+'</div></div>'+
+    '<div class="ai-box"><b>'+d.impact+'</b><br>'+d.ai+'</div>'+
+    '<div class="row-actions"><button class="btn small primary" data-open="'+d.type+'" data-id="'+d.ref+'">Открыть</button><button class="btn small" data-toast="Задача создана и назначена ответственному">Создать задачу</button></div>'+
+  '</div>';
+}
+function statusForDecision(d){
+  if(d.sev === "bad"){return '<span class="badge red">критично</span>';}
+  if(d.sev === "warn"){return '<span class="badge gold">внимание</span>';}
+  if(d.sev === "good"){return '<span class="badge green">возможность</span>';}
+  return '<span class="badge blue">контроль</span>';
+}
+function timelineHtml(){
+  var rows = [
+    ["Сейчас","Оплаты на проверке, группы под риском, качество команды","решить сегодня","money"],
+    ["3 дня","T-3/T-2/T-1 по группам, добор, переносы","не ждать дня выезда","groups"],
+    ["Неделя","Открыть новые даты по спросу, управлять листами интереса","создать продажи","groups"],
+    ["Месяц","План, факт, прогноз, просадки по городам и экскурсиям","управлять ростом","plan"]
+  ];
+  return '<div class="timeline" style="margin-top:12px">'+rows.map(function(r){
+    return '<div class="time-row"><div class="time">'+r[0]+'</div><div><div class="time-title">'+r[1]+'</div><div class="time-meta">'+r[2]+'</div></div><button class="btn small" data-nav="'+r[3]+'">Открыть</button></div>';
+  }).join("")+'</div>';
+}
+function cityChartHtml(){
+  return '<div class="chart-list" style="margin-top:12px">'+cities.map(function(c){
+    var cls = moneyStatus(c);
+    return '<div class="bar-row"><div>'+c.city+'</div><div class="bar-bg"><span style="width:'+percent(c.forecast,c.plan)+'%"></span></div><div class="num '+cls+'">'+fmt(c.forecast)+'</div></div>';
+  }).join("")+'</div>';
+}
+
+function sourceMiniHtml(){
+  var totalRevenue = sourceChannels.reduce(function(sum,s){return sum+s.revenue;},0) || 1;
+  return '<div class="chart-list">'+sourceChannels.slice(0,4).map(function(s){
+    return '<div class="bar-row"><div>'+s.name+'</div><div class="bar-bg"><span style="width:'+Math.min(100,Math.round(s.revenue/totalRevenue*220))+'%"></span></div><div class="num">'+s.conv+'% · '+fmt(s.revenue)+'</div></div>';
+  }).join("")+'<div style="margin-top:10px"><button class="btn small primary" data-nav="customers">Открыть разбор</button></div></div>';
+}
+
+function option(value,label,current){
+  return '<option value="'+value+'"'+(value === current ? ' selected' : '')+'>'+label+'</option>';
+}
+function filters(extra,options){
+  options = options || {period:true,city:true,status:true};
+  var html = '<div class="toolbar">';
+  if(options.period){html += '<div class="field"><label>Период</label><select data-filter="period">'+option("september","Сентябрь",state.filters.period)+option("october","Октябрь · прогноз",state.filters.period)+option("week","Последние 7 дней",state.filters.period)+'</select></div>';}
+  if(options.city){html += '<div class="field"><label>Город</label><select data-filter="city">'+option("all","Все города",state.filters.city)+option("Нячанг","Нячанг",state.filters.city)+option("Дананг","Дананг",state.filters.city)+option("Фукуок","Фукуок",state.filters.city)+option("Ханой","Ханой",state.filters.city)+'</select></div>';}
+  if(options.status){html += '<div class="field"><label>Статус</label><select data-filter="status">'+option("all","Все статусы",state.filters.status)+option("critical","Критично",state.filters.status)+option("attention","Внимание",state.filters.status)+option("normal","Норма",state.filters.status)+'</select></div>';}
+  html += (extra || "")+'<span class="filter-summary">'+periodLabel()+'</span></div>';
+  return html;
+}
+
+function renderPlan(){
+  var rows = filteredRows(cities);
+  var totals = rows.reduce(function(acc,c){acc.plan+=c.plan;acc.fact+=c.fact;acc.forecast+=c.forecast;return acc;},{plan:0,fact:0,forecast:0});
+  var gap = Math.max(0, totals.plan - totals.forecast);
+  return filters('<button class="btn primary" data-toast="Открыта форма редактирования плана">Изменить план</button>')+
+  '<section class="section"><div class="grid grid-4">'+
+    '<div class="card kpi"><div class="kpi-label">План</div><div class="kpi-value">'+fmt(totals.plan)+'</div><div class="kpi-note">'+periodLabel()+'</div></div>'+
+    '<div class="card kpi"><div class="kpi-label">Факт</div><div class="kpi-value good">'+fmt(totals.fact)+'</div><div class="kpi-note">'+percent(totals.fact, totals.plan)+'% выполнено</div></div>'+
+    '<div class="card kpi"><div class="kpi-label">Прогноз</div><div class="kpi-value warn">'+fmt(totals.forecast)+'</div><div class="kpi-note">по выбранным фильтрам</div></div>'+
+    '<div class="card kpi"><div class="kpi-label">Разрыв</div><div class="kpi-value bad">'+fmt(gap)+'</div><div class="kpi-note">нужно закрыть действиями</div></div>'+
+  '</div></section>'+
+  '<section class="section">'+
+  '<div class="section-head"><div><h2 class="section-title">План по городам</h2><p class="section-caption">План директора превращается в задачи: открыть дату, добрать группу, запустить сегмент.</p></div></div>'+
+  tablePlan(rows)+
+  '</section>'+
+  '<section class="section"><div class="card pad"><div class="section-title">AI-разбор разрыва</div><p class="detail-text">Главный разрыв создают Фукуок и Дананг. Причина не только в спросе: мало открытых групповых дат, низкая конверсия после выбора даты и слабый добор по тёплым сегментам. Рекомендация: открыть 2 даты по Фукуоку, усилить Ба На Хилл объяснением формата и запустить добор Фуйена.</p><div style="margin-top:12px"><button class="btn primary" data-toast="Создан набор задач роста">Создать задачи роста</button></div></div></section>';
+}
+function tablePlan(rows){
+  rows = rows || filteredRows(cities);
+  if(!rows.length){return emptyState("городов");}
+  return '<div class="card table-card"><div class="table-scroll"><table><thead><tr><th>Город</th><th>План</th><th>Факт</th><th>Прогноз</th><th>Разрыв</th><th>Выполнение</th><th>Действие</th></tr></thead><tbody>'+
+    rows.map(function(c){
+      var gap = c.plan - c.forecast;
+      var cls = moneyStatus(c);
+      return '<tr><td><div class="table-main">'+c.city+'</div><div class="table-muted">'+c.insight+'</div></td><td class="num">'+fmt(c.plan)+'</td><td class="num">'+fmt(c.fact)+'</td><td class="num '+cls+'">'+fmt(c.forecast)+'</td><td class="num '+(gap>0?"bad":"good")+'">'+(gap>0?fmt(gap):"выше")+'</td><td>'+progressHtml(c.forecast,c.plan,cls==="good"?"good":"")+'</td><td><button class="btn small" data-open="city" data-id="'+c.id+'">Открыть</button></td></tr>';
+    }).join("")+
+  '</tbody></table></div></div>';
+}
+
+function renderCities(){
+  var rows = filteredRows(cities);
+  return filters('<button class="btn gold" data-toast="Отчёт по городам подготовлен">Сформировать отчёт</button>')+
+  '<section class="section"><div class="section-head"><div><h2 class="section-title">Города как зоны управления</h2><p class="section-caption">Не просто выручка. Для каждого города видно: план, прогноз, конверсия, причина и действие.</p></div></div>'+tableCities(rows)+'</section>'+
+  '<section class="section">'+(!rows.length ? "" : '<div class="matrix">'+rows.map(function(c){
+    return '<div class="matrix-card"><div class="meta-row">'+statusBadge(c.trend)+'</div><div class="matrix-title" style="margin-top:8px">'+c.city+'</div><div class="matrix-meta">'+c.insight+'</div><div class="split" style="margin-top:12px"><div class="split-tile"><b>'+fmt(c.fact)+'</b><span>факт</span></div><div class="split-tile"><b>'+fmt(c.forecast)+'</b><span>прогноз</span></div><div class="split-tile"><b>'+c.conv+'%</b><span>конверсия</span></div></div><button class="btn small primary" style="margin-top:12px" data-open="city" data-id="'+c.id+'">Разобрать</button></div>';
+  }).join("")+'</div>')+'</section>';
+}
+function tableCities(rows){
+  rows = rows || filteredRows(cities);
+  if(!rows.length){return emptyState("городов");}
+  return '<div class="card table-card"><div class="table-scroll"><table><thead><tr><th>Город</th><th>Статус</th><th>План / факт</th><th>Прогноз</th><th>Заказы</th><th>Конверсия</th><th>Причина / действие</th></tr></thead><tbody>'+
+    rows.map(function(c){
+      return '<tr><td><div class="table-main">'+c.city+'</div></td><td>'+statusBadge(c.trend)+'</td><td><div class="num">'+fmt(c.plan)+'</div><div class="table-muted">факт '+fmt(c.fact)+'</div></td><td>'+progressHtml(c.forecast,c.plan,moneyStatus(c)==="good"?"good":"")+'</td><td>'+c.orders+'</td><td>'+c.conv+'%</td><td><div class="table-main">'+c.insight+'</div><div style="margin-top:8px"><button class="btn small" data-open="city" data-id="'+c.id+'">Открыть решение</button></div></td></tr>';
+    }).join("")+
+  '</tbody></table></div></div>';
+}
+
+function renderTours(){
+  var rows = filteredRows(tours);
+  var margin = '<div class="field"><label>Маржинальность</label><select data-filter="margin">'+option("all","Все",state.filters.margin)+option("высокая","Высокая",state.filters.margin)+option("средняя","Средняя",state.filters.margin)+'</select></div>';
+  return filters(margin)+
+  '<section class="section"><div class="section-head"><div><h2 class="section-title">Экскурсии как продукты</h2><p class="section-caption">Директор видит не карточки туров, а вклад каждого продукта в план и рост.</p></div></div>'+tableTours(rows)+'</section>';
+}
+function tableTours(rows){
+  rows = rows || filteredRows(tours);
+  if(!rows.length){return emptyState("экскурсий");}
+  return '<div class="card table-card"><div class="table-scroll"><table><thead><tr><th>Экскурсия</th><th>Город</th><th>План</th><th>Факт</th><th>Прогноз</th><th>Конверсия</th><th>Группы</th><th>Решение</th></tr></thead><tbody>'+
+    rows.map(function(t){
+      var cls = t.forecast >= t.plan ? "good" : (t.forecast < t.plan*0.75 ? "bad" : "warn");
+      return '<tr><td><div class="table-main">'+t.name+'</div><div class="table-muted">маржинальность: '+t.margin+'</div></td><td>'+t.city+'</td><td class="num">'+fmt(t.plan)+'</td><td class="num">'+fmt(t.fact)+'</td><td>'+progressHtml(t.forecast,t.plan,cls==="good"?"good":"")+'</td><td>'+t.conv+'%</td><td>'+t.groups+'</td><td><div class="table-main">'+t.action+'</div><div style="margin-top:8px"><button class="btn small" data-open="tour" data-id="'+t.id+'">Открыть</button></div></td></tr>';
+    }).join("")+
+  '</tbody></table></div></div>';
+}
+
+function renderGroups(){
+  var rows = filteredRows(groups);
+  var risky = rows.filter(function(g){return g.booked < g.min;}).length;
+  var demand = rows.reduce(function(sum,g){return sum+g.demand;},0);
+  return filters('<button class="btn primary" data-toast="Открыта форма новой групповой даты">Открыть групповую дату</button>')+
+  '<section class="section">'+
+    '<div class="section-head"><div><h2 class="section-title">Группы и спрос</h2><p class="section-caption">Отдельный коммерческий механизм: спрос → дата → добор → минимум → подтверждение.</p></div></div>'+
+    '<div class="grid grid-3">'+
+      '<div class="card kpi"><div class="kpi-label">Под риском</div><div class="kpi-value bad">'+risky+'</div><div class="kpi-note">ниже минимального состава</div></div>'+
+      '<div class="card kpi"><div class="kpi-label">Спрос по выборке</div><div class="kpi-value warn">'+demand+'</div><div class="kpi-note">интересов по выбранным группам</div></div>'+
+      '<div class="card kpi"><div class="kpi-label">Потенциал добора</div><div class="kpi-value good">'+fmt(demand*31700)+'</div><div class="kpi-note">оценка по листам интереса</div></div>'+
+    '</div>'+
+  '</section>'+
+  '<section class="section">'+tableGroups(rows)+'</section>';
+}
+function tableGroups(rows){
+  rows = rows || filteredRows(groups);
+  if(!rows.length){return emptyState("групп");}
+  return '<div class="card table-card"><div class="table-scroll"><table><thead><tr><th>Группа</th><th>Дата</th><th>Места</th><th>Минимум</th><th>Оплаты</th><th>Спрос</th><th>Триггер</th><th>Действие</th></tr></thead><tbody>'+
+    rows.map(function(g){
+      var missing = Math.max(0, g.min - g.booked);
+      var cls = g.booked >= g.min ? "good" : "bad";
+      return '<tr><td><div class="table-main">'+g.tour+'</div><div class="table-muted">'+g.city+' · '+g.status+'</div></td><td>'+g.date+'<div class="table-muted">'+g.time+'</div></td><td><div class="num">'+g.booked+' / '+g.cap+'</div>'+progressHtml(g.booked,g.cap,cls==="good"?"good":"")+'</td><td><div class="table-main">'+g.min+' туристов</div><div class="table-muted">'+(missing ? "не хватает "+missing : "минимум набран")+'</div></td><td><div>'+g.paidFull+' заказов 100%</div><div class="table-muted">'+g.deposit+' депозит · '+g.waiting+' ждёт оплату</div></td><td>'+g.demand+' интересов</td><td><span class="badge '+(g.trigger==="OK"?"green":"gold")+'">'+g.trigger+'</span></td><td><button class="btn small primary" data-open="group" data-id="'+g.id+'">Сценарий</button></td></tr>';
+    }).join("")+
+  '</tbody></table></div></div>';
+}
+
+function renderMoney(){
+  return filters('<button class="btn gold" data-toast="Выгрузка подготовлена">Выгрузка бухгалтеру</button>',{period:true})+
+  '<section class="section"><div class="grid grid-4">'+
+    '<div class="card kpi"><div class="kpi-label">Онлайн подтверждено</div><div class="kpi-value good">'+fmt(summary.online)+'</div><div class="kpi-note">рублёвые платежи</div></div>'+
+    '<div class="card kpi"><div class="kpi-label">Ручная проверка</div><div class="kpi-value blue">'+fmt(summary.manualReview)+'</div><div class="kpi-note">чеки и переводы</div></div>'+
+    '<div class="card kpi"><div class="kpi-label">К оплате гиду</div><div class="kpi-value warn">'+fmt(summary.guideDue)+'</div><div class="kpi-note">остатки по депозитам</div></div>'+
+    '<div class="card kpi"><div class="kpi-label">Возвраты</div><div class="kpi-value bad">'+fmt(summary.refunds)+'</div><div class="kpi-note">требуют решения</div></div>'+
+  '</div></section>'+
+  '<section class="section"><div class="section-head"><div><h2 class="section-title">Финансовый контур</h2><p class="section-caption">Только рубли. Места, заказы и деньги не смешиваются.</p></div></div>'+tableMoney()+'</section>';
+}
+function tableMoney(){
+  return '<div class="card table-card"><div class="table-scroll"><table><thead><tr><th>Тип</th><th>Сумма</th><th>Заказы</th><th>Что означает</th><th>Действие</th></tr></thead><tbody>'+
+    moneyRows.map(function(r){
+      return '<tr><td><div class="table-main">'+r.kind+'</div></td><td class="num">'+fmt(r.amount)+'</td><td>'+r.orders+'</td><td>'+r.desc+'</td><td><button class="btn small" data-open="money" data-id="'+r.id+'">Открыть</button></td></tr>';
+    }).join("")+
+  '</tbody></table></div></div>';
+}
+
+function renderCustomers(){
+  var totalClients = sourceChannels.reduce(function(sum,s){return sum+s.clients;},0);
+  var totalPaid = sourceChannels.reduce(function(sum,s){return sum+s.paid;},0);
+  var totalRevenue = sourceChannels.reduce(function(sum,s){return sum+s.revenue;},0);
+  var avgConversion = Math.round(totalPaid / Math.max(1,totalClients) * 100);
+  return filters('<button class="btn primary" data-toast="AI-сегмент подготовлен">Создать AI-сегмент</button><button class="btn gold" data-toast="Отчёт по источникам подготовлен">Отчёт по источникам</button>',{period:true})+
+  '<section class="section"><div class="grid kpis">'+
+    '<div class="card kpi"><div class="kpi-label">Всего клиентов</div><div class="kpi-value">'+int(totalClients)+'</div><div class="kpi-note">'+periodLabel()+'</div></div>'+
+    '<div class="card kpi"><div class="kpi-label">Оплатили</div><div class="kpi-value good">'+int(totalPaid)+'</div><div class="kpi-note">'+avgConversion+'% общая конверсия в оплату</div></div>'+
+    '<div class="card kpi"><div class="kpi-label">Выручка по источникам</div><div class="kpi-value">'+fmt(totalRevenue)+'</div><div class="kpi-note">только подтверждённые рубли</div></div>'+
+    '<div class="card kpi"><div class="kpi-label">Лучший канал</div><div class="kpi-value good">Рекомендации</div><div class="kpi-note">54% конверсия, высокий средний чек</div></div>'+
+    '<div class="card kpi"><div class="kpi-label">Слабое место</div><div class="kpi-value warn">Соцсети</div><div class="kpi-note">интерес есть, оплата слабая</div></div>'+
+  '</div></section>'+
+  '<section class="section"><div class="section-head"><div><h2 class="section-title">Источники продаж</h2><p class="section-caption">Директору важно не просто «сколько клиентов», а откуда они пришли, какого качества канал, кто эти люди и какое действие увеличит продажи.</p></div></div>'+tableSources()+'</section>'+
+  '<section class="section"><div class="grid grid-2">'+
+    '<div class="card pad"><div class="section-title">Воронка поведения</div><p class="section-caption">Где люди теряются: выбор тура, дата, оплата, повторная продажа.</p>'+funnelHtml()+'</div>'+
+    '<div class="card pad"><div class="section-title">AI-вывод директора</div><p class="detail-text">Не усиливать канал только по количеству лидов. Сравнивать источник по оплате, среднему чеку, отменам, повторности и пригодности для добора групп. Каждый источник должен создавать конкретное действие: добор группы, повторная продажа, перенос, премиум-предложение или исправление оплаты.</p><div style="margin-top:12px"><button class="btn primary" data-toast="Созданы 4 задачи по источникам">Создать задачи по источникам</button></div></div>'+
+  '</div></section>'+
+  '<section class="section"><div class="section-head"><div><h2 class="section-title">Кто эти клиенты</h2><p class="section-caption">Портреты нужны не для отчёта, а для решений: какие туры предлагать, как добирать группы, кому продавать индивидуальный формат.</p></div></div>'+tableCustomerTypes()+'</section>'+
+  '<section class="section"><div class="section-head"><div><h2 class="section-title">Сегменты для действий</h2><p class="section-caption">Сегменты остаются рабочими очередями роста: кому написать, что предложить, какой выезд добрать.</p></div></div>'+tableSegments()+'</section>';
+}
+
+function tableSources(){
+  return '<div class="card table-card"><div class="table-scroll"><table><thead><tr><th>Источник</th><th>Клиенты</th><th>Оплатили</th><th>Выручка</th><th>Средний чек</th><th>Повторность</th><th>Качество / действие</th><th></th></tr></thead><tbody>'+
+    sourceChannels.map(function(s){
+      var quality = s.conv >= 45 ? "green" : (s.conv >= 30 ? "gold" : "red");
+      return '<tr><td><div class="table-main">'+s.name+'</div><div class="table-muted">'+s.top+'</div></td><td>'+int(s.clients)+'</td><td><span class="badge '+quality+'">'+int(s.paid)+' · '+s.conv+'%</span></td><td class="num">'+fmt(s.revenue)+'</td><td class="num">'+fmt(s.avg)+'</td><td>'+int(s.repeat)+' повторных</td><td><div class="table-main">'+s.action+'</div><div class="table-muted">'+s.insight+'</div></td><td><button class="btn small primary" data-open="source" data-id="'+s.id+'">Открыть</button></td></tr>';
+    }).join("")+
+  '</tbody></table></div></div>';
+}
+
+function tableCustomerTypes(){
+  return '<div class="card table-card"><div class="table-scroll"><table><thead><tr><th>Портрет</th><th>Доля</th><th>Клиентов</th><th>Выручка</th><th>Что покупают</th><th>Поведение</th><th>Следующее действие</th><th></th></tr></thead><tbody>'+
+    customerTypes.map(function(c){
+      return '<tr><td><div class="table-main">'+c.name+'</div></td><td>'+c.share+'%</td><td>'+int(c.count)+'</td><td class="num">'+fmt(c.revenue)+'</td><td>'+c.buys+'</td><td>'+c.behavior+'</td><td>'+c.action+'</td><td><button class="btn small primary" data-open="persona" data-id="'+c.id+'">Открыть</button></td></tr>';
+    }).join("")+
+  '</tbody></table></div></div>';
+}
+
+function funnelHtml(){
+  return '<div class="timeline">'+sourceFunnel.map(function(f){
+    return '<div class="time-row"><div class="time">'+f.rate+'</div><div><div class="time-title">'+f.stage+' · '+int(f.value)+'</div><div class="time-meta">'+f.problem+' · '+f.action+'</div></div><button class="btn small" data-toast="Задача по этапу воронки создана">Задача</button></div>';
+  }).join("")+'</div>';
+}
+
+function tableSegments(){
+  return '<div class="card table-card"><div class="table-scroll"><table><thead><tr><th>Сегмент</th><th>Клиентов</th><th>Потенциал</th><th>Зачем нужен</th><th>Действие</th></tr></thead><tbody>'+
+    segments.map(function(s){
+      return '<tr><td><div class="table-main">'+s.name+'</div></td><td>'+int(s.count)+'</td><td class="num">'+fmt(s.value)+'</td><td>'+s.action+'</td><td><button class="btn small primary" data-open="segment" data-id="'+s.id+'">Открыть</button></td></tr>';
+    }).join("")+
+  '</tbody></table></div></div>';
+}
+
+function analyticsFilterKeys(){
+  return ["source","gender","age","origin","destination"];
+}
+function analyticsDimensionItem(dimension,id){
+  return (analyticsDimensions[dimension] || []).find(function(item){return item.id === id;}) || null;
+}
+function analyticsProfile(source){
+  return analyticsSourceProfiles[source.id] || {gender:{women:.54,men:.42,unknown:.04},age:{"18-24":.12,"25-34":.34,"35-44":.29,"45-54":.17,"55-plus":.08},originShift:0,destinationShift:0};
+}
+function analyticsCategoryRatio(source,dimension,id){
+  var profile = analyticsProfile(source);
+  if(dimension === "gender" || dimension === "age"){
+    return Math.max(0, Number(profile[dimension][id] || 0));
+  }
+  var sourceRows = dimension === "origin" ? analyticsOrigins : analyticsDestinations;
+  var definitions = analyticsDimensions[dimension] || [];
+  var sourceShift = dimension === "origin" ? Number(profile.originShift || 0) : Number(profile.destinationShift || 0);
+  var total = sourceRows.reduce(function(sum,row){return sum + Number(row.value || 0);},0) || 1;
+  var raw = definitions.map(function(item,index){
+    var base = Number(sourceRows[index] && sourceRows[index].value || 0) / total;
+    var multiplier = 1 + ((((sourceShift + index * 2) % 5) - 2) * .08);
+    return base * multiplier;
+  });
+  var normalized = raw.reduce(function(sum,value){return sum + value;},0) || 1;
+  var index = definitions.findIndex(function(item){return item.id === id;});
+  return index < 0 ? 0 : raw[index] / normalized;
+}
+function analyticsRatioForSelected(source,exceptDimension){
+  return analyticsFilterKeys().reduce(function(ratio,dimension){
+    if(dimension === exceptDimension){return ratio;}
+    var selected = state.analyticsFilters[dimension];
+    return selected === "all" ? ratio : ratio * analyticsCategoryRatio(source,dimension,selected);
+  },1);
+}
+function analyticsRows(dimension){
+  var selected = state.analyticsFilters[dimension];
+  return (analyticsDimensions[dimension] || []).map(function(item){
+    var value = selected !== "all" && selected !== item.id ? 0 : sourceChannels.reduce(function(sum,source){
+      if(state.analyticsFilters.source !== "all" && source.id !== state.analyticsFilters.source){return sum;}
+      var itemRatio = dimension === "source" ? 1 : analyticsCategoryRatio(source,dimension,item.id);
+      return sum + Number(source.clients || 0) * itemRatio * analyticsRatioForSelected(source,dimension);
+    },0);
+    return {id:item.id,name:item.name,value:value,color:item.color || analyticsColors[0]};
+  });
+}
+function analyticsMetricTotal(field){
+  return sourceChannels.reduce(function(sum,source){
+    if(state.analyticsFilters.source !== "all" && source.id !== state.analyticsFilters.source){return sum;}
+    return sum + Number(source[field] || 0) * analyticsRatioForSelected(source,"source");
+  },0);
+}
+function analyticsActiveEntries(){
+  return analyticsFilterKeys().filter(function(key){return state.analyticsFilters[key] !== "all";}).map(function(key){
+    var item = analyticsDimensionItem(key,state.analyticsFilters[key]);
+    return {key:key,value:state.analyticsFilters[key],label:item ? item.name : state.analyticsFilters[key]};
+  });
+}
+function analyticsActiveLabel(){
+  var active = analyticsActiveEntries();
+  return active.length ? active.map(function(item){return item.label;}).join(" · ") : "вся база";
+}
+function analyticsFilterNote(){
+  var active = analyticsActiveEntries();
+  if(!active.length){
+    return '<div class="analytics-filter-note"><span class="analytics-filter-hint">Нажмите на сегмент, строку или источник, чтобы применить срез. Фильтры можно комбинировать.</span></div>';
+  }
+  return '<div class="analytics-filter-note"><span>Активный срез:</span>'+active.map(function(item){return '<button type="button" class="analytics-filter-chip" data-analytics-clear="'+item.key+'">'+safeText(item.label)+' ×</button>';}).join('')+'<button type="button" class="btn small ghost" data-analytics-reset>Сбросить все</button></div>';
+}
+function donutHtml(title,note,items,centerLabel,dimension){
+  var rawTotal = items.reduce(function(sum,item){return sum + Number(item.value || 0);},0);
+  var total = rawTotal || 1;
+  var cursor = 0;
+  var stops = rawTotal ? items.map(function(item){
+    var start = cursor;
+    cursor += Number(item.value || 0) / total * 100;
+    return (item.color || analyticsColors[0])+' '+start.toFixed(2)+'% '+cursor.toFixed(2)+'%';
+  }).join(',') : '#ead6bc 0% 100%';
+  var selected = state.analyticsFilters[dimension];
+  return '<div class="card analytics-card"><div class="analytics-card-head"><div><div class="analytics-card-title">'+title+'</div><div class="analytics-card-note">'+note+'</div></div></div><div class="donut-layout"><div class="donut" style="background:conic-gradient('+stops+')"><div class="donut-center"><b>'+int(rawTotal)+'</b><span>'+centerLabel+'</span></div></div><div class="analytics-legend">'+items.map(function(item){
+    var active = selected !== "all" && selected === item.id ? " active" : "";
+    var share = rawTotal ? Math.round(Number(item.value || 0) / rawTotal * 100) : 0;
+    return '<div class="legend-row analytics-clickable'+active+'" role="button" tabindex="0" aria-pressed="'+(active ? "true" : "false")+'" data-analytics-filter="1" data-analytics-filter-key="'+dimension+'" data-analytics-filter-value="'+item.id+'" title="Применить срез: '+safeText(item.name)+'"><span class="legend-dot" style="background:'+(item.color || analyticsColors[0])+'"></span><span class="legend-name">'+safeText(item.name)+'</span><span class="legend-value">'+share+'% · '+int(item.value)+'</span></div>';
+  }).join('')+'</div></div></div>';
+}
+
+function analyticsBarsHtml(rows,total,mode,dimension){
+  var max = Math.max(1, ...rows.map(function(row){return Number(row.value || 0);}));
+  var selected = state.analyticsFilters[dimension];
+  return '<div class="analytics-bars">'+rows.map(function(row){
+    var active = selected !== "all" && selected === row.id ? " active" : "";
+    var suffix = mode === "percent" ? (total ? Math.round(Number(row.value || 0) / total * 100) : 0)+'%' : int(row.value);
+    return '<div class="analytics-bar-row analytics-clickable'+active+'" role="button" tabindex="0" aria-pressed="'+(active ? "true" : "false")+'" data-analytics-filter="1" data-analytics-filter-key="'+dimension+'" data-analytics-filter-value="'+row.id+'" title="Применить срез: '+safeText(row.name)+'"><span>'+safeText(row.name)+'</span><div class="bar-bg"><span style="width:'+Math.round(Number(row.value || 0) / max * 100)+'%"></span></div><span class="analytics-value">'+suffix+'</span></div>';
+  }).join('')+'</div>';
+}
+
+function trendChartHtml(trend){
+  trend = trend || analyticsTrend;
+  var width = 640, height = 210, left = 28, right = 16, top = 18, bottom = 32;
+  var max = Math.max.apply(null, trend.map(function(row){return Number(row.value || 0);})) || 1;
+  var step = (width - left - right) / Math.max(1, trend.length - 1);
+  var points = trend.map(function(row,index){
+    var x = left + step * index;
+    var y = top + (height - bottom - top) * (1 - Number(row.value || 0) / max);
+    return {x:x,y:y,row:row};
+  });
+  var pointString = points.map(function(point){return point.x.toFixed(1)+','+point.y.toFixed(1);}).join(' ');
+  var area = left+','+(height-bottom)+' '+pointString+' '+(width-right)+','+(height-bottom);
+  var rightX = width - right;
+  var midY = (height - bottom) / 2;
+  var bottomY = height - bottom;
+  return '<div class="trend-wrap"><svg class="trend-svg" viewBox="0 '+width+' '+height+'" role="img" aria-label="Динамика выручки по месяцам"><defs><linearGradient id="trendFill" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#d81524" stop-opacity=".24"/><stop offset="1" stop-color="#d81524" stop-opacity="0"/></linearGradient></defs><line class="trend-grid" x1="'+left+'" y1="'+top+'" x2="'+rightX+'" y2="'+top+'"/><line class="trend-grid" x1="'+left+'" y1="'+midY+'" x2="'+rightX+'" y2="'+midY+'"/><line class="trend-grid" x1="'+left+'" y1="'+bottomY+'" x2="'+rightX+'" y2="'+bottomY+'"/><polygon class="trend-area" points="'+area+'"/><polyline class="trend-line" points="'+pointString+'"/>'+points.map(function(point){return '<circle class="trend-point" cx="'+point.x+'" cy="'+point.y+'" r="4"/><text class="trend-label" x="'+point.x+'" y="'+(height-10)+'" text-anchor="middle">'+safeText(point.row.label)+'</text>';}).join('')+'</svg><div class="analytics-footnote">Данные пересчитываются по выбранным срезам. График строится по фактическим оплатам, возвратам и выбранному периоду.</div></div>';
+}
+
+function analyticsTrendForSelection(){
+  var baseRevenue = sourceChannels.reduce(function(sum,source){return sum + Number(source.revenue || 0);},0) || 1;
+  var filteredRevenue = analyticsMetricTotal("revenue");
+  var ratio = filteredRevenue / baseRevenue;
+  var period = PERIOD_FACTORS[state.filters.period] || 1;
+  return analyticsTrend.map(function(row){return {label:row.label,value:Number(row.value || 0) * ratio * period};});
+}
+
+function renderAnalytics(){
+  var totalClients = analyticsRows("source").reduce(function(sum,row){return sum + Number(row.value || 0);},0);
+  var totalPaid = analyticsMetricTotal("paid");
+  var totalRevenue = analyticsMetricTotal("revenue");
+  var repeat = analyticsMetricTotal("repeat");
+  var conversion = Math.round(totalPaid / Math.max(1,totalClients) * 100);
+  var avg = Math.round(totalRevenue / Math.max(1,totalPaid));
+  var sourceRows = analyticsRows("source").sort(function(a,b){return b.value-a.value;});
+  var genderRows = analyticsRows("gender");
+  var ageRows = analyticsRows("age");
+  var originRows = analyticsRows("origin");
+  var destinationRows = analyticsRows("destination");
+  var sourceMix = sourceRows.map(function(row){return {id:row.id,name:row.name,value:row.value,color:row.color};});
+  return filters('',{period:true,city:false,status:false})+(liveCrm.loaded ? liveAnalyticsCard() : '')+
+  analyticsFilterNote()+
+  '<section class="section"><div class="grid kpis">'+
+    '<div class="card kpi"><div class="kpi-label">Клиенты в срезе</div><div class="kpi-value">'+int(totalClients)+'</div><div class="kpi-note">'+safeText(analyticsActiveLabel())+'</div></div>'+
+    '<div class="card kpi good"><div class="kpi-label">Конверсия в оплату</div><div class="kpi-value">'+conversion+'%</div><div class="kpi-note">'+int(totalPaid)+' оплативших</div></div>'+
+    '<div class="card kpi"><div class="kpi-label">Средний чек</div><div class="kpi-value">'+fmt(avg)+'</div><div class="kpi-note">по подтверждённым оплатам</div></div>'+
+    '<div class="card kpi blue"><div class="kpi-label">Повторные клиенты</div><div class="kpi-value">'+int(repeat)+'</div><div class="kpi-note">потенциал повторных продаж</div></div>'+
+    '<div class="card kpi warn"><div class="kpi-label">Выручка</div><div class="kpi-value">'+fmt(totalRevenue)+'</div><div class="kpi-note">по выбранным фильтрам</div></div>'+
+  '</div></section>'+
+  '<section class="section"><div class="section-head"><div><h2 class="section-title">Портрет клиентской базы</h2><p class="section-caption">Нажмите на сегмент в легенде: например, «Женщины» или возрастную группу.</p></div></div><div class="analytics-grid">'+donutHtml('Пол клиентов','Распределение по заполненным профилям',genderRows,'клиенты','gender')+donutHtml('Возраст','Возрастные группы путешественников',ageRows,'клиенты','age')+'</div></section>'+
+  '<section class="section"><div class="analytics-grid"><div class="card analytics-card"><div class="analytics-card-head"><div><div class="analytics-card-title">Откуда пришли</div><div class="analytics-card-note">Нажмите на источник, чтобы оставить только его клиентов</div></div></div>'+analyticsBarsHtml(sourceRows,totalClients,'count','source')+'<div class="analytics-footnote">Можно совместить источник с полом, возрастом, городом проживания и выбранным местом.</div></div>'+donutHtml('Микс источников','Доля клиентской базы по площадкам',sourceMix,'клиенты','source')+'</div></section>'+
+  '<section class="section"><div class="analytics-grid"><div class="card analytics-card"><div class="analytics-card-head"><div><div class="analytics-card-title">Города проживания</div><div class="analytics-card-note">Откуда туристы приезжают во Вьетнам</div></div></div>'+analyticsBarsHtml(originRows,totalClients,'count','origin')+'</div><div class="card analytics-card"><div class="analytics-card-head"><div><div class="analytics-card-title">Какие места выбирают</div><div class="analytics-card-note">Направления и экскурсионный спрос</div></div></div>'+analyticsBarsHtml(destinationRows,totalClients,'count','destination')+'</div></div></section>'+
+  '<section class="section"><div class="card analytics-card"><div class="analytics-card-head"><div><div class="analytics-card-title">Динамика выручки</div><div class="analytics-card-note">Фактическая и прогнозная серия по выбранному срезу</div></div><span class="badge green">'+safeText(analyticsActiveLabel())+'</span></div>'+trendChartHtml(analyticsTrendForSelection())+'</div></section>'+
+  '<section class="section"><div class="section-head"><div><h2 class="section-title">Срезы для решений</h2><p class="section-caption">Аналитика должна приводить к действию: открыть дату, изменить предложение, добрать группу или запустить повторную продажу.</p></div></div>'+tableCustomerTypes()+'</section>';
+}
+
+function renderTeam(){
+  var rows = filteredRows(team);
+  return filters('<button class="btn gold" data-toast="Правило подтверждения подготовлено">Правило подтверждения</button>',{status:true})+
+  '<section class="section"><div class="section-head"><div><h2 class="section-title">Команда и качество</h2><p class="section-caption">Директор не управляет каждым выездом, но видит системные проблемы: гиды, подтверждения, качество, спорные остатки.</p></div></div>'+tableTeam(rows)+'</section>'+
+  '<section class="section"><div class="card pad"><div class="section-title">Кабинет гида</div><p class="detail-text">Гид видит только свои выезды, список туристов, точку встречи, остаток к оплате на месте и кнопки «получено / не получено / проблема». Директор видит агрегат качества и спорные случаи, не всю операционную ленту гида.</p></div></section>';
+}
+function tableTeam(rows){
+  rows = rows || filteredRows(team);
+  if(!rows.length){return emptyState("сотрудников");}
+  return '<div class="card table-card"><div class="table-scroll"><table><thead><tr><th>Человек</th><th>Роль</th><th>Оценка</th><th>Подтверждения</th><th>Проблема</th><th>Решение</th></tr></thead><tbody>'+
+    rows.map(function(t){
+      return '<tr><td><div class="table-main">'+t.name+'</div></td><td>'+t.role+'</td><td>'+t.score+'</td><td>'+t.confirms+'</td><td>'+t.issue+'</td><td><div class="table-main">'+t.action+'</div><div style="margin-top:8px"><button class="btn small" data-open="team" data-id="'+t.id+'">Открыть</button></div></td></tr>';
+    }).join("")+
+  '</tbody></table></div></div>';
+}
+
+function renderAi(){
+  return '<section class="section"><div class="grid grid-3">'+
+    '<div class="card pad"><div class="section-title">Объяснить</div><p class="detail-text">Почему появилась задача, какие данные её подтверждают, какой риск по деньгам, местам или качеству.</p></div>'+
+    '<div class="card pad"><div class="section-title">Предложить</div><p class="detail-text">Сценарии действий: добрать группу, открыть дату, предложить перенос, создать задачу админу, подготовить сегмент.</p></div>'+
+    '<div class="card pad"><div class="section-title">Подготовить</div><p class="detail-text">Черновик сообщения, рассылки, задачи, отчёта директору. Отправка только после подтверждения человека.</p></div>'+
+  '</div></section>'+
+  '<section class="section"><div class="section-head"><div><h2 class="section-title">AI-рекомендации директора</h2><p class="section-caption">Помощник не принимает решения и не отправляет рассылки сам. Он готовит решение для директора.</p></div></div><div class="decision-list">'+decisions.map(decisionCard).join("")+'</div></section>';
+}
+
+function drawerContent(type,id){
+  if(type === "city"){
+    var c = cities.find(function(x){return x.id === id;}) || cities[0];
+    return {
+      title:c.city,
+      sub:"Управленческий разбор города",
+      body:
+      '<div class="detail-card"><div class="detail-title">План / факт / прогноз</div><div class="split"><div class="split-tile"><b>'+fmt(c.plan)+'</b><span>план</span></div><div class="split-tile"><b>'+fmt(c.fact)+'</b><span>факт</span></div><div class="split-tile"><b>'+fmt(c.forecast)+'</b><span>прогноз</span></div></div></div>'+
+      '<div class="detail-card"><div class="detail-title">Почему это важно</div><div class="detail-text">'+c.insight+'</div></div>'+
+      '<div class="detail-card"><div class="detail-title">AI предлагает</div><div class="detail-text">Создать 2–3 конкретные задачи: проверить слабые экскурсии, открыть или добрать группы, подготовить сегмент клиентов и назначить ответственного администратора.</div><div style="margin-top:12px"><button class="btn primary" data-toast="Созданы задачи по городу">Создать задачи</button></div></div>'
+    };
+  }
+  if(type === "group"){
+    var g = groups.find(function(x){return x.id === id;}) || groups[0];
+    var miss = Math.max(0,g.min-g.booked);
+    return {
+      title:g.tour+" · "+g.date,
+      sub:g.city+" · групповая дата · "+g.status,
+      body:
+      '<div class="detail-card"><div class="detail-title">Состояние группы</div><div class="split"><div class="split-tile"><b>'+g.booked+' / '+g.cap+'</b><span>занято / всего</span></div><div class="split-tile"><b>'+g.min+'</b><span>минимум</span></div><div class="split-tile"><b>'+miss+'</b><span>не хватает</span></div></div></div>'+
+      '<div class="detail-card"><div class="detail-title">Оплаты</div><div class="detail-text">'+g.paidFull+' заказов оплачены 100%, '+g.deposit+' заказов внесли депозит, '+g.waiting+' заказ ждёт подтверждения денег. Это не места, а финансовые состояния заказов.</div></div>'+
+      '<div class="detail-card"><div class="detail-title">AI-сценарий</div><div class="detail-text">'+g.ai+'</div><div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" data-toast="Добор группы запущен">Добрать группу</button><button class="btn" data-toast="Перенос подготовлен">Предложить перенос</button><button class="btn" data-toast="Задача отправлена администратору">Задача админу</button></div></div>'
+    };
+  }
+  if(type === "demand"){
+    return {
+      title:"Спрос без открытой даты",
+      sub:"Коммерческий сценарий: спрос → дата → группа",
+      body:
+      '<div class="detail-card"><div class="detail-title">Что произошло</div><div class="detail-text">Есть просмотры, сохранения и вопросы по экскурсии, но клиентам нечего выбрать на нужную дату. Это потеря не в рекламе, а в расписании.</div></div>'+
+      '<div class="detail-card"><div class="detail-title">AI предлагает</div><div class="detail-text">Открыть групповую дату, собрать лист интереса, разослать персональные предложения и установить контроль минимума T-3/T-2/T-1.</div><div style="margin-top:12px"><button class="btn primary" data-toast="Новая дата подготовлена">Открыть дату</button></div></div>'
+    };
+  }
+  if(type === "money"){
+    var m = moneyRows.find(function(x){return x.id === id;}) || moneyRows[0];
+    return {
+      title:m.kind,
+      sub:"Финансовый контроль директора",
+      body:
+      '<div class="detail-card"><div class="detail-title">Сумма</div><div class="kpi-value">'+fmt(m.amount)+'</div><div class="detail-text">'+m.orders+' заказов · '+m.desc+'</div></div>'+
+      '<div class="detail-card"><div class="detail-title">Правило</div><div class="detail-text">Деньги учитываются отдельно от мест. Остаток гиду — это сумма по депозитным заказам. Ручная проверка — это неподтверждённые деньги, а не долг.</div></div>'+
+      '<div class="detail-card"><button class="btn primary" data-toast="Задача создана бухгалтеру">Создать задачу бухгалтеру</button></div>'
+    };
+  }
+  if(type === "source"){
+    var src = sourceChannels.find(function(x){return x.id === id;}) || sourceChannels[0];
+    return {
+      title:src.name,
+      sub:"Источник клиентов · качество канала",
+      body:
+      '<div class="detail-card"><div class="detail-title">Канал в цифрах</div><div class="split"><div class="split-tile"><b>'+int(src.clients)+'</b><span>клиентов</span></div><div class="split-tile"><b>'+int(src.paid)+'</b><span>оплатили</span></div><div class="split-tile"><b>'+fmt(src.revenue)+'</b><span>выручка</span></div></div></div>'+
+      '<div class="detail-card"><div class="detail-title">Качество</div><div class="detail-text">Конверсия в оплату: '+src.conv+'%. Средний чек: '+fmt(src.avg)+'. Повторных клиентов: '+src.repeat+'. Отмен: '+src.cancel+'. Покупают чаще: '+src.top+'.</div></div>'+
+      '<div class="detail-card"><div class="detail-title">Почему это важно</div><div class="detail-text">'+src.insight+'</div></div>'+
+      '<div class="detail-card"><div class="detail-title">AI предлагает</div><div class="detail-text">'+src.action+'. Массовые действия и рассылки — только после подтверждения директора.</div><div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" data-toast="Задача по источнику создана">Создать задачу</button><button class="btn" data-toast="Сегмент для источника подготовлен">Создать сегмент</button></div></div>'
+    };
+  }
+  if(type === "persona"){
+    var cp = customerTypes.find(function(x){return x.id === id;}) || customerTypes[0];
+    return {
+      title:cp.name,
+      sub:"Портрет клиента",
+      body:
+      '<div class="detail-card"><div class="detail-title">Портрет в цифрах</div><div class="split"><div class="split-tile"><b>'+int(cp.count)+'</b><span>клиентов</span></div><div class="split-tile"><b>'+cp.share+'%</b><span>доля базы</span></div><div class="split-tile"><b>'+fmt(cp.revenue)+'</b><span>выручка</span></div></div></div>'+
+      '<div class="detail-card"><div class="detail-title">Что покупают</div><div class="detail-text">'+cp.buys+'</div></div>'+
+      '<div class="detail-card"><div class="detail-title">Поведение</div><div class="detail-text">'+cp.behavior+'</div></div>'+
+      '<div class="detail-card"><div class="detail-title">Следующее действие</div><div class="detail-text">'+cp.action+'</div><div style="margin-top:12px"><button class="btn primary" data-toast="Предложение подготовлено">Создать предложение</button></div></div>'
+    };
+  }
+  if(type === "segment"){
+    var s = segments.find(function(x){return x.id === id;}) || segments[0];
+    return {
+      title:s.name,
+      sub:"Сегмент для роста",
+      body:
+      '<div class="detail-card"><div class="detail-title">Потенциал</div><div class="split"><div class="split-tile"><b>'+int(s.count)+'</b><span>клиентов</span></div><div class="split-tile"><b>'+fmt(s.value)+'</b><span>оценка</span></div></div></div>'+
+      '<div class="detail-card"><div class="detail-title">Зачем нужен</div><div class="detail-text">'+s.action+'</div></div>'+
+      '<div class="detail-card"><div class="detail-title">Персональное предложение</div><div class="detail-text">Подготовить короткое персональное предложение, связанное с прошлым интересом клиента. Массовая отправка только после подтверждения директора или администратора.</div><div style="margin-top:12px"><button class="btn primary" data-toast="Предложение подготовлено">Создать предложение</button></div></div>'
+    };
+  }
+  if(type === "tour"){
+    var t = tours.find(function(x){return x.id === id;}) || tours[0];
+    return {
+      title:t.name,
+      sub:t.city+" · продуктовый разбор",
+      body:
+      '<div class="detail-card"><div class="detail-title">Показатели</div><div class="split"><div class="split-tile"><b>'+fmt(t.plan)+'</b><span>план</span></div><div class="split-tile"><b>'+fmt(t.fact)+'</b><span>факт</span></div><div class="split-tile"><b>'+t.conv+'%</b><span>конверсия</span></div></div></div>'+
+      '<div class="detail-card"><div class="detail-title">Решение</div><div class="detail-text">'+t.action+'</div><div style="margin-top:12px"><button class="btn primary" data-toast="Задача по экскурсии создана">Создать задачу</button></div></div>'
+    };
+  }
+  if(type === "team"){
+    if(id === "guide-confirm"){
+      return {
+        title:"Поздние подтверждения гидов",
+        sub:"Анна и Виктор · системная проблема команды",
+        body:
+        '<div class="detail-card"><div class="detail-title">Кого проверить</div><div class="detail-text">Анна: 2 поздних подтверждения, показатель 91%. Виктор: 4 поздних подтверждения, показатель 86%.</div></div>'+
+        '<div class="detail-card"><div class="detail-title">Рекомендуемое правило</div><div class="detail-text">Обязательное подтверждение выезда до 20:00 накануне. При отсутствии подтверждения — автоматическая задача администратору и эскалация директору.</div><div style="margin-top:12px"><button class="btn primary" data-toast="Правило подтверждения подготовлено">Создать правило</button></div></div>'
+      };
+    }
+    var p = team.find(function(x){return x.id === id;}) || team[0];
+    return {
+      title:p.name,
+      sub:p.role+" · качество и подтверждения",
+      body:
+      '<div class="detail-card"><div class="detail-title">Метрики</div><div class="split"><div class="split-tile"><b>'+p.score+'</b><span>оценка</span></div><div class="split-tile"><b>'+p.confirms+'</b><span>подтверждения</span></div></div></div>'+
+      '<div class="detail-card"><div class="detail-title">Проблема / решение</div><div class="detail-text">'+p.issue+'. Рекомендуемое действие: '+p.action+'.</div></div>'
+    };
+  }
+  return {
+    title:"Детали",
+    sub:"Детали",
+    body:'<div class="detail-card"><div class="detail-text">Детальный экран.</div></div>'
+  };
+}
+
+function render(){
+  header();
+  mountNav();
+  var html = "";
+  if(state.view === "dashboard"){html = renderDashboard();}
+  if(state.view === "plan"){html = renderPlan();}
+  if(state.view === "cities"){html = renderCities();}
+  if(state.view === "tours"){html = renderTours();}
+  if(state.view === "groups"){html = renderGroups();}
+  if(state.view === "money"){html = renderMoney();}
+  if(state.view === "customers"){html = renderCustomers();}
+  if(state.view === "analytics"){html = renderAnalytics();}
+  if(state.view === "team"){html = renderTeam();}
+  if(state.view === "ai"){html = renderAi();}
+  document.getElementById("content").innerHTML = html;
+  bindActions();
+  bindHorizon();
+  bindFilters();
+  updateDraftCount();
+}
+function bindActions(){
+  document.querySelectorAll("[data-open]").forEach(function(btn){
+    if(btn.dataset.bound){return;} btn.dataset.bound="1";
+    btn.addEventListener("click", function(){
+      openDrawer(btn.getAttribute("data-open"), btn.getAttribute("data-id"));
+    });
+  });
+  document.querySelectorAll("[data-toast]").forEach(function(btn){
+    if(btn.dataset.bound){return;} btn.dataset.bound="1";
+    btn.addEventListener("click", function(){
+      openDraftComposer(btn.textContent.trim() || "Новое действие", btn.getAttribute("data-toast"));
+    });
+  });
+  document.querySelectorAll("[data-nav]").forEach(function(btn){
+    if(btn.dataset.bound){return;} btn.dataset.bound="1";
+    btn.addEventListener("click", function(){
+      state.view = btn.getAttribute("data-nav");
+      render();
+    });
+  });
+  document.querySelectorAll("[data-analytics-filter]").forEach(function(btn){
+    if(btn.dataset.bound){return;} btn.dataset.bound="1";
+    var apply = function(){
+      var key = btn.getAttribute("data-analytics-filter-key");
+      var value = btn.getAttribute("data-analytics-filter-value");
+      if(!key || !value){return;}
+      state.analyticsFilters[key] = state.analyticsFilters[key] === value ? "all" : value;
+      render();
+    };
+    btn.addEventListener("click", apply);
+    btn.addEventListener("keydown", function(event){
+      if(event.key === "Enter" || event.key === " "){event.preventDefault();apply();}
+    });
+  });
+  document.querySelectorAll("[data-analytics-clear]").forEach(function(btn){
+    if(btn.dataset.bound){return;} btn.dataset.bound="1";
+    btn.addEventListener("click", function(){
+      var key = btn.getAttribute("data-analytics-clear");
+      if(key){state.analyticsFilters[key] = "all";render();}
+    });
+  });
+  document.querySelectorAll("[data-analytics-reset]").forEach(function(btn){
+    if(btn.dataset.bound){return;} btn.dataset.bound="1";
+    btn.addEventListener("click", function(){
+      analyticsFilterKeys().forEach(function(key){state.analyticsFilters[key] = "all";});
+      render();
+    });
+  });
+}
+function bindFilters(){
+  document.querySelectorAll("[data-filter]").forEach(function(field){
+    field.addEventListener("change", function(){
+      state.filters[field.getAttribute("data-filter")] = field.value;
+      render();
+    });
+  });
+}
+function openDraftComposer(title,note){
+  document.getElementById("drawerTitle").textContent = title;
+  document.getElementById("drawerSub").textContent = "Задача будет отправлена администратору";
+  document.getElementById("drawerBody").innerHTML =
+    '<div class="detail-card"><form class="draft-form" id="draftForm">'+
+      '<label><b>Название</b><input id="draftTitle" value="'+safeText(title)+'"></label>'+
+      '<label><b>Ответственный</b><select id="draftOwner"><option>Администратор</option><option>Маркетинг</option><option>Бухгалтер</option><option>Директор</option></select></label>'+
+      '<label><b>Комментарий</b><textarea id="draftNote">'+safeText(String(note || "").replace(/^Демо:\s*/,""))+'</textarea></label>'+
+      '<button class="btn primary" type="submit">Отправить администратору</button>'+
+    '</form></div>';
+  document.getElementById("drawer").classList.add("open");
+  document.getElementById("scrim").classList.add("open");
+  document.getElementById("drawer").setAttribute("aria-hidden","false");
+  document.getElementById("draftForm").addEventListener("submit",function(e){
+    e.preventDefault();
+    createDraft(document.getElementById("draftTitle").value,document.getElementById("draftNote").value,document.getElementById("draftOwner").value);
+  });
+}
+function createDraft(title,note,owner){
+  var draft = {id:Date.now(),title:title || "Задача директору",note:note || "",owner:owner || "Администратор",created:new Date().toLocaleString("ru-RU"),status:"sending"};
+  state.drafts.unshift(draft);
+  saveDrafts();
+  updateDraftCount();
+  closeDrawer();
+  showToast("Задача отправляется администратору…");
+  if(typeof fetch !== "function") return draft;
+  fetch("/api/admin/auth/session", {credentials:"same-origin"})
+    .then(function(response){return response.json();})
+    .then(function(session){
+      if(!session || !session.authenticated || !session.csrfToken){throw new Error("session");}
+      return fetch("/api/admin/tasks", {method:"POST", credentials:"same-origin", headers:{"content-type":"application/json","x-csrf-token":session.csrfToken}, body:JSON.stringify({title:draft.title,description:draft.note,owner:draft.owner,priority:"normal"})});
+    })
+    .then(function(response){return response.json().then(function(data){if(!response.ok || data.ok === false){throw new Error("task");} return data;});})
+    .then(function(data){
+      draft.serverId = data.task && data.task.id;
+      draft.status = "sent";
+      draft.created = data.task && data.task.created_at ? data.task.created_at : draft.created;
+      saveDrafts();
+      showToast("Задача отправлена администратору");
+    })
+    .catch(function(){
+      draft.status = "local";
+      saveDrafts();
+      showToast("Нет связи с сервером — задача сохранена локально");
+    });
+  return draft;
+}
+function updateDraftCount(){
+  document.getElementById("draftCount").textContent = state.drafts.length;
+}
+function openDrafts(){
+  document.getElementById("drawerTitle").textContent = "Черновики действий";
+  document.getElementById("drawerSub").textContent = "Отправленные задачи доступны администратору в разделе «Задачи директора»";
+  document.getElementById("drawerBody").innerHTML = state.drafts.length ? '<div class="draft-list">'+state.drafts.map(function(d){
+    return '<div class="draft-item"><b>'+safeText(d.title)+'</b><span>'+safeText(d.owner)+' · '+safeText(d.created)+'</span><span>'+safeText(d.note)+'</span></div>';
+  }).join("")+'</div>' : '<div class="detail-card"><div class="detail-text">Черновиков пока нет. Создайте задачу, отчёт, сегмент или другое действие в любом разделе.</div></div>';
+  document.getElementById("drawer").classList.add("open");
+  document.getElementById("scrim").classList.add("open");
+  document.getElementById("drawer").setAttribute("aria-hidden","false");
+}
+function openDrawer(type,id){
+  var d = drawerContent(type,id);
+  document.getElementById("drawerTitle").textContent = d.title;
+  document.getElementById("drawerSub").textContent = d.sub;
+  document.getElementById("drawerBody").innerHTML = d.body;
+  document.getElementById("drawer").classList.add("open");
+  document.getElementById("scrim").classList.add("open");
+  document.getElementById("drawer").setAttribute("aria-hidden","false");
+  bindActions();
+}
+function closeDrawer(){
+  document.getElementById("drawer").classList.remove("open");
+  document.getElementById("scrim").classList.remove("open");
+  document.getElementById("drawer").setAttribute("aria-hidden","true");
+}
+function showToast(msg){
+  var t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  window.clearTimeout(showToast.timer);
+  showToast.timer = window.setTimeout(function(){t.classList.remove("show");}, 2600);
+}
+function searchIndex(){
+  var list = NAV.map(function(n){return {title:n.label,meta:n.sub,view:n.id};});
+  cities.forEach(function(x){list.push({title:x.city,meta:x.insight,view:"cities",type:"city",id:x.id});});
+  tours.forEach(function(x){list.push({title:x.name,meta:x.city+" · "+x.action,view:"tours",type:"tour",id:x.id});});
+  groups.forEach(function(x){list.push({title:x.tour+" · "+x.date,meta:x.city+" · "+x.status,view:"groups",type:"group",id:x.id});});
+  moneyRows.forEach(function(x){list.push({title:x.kind,meta:x.desc,view:"money",type:"money",id:x.id});});
+  sourceChannels.forEach(function(x){list.push({title:x.name,meta:x.insight,view:"customers",type:"source",id:x.id});});
+  customerTypes.forEach(function(x){list.push({title:x.name,meta:x.behavior,view:"customers",type:"persona",id:x.id});});
+  segments.forEach(function(x){list.push({title:x.name,meta:x.action,view:"customers",type:"segment",id:x.id});});
+  team.forEach(function(x){list.push({title:x.name,meta:x.role+" · "+x.issue,view:"team",type:"team",id:x.id});});
+  return list;
+}
+function renderSearch(query){
+  var box = document.getElementById("searchResults");
+  var q = String(query || "").trim().toLowerCase();
+  if(q.length < 2){box.hidden=true;box.innerHTML="";return;}
+  var found = searchIndex().filter(function(item){return (item.title+" "+item.meta).toLowerCase().includes(q);}).slice(0,8);
+  box.innerHTML = found.length ? found.map(function(item,index){
+    return '<button class="search-result" data-search-index="'+index+'"><b>'+safeText(item.title)+'</b><span>'+safeText(item.meta)+'</span></button>';
+  }).join("") : '<div class="empty-state">Ничего не найдено</div>';
+  box.hidden=false;
+  document.querySelectorAll("[data-search-index]").forEach(function(btn){
+    btn.addEventListener("click",function(){
+      var item=found[Number(btn.getAttribute("data-search-index"))];
+      state.view=item.view;
+      state.horizon="month";
+      box.hidden=true;
+      document.getElementById("globalSearch").value="";
+      document.getElementById("mobileGlobalSearch").value="";
+      render();
+      if(item.type){openDrawer(item.type,item.id);}
+    });
+  });
+}
+document.getElementById("closeDrawer").addEventListener("click", closeDrawer);
+document.getElementById("scrim").addEventListener("click", closeDrawer);
+document.getElementById("draftsButton").addEventListener("click",openDrafts);
+document.getElementById("globalSearch").addEventListener("input",function(e){renderSearch(e.target.value);});
+document.getElementById("mobileGlobalSearch").addEventListener("input",function(e){renderSearch(e.target.value);});
+render();
+loadLiveCrm();
+if(typeof window.setInterval === "function"){window.setInterval(loadLiveCrm, 10000);}
+})();
+</script>
+</body>
+</html>

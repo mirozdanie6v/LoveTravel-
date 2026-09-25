@@ -1,0 +1,419 @@
+img[src^="/tour-media/"], img[src*="max-tour-demo.viiversion.com/tour-media/"] {
+  cursor: zoom-in;
+}
+
+.tour-lightbox[hidden] {
+  display: none !important;
+}
+
+.tour-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  display: grid;
+  place-items: center;
+  opacity: 0;
+  transition: opacity .18s ease;
+}
+
+.tour-lightbox.is-open {
+  opacity: 1;
+}
+
+.tour-lightbox__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(4, 9, 18, .94);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.tour-lightbox__stage {
+  position: relative;
+  z-index: 1;
+  width: min(100vw, 1280px);
+  height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: max(18px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) max(18px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+  box-sizing: border-box;
+}
+
+.tour-lightbox__figure {
+  width: min(100%, 1180px);
+  height: min(100%, 100dvh);
+  margin: 0;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto auto;
+  gap: 10px;
+  align-items: center;
+  justify-items: center;
+  min-height: 0;
+}
+
+.tour-lightbox__main {
+  width: 100%;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+
+.tour-lightbox__image {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: min(92vw, 1180px);
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 16px;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, .48);
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.tour-lightbox__caption {
+  min-height: 24px;
+  max-width: min(92vw, 900px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: rgba(255,255,255,.9);
+  font: 500 14px/1.35 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  text-align: center;
+}
+
+.tour-lightbox__counter {
+  color: rgba(255,255,255,.62);
+  white-space: nowrap;
+}
+
+.tour-lightbox__thumbs {
+  width: min(92vw, 900px);
+  min-height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 2px 2px 4px;
+  box-sizing: border-box;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+}
+
+.tour-lightbox__thumbs::-webkit-scrollbar {
+  display: none;
+}
+
+.tour-lightbox__thumbs[hidden] {
+  display: none !important;
+}
+
+.tour-lightbox__thumb {
+  flex: 0 0 76px;
+  width: 76px;
+  height: 56px;
+  padding: 0;
+  overflow: hidden;
+  border: 2px solid transparent;
+  border-radius: 10px;
+  background: rgba(255,255,255,.08);
+  opacity: .62;
+  cursor: pointer;
+  scroll-snap-align: center;
+  transition: opacity .16s ease, border-color .16s ease, transform .16s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.tour-lightbox__thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  cursor: pointer;
+}
+
+.tour-lightbox__thumb.is-active {
+  opacity: 1;
+  border-color: #fff;
+  transform: translateY(-1px);
+}
+
+.tour-lightbox__close,
+.tour-lightbox__nav {
+  position: absolute;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: 999px;
+  background: rgba(19, 25, 36, .72);
+  color: #fff;
+  box-shadow: 0 8px 30px rgba(0,0,0,.22);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.tour-lightbox__close {
+  top: max(18px, env(safe-area-inset-top));
+  right: max(18px, env(safe-area-inset-right));
+}
+
+.tour-lightbox__nav--prev {
+  left: max(14px, env(safe-area-inset-left));
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.tour-lightbox__nav--next {
+  right: max(14px, env(safe-area-inset-right));
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.tour-lightbox__close svg,
+.tour-lightbox__nav svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.tour-lightbox__close:active,
+.tour-lightbox__nav:active {
+  transform: scale(.94);
+}
+
+.tour-lightbox__nav--prev:active,
+.tour-lightbox__nav--next:active {
+  transform: translateY(-50%) scale(.94);
+}
+
+@media (max-width: 680px) {
+  .tour-lightbox__stage {
+    padding: max(10px, env(safe-area-inset-top)) 8px max(10px, env(safe-area-inset-bottom));
+  }
+
+  .tour-lightbox__figure {
+    gap: 8px;
+  }
+
+  .tour-lightbox__image {
+    max-width: 100%;
+    border-radius: 12px;
+  }
+
+  .tour-lightbox__nav {
+    width: 42px;
+    height: 42px;
+    background: rgba(19, 25, 36, .62);
+  }
+
+  .tour-lightbox__nav--prev {
+    left: 10px;
+  }
+
+  .tour-lightbox__nav--next {
+    right: 10px;
+  }
+
+  .tour-lightbox__caption {
+    max-width: 100%;
+    min-height: 20px;
+    padding: 0 46px;
+    box-sizing: border-box;
+    font-size: 13px;
+  }
+
+  .tour-lightbox__thumbs {
+    width: calc(100vw - 16px);
+    min-height: 58px;
+    gap: 7px;
+    padding-inline: 6px;
+  }
+
+  .tour-lightbox__thumb {
+    flex-basis: 68px;
+    width: 68px;
+    height: 50px;
+    border-radius: 9px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tour-lightbox,
+  .tour-lightbox__thumb {
+    transition: none;
+  }
+}
+
+/*
+ * Global UI typography/alignment guard.
+ * This stylesheet is loaded after the prototype/component CSS, so these rules
+ * correct unsafe word splitting and off-center action labels without changing
+ * component dimensions or forcing a new layout model.
+ */
+
+/* Never hyphenate or split ordinary words in the customer interface. */
+html,
+body,
+body * {
+  -webkit-hyphens: none !important;
+  hyphens: none !important;
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+}
+
+/* Long machine/user data may still break to protect narrow mobile layouts. */
+body :where(
+  pre,
+  code,
+  textarea,
+  [contenteditable='true'],
+  [data-wrap-anywhere],
+  .ai-message,
+  .ai-message__text,
+  .chat-message,
+  .message-text
+) {
+  overflow-wrap: anywhere !important;
+}
+
+/* Center native and semantic action labels without changing their box model. */
+body :where(
+  button,
+  [role='button'],
+  input[type='button'],
+  input[type='submit'],
+  input[type='reset']
+) {
+  text-align: center !important;
+  align-items: center !important;
+  justify-content: center !important;
+  vertical-align: middle !important;
+}
+
+body :where(button, [role='button']) > :where(span, strong, b, small, em) {
+  text-align: center !important;
+}
+
+/* Custom controls used by the prototype and runtime widgets. */
+body :where(
+  .btn,
+  [class*='btn-'],
+  [class*='-btn'],
+  [class*='button'],
+  [class*='Button'],
+  [role='tab'],
+  [role='option'],
+  [role='menuitem'],
+  nav a,
+  .chip,
+  .pill,
+  .badge,
+  .tag,
+  [class*='chip'],
+  [class*='pill'],
+  [class*='badge'],
+  [class*='tag']
+) {
+  text-align: center !important;
+  -webkit-hyphens: none !important;
+  hyphens: none !important;
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+}
+
+/* Compact labels are safe to keep as one visual unit. */
+body :where(
+  .chip,
+  .pill,
+  .badge,
+  .tag,
+  [class*='chip'],
+  [class*='pill'],
+  [class*='badge'],
+  [class*='tag'],
+  [role='tab']
+) {
+  white-space: nowrap !important;
+}
+
+/* Labels/metadata can wrap between words, never inside a word. */
+body :where(
+  label,
+  legend,
+  th,
+  dt,
+  [class*='label'],
+  [class*='Label'],
+  [class*='status'],
+  [class*='Status'],
+  [class*='price'],
+  [class*='Price']
+) {
+  -webkit-hyphens: none !important;
+  hyphens: none !important;
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+}
+
+body :where(h1, h2, h3, h4, h5, h6) {
+  text-wrap: balance;
+  -webkit-hyphens: none !important;
+  hyphens: none !important;
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+}
+
+/* Keep segmented navigation/action text visually centered. */
+body :where(
+  [role='tablist'],
+  [class*='segmented'],
+  [class*='Segmented'],
+  [class*='tabs'],
+  [class*='Tabs']
+) :where(button, [role='tab'], a) {
+  text-align: center !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+body :where(button, [role='button']) :where(.label, [class*='label'], [class*='Label']) {
+  text-align: center !important;
+}
+
+/* Existing hero controls are grid-based; center the actual text cell explicitly. */
+.hero-lux__destination,
+.hero-lux__cta,
+.hero-lux__cta > span:nth-child(2),
+.hero-lux__destination-label {
+  text-align: center !important;
+  -webkit-hyphens: none !important;
+  hyphens: none !important;
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+}
+
+/* Very narrow screens may wrap long actions between words, but never split words. */
+@media (max-width: 420px) {
+  body :where(button, [role='button'], .btn, [class*='button']) {
+    white-space: normal;
+  }
+
+  body :where(.chip, .pill, .badge, .tag, [role='tab']) {
+    max-width: 100%;
+  }
+}

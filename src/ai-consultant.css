@@ -1,0 +1,244 @@
+#aiScreen .ai-section-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+}
+#aiScreen .ai-section-head>div{min-width:0}
+#aiScreen .ai-chat-subtitle{
+  margin:4px 0 0;
+  max-width:640px;
+  color:var(--muted);
+  font-size:11px;
+  line-height:1.4;
+  font-weight:700;
+}
+#aiScreen .ai-clear{
+  flex:0 0 auto;
+  min-height:32px;
+  padding:6px 9px;
+  border-radius:11px;
+  font-size:10px;
+  white-space:nowrap;
+}
+#aiScreen .ai-consultant-shell{display:block;max-width:900px}
+#aiScreen .ai-chat-below{display:grid;gap:10px;margin-top:10px;padding-bottom:calc(var(--nav,76px) + env(safe-area-inset-bottom) + 16px)}
+#aiScreen .ai-chat-panel{
+  display:flex;
+  flex-direction:column;
+  min-width:0;
+  min-height:0;
+  overflow:visible;
+  background:#f5eee4;
+  border:1px solid var(--line);
+  border-radius:22px;
+  box-shadow:0 10px 26px rgba(129,65,20,.07);
+}
+#aiScreen .ai-messages{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  flex:0 0 auto;
+  min-height:220px;
+  max-height:none;
+  overflow:visible;
+  overscroll-behavior:auto;
+  padding:16px 14px 12px;
+  border-radius:21px 21px 0 0;
+  background:
+    radial-gradient(circle at 10% 0%,rgba(255,255,255,.65),transparent 38%),
+    #f5eee4;
+  scroll-behavior:auto;
+}
+#aiScreen .ai-messages .ai-msg{
+  align-self:flex-start;
+  max-width:min(82%,620px);
+  margin:0;
+  padding:9px 12px;
+  border:1px solid rgba(125,62,29,.08);
+  border-radius:8px 17px 17px 17px;
+  background:#fff;
+  color:var(--ink);
+  font-size:13px;
+  line-height:1.4;
+  font-weight:700;
+  white-space:pre-wrap;
+  box-shadow:0 2px 6px rgba(129,65,20,.05);
+}
+#aiScreen .ai-msg-author{
+  display:block;
+  margin-bottom:3px;
+  color:#8d6b52;
+  font-size:9px;
+  line-height:1.1;
+  font-weight:950;
+  letter-spacing:.02em;
+}
+#aiScreen .ai-msg-text{display:block}
+#aiScreen .ai-messages .ai-msg.user{
+  align-self:flex-end;
+  border-color:transparent;
+  border-radius:17px 8px 17px 17px;
+  background:var(--red);
+  color:#fff;
+  box-shadow:0 3px 8px rgba(196,50,35,.18);
+}
+#aiScreen .ai-messages .ai-msg.user .ai-msg-author{color:rgba(255,255,255,.78);text-align:right}
+#aiScreen .ai-quick-replies{
+  display:flex;
+  gap:7px;
+  flex-wrap:wrap;
+  width:100%;
+  padding:0;
+  background:transparent;
+  position:relative;
+  z-index:6;
+  pointer-events:auto;
+}
+#aiScreen .ai-quick-replies button{
+  min-height:44px;
+  padding:6px 10px;
+  border:1px solid rgba(216,163,60,.45);
+  border-radius:999px;
+  background:#fff8eb;
+  color:#6b401c;
+  font-size:11px;
+  font-weight:900;
+  cursor:pointer;
+  pointer-events:auto;
+  touch-action:manipulation;
+  user-select:none;
+  -webkit-user-select:none;
+  -webkit-tap-highlight-color:transparent;
+}
+#aiScreen .ai-quick-replies button:hover{background:#fff0d2;border-color:#d8a33c}
+#aiScreen .ai-consultant-input{
+  display:flex;
+  gap:8px;
+  align-items:flex-end;
+  flex:0 0 auto;
+  margin:0;
+  padding:10px 14px 14px;
+  position:sticky;
+  bottom:calc(var(--nav,76px) + env(safe-area-inset-bottom));
+  z-index:2;
+  border-top:1px solid rgba(125,62,29,.1);
+  background:#fff;
+}
+#aiScreen .ai-consultant-input textarea{
+  flex:1;
+  min-width:0;
+  min-height:45px;
+  max-height:120px;
+  resize:none;
+  overflow-y:auto;
+  border:1px solid var(--line);
+  border-radius:16px;
+  padding:11px 12px;
+  font:750 16px/1.3 inherit;
+  color:var(--ink);
+  background:#fff;
+}
+#aiScreen .ai-consultant-input textarea:focus{outline:2px solid rgba(223,31,36,.22);border-color:rgba(223,31,36,.45)}
+#aiScreen .ai-consultant-input button{width:48px;min-height:45px;padding:0;border-radius:15px;font-size:18px}
+#aiScreen .ai-recommendations,
+#aiScreen .ai-chat-results{
+  display:grid;
+  gap:7px;
+  margin:0;
+  width:100%;
+  box-sizing:border-box;
+}
+#aiScreen .ai-chat-results{
+  display:block;
+  padding:10px 11px;
+  border:1px solid rgba(125,62,29,.08);
+  border-radius:8px 17px 17px 17px;
+  background:#fff;
+  box-shadow:0 2px 6px rgba(129,65,20,.05);
+}
+#aiScreen .ai-chat-results .ai-msg-author{margin-bottom:4px}
+#aiScreen .ai-chat-results-reason{
+  margin:4px 0 0;
+  color:var(--muted);
+  font-size:10.5px;
+  line-height:1.35;
+  font-weight:750;
+}
+#aiScreen .ai-chat-results-label{
+  color:var(--muted);
+  font-size:10px;
+  line-height:1.2;
+  font-weight:900;
+  letter-spacing:.02em;
+}
+#aiScreen .ai-recommendation{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:8px;
+  align-items:center;
+  padding:9px 10px;
+  border:1px solid rgba(125,62,29,.12);
+  border-radius:14px;
+  background:#fff;
+  box-shadow:0 2px 6px rgba(129,65,20,.04);
+}
+#aiScreen .ai-chat-results .ai-recommendations{display:grid;width:100%;margin-top:8px;padding:0;background:transparent}
+#aiScreen .ai-recommendation h4{margin:0;font-size:12px;line-height:1.2}
+#aiScreen .ai-recommendation p{margin:3px 0 0;color:var(--muted);font-size:10px;line-height:1.3;font-weight:750}
+#aiScreen .ai-recommendation .ai-price{display:block;margin-top:4px;color:var(--red);font-size:10.5px;font-weight:950}
+#aiScreen .ai-recommendation .ai-party{display:block;margin-top:3px;color:var(--muted);font-size:10px;font-weight:800}
+#aiScreen .ai-recommendation button{min-height:44px;padding:8px 11px;white-space:nowrap;font-size:10.5px}
+#aiScreen .ai-save-selection{width:100%;padding:0;background:transparent}
+#aiScreen .ai-save-selection button{min-height:44px;padding:8px 11px;border-radius:11px;font-size:16px;line-height:1.15}
+#aiScreen .ai-contact-form{
+  display:grid;
+  gap:8px;
+  margin:0;
+  padding:12px 14px 14px;
+  border-top:1px solid var(--line);
+  background:#fff;
+}
+#aiScreen .ai-contact-heading{display:flex;align-items:center;justify-content:space-between;gap:10px}
+#aiScreen .ai-contact-heading h4{min-width:0}
+#aiScreen .ai-contact-close{flex:0 0 auto;min-height:36px;padding:6px 9px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--muted);font-size:10px;font-weight:900}
+#aiScreen .ai-contact-form h4{margin:0;font-size:13px}
+#aiScreen .ai-contact-form p{margin:0;color:var(--muted);font-size:10.5px;line-height:1.35;font-weight:750}
+#aiScreen .ai-contact-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+#aiScreen .ai-contact-grid label{display:grid;gap:4px;color:var(--muted);font-size:9.5px;font-weight:900}
+#aiScreen .ai-contact-grid label.wide{grid-column:1/-1}
+#aiScreen .ai-contact-grid input,
+#aiScreen .ai-contact-grid select{min-width:0;min-height:44px;height:44px;border:1px solid var(--line);border-radius:12px;background:#fff;padding:0 9px;font:750 16px inherit;color:var(--ink)}
+#aiScreen .ai-contact-actions{display:flex;gap:8px;align-items:center}
+#aiScreen .ai-contact-actions button{flex:1;min-height:44px}
+#aiScreen .ai-handoff{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:0;padding:10px 14px;background:#effaf3;border-top:1px solid rgba(22,116,76,.2);color:#145b3d;font-size:11px;line-height:1.4;font-weight:800}
+#aiScreen .ai-handoff b{display:block;font-size:13px;margin-bottom:3px}
+#aiScreen .ai-handoff span{display:block}
+#aiScreen .ai-handoff button{flex:0 0 auto;min-height:36px;padding:6px 9px;font-size:10px}
+#aiScreen .ai-reset{margin:10px 14px;width:calc(100% - 28px);min-height:36px}
+@media(max-width:560px){
+  #aiScreen .ai-section-head{gap:8px}
+  #aiScreen .ai-chat-subtitle{font-size:10.5px;max-width:34em}
+  #aiScreen .ai-messages{
+    min-height:220px;
+    max-height:none;
+    overflow:visible;
+    padding:14px 10px 10px;
+  }
+  #aiScreen .ai-messages .ai-msg{max-width:88%;font-size:13px}
+  #aiScreen .ai-quick-replies{width:100%}
+  #aiScreen .ai-consultant-input{padding-left:10px;padding-right:10px;padding-bottom:calc(12px + env(safe-area-inset-bottom))}
+  #aiScreen .ai-recommendations,
+  #aiScreen .ai-chat-results,
+  #aiScreen .ai-save-selection{width:100%}
+}
+@media(max-width:430px){
+  #aiScreen .ai-contact-grid{grid-template-columns:1fr}
+  #aiScreen .ai-contact-grid label.wide{grid-column:auto}
+  #aiScreen .ai-recommendation{grid-template-columns:1fr}
+  #aiScreen .ai-recommendation button{width:100%;min-height:44px}
+  #aiScreen .ai-contact-actions{flex-direction:column}
+  #aiScreen .ai-contact-actions button{width:100%}
+  #aiScreen .ai-handoff{align-items:stretch;flex-direction:column}
+  #aiScreen .ai-handoff button{width:100%}
+}

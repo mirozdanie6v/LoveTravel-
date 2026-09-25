@@ -1,0 +1,91 @@
+.catalog-show-press {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transform-origin: center;
+  translate: 0 0;
+  scale: 1;
+  transition:
+    translate 90ms ease,
+    scale 90ms ease,
+    filter 90ms ease,
+    box-shadow 90ms ease !important;
+  will-change: translate, scale, filter, box-shadow;
+}
+
+.catalog-show-press:active,
+.catalog-show-press.catalog-show-pressed {
+  translate: 0 3px !important;
+  scale: 0.965 !important;
+  filter: brightness(0.82) saturate(1.06) !important;
+  box-shadow:
+    inset 0 4px 10px rgba(70, 0, 0, 0.28),
+    0 1px 2px rgba(60, 15, 0, 0.16) !important;
+}
+
+.tour-card .price.catalog-individual-price-inline,
+.tour-card .price[data-individual-from-inline="true"],
+.tour-card .price-value.catalog-individual-price-inline,
+.tour-card .price-value[data-individual-from-inline="true"],
+.wide-card .price.catalog-individual-price-inline,
+.wide-card .price[data-individual-from-inline="true"],
+.wide-card .price-value.catalog-individual-price-inline,
+.wide-card .price-value[data-individual-from-inline="true"] {
+  display: block !important;
+  white-space: nowrap !important;
+  overflow: visible !important;
+}
+
+.tour-card .price .catalog-price-row,
+.tour-card .price-value .catalog-price-row,
+.wide-card .price .catalog-price-row,
+.wide-card .price-value .catalog-price-row {
+  display: inline-flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  align-items: baseline !important;
+  justify-content: flex-start !important;
+  gap: 4px !important;
+  width: max-content !important;
+  max-width: none !important;
+  white-space: nowrap !important;
+}
+
+.tour-card .price .catalog-price-from,
+.tour-card .price .catalog-price-amount,
+.tour-card .price-value .catalog-price-from,
+.tour-card .price-value .catalog-price-amount,
+.wide-card .price .catalog-price-from,
+.wide-card .price .catalog-price-amount,
+.wide-card .price-value .catalog-price-from,
+.wide-card .price-value .catalog-price-amount {
+  display: inline-block !important;
+  flex: 0 0 auto !important;
+  white-space: nowrap !important;
+}
+
+.tour-card .price .catalog-price-from,
+.tour-card .price-value .catalog-price-from,
+.wide-card .price .catalog-price-from,
+.wide-card .price-value .catalog-price-from {
+  font-size: 11px !important;
+  line-height: 1 !important;
+  font-weight: 800 !important;
+  color: #8b6652 !important;
+  text-transform: lowercase;
+}
+
+.tour-card .price .catalog-price-amount,
+.tour-card .price-value .catalog-price-amount,
+.wide-card .price .catalog-price-amount,
+.wide-card .price-value .catalog-price-amount {
+  color: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .catalog-show-press {
+    transition: none !important;
+  }
+}
