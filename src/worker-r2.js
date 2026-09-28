@@ -115,10 +115,8 @@ export async function handleLoveTravelBokunTours(request, env, url = new URL(req
       ? await fetchLoveTravelBokunDomains(common)
       : await fetchLoveTravelBokunTours(common);
 
-    const includeRaw = isDomain && url.searchParams.get('includeRaw') === '1';
     const domains = isDomain
       ? payload.map(domain => {
-          if (includeRaw) return domain;
           const { providerRaw, ...publicDomain } = domain;
           return publicDomain;
         })
@@ -134,7 +132,7 @@ export async function handleLoveTravelBokunTours(request, env, url = new URL(req
       start:requestedStart,
       end:requestedEnd,
       fetchedAt:new Date().toISOString(),
-      ...(isDomain ? { includeRaw, domains } : { tours:payload }),
+      ...(isDomain ? { domains } : { tours:payload }),
     }, {
       headers:{
         'cache-control':'no-store, max-age=0',
