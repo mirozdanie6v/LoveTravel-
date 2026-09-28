@@ -1,0 +1,91 @@
+name: LoveTravel live browser check
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.live-browser-check'
+  workflow_dispatch:
+
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Verify live LoveTravel Bókun catalog and galleries
+        shell: bash
+        run: |
+          node <<'NODE'
+          const { chromium } = require('playwright');
+          (async () => {
+            const browser = await chromium.launch({ headless:true });
+            const page = await browser.newPage({ viewport:{ width:390, height:844 }, deviceScaleFactor:1 });
+            const errors = [];
+            page.on('pageerror', error => errors.push(String(error)));
+            await page.goto('https://lovetravel.viiversion.com/?browserCheck=1', { waitUntil:'domcontentloaded', timeout:60000 });
+            await page.waitForFunction(() =>
+              globalThis.LOVE_TRAVEL_BOKUN_ACTIVE === true &&
+              Array.isArray(globalThis.TOURS) &&
+              globalThis.TOURS.length === 2,
+              null, { timeout:60000 }
+            );
+
+            const model = await page.evaluate(() => ({
+              source: globalThis.LOVE_TRAVEL_CATALOG_SOURCE,
+              ids: globalThis.TOURS.map(t => String(t.id)),
+              titles: globalThis.TOURS.map(t => t.title),
+              photos: globalThis.TOURS.map(t => t.gallery?.length || 0),
+              images: globalThis.TOURS.map(t => t.image),
+              prices: globalThis.TOURS.map(t => t.group?.from || ''),
+            }));
+
+            if (model.source !== 'bokun') throw new Error('catalog source is not bokun: '+JSON.stringify(model));
+            if (JSON.stringify(model.ids) !== JSON.stringify(['1287578','1287580'])) throw new Error('wrong tour ids: '+JSON.stringify(model));
+            if (JSON.stringify(model.photos) !== JSON.stringify([14,6])) throw new Error('wrong gallery sizes: '+JSON.stringify(model));
+            if (!model.images.every(src => /^https:\/\/imgcdn\.bokun\.tools\//.test(src))) throw new Error('wrong image origins: '+JSON.stringify(model.images));
+
+            await page.evaluate(() => globalThis.showScreen?.('catalog'));
+            await page.waitForTimeout(500);
+
+            const cards = await page.locator('#catalogScreen .tour-card').count();
+            if (cards !== 2) {
+              const body = await page.locator('#catalogScreen').innerText().catch(()=>'');
+              throw new Error('expected 2 visible catalog cards, got '+cards+'; '+body.slice(0,1000));
+            }
+
+            const cardText = await page.locator('#catalogScreen .tour-card').allInnerTexts();
+            for (const title of model.titles) {
+              if (!cardText.some(text => text.includes(title))) throw new Error('catalog card missing title: '+title);
+            }
+
+            const legacy = ['Далат','Муйне','Остров Хон Там','Остров Орхидей'];
+            if (legacy.some(term => cardText.some(text => text.includes(term)))) {
+              throw new Error('legacy MAX TOUR card leaked into live catalog: '+JSON.stringify(cardText));
+            }
+
+            const firstImage = page.locator('#catalogScreen .tour-card img').first();
+            await firstImage.click({ timeout:10000 });
+            await page.locator('.tour-lightbox.is-open').waitFor({ state:'visible', timeout:10000 });
+            await page.waitForFunction(() => document.querySelectorAll('.tour-lightbox__thumb').length === 14, null, { timeout:10000 });
+            await page.locator('[data-lightbox-close]').click();
+
+            const secondImage = page.locator('#catalogScreen .tour-card img').nth(1);
+            await secondImage.click({ timeout:10000 });
+            await page.locator('.tour-lightbox.is-open').waitFor({ state:'visible', timeout:10000 });
+            await page.waitForFunction(() => document.querySelectorAll('.tour-lightbox__thumb').length === 6, null, { timeout:10000 });
+
+            console.log(JSON.stringify({ ok:true, model, cards, cardText, pageErrors:errors }, null, 2));
+            await browser.close();
+          })().catch(error => {
+            console.error(error);
+            process.exit(1);
+          });
+          NODE
