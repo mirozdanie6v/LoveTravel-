@@ -56,34 +56,38 @@ jobs:
             await page.evaluate(() => showScreen('catalog'));
             await page.waitForTimeout(500);
 
-            const cards = await page.locator('#catalogScreen .tour-card').count();
-            if (cards !== 2) {
-              const body = await page.locator('#catalogScreen').innerText().catch(()=>'');
-              throw new Error('expected 2 visible catalog cards, got '+cards+'; '+body.slice(0,1000));
-            }
-
-            const cardText = await page.locator('#catalogScreen .tour-card').allInnerTexts();
+            const catalogText = await page.locator('#catalogScreen').innerText();
             for (const title of model.titles) {
-              if (!cardText.some(text => text.includes(title))) throw new Error('catalog card missing title: '+title);
+              if (!catalogText.includes(title)) throw new Error('catalog missing title: '+title);
             }
 
-            const legacy = ['Далат','Муйне','Остров Хон Там','Остров Орхидей'];
-            if (legacy.some(term => cardText.some(text => text.includes(term)))) {
-              throw new Error('legacy MAX TOUR card leaked into live catalog: '+JSON.stringify(cardText));
+            const legacy = ['Далат «Премиум»','Муйне: дюны','Остров Хон Там','Остров Орхидей'];
+            if (legacy.some(term => catalogText.includes(term))) {
+              throw new Error('legacy MAX TOUR card leaked into live catalog');
             }
 
-            const firstImage = page.locator('#catalogScreen .tour-card img').first();
+            const bokunImages = page.locator('#catalogScreen img[src*="imgcdn.bokun.tools"]:visible');
+            const cards = await bokunImages.count();
+            if (cards !== 2) {
+              throw new Error('expected 2 visible Bókun card images, got '+cards);
+            }
+            const renderedImages = await bokunImages.evaluateAll(nodes => nodes.map(node => node.currentSrc || node.src));
+            if (!renderedImages.every(src => /^https:\/\/imgcdn\.bokun\.tools\//.test(src))) {
+              throw new Error('catalog rendered wrong image sources: '+JSON.stringify(renderedImages));
+            }
+
+            const firstImage = bokunImages.first();
             await firstImage.click({ timeout:10000 });
             await page.locator('.tour-lightbox.is-open').waitFor({ state:'visible', timeout:10000 });
             await page.waitForFunction(() => document.querySelectorAll('.tour-lightbox__thumb').length === 14, null, { timeout:10000 });
             await page.locator('[data-lightbox-close]').click();
 
-            const secondImage = page.locator('#catalogScreen .tour-card').nth(1).locator('img').first();
+            const secondImage = bokunImages.nth(1);
             await secondImage.click({ timeout:10000 });
             await page.locator('.tour-lightbox.is-open').waitFor({ state:'visible', timeout:10000 });
             await page.waitForFunction(() => document.querySelectorAll('.tour-lightbox__thumb').length === 6, null, { timeout:10000 });
 
-            console.log(JSON.stringify({ ok:true, model, cards, cardText, pageErrors:errors }, null, 2));
+            console.log(JSON.stringify({ ok:true, model, cards, renderedImages, pageErrors:errors }, null, 2));
             await browser.close();
           })().catch(error => {
             console.error(error);
