@@ -9,11 +9,15 @@ on:
       - 'src/runtime-api.js'
       - 'src/tour-lightbox.js'
       - 'src/catalog-show-press.js'
+      - 'src/lovetravel-brand.js'
+      - 'src/lovetravel-brand.css'
+      - 'build.mjs'
       - 'wrangler.jsonc'
       - 'tests/bokun-adapter.test.mjs'
       - 'tests/bokun-worker.test.mjs'
       - 'tests/bokun-catalog-runtime.test.mjs'
       - 'tests/tour-lightbox.test.mjs'
+      - 'tests/lovetravel-brand.test.mjs'
       - '.github/workflows/lovetravel-adapter-check.yml'
   workflow_dispatch:
 
