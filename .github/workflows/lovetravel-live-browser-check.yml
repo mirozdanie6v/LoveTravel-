@@ -56,6 +56,22 @@ jobs:
             await page.evaluate(() => showScreen('catalog'));
             await page.waitForTimeout(500);
 
+            const domProbe = await page.evaluate(() => {
+              const title = 'Nha Trang Island Hopping Adventure in Robinson Beach';
+              const leaf = [...document.querySelectorAll('#catalogScreen *')].find(el => el.children.length === 0 && String(el.textContent || '').trim() === title);
+              const chain = [];
+              let node = leaf;
+              for (let i=0; node && i<6; i++, node=node.parentElement) {
+                chain.push({tag:node.tagName, className:String(node.className||''), id:node.id||'', html:node.outerHTML.slice(0,2500)});
+              }
+              return {
+                brandrow: document.querySelector('.brandrow')?.outerHTML?.slice(0,4000) || '',
+                topbar: document.querySelector('.topbar')?.outerHTML?.slice(0,4000) || '',
+                nav: document.querySelector('nav')?.outerHTML?.slice(0,4000) || '',
+                chain,
+              };
+            });
+            console.log('DOM_PROBE '+JSON.stringify(domProbe));
             const catalogText = await page.locator('#catalogScreen').innerText();
             for (const title of model.titles) {
               if (!catalogText.includes(title)) throw new Error('catalog missing title: '+title);
