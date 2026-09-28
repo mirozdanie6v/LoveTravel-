@@ -8,10 +8,14 @@ const script = await readFile(resolve(root, 'src/tour-lightbox.js'), 'utf8');
 const css = await readFile(resolve(root, 'src/tour-lightbox.css'), 'utf8');
 const build = await readFile(resolve(root, 'build.mjs'), 'utf8');
 
-test('tour lightbox script is syntactically valid and targets R2 tour images', () => {
+test('tour lightbox script is syntactically valid and targets R2 and Bókun tour images', () => {
   assert.doesNotThrow(() => new Function(script));
   assert.match(script, /MEDIA_PREFIX = '\/tour-media\/'/);
+  assert.match(script, /BOKUN_IMAGE_HOST = 'imgcdn\.bokun\.tools'/);
+  assert.match(script, /\/api\/bokun\/tours/);
   assert.match(script, /catalog\.v28\.json/);
+  assert.match(script, /uniqueMedia/);
+  assert.match(script, /sourceFromImage/);
   assert.match(script, /cache: 'no-store'/);
   assert.match(script, /ArrowLeft/);
   assert.match(script, /ArrowRight/);
