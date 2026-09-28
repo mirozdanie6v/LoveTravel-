@@ -1,0 +1,445 @@
+const asArray = value => Array.isArray(value) ? value : [];
+const text = (value, max = 8000) => String(value ?? '').replace(/\s+/g, ' ').trim().slice(0, max);
+const numeric = value => Number.isFinite(Number(value)) ? Number(value) : null;
+const bool = value => Boolean(value);
+
+function money(value) {
+  const amount = numeric(value?.amount);
+  const currency = text(value?.currency, 12) || null;
+  return amount === null ? null : { amount, currency };
+}
+
+function nonEmpty(value) {
+  if (value === null || value === undefined || value === '') return false;
+  if (Array.isArray(value)) return value.length > 0;
+  if (typeof value === 'object') return Object.keys(value).length > 0;
+  if (typeof value === 'boolean') return value;
+  return true;
+}
+
+function id(value) {
+  const n = numeric(value);
+  return n === null ? (text(value, 120) || null) : n;
+}
+
+function photoUrl(photo = {}) {
+  const derived = asArray(photo.derived);
+  return text(
+    derived.find(item => item?.name === 'large')?.cleanUrl
+      || derived.find(item => item?.name === 'large')?.url
+      || derived.find(item => item?.name === 'preview')?.cleanUrl
+      || derived.find(item => item?.name === 'preview')?.url
+      || photo.originalUrl,
+    2000,
+  );
+}
+
+function inferIsoDate(entry = {}) {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(String(entry.dateIso || ''))) return String(entry.dateIso);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(String(entry.iso || ''))) return String(entry.iso);
+  const idMatch = String(entry.id || '').match(/_(\d{4})(\d{2})(\d{2})$/);
+  if (idMatch) return `${idMatch[1]}-${idMatch[2]}-${idMatch[3]}`;
+  const timestamp = numeric(entry.date);
+  if (timestamp !== null && timestamp > 0) return new Date(timestamp).toISOString().slice(0, 10);
+  return '';
+}
+
+function point(item = {}) {
+  const address = item.address || {};
+  return {
+    id:id(item.id),
+    title:text(item.title, 240),
+    addressLine1:text(address.addressLine1, 300),
+    addressLine2:text(address.addressLine2, 300),
+    city:text(address.city, 160),
+    state:text(address.state, 160),
+    countryCode:text(address.countryCode, 16),
+    postalCode:text(address.postalCode, 40),
+    latitude:numeric(address.geoPoint?.latitude),
+    longitude:numeric(address.geoPoint?.longitude),
+    providerData:item,
+  };
+}
+
+function genericProviderEntity(item = {}) {
+  return {
+    id:id(item.id),
+    title:text(item.title || item.name || item.label, 240),
+    code:text(item.code || item.rateCode || item.key, 120),
+    description:text(item.description || item.body || item.text, 3000),
+    required:item.required === undefined ? null : bool(item.required),
+    providerData:item,
+  };
+}
+
+function cancellationPolicy(policy) {
+  if (!policy || typeof policy !== 'object') return null;
+  return {
+    id:id(policy.id),
+    title:text(policy.title, 240),
+    policyType:text(policy.policyType || policy.policyTypeEnum, 80),
+    simpleCutoffHours:numeric(policy.simpleCutoffHours),
+    defaultPolicy:bool(policy.defaultPolicy),
+    penaltyRules:asArray(policy.penaltyRules).map(rule => ({
+      id:id(rule.id),
+      cutoffHours:numeric(rule.cutoffHours),
+      charge:numeric(rule.charge),
+      chargeType:text(rule.chargeType, 60),
+      percentage:numeric(rule.percentage),
+      providerData:rule,
+    })),
+    providerData:policy,
+  };
+}
+
+function participantCategory(item = {}) {
+  return {
+    id:id(item.id),
+    title:text(item.title, 120),
+    ticketCategory:text(item.ticketCategory, 60),
+    minAge:numeric(item.minAge),
+    maxAge:numeric(item.maxAge),
+    providerData:item,
+  };
+}
+
+function rateEntity(rate = {}) {
+  return {
+    id:id(rate.id),
+    code:text(rate.rateCode, 100),
+    title:text(rate.title, 240),
+    description:text(rate.description, 4000),
+    index:numeric(rate.index),
+    pricedPerPerson:bool(rate.pricedPerPerson),
+    minPerBooking:numeric(rate.minPerBooking),
+    maxPerBooking:numeric(rate.maxPerBooking),
+    cancellationPolicy:cancellationPolicy(rate.cancellationPolicy),
+    pickup:{
+      selectionType:text(rate.pickupSelectionType, 80),
+      pricingType:text(rate.pickupPricingType, 80),
+      pricedPerPerson:rate.pickupPricedPerPerson === undefined ? null : bool(rate.pickupPricedPerPerson),
+    },
+    dropoff:{
+      selectionType:text(rate.dropoffSelectionType, 80),
+      pricingType:text(rate.dropoffPricingType, 80),
+      pricedPerPerson:rate.dropoffPricedPerPerson === undefined ? null : bool(rate.dropoffPricedPerPerson),
+    },
+    startTimeIds:asArray(rate.startTimeIds).map(id),
+    allStartTimes:bool(rate.allStartTimes),
+    tieredPricingEnabled:bool(rate.tieredPricingEnabled),
+    tiers:asArray(rate.tiers).map(tier => ({
+      id:id(tier.id),
+      minPassengersRequired:numeric(tier.minPassengersRequired),
+      maxPassengersRequired:numeric(tier.maxPassengersRequired),
+      pricingCategoryId:id(tier.pricingCategoryId),
+      activityRateId:id(tier.activityRateId),
+      providerData:tier,
+    })),
+    pricingCategoryIds:asArray(rate.pricingCategoryIds).map(id),
+    extraConfigs:asArray(rate.extraConfigs).map(genericProviderEntity),
+    details:asArray(rate.details).map(genericProviderEntity),
+    textItems:asArray(rate.textItems).map(genericProviderEntity),
+    fixedPassExpiryDate:rate.fixedPassExpiryDate ?? null,
+    passValidForDays:numeric(rate.passValidForDays),
+    providerData:rate,
+  };
+}
+
+function categoryQuote(item = {}) {
+  return {
+    categoryId:id(item.id),
+    amount:money(item.amount),
+    minParticipantsRequired:numeric(item.minParticipantsRequired),
+    maxParticipantsRequired:numeric(item.maxParticipantsRequired),
+    providerData:item,
+  };
+}
+
+function rateQuote(item = {}) {
+  return {
+    rateId:id(item.activityRateId),
+    participantPrices:asArray(item.pricePerCategoryUnit).map(categoryQuote),
+    extraPricePerUnit:asArray(item.extraPricePerUnit).map(genericProviderEntity),
+    extraPricePerCategoryUnit:asArray(item.extraPricePerCategoryUnit).map(genericProviderEntity),
+    providerData:item,
+  };
+}
+
+function availabilitySlot(entry = {}) {
+  return {
+    id:text(entry.id, 180),
+    productId:id(entry.activityId),
+    productTitle:text(entry.activityTitle, 300),
+    ownerId:id(entry.activityOwnerId),
+    ownerTitle:text(entry.activityOwnerTitle, 240),
+    date:inferIsoDate(entry),
+    localizedDate:text(entry.localizedDate, 120),
+    startTime:text(entry.startTime, 40),
+    startTimeId:id(entry.startTimeId),
+    startTimeLabel:text(entry.startTimeLabel, 160),
+    recurrenceId:id(entry.recurrenceId),
+    flexible:bool(entry.flexible),
+    availabilityCount:numeric(entry.availabilityCount),
+    bookedParticipants:numeric(entry.bookedParticipants),
+    unlimitedAvailability:bool(entry.unlimitedAvailability),
+    soldOut:bool(entry.soldOut),
+    unavailable:bool(entry.unavailable),
+    minParticipants:numeric(entry.minParticipants),
+    minParticipantsToBookNow:numeric(entry.minParticipantsToBookNow),
+    defaultRateId:id(entry.defaultRateId),
+    productGroupId:id(entry.productGroupId),
+    guidedLanguages:asArray(entry.guidedLanguages).map(value => text(value, 40)).filter(Boolean),
+    rates:asArray(entry.rates).map(rateEntity),
+    priceQuotesByRate:asArray(entry.pricesByRate).map(rateQuote),
+    defaultPrice:money(entry.defaultPrice),
+    pricesByCategory:entry.pricesByCategory ?? {},
+    pickup:{
+      allotment:entry.pickupAllotment === undefined ? null : bool(entry.pickupAllotment),
+      availabilityCount:numeric(entry.pickupAvailabilityCount),
+      soldOut:entry.pickupSoldOut === undefined ? null : bool(entry.pickupSoldOut),
+      price:money(entry.pickupPrice),
+      pricesByCategory:entry.pickupPricesByCategory ?? {},
+    },
+    dropoff:{
+      price:money(entry.dropoffPrice),
+      pricesByCategory:entry.dropoffPricesByCategory ?? {},
+    },
+    extraPrices:entry.extraPrices ?? {},
+    comboActivity:bool(entry.comboActivity),
+    comboStartTimes:asArray(entry.comboStartTimes),
+    flags:asArray(entry.flags),
+    providerData:entry,
+  };
+}
+
+const MAPPED_PRODUCT_FIELDS = new Set([
+  'id','actualId','externalId','title','description','excerpt','slug','published','lastModified','lastPublished',
+  'activityType','productCategory','categories','activityCategories','activityAttributes','keywords','tagGroups',
+  'duration','durationText','durationType','durationDays','durationHours','durationMinutes','durationWeeks',
+  'difficultyLevel','minAge','baseLanguage','languages','guidanceTypes','timeZone',
+  'keyPhoto','photos','videos',
+  'included','inclusions','excluded','exclusions','requirements','attention','dressCode','knowBeforeYouGoItems',
+  'agendaItems','route',
+  'startPoints','meetingType','googlePlace',
+  'pickupService','pickupPlaceGroups','pickupFlags','pickupMinutesBefore','pickupTimeByLocations','pickupTimeLocationBased',
+  'pickupTimeWindowInMinutes','pickupAllotment','pickupAllotmentType','pickupActivityId','customPickupAllowed',
+  'dropoffService','dropoffPlaceGroups','dropoffFlags','customDropoffAllowed','useSameAsPickUpPlaces',
+  'pricingCategories','rates','defaultRateId','nextDefaultPrice','nextDefaultPriceMoney','nextDefaultPriceAsText',
+  'originalDefaultPrice','activityPriceCatalogs','paymentCurrencies',
+  'bookingCutoff','bookingCutoffDays','bookingCutoffHours','bookingCutoffMinutes','bookingCutoffWeeks',
+  'cutoffReferenceHour','cutoffReferenceMinute','cutoffType','bookingType','bookingQuestions','bookingLabels',
+  'requiredCustomerFields','mainContactFields','passengerFields','customFields','reservationTimeout','vendorReservationTimeout',
+  'requestDeadline','requestDeadlineDays','requestDeadlineHours','requestDeadlineMinutes','requestDeadlineWeeks',
+  'bookableExtras','offers',
+  'cancellationPolicy',
+  'capacityType','inventoryLocal','inventorySupportsAvailability','inventorySupportsPricing','resourceSlots',
+  'scheduleType','dayBasedAvailability','dayOptions','startTimes','defaultOpeningHours','seasonalOpeningHours','hasOpeningHours',
+  'earlyBookingLimitDaysBefore','earlyBookingLimitMonthsBefore','earlyBookingLimitSpecificDateTime','earlyBookingLimitTime','earlyBookingLimitType',
+  'allowCustomizedBookings','privateActivity','storedExternally','createMethod',
+  'supportedAccessibilityTypes','passportRequired',
+  'ticketMsg','ticketPerPerson','barcodeType','overrideBarcodeFormat',
+  'reviewCount','reviewRating','tripadvisorReview',
+  'comboActivity','comboParts','ticketComboComponents','ticketPerComboComponent','returnProduct',
+  'passesAvailable','passCapacity','passExpiryType','passValidForDays','fixedPassExpiryDate',
+  'vendor','actualVendor','affiliateHubProduct','productGroupId','pluginId',
+  'box','boxedActivityId','boxedVendor','hasBoxes','flags','displaySettings','widgetSettings',
+  'showGlobalPickupMsg','showNoPickupMsg','noPickupMsg','useComponentPickupAllotments',
+]);
+
+function coverage(rawProduct, rawAvailability) {
+  const productKeys = Object.keys(rawProduct || {}).sort();
+  const availabilityKeys = [...new Set(asArray(rawAvailability).flatMap(item => Object.keys(item || {})))].sort();
+  const unmappedProductKeys = productKeys.filter(key => !MAPPED_PRODUCT_FIELDS.has(key));
+  return {
+    product:{
+      totalTopLevelFields:productKeys.length,
+      mappedTopLevelFields:productKeys.filter(key => MAPPED_PRODUCT_FIELDS.has(key)),
+      unmappedTopLevelFields:unmappedProductKeys,
+      nonEmptyUnmappedTopLevelFields:unmappedProductKeys.filter(key => nonEmpty(rawProduct?.[key])),
+    },
+    availability:{
+      totalTopLevelFields:availabilityKeys.length,
+      observedTopLevelFields:availabilityKeys,
+    },
+    rawPreserved:true,
+  };
+}
+
+export function buildBokunDomain(product = {}, availability = [], { vendorId = null } = {}) {
+  const productId = id(product.id);
+  if (productId === null) throw new Error('Bókun product is missing id');
+
+  const participantCategories = asArray(product.pricingCategories).map(participantCategory);
+  const rates = asArray(product.rates).map(rateEntity);
+  const mediaPhotos = [product.keyPhoto, ...asArray(product.photos)]
+    .filter(Boolean)
+    .map(photo => ({
+      url:photoUrl(photo),
+      alt:text(photo.alt || photo.title, 300),
+      providerData:photo,
+    }))
+    .filter(item => item.url);
+
+  const domain = {
+    schemaVersion:'lovetravel.bokun-domain.v1',
+    source:'bokun',
+    provider:{
+      vendorId:id(vendorId ?? product.vendor?.id ?? product.actualVendor?.id),
+      productId,
+      externalId:text(product.externalId, 160),
+    },
+    experience:{
+      id:String(productId),
+      externalId:text(product.externalId, 160),
+      title:text(product.title, 300),
+      description:text(product.description, 6000),
+      excerpt:text(product.excerpt, 3000),
+      slug:text(product.slug, 240),
+      published:product.published === undefined ? null : bool(product.published),
+      category:text(product.activityType || product.productCategory, 120),
+      location:{
+        city:text(product.locationCode?.name || product.googlePlace?.city, 160),
+        country:text(product.locationCode?.country || product.googlePlace?.country, 160),
+        timeZone:text(product.timeZone, 80),
+      },
+      duration:{
+        text:text(product.durationText, 120),
+        type:text(product.durationType, 80),
+        days:numeric(product.durationDays),
+        hours:numeric(product.durationHours),
+        minutes:numeric(product.durationMinutes),
+        weeks:numeric(product.durationWeeks),
+        raw:product.duration ?? null,
+      },
+      difficulty:text(product.difficultyLevel, 80),
+      minAge:numeric(product.minAge),
+      languages:{
+        base:text(product.baseLanguage, 40),
+        raw:asArray(product.languages),
+        guidanceTypes:asArray(product.guidanceTypes),
+      },
+      content:{
+        included:product.included ?? null,
+        inclusions:asArray(product.inclusions),
+        excluded:product.excluded ?? null,
+        exclusions:asArray(product.exclusions),
+        requirements:product.requirements ?? null,
+        attention:product.attention ?? null,
+        dressCode:product.dressCode ?? null,
+        knowBeforeYouGoItems:asArray(product.knowBeforeYouGoItems),
+      },
+      itinerary:asArray(product.agendaItems).map((item,index) => ({
+        id:id(item.id),
+        index,
+        title:text(item.title, 300),
+        body:text(item.body, 5000),
+        providerData:item,
+      })),
+      media:{
+        photos:mediaPhotos,
+        videos:asArray(product.videos).map(genericProviderEntity),
+      },
+      meeting:{
+        type:text(product.meetingType, 100),
+        startPoints:asArray(product.startPoints).map(point),
+      },
+      pickup:{
+        enabled:bool(product.pickupService),
+        placeGroups:asArray(product.pickupPlaceGroups).map(genericProviderEntity),
+        flags:asArray(product.pickupFlags),
+        minutesBefore:numeric(product.pickupMinutesBefore),
+        timeByLocations:product.pickupTimeByLocations ?? null,
+        timeLocationBased:product.pickupTimeLocationBased ?? null,
+        timeWindowMinutes:numeric(product.pickupTimeWindowInMinutes),
+        allotment:product.pickupAllotment ?? null,
+        allotmentType:text(product.pickupAllotmentType, 100),
+        customAllowed:product.customPickupAllowed === undefined ? null : bool(product.customPickupAllowed),
+        showGlobalMessage:product.showGlobalPickupMsg === undefined ? null : bool(product.showGlobalPickupMsg),
+        showNoPickupMessage:product.showNoPickupMsg === undefined ? null : bool(product.showNoPickupMsg),
+        noPickupMessage:text(product.noPickupMsg, 3000),
+      },
+      dropoff:{
+        enabled:bool(product.dropoffService),
+        placeGroups:asArray(product.dropoffPlaceGroups).map(genericProviderEntity),
+        flags:asArray(product.dropoffFlags),
+        customAllowed:product.customDropoffAllowed === undefined ? null : bool(product.customDropoffAllowed),
+        useSameAsPickup:product.useSameAsPickUpPlaces === undefined ? null : bool(product.useSameAsPickUpPlaces),
+      },
+      accessibility:asArray(product.supportedAccessibilityTypes),
+      passportRequired:product.passportRequired === undefined ? null : bool(product.passportRequired),
+      reviews:{
+        count:numeric(product.reviewCount),
+        rating:numeric(product.reviewRating),
+        tripadvisor:product.tripadvisorReview ?? null,
+      },
+      paymentCurrencies:asArray(product.paymentCurrencies),
+    },
+    participants:participantCategories,
+    rates,
+    extras:asArray(product.bookableExtras).map(genericProviderEntity),
+    offers:asArray(product.offers).map(genericProviderEntity),
+    bookingRequirements:{
+      questions:asArray(product.bookingQuestions).map(genericProviderEntity),
+      requiredCustomerFields:asArray(product.requiredCustomerFields),
+      mainContactFields:asArray(product.mainContactFields),
+      passengerFields:asArray(product.passengerFields),
+      customFields:asArray(product.customFields).map(genericProviderEntity),
+      labels:asArray(product.bookingLabels),
+      allowCustomizedBookings:product.allowCustomizedBookings === undefined ? null : bool(product.allowCustomizedBookings),
+      bookingType:text(product.bookingType, 100),
+      cutoff:{
+        raw:product.bookingCutoff ?? null,
+        days:numeric(product.bookingCutoffDays),
+        hours:numeric(product.bookingCutoffHours),
+        minutes:numeric(product.bookingCutoffMinutes),
+        weeks:numeric(product.bookingCutoffWeeks),
+        referenceHour:numeric(product.cutoffReferenceHour),
+        referenceMinute:numeric(product.cutoffReferenceMinute),
+        type:text(product.cutoffType, 100),
+      },
+      requestDeadline:{
+        raw:product.requestDeadline ?? null,
+        days:numeric(product.requestDeadlineDays),
+        hours:numeric(product.requestDeadlineHours),
+        minutes:numeric(product.requestDeadlineMinutes),
+        weeks:numeric(product.requestDeadlineWeeks),
+      },
+      reservationTimeout:numeric(product.reservationTimeout),
+      vendorReservationTimeout:numeric(product.vendorReservationTimeout),
+    },
+    cancellationPolicy:cancellationPolicy(product.cancellationPolicy),
+    availabilitySlots:asArray(availability).map(availabilitySlot),
+    providerRaw:{
+      product,
+      availability:asArray(availability),
+    },
+    coverage:coverage(product, availability),
+  };
+
+  return domain;
+}
+
+export function quoteMatrix(domain = {}) {
+  return asArray(domain.availabilitySlots).flatMap(slot =>
+    asArray(slot.priceQuotesByRate).flatMap(rate =>
+      asArray(rate.participantPrices).map(price => ({
+        slotId:slot.id,
+        date:slot.date,
+        startTime:slot.startTime,
+        rateId:rate.rateId,
+        participantCategoryId:price.categoryId,
+        amount:price.amount,
+        minParticipantsRequired:price.minParticipantsRequired,
+        maxParticipantsRequired:price.maxParticipantsRequired,
+      }))
+    )
+  );
+}
+
+export const _domainTest = {
+  inferIsoDate,
+  cancellationPolicy,
+  rateEntity,
+  availabilitySlot,
+  coverage,
+};
