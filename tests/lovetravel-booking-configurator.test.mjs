@@ -56,3 +56,24 @@ test('interactive resolver loads a 31-day window and pickup places lazily',()=>{
   assert.match(worker,/String\(selection\?\.pickup\?\.mode \|\| ''\)\.toUpperCase\(\) === 'PICKUP'/);
   assert.match(worker,/includePickupPlaces,/);
 });
+
+
+test('calendar availability is cached independently from exact selection resolution',()=>{
+  assert.match(js,/const calendarByKey = new Map\(\)/);
+  assert.match(js,/function refreshCalendar\(/);
+  assert.match(js,/function calendarFor\(/);
+  assert.match(js,/function calendarTimesForDate\(/);
+  assert.match(js,/if\(!data\.selection\?\.date\) storeCalendar\(productId,data\)/);
+  assert.match(js,/date:null,[\s\S]*startTimeId:null,[\s\S]*slotId:null/);
+});
+
+test('single-time date selection uses cached month data and only one exact revalidation',()=>{
+  assert.match(js,/const cachedTimes=calendarTimesForDate\(productId,date\)/);
+  assert.match(js,/if\(cachedTimes\.length===1\)/);
+  assert.match(js,/patchSelection\(productId,\{slotId:cachedTimes\[0\]\.id,startTimeId:cachedTimes\[0\]\.startTimeId\}\)/);
+});
+
+test('rate selection refreshes its calendar range without blocking the sheet flow',()=>{
+  assert.match(js,/refreshCalendar\(productId,\{force:true\}\)\.catch/);
+  assert.match(js,/calendar:\(\)=>activeProductId\?calendarFor\(activeProductId\):null/);
+});
