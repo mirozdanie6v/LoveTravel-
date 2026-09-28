@@ -183,10 +183,10 @@ test('capacity, rate minimum, pickup and stale combinations produce explicit con
 
 test('booking cutoff is enforced using the product timezone',()=>{
   const d=domain();
-  const before=slotBookability(d,d.availabilitySlots[0],new Date('2026-10-01T04:00:00Z'));
+  const before=slotBookability(d,d.availabilitySlots[0],new Date('2026-09-30T22:00:00Z'));
   assert.equal(before.bookable,true);
 
-  const after=slotBookability(d,d.availabilitySlots[0],new Date('2026-10-01T05:30:00Z'));
+  const after=slotBookability(d,d.availabilitySlots[0],new Date('2026-10-01T00:00:00Z'));
   assert.equal(after.bookable,false);
   assert.ok(after.reasons.includes('booking_cutoff_passed'));
 
