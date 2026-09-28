@@ -53,25 +53,40 @@ jobs:
             if (JSON.stringify(model.photos) !== JSON.stringify([14,6])) throw new Error('wrong gallery sizes: '+JSON.stringify(model));
             if (!model.images.every(src => /^https:\/\/imgcdn\.bokun\.tools\//.test(src))) throw new Error('wrong image origins: '+JSON.stringify(model.images));
 
+            await page.waitForFunction(() =>
+              document.documentElement.classList.contains('love-travel-branded') &&
+              document.querySelector('.brandmark-real img')?.src.includes('bizweb.dktcdn.net/100/416/263/themes/809458/assets/logo.png') &&
+              document.querySelector('#homeScreen .lt-hero') &&
+              document.querySelector('#homeScreen .lt-home-trust'),
+              null, { timeout:15000 }
+            );
+            const brand = await page.evaluate(() => {
+              const hero=document.querySelector('#homeScreen .lt-hero');
+              const logo=document.querySelector('.brandmark-real img');
+              return {
+                title:document.title,
+                logo:logo?.src || '',
+                heroText:hero?.innerText || '',
+                heroImage:getComputedStyle(hero).backgroundImage,
+                branded:document.documentElement.classList.contains('love-travel-branded'),
+              };
+            });
+            if (brand.title !== 'Nha Trang Love Travel') throw new Error('wrong page title: '+JSON.stringify(brand));
+            if (!brand.heroText.includes('Robinson Beach') || !brand.heroText.includes('Hòn Mun')) throw new Error('hero missing real products: '+JSON.stringify(brand));
+            if (!brand.heroImage.includes('imgcdn.bokun.tools')) throw new Error('hero is not using Bókun photography: '+JSON.stringify(brand));
+
             await page.evaluate(() => showScreen('catalog'));
             await page.waitForTimeout(500);
 
-            const domProbe = await page.evaluate(() => {
-              const title = 'Nha Trang Island Hopping Adventure in Robinson Beach';
-              const leaf = [...document.querySelectorAll('#catalogScreen *')].find(el => el.children.length === 0 && String(el.textContent || '').trim() === title);
-              const chain = [];
-              let node = leaf;
-              for (let i=0; node && i<6; i++, node=node.parentElement) {
-                chain.push({tag:node.tagName, className:String(node.className||''), id:node.id||'', html:node.outerHTML.slice(0,2500)});
-              }
-              return {
-                brandrow: document.querySelector('.brandrow')?.outerHTML?.slice(0,4000) || '',
-                topbar: document.querySelector('.topbar')?.outerHTML?.slice(0,4000) || '',
-                nav: document.querySelector('nav')?.outerHTML?.slice(0,4000) || '',
-                chain,
-              };
-            });
-            console.log('DOM_PROBE '+JSON.stringify(domProbe));
+            const filterState = await page.evaluate(() => ({
+              filter:getComputedStyle(document.querySelector('#catalogScreen .catalog-filter-v26')).display,
+              search:getComputedStyle(document.querySelector('#catalogScreen .catalog-search-v26')).display,
+              intro:Boolean(document.querySelector('#catalogScreen .lt-catalog-intro')),
+            }));
+            if (filterState.filter !== 'none' || filterState.search !== 'none' || !filterState.intro) {
+              throw new Error('legacy catalog controls are still visible: '+JSON.stringify(filterState));
+            }
+
             const catalogText = await page.locator('#catalogScreen').innerText();
             for (const title of model.titles) {
               if (!catalogText.includes(title)) throw new Error('catalog missing title: '+title);
@@ -104,7 +119,7 @@ jobs:
             await page.locator('.tour-lightbox.is-open').waitFor({ state:'visible', timeout:10000 });
             await page.waitForFunction(() => document.querySelectorAll('.tour-lightbox__thumb').length === 6, null, { timeout:10000 });
 
-            console.log(JSON.stringify({ ok:true, model, cards, renderedImages, pageErrors:errors }, null, 2));
+            console.log(JSON.stringify({ ok:true, model, brand, filterState, cards, renderedImages, pageErrors:errors }, null, 2));
             await browser.close();
           })().catch(error => {
             console.error(error);
