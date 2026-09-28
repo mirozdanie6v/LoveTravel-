@@ -207,7 +207,6 @@ jobs:
             await page.waitForTimeout(1200);
             const checked=await page.evaluate(() => globalThis.LoveTravelBookingConfigurator?.resolution?.());
             if (!checked?.readyToBook) throw new Error('configurator did not validate complete current product selection: '+JSON.stringify(checked));
-            if ((document?.body?.innerText||'').includes('dummy-never')) throw new Error('unreachable');
 
             await page.evaluate(() => openTour('1287580'));
             await page.waitForFunction(() =>
