@@ -1,11 +1,14 @@
-name: LoveTravel Bókun adapter check
+name: LoveTravel Bókun check
 
 on:
   push:
     branches: [main]
     paths:
       - 'src/bokun-adapter.js'
+      - 'src/worker-r2.js'
+      - 'wrangler.jsonc'
       - 'tests/bokun-adapter.test.mjs'
+      - 'tests/bokun-worker.test.mjs'
       - '.github/workflows/lovetravel-adapter-check.yml'
   workflow_dispatch:
 
