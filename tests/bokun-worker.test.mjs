@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { handleLoveTravelBokunTours } from '../src/worker-r2.js';
+import { handleLoveTravelBokunTours, handleLoveTravelBookingSelection } from '../src/worker-r2.js';
 
 function product(id) {
   return {
@@ -17,7 +17,11 @@ function product(id) {
       { id:3, title:'Infant', ticketCategory:'INFANT', minAge:0, maxAge:4 },
     ],
     defaultRateId:10,
-    rates:[{ id:10, title:'Default', rateCode:'TG1', pricedPerPerson:true, minPerBooking:1, maxPerBooking:30 }],
+    rates:[{
+      id:10, title:'Default', rateCode:'TG1', pricedPerPerson:true, minPerBooking:1, maxPerBooking:30,
+      startTimeIds:[5782395], allStartTimes:false,
+      pickupSelectionType:'UNAVAILABLE', pickupPricingType:'INCLUDED_IN_PRICE',
+    }],
   };
 }
 
@@ -25,6 +29,8 @@ const availability=[{
   id:'5782395_20260928',
   localizedDate:"Mon 28.Sep'26",
   startTime:'09:00',
+  startTimeId:5782395,
+  recurrenceId:7001,
   availabilityCount:50,
   bookedParticipants:0,
   soldOut:false,
@@ -131,4 +137,85 @@ test('LoveTravel exposes the domain model separately from the legacy catalog vie
   } finally {
     globalThis.fetch=originalFetch;
   }
+});
+
+
+test('BookingSelection resolve revalidates one product/date against fresh Bókun data and returns a quote', async () => {
+  const originalFetch=globalThis.fetch;
+  const calls=[];
+  globalThis.fetch=async input => {
+    const url=new URL(typeof input === 'string' ? input : input.url);
+    calls.push(url);
+    if (url.pathname.endsWith('/product')) {
+      return new Response(JSON.stringify(product(url.searchParams.get('productId'))), {
+        status:200,
+        headers:{'content-type':'application/json'},
+      });
+    }
+    if (url.pathname.endsWith('/availability')) {
+      return new Response(JSON.stringify(availability), {
+        status:200,
+        headers:{'content-type':'application/json'},
+      });
+    }
+    throw new Error('unexpected upstream '+url);
+  };
+
+  try {
+    const request=new Request('https://lovetravel.viiversion.com/api/bokun/booking-selection/resolve',{
+      method:'POST',
+      headers:{'content-type':'application/json'},
+      body:JSON.stringify({
+        selection:{
+          productId:'1287578',
+          date:'2026-09-28',
+          startTimeId:'5782395',
+          rateId:'10',
+          participants:{1:2,2:1},
+          pickup:{mode:'MEET_ON_LOCATION'},
+        }
+      }),
+    });
+    const response=await handleLoveTravelBookingSelection(request,{
+      BOKUN_INTEGRATION_BASE_URL:'https://integration.example',
+    });
+    const body=await response.json();
+
+    assert.equal(response.status,200);
+    assert.equal(body.ok,true);
+    assert.equal(body.mode,'read-only-revalidation');
+    assert.equal(body.schemaVersion,'lovetravel.booking-selection-resolution.v1');
+    assert.equal(body.product.id,'1287578');
+    assert.equal(body.resolved.slot.id,'5782395_20260928');
+    assert.equal(body.resolved.rate.id,'10');
+    assert.equal(body.quote.available,true);
+    assert.equal(body.quote.total,95);
+    assert.equal(body.readyToQuote,true);
+    assert.equal(calls.length,2);
+    assert.ok(calls.every(url=>url.searchParams.get('productId')==='1287578'));
+    assert.ok(calls.some(url=>url.pathname.endsWith('/availability') && url.searchParams.get('start')==='2026-09-28' && url.searchParams.get('end')==='2026-09-28'));
+    assert.equal(response.headers.get('cache-control'),'no-store, max-age=0');
+  } finally {
+    globalThis.fetch=originalFetch;
+  }
+});
+
+test('BookingSelection resolve rejects unsupported products and does not create bookings', async () => {
+  const unsupported=await handleLoveTravelBookingSelection(
+    new Request('https://lovetravel.viiversion.com/api/bokun/booking-selection/resolve',{
+      method:'POST',
+      headers:{'content-type':'application/json'},
+      body:JSON.stringify({selection:{productId:'999999'}}),
+    }),
+    {},
+  );
+  assert.equal(unsupported.status,400);
+  assert.equal((await unsupported.json()).error,'unsupported_product');
+
+  const get=await handleLoveTravelBookingSelection(
+    new Request('https://lovetravel.viiversion.com/api/bokun/booking-selection/resolve'),
+    {},
+  );
+  assert.equal(get.status,405);
+  assert.equal(get.headers.get('allow'),'POST');
 });
