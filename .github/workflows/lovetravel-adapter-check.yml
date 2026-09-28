@@ -15,6 +15,8 @@ on:
       - 'src/lovetravel-brand.css'
       - 'src/lovetravel-domain-tour.js'
       - 'src/lovetravel-domain-tour.css'
+      - 'src/lovetravel-booking-configurator.js'
+      - 'src/lovetravel-booking-configurator.css'
       - 'build.mjs'
       - 'wrangler.jsonc'
       - 'tests/bokun-adapter.test.mjs'
@@ -25,6 +27,7 @@ on:
       - 'tests/tour-lightbox.test.mjs'
       - 'tests/lovetravel-brand.test.mjs'
       - 'tests/lovetravel-domain-tour.test.mjs'
+      - 'tests/lovetravel-booking-configurator.test.mjs'
       - '.github/workflows/lovetravel-adapter-check.yml'
   workflow_dispatch:
 
