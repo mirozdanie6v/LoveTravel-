@@ -43,3 +43,52 @@ jobs:
               dropoff:.experience.dropoff
             }]
           }' /tmp/domain.json
+
+
+          cat >/tmp/selection.json <<'JSON'
+          {
+            "selection":{
+              "productId":"1287580",
+              "date":"2026-09-29",
+              "startTimeId":"5782396",
+              "rateId":"2581227",
+              "participants":{
+                "1250028":2,
+                "1250029":1
+              },
+              "pickup":{"mode":"MEET_ON_LOCATION"}
+            }
+          }
+          JSON
+
+          curl -fsS -X POST 'https://lovetravel.viiversion.com/api/bokun/booking-selection/resolve' \
+            -H 'content-type: application/json' \
+            --data-binary @/tmp/selection.json > /tmp/selection-result.json
+
+          jq -e '
+            .ok == true and
+            .schemaVersion == "lovetravel.booking-selection-resolution.v1" and
+            .product.id == "1287580" and
+            .resolved.rate.id == "2581227" and
+            .resolved.slot.date == "2026-09-29" and
+            .resolved.slot.startTimeId == "5782396" and
+            .resolved.participantTotal == 3 and
+            .quote.available == true and
+            .quote.currency == "USD" and
+            .quote.total > 0 and
+            .readyToQuote == true and
+            ([.errors[].code] | index("rate_not_available_for_slot") | not) and
+            ([.errors[].code] | index("insufficient_capacity") | not)
+          ' /tmp/selection-result.json >/dev/null
+
+          jq '{
+            schemaVersion,
+            product,
+            resolved,
+            quote,
+            readyToQuote,
+            readyToBook,
+            bookingDataIssues,
+            warnings,
+            errors
+          }' /tmp/selection-result.json
