@@ -1,0 +1,45 @@
+name: Audit booking selection prerequisites
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.audit-booking-selection'
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS 'https://lovetravel.viiversion.com/api/bokun/domain?start=2026-09-29&end=2026-10-05' > /tmp/domain.json
+          jq '{
+            schema,
+            products:[.domains[]|{
+              id:.experience.id,
+              title:.experience.title,
+              rates:[.rates[]|{
+                id,title,code,minPerBooking,maxPerBooking,
+                pickup,dropoff,startTimeIds,allStartTimes,
+                pricingCategoryIds,tieredPricingEnabled,
+                cancellationPolicy
+              }],
+              participants:.participants,
+              slots:[.availabilitySlots[]|{
+                id,date,localizedDate,startTime,startTimeId,recurrenceId,
+                availabilityCount,bookedParticipants,unlimitedAvailability,
+                soldOut,unavailable,minParticipants,minParticipantsToBookNow,
+                defaultRateId,pickup,
+                rateIds:[.rates[].id],
+                quoteRateIds:[.priceQuotesByRate[].rateId],
+                quotes:[.priceQuotesByRate[]|{rateId,participantPrices}]
+              }],
+              bookingRequirements,
+              extras,
+              meeting:.experience.meeting,
+              pickup:.experience.pickup,
+              dropoff:.experience.dropoff
+            }]
+          }' /tmp/domain.json
