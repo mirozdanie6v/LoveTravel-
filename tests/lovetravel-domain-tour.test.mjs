@@ -46,3 +46,10 @@ test('domain tour visual layer is included after runtime in the production build
   assert.match(css,/\.lt-domain-rate\.is-active/);
   assert.match(css,/\.lt-domain-date\.is-active/);
 });
+
+
+test('domain tour repairs legacy renderer overwrites while a Bókun product is active',()=>{
+  assert.match(js,/function repairLegacyOverwrite/);
+  assert.match(js,/new MutationObserver\(repairLegacyOverwrite\)/);
+  assert.match(js,/!document\.querySelector\('#tourScreen \\.lt-domain-shell'\)/);
+});
