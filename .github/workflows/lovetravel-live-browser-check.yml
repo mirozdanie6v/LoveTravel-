@@ -118,8 +118,52 @@ jobs:
             await secondImage.click({ timeout:10000 });
             await page.locator('.tour-lightbox.is-open').waitFor({ state:'visible', timeout:10000 });
             await page.waitForFunction(() => document.querySelectorAll('.tour-lightbox__thumb').length === 6, null, { timeout:10000 });
+            await page.getByRole('button', { name:'Закрыть галерею' }).click();
+            await page.locator('.tour-lightbox').waitFor({ state:'hidden', timeout:10000 });
 
-            console.log(JSON.stringify({ ok:true, model, brand, filterState, cards, renderedImages, pageErrors:errors }, null, 2));
+            await page.evaluate(() => openTour('1287578'));
+            await page.waitForFunction(() =>
+              document.querySelector('#tourScreen.lt-domain-tour')?.dataset.ltDomainProduct === '1287578' &&
+              document.querySelectorAll('#tourScreen .lt-domain-rate').length === 7 &&
+              document.querySelectorAll('#tourScreen .lt-domain-date').length > 0,
+              null, { timeout:30000 }
+            );
+            const robinson = await page.evaluate(() => ({
+              text:document.querySelector('#tourScreen')?.innerText || '',
+              rates:document.querySelectorAll('#tourScreen .lt-domain-rate').length,
+              dates:document.querySelectorAll('#tourScreen .lt-domain-date').length,
+              participants:document.querySelectorAll('#tourScreen .lt-domain-participant').length,
+              heroImages:[...document.querySelectorAll('#tourScreen .lt-domain-gallery img')].map(img=>img.currentSrc||img.src),
+            }));
+            const forbiddenTourCopy=['Собирающиеся выезды','Создать свою группу','30% / 100%','если группа не набралась','Присоединиться'];
+            if (forbiddenTourCopy.some(term => robinson.text.includes(term))) throw new Error('legacy MAX TOUR semantics leaked into Robinson page: '+JSON.stringify(robinson));
+            if (robinson.rates !== 7 || robinson.participants < 3) throw new Error('Robinson domain entities incomplete: '+JSON.stringify(robinson));
+            if (!robinson.heroImages.length || !robinson.heroImages.every(src=>src.includes('imgcdn.bokun.tools'))) throw new Error('Robinson gallery is not Bókun-backed');
+
+            const rateButtons=page.locator('#tourScreen .lt-domain-rate');
+            await rateButtons.nth(1).click();
+            if (!(await rateButtons.nth(1).evaluate(el=>el.classList.contains('is-active')))) throw new Error('rate selector did not update');
+            if ((await page.locator('#tourScreen .lt-domain-date').count()) < 1) throw new Error('rate selection has no availability UI');
+
+            await page.evaluate(() => openTour('1287580'));
+            await page.waitForFunction(() =>
+              document.querySelector('#tourScreen.lt-domain-tour')?.dataset.ltDomainProduct === '1287580' &&
+              document.querySelectorAll('#tourScreen .lt-domain-rate').length === 4,
+              null, { timeout:30000 }
+            );
+            const honMun = await page.evaluate(() => ({
+              text:document.querySelector('#tourScreen')?.innerText || '',
+              rates:document.querySelectorAll('#tourScreen .lt-domain-rate').length,
+              dates:document.querySelectorAll('#tourScreen .lt-domain-date').length,
+              participants:document.querySelectorAll('#tourScreen .lt-domain-participant').length,
+              questions:document.querySelectorAll('#tourScreen .lt-domain-info').length,
+            }));
+            if (forbiddenTourCopy.some(term => honMun.text.includes(term))) throw new Error('legacy MAX TOUR semantics leaked into Hòn Mun page: '+JSON.stringify(honMun));
+            if (honMun.rates !== 4 || honMun.participants < 3 || honMun.dates < 1) throw new Error('Hòn Mun domain entities incomplete: '+JSON.stringify(honMun));
+            if (honMun.text.includes('Дополнительные услуги') || honMun.text.includes('Дополнительные вопросы')) throw new Error('empty extras/questions rendered unexpectedly');
+
+            if (errors.length) throw new Error('page errors: '+JSON.stringify(errors));
+            console.log(JSON.stringify({ ok:true, model, brand, filterState, cards, renderedImages, robinson:{rates:robinson.rates,dates:robinson.dates,participants:robinson.participants}, honMun:{rates:honMun.rates,dates:honMun.dates,participants:honMun.participants}, pageErrors:errors }, null, 2));
             await browser.close();
           })().catch(error => {
             console.error(error);
