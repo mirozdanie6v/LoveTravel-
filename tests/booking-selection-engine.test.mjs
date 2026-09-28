@@ -18,7 +18,23 @@ function domain() {
       title:'Hon Mun',
       location:{ timeZone:'Asia/Ho_Chi_Minh' },
       meeting:{ startPoints:[{id:1,title:'Pier'}] },
-      pickup:{ enabled:true, placeGroups:[], customAllowed:false },
+      pickup:{
+        enabled:true,
+        placeGroups:[],
+        customAllowed:false,
+        places:[
+          {
+            id:501,title:'Thien Anh Hotel',placeType:'ACCOMMODATION',externalId:'19140929',
+            askForRoomNumber:true,addressLine1:'59 Nguyen Bieu',wholeAddress:'59 Nguyen Bieu, 650000 Nha Trang',
+            city:'Nha Trang',countryCode:'VN',postalCode:'650000',latitude:12.2377,longitude:109.19385,
+          },
+          {
+            id:502,title:'Bến Tàu Du Lịch Nha Trang',placeType:'OTHER',externalId:'pier',
+            askForRoomNumber:false,addressLine1:'388 Võ Thị Sáu',wholeAddress:'388 Võ Thị Sáu, Nam Nha Trang',
+            city:'Nam Nha Trang',countryCode:'VN',latitude:12.19866,longitude:109.20252,
+          },
+        ],
+      },
     },
     participants:[
       { id:101, title:'Adult', ticketCategory:'ADULT', minAge:10, maxAge:99 },
@@ -211,6 +227,51 @@ test('readyToBook remains false until Bókun-required customer fields are suppli
   },{now});
   assert.equal(complete.readyToQuote,true);
   assert.equal(complete.readyToBook,true);
+});
+
+test('pickup selection exposes provider places and blocks booking until a valid place is chosen',()=>{
+  const d=domain();
+  const base={
+    productId:'1287580',date:'2026-10-01',startTimeId:'301',rateId:'201',
+    participants:{101:2},
+    customer:{firstName:'A',lastName:'B',phoneNumber:'+84000000000'},
+    pickup:{mode:'PICKUP'},
+  };
+
+  const missing=resolveBookingSelection(d,base,{now});
+  assert.equal(missing.readyToQuote,true);
+  assert.equal(missing.readyToBook,false);
+  assert.equal(missing.constraints.pickup.places.length,2);
+  assert.equal(missing.constraints.pickup.places[0].askForRoomNumber,true);
+  assert.ok(missing.bookingDataIssues.some(x=>x.code==='pickup_location_required'));
+
+  const unknown=resolveBookingSelection(d,{
+    ...base,pickup:{mode:'PICKUP',placeId:'999'},
+  },{now});
+  assert.ok(unknown.bookingDataIssues.some(x=>x.code==='unknown_pickup_place'));
+  assert.equal(unknown.readyToBook,false);
+
+  const complete=resolveBookingSelection(d,{
+    ...base,pickup:{mode:'PICKUP',placeId:'501'},
+  },{now});
+  assert.equal(complete.readyToQuote,true);
+  assert.equal(complete.readyToBook,true);
+  assert.equal(complete.resolved.pickupPlace.id,'501');
+  assert.equal(complete.resolved.pickupPlace.title,'Thien Anh Hotel');
+});
+
+test('pickup cannot silently proceed when provider supplies no places and custom pickup is disabled',()=>{
+  const d=domain();
+  d.experience.pickup.places=[];
+  const result=resolveBookingSelection(d,{
+    productId:'1287580',date:'2026-10-01',startTimeId:'301',rateId:'201',
+    participants:{101:1},
+    customer:{firstName:'A',lastName:'B',phoneNumber:'+84000000000'},
+    pickup:{mode:'PICKUP'},
+  },{now});
+  assert.equal(result.readyToQuote,true);
+  assert.equal(result.readyToBook,false);
+  assert.ok(result.bookingDataIssues.some(x=>x.code==='pickup_places_unavailable'));
 });
 
 test('selectionForPatch clears stale slot/time when date changes',()=>{
