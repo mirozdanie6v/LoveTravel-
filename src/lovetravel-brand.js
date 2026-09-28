@@ -123,34 +123,34 @@
 
   function heroMarkup() {
     const c=t();
-    return \`
+    return `
       <div class="lt-hero__inner">
         <div class="lt-hero__top">
-          <span class="lt-hero__badge">\${c.badge}</span>
-          <span class="lt-hero__status">\${c.live}</span>
+          <span class="lt-hero__badge">${c.badge}</span>
+          <span class="lt-hero__status">${c.live}</span>
         </div>
         <div class="lt-hero__content">
-          <div class="lt-hero__kicker">\${c.kicker}</div>
-          <h1>\${c.title}</h1>
-          <p class="lt-hero__lead">\${c.lead}</p>
+          <div class="lt-hero__kicker">${c.kicker}</div>
+          <h1>${c.title}</h1>
+          <p class="lt-hero__lead">${c.lead}</p>
           <div class="lt-hero__chips" aria-label="Featured tours">
             <span class="lt-hero__chip">Robinson Beach</span>
             <span class="lt-hero__chip">Hòn Mun Marine Park</span>
           </div>
           <div class="lt-hero__actions">
-            <button class="lt-hero__action lt-hero__action--primary" type="button" data-lt-action="catalog">\${c.tours} →</button>
-            <button class="lt-hero__action lt-hero__action--secondary" type="button" data-lt-action="ai">\${c.ai}</button>
+            <button class="lt-hero__action lt-hero__action--primary" type="button" data-lt-action="catalog">${c.tours} →</button>
+            <button class="lt-hero__action lt-hero__action--secondary" type="button" data-lt-action="ai">${c.ai}</button>
           </div>
         </div>
-      </div>\`;
+      </div>`;
   }
 
   function trustMarkup() {
     const c=t();
-    return \`
-      <div class="lt-trust-item"><b>\${c.trust1[0]}</b><span>\${c.trust1[1]}</span></div>
-      <div class="lt-trust-item"><b>\${c.trust2[0]}</b><span>\${c.trust2[1]}</span></div>
-      <div class="lt-trust-item"><b>\${c.trust3[0]}</b><span>\${c.trust3[1]}</span></div>\`;
+    return `
+      <div class="lt-trust-item"><b>${c.trust1[0]}</b><span>${c.trust1[1]}</span></div>
+      <div class="lt-trust-item"><b>${c.trust2[0]}</b><span>${c.trust2[1]}</span></div>
+      <div class="lt-trust-item"><b>${c.trust3[0]}</b><span>${c.trust3[1]}</span></div>`;
   }
 
   function brandHome() {
@@ -164,7 +164,7 @@
       hero.className='hero lt-hero';
       hero.dataset.ltBrandLocale=lang;
       hero.dataset.ltBrandImage=image;
-      hero.style.setProperty('--lt-hero-image', \`url("\${String(image).replace(/"/g,'%22')}")\`);
+      hero.style.setProperty('--lt-hero-image', `url("${String(image).replace(/"/g,'%22')}")`);
       hero.innerHTML=heroMarkup();
     }
 
@@ -200,7 +200,7 @@
     }
     if (intro && intro.dataset.ltLocale !== lang) {
       intro.dataset.ltLocale=lang;
-      intro.innerHTML=\`<b>\${c.catalogIntro}</b><span>\${c.catalogText}</span>\`;
+      intro.innerHTML=`<b>${c.catalogIntro}</b><span>${c.catalogText}</span>`;
     }
 
     screen.querySelectorAll('.wide-card').forEach(card => {
@@ -213,7 +213,7 @@
         action.className='lt-card-action';
         priceRow.appendChild(action);
       }
-      action.textContent=\`\${c.card} →\`;
+      action.textContent=`${c.card} →`;
     });
   }
 
