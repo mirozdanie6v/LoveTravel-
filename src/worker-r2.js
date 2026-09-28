@@ -102,6 +102,7 @@ export async function handleLoveTravelBokunTours(request, env, url = new URL(req
   }
 
   try {
+    const includePickupPlaces = isDomain && url.searchParams.get('includePickupPlaces') === '1';
     const common = {
       fetchImpl:fetch,
       baseUrl:env.BOKUN_INTEGRATION_BASE_URL || 'https://integration.viiversion.com',
@@ -110,6 +111,7 @@ export async function handleLoveTravelBokunTours(request, env, url = new URL(req
       start:requestedStart,
       end:requestedEnd,
       currency:'USD',
+      includePickupPlaces,
     };
 
     const payload = isDomain
@@ -133,7 +135,7 @@ export async function handleLoveTravelBokunTours(request, env, url = new URL(req
       start:requestedStart,
       end:requestedEnd,
       fetchedAt:new Date().toISOString(),
-      ...(isDomain ? { domains } : { tours:payload }),
+      ...(isDomain ? { includePickupPlaces, domains } : { tours:payload }),
     }, {
       headers:{
         'cache-control':'no-store, max-age=0',
@@ -207,6 +209,7 @@ export async function handleLoveTravelBookingSelection(request, env, url = new U
       start,
       end,
       currency:'USD',
+      includePickupPlaces:true,
     });
     const domain = domains[0];
     if (!domain) {
