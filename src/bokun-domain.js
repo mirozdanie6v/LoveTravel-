@@ -280,6 +280,11 @@ export function buildBokunDomain(product = {}, availability = [], { vendorId = n
     }))
     .filter(item => item.url);
 
+  const schemaCoverage = coverage(product, availability);
+  const providerExtensions = Object.fromEntries(
+    schemaCoverage.product.unmappedTopLevelFields.map(key => [key, product[key]])
+  );
+
   const domain = {
     schemaVersion:'lovetravel.bokun-domain.v1',
     source:'bokun',
@@ -409,11 +414,12 @@ export function buildBokunDomain(product = {}, availability = [], { vendorId = n
     },
     cancellationPolicy:cancellationPolicy(product.cancellationPolicy),
     availabilitySlots:asArray(availability).map(availabilitySlot),
+    providerExtensions,
     providerRaw:{
       product,
       availability:asArray(availability),
     },
-    coverage:coverage(product, availability),
+    coverage:schemaCoverage,
   };
 
   return domain;
