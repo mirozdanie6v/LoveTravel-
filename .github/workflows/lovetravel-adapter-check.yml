@@ -6,9 +6,14 @@ on:
     paths:
       - 'src/bokun-adapter.js'
       - 'src/worker-r2.js'
+      - 'src/runtime-api.js'
+      - 'src/tour-lightbox.js'
+      - 'src/catalog-show-press.js'
       - 'wrangler.jsonc'
       - 'tests/bokun-adapter.test.mjs'
       - 'tests/bokun-worker.test.mjs'
+      - 'tests/bokun-catalog-runtime.test.mjs'
+      - 'tests/tour-lightbox.test.mjs'
       - '.github/workflows/lovetravel-adapter-check.yml'
   workflow_dispatch:
 
