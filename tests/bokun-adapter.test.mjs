@@ -95,7 +95,7 @@ test('normalizes Bókun product into the existing LoveTravel tour shape', () => 
   assert.equal(tour.route[0][1], 'Visit Bich Dam fishing village.');
 });
 
-test('fetch helper reads only product and availability endpoints and returns normalized tours', async () => {
+test('fetch helper reads product, availability and pickup places endpoints and returns normalized tours', async () => {
   const calls = [];
   const fakeFetch = async url => {
     calls.push(String(url));
@@ -103,6 +103,18 @@ test('fetch helper reads only product and availability endpoints and returns nor
     if (current.pathname.endsWith('/product')) {
       const requested = current.searchParams.get('productId');
       return new Response(JSON.stringify({ ...product, id:Number(requested) }), {
+        status:200,
+        headers:{ 'content-type':'application/json' },
+      });
+    }
+    if (current.pathname.endsWith('/pickup-places')) {
+      return new Response(JSON.stringify({
+        pickupPlaces:[{
+          id:15136970,title:'Thien Anh Hotel',type:'ACCOMMODATION',askForRoomNumber:true,
+          location:{address:'59 Nguyen Bieu',city:'Nha Trang',countryCode:'VN',latitude:12.2377,longitude:109.19385}
+        }],
+        dropoffPlaces:[],
+      }), {
         status:200,
         headers:{ 'content-type':'application/json' },
       });
@@ -121,9 +133,10 @@ test('fetch helper reads only product and availability endpoints and returns nor
   });
 
   assert.equal(tours.length, 2);
-  assert.equal(calls.length, 4);
+  assert.equal(calls.length, 6);
   assert.ok(calls.every(url => url.includes('vendorId=137689')));
   assert.ok(calls.some(url => url.includes('productId=1287578')));
   assert.ok(calls.some(url => url.includes('productId=1287580')));
   assert.ok(calls.filter(url => url.includes('/availability')).every(url => url.includes('currency=USD')));
+  assert.equal(calls.filter(url => url.includes('/pickup-places')).length,2);
 });
