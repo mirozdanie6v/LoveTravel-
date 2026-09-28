@@ -63,13 +63,13 @@
       liked.clear();
       data.favorites.forEach(id => liked.add(id));
     }
-    if (Array.isArray(data.customTours)) {
+    if (!globalThis.LOVE_TRAVEL_BOKUN_ACTIVE && Array.isArray(data.customTours)) {
       data.customTours.forEach(tour => {
         const index = TOURS.findIndex(t => t.id === tour.id);
         if (index >= 0) TOURS[index] = tour; else TOURS.push(tour);
       });
     }
-    applyGroupDepartures(data.groupDepartures);
+    if (!globalThis.LOVE_TRAVEL_BOKUN_ACTIVE) applyGroupDepartures(data.groupDepartures);
   }
 
   function departureLabel(iso) {
@@ -111,15 +111,43 @@
     });
   }
 
+  function applyCatalog(catalog, source = 'static') {
+    if (!Array.isArray(catalog) || !catalog.length) return false;
+    TOURS.splice(0, TOURS.length, ...catalog);
+    globalThis.LOVE_TRAVEL_CATALOG_SOURCE = source;
+    globalThis.LOVE_TRAVEL_BOKUN_ACTIVE = source === 'bokun';
+    if (!TOURS.some(t => String(t.id) === String(state.selectedTour?.id))) state.selectedTour = TOURS[0];
+    else state.selectedTour = TOURS.find(t => String(t.id) === String(state.selectedTour.id));
+    return true;
+  }
+
   async function loadCanonicalCatalog() {
     try {
-      const response = await fetch('/catalog.v28.json', { cache: 'no-store' });
+      const response = await fetch('/api/bokun/tours', { cache:'no-store', credentials:'same-origin' });
+      if (response.ok) {
+        const data = await response.json();
+        if (
+          data?.ok === true &&
+          data?.source === 'bokun' &&
+          data?.vendorId === '137689' &&
+          Array.isArray(data?.tours) &&
+          data.tours.length === 2 &&
+          data.tours.every(tour => ['1287578','1287580'].includes(String(tour?.id)))
+        ) {
+          applyCatalog(data.tours, 'bokun');
+          return;
+        }
+      }
+    } catch (error) {
+      console.warn('[LoveTravel] Bókun catalog unavailable, using static fallback:', error);
+    }
+
+    globalThis.LOVE_TRAVEL_BOKUN_ACTIVE = false;
+    try {
+      const response = await fetch('/catalog.v28.json', { cache:'no-store' });
       if (!response.ok) return;
       const catalog = await response.json();
-      if (!Array.isArray(catalog) || !catalog.length) return;
-      TOURS.splice(0, TOURS.length, ...catalog);
-      if (!TOURS.some(t => t.id === state.selectedTour?.id)) state.selectedTour = TOURS[0];
-      else state.selectedTour = TOURS.find(t => t.id === state.selectedTour.id);
+      applyCatalog(catalog, 'static-fallback');
     } catch (_) {}
   }
 
