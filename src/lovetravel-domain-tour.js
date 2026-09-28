@@ -516,9 +516,33 @@
     globalThis.openTour=wrapped;
     return true;
   }
+  let repairQueued=false;
+  function repairLegacyOverwrite(){
+    const screen=document.querySelector('#tourScreen');
+    const productId=String(screen?.dataset?.ltDomainProduct||'');
+    if(!screen?.classList.contains('active') || !PRODUCT_IDS.has(productId) || screen.querySelector('.lt-domain-shell')) return;
+    if(repairQueued) return;
+    repairQueued=true;
+    queueMicrotask(async()=>{
+      repairQueued=false;
+      try{
+        const list=await domains();
+        const domain=list.find(item=>String(item?.experience?.id)===productId);
+        if(domain && !document.querySelector('#tourScreen .lt-domain-shell')) renderDomain(domain);
+      }catch(error){
+        console.error('[LoveTravel] failed to repair legacy tour overwrite',error);
+      }
+    });
+  }
   function install(){
     if(!installOpenTour()) setTimeout(install,50);
     domains().catch(()=>{});
+    const screen=document.querySelector('#tourScreen');
+    if(screen){
+      new MutationObserver(repairLegacyOverwrite).observe(screen,{subtree:true,childList:true});
+    } else {
+      setTimeout(install,60);
+    }
   }
   document.addEventListener('click',event=>{
     if(event.target.closest?.('.mt-language-switcher button')&&currentProductId&&document.querySelector('#tourScreen')?.classList.contains('active')){
