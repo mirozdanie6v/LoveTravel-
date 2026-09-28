@@ -63,6 +63,12 @@ test('LoveTravel worker exposes only the two agreed Bókun products in read-only
         headers:{ 'content-type':'application/json' },
       });
     }
+    if (url.pathname.endsWith('/pickup-places')) {
+      return new Response(JSON.stringify({pickupPlaces:[],dropoffPlaces:[]}), {
+        status:200,
+        headers:{ 'content-type':'application/json' },
+      });
+    }
     throw new Error(`unexpected upstream: ${url}`);
   };
 
@@ -81,7 +87,7 @@ test('LoveTravel worker exposes only the two agreed Bókun products in read-only
     assert.equal(body.tours.length,2);
     assert.deepEqual(body.tours.map(t=>t.id),['1287578','1287580']);
     assert.equal(body.tours[0].group.adult,'$35');
-    assert.equal(calls.length,4);
+    assert.equal(calls.length,6);
     assert.ok(calls.every(url=>url.searchParams.get('vendorId') === '137689'));
     assert.deepEqual(
       calls.filter(url=>url.pathname.endsWith('/product')).map(url=>url.searchParams.get('productId')).sort(),
@@ -119,6 +125,15 @@ test('LoveTravel exposes the domain model separately from the legacy catalog vie
         unexpectedNewField:{value:'preserved'},
       }),{status:200,headers:{'content-type':'application/json'}});
     }
+    if (url.pathname.endsWith('/pickup-places')) {
+      return new Response(JSON.stringify({
+        pickupPlaces:[{
+          id:501,title:'Hotel A',type:'ACCOMMODATION',askForRoomNumber:true,
+          location:{address:'1 Beach Rd',city:'Nha Trang',countryCode:'VN'}
+        }],
+        dropoffPlaces:[],
+      }),{status:200,headers:{'content-type':'application/json'}});
+    }
     return new Response(JSON.stringify(availability),{status:200,headers:{'content-type':'application/json'}});
   };
   try {
@@ -134,6 +149,8 @@ test('LoveTravel exposes the domain model separately from the legacy catalog vie
     assert.equal(body.domains[0].bookingRequirements.questions[0].title,'Hotel name');
     assert.deepEqual(body.domains[0].providerExtensions.unexpectedNewField,{value:'preserved'});
     assert.equal(body.domains[0].coverage.rawPreserved,true);
+    assert.equal(body.domains[0].experience.pickup.places[0].title,'Hotel A');
+    assert.equal(body.domains[0].experience.pickup.places[0].askForRoomNumber,true);
   } finally {
     globalThis.fetch=originalFetch;
   }
@@ -154,6 +171,12 @@ test('BookingSelection resolve revalidates one product/date against fresh Bókun
     }
     if (url.pathname.endsWith('/availability')) {
       return new Response(JSON.stringify(availability), {
+        status:200,
+        headers:{'content-type':'application/json'},
+      });
+    }
+    if (url.pathname.endsWith('/pickup-places')) {
+      return new Response(JSON.stringify({pickupPlaces:[],dropoffPlaces:[]}), {
         status:200,
         headers:{'content-type':'application/json'},
       });
@@ -191,7 +214,7 @@ test('BookingSelection resolve revalidates one product/date against fresh Bókun
     assert.equal(body.quote.available,true);
     assert.equal(body.quote.total,95);
     assert.equal(body.readyToQuote,true);
-    assert.equal(calls.length,2);
+    assert.equal(calls.length,3);
     assert.ok(calls.every(url=>url.searchParams.get('productId')==='1287578'));
     assert.ok(calls.some(url=>url.pathname.endsWith('/availability') && url.searchParams.get('start')==='2026-09-28' && url.searchParams.get('end')==='2026-09-28'));
     assert.equal(response.headers.get('cache-control'),'no-store, max-age=0');
