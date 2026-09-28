@@ -80,7 +80,8 @@ jobs:
             await firstImage.click({ timeout:10000 });
             await page.locator('.tour-lightbox.is-open').waitFor({ state:'visible', timeout:10000 });
             await page.waitForFunction(() => document.querySelectorAll('.tour-lightbox__thumb').length === 14, null, { timeout:10000 });
-            await page.locator('[data-lightbox-close]').click();
+            await page.getByRole('button', { name:'Закрыть галерею' }).click();
+            await page.locator('.tour-lightbox').waitFor({ state:'hidden', timeout:10000 });
 
             const secondImage = bokunImages.nth(1);
             await secondImage.click({ timeout:10000 });
