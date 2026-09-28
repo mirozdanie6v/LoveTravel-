@@ -51,5 +51,5 @@ test('domain tour visual layer is included after runtime in the production build
 test('domain tour repairs legacy renderer overwrites while a Bókun product is active',()=>{
   assert.match(js,/function repairLegacyOverwrite/);
   assert.match(js,/new MutationObserver\(repairLegacyOverwrite\)/);
-  assert.match(js,/!document\.querySelector\('#tourScreen \\.lt-domain-shell'\)/);
+  assert.ok(js.includes("!document.querySelector('#tourScreen .lt-domain-shell')"));
 });
