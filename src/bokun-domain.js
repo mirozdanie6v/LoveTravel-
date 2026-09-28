@@ -61,6 +61,36 @@ function point(item = {}) {
   };
 }
 
+function pickupPlace(item = {}) {
+  const address = item.address || item.location?.address || {};
+  const geo = address.geoPoint || item.geoPoint || item.location?.geoPoint || {};
+  const label = item.title || item.name || item.label || item.addressLine1 || address.addressLine1 || '';
+  return {
+    id:id(item.id),
+    title:text(label, 300),
+    description:text(item.description || item.pickupDescription || item.notes, 3000),
+    placeType:text(item.placeType || item.type, 80),
+    addressLine1:text(item.addressLine1 || address.addressLine1, 300),
+    addressLine2:text(item.addressLine2 || address.addressLine2, 300),
+    city:text(item.city || address.city, 160),
+    state:text(item.state || address.state, 160),
+    countryCode:text(item.countryCode || address.countryCode, 16),
+    postalCode:text(item.postalCode || address.postalCode, 40),
+    latitude:numeric(item.latitude ?? geo.latitude),
+    longitude:numeric(item.longitude ?? geo.longitude),
+    providerData:item,
+  };
+}
+
+function pickupPlaceArray(payload) {
+  if (Array.isArray(payload)) return payload;
+  if (!payload || typeof payload !== 'object') return [];
+  for (const key of ['pickupPlaces','places','items','results']) {
+    if (Array.isArray(payload[key])) return payload[key];
+  }
+  return [];
+}
+
 function genericProviderEntity(item = {}) {
   return {
     id:id(item.id),
@@ -265,7 +295,7 @@ function coverage(rawProduct, rawAvailability) {
   };
 }
 
-export function buildBokunDomain(product = {}, availability = [], { vendorId = null } = {}) {
+export function buildBokunDomain(product = {}, availability = [], { vendorId = null, pickupPlaces = [] } = {}) {
   const productId = id(product.id);
   if (productId === null) throw new Error('Bókun product is missing id');
 
@@ -351,6 +381,7 @@ export function buildBokunDomain(product = {}, availability = [], { vendorId = n
       pickup:{
         enabled:bool(product.pickupService),
         placeGroups:asArray(product.pickupPlaceGroups).map(genericProviderEntity),
+        places:pickupPlaceArray(pickupPlaces).map(pickupPlace),
         flags:asArray(product.pickupFlags),
         minutesBefore:numeric(product.pickupMinutesBefore),
         timeByLocations:product.pickupTimeByLocations ?? null,
@@ -418,6 +449,7 @@ export function buildBokunDomain(product = {}, availability = [], { vendorId = n
     providerRaw:{
       product,
       availability:asArray(availability),
+      pickupPlaces,
     },
     coverage:schemaCoverage,
   };
@@ -448,4 +480,6 @@ export const _domainTest = {
   rateEntity,
   availabilitySlot,
   coverage,
+  pickupPlaceArray,
+  pickupPlace,
 };
