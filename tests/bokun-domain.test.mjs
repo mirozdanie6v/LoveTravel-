@@ -143,7 +143,7 @@ test('domain model preserves provider structures that do not exist in legacy MAX
 });
 
 test('domain keeps a date x rate x participant price matrix instead of collapsing to first day',()=>{
-  const d=buildBokunDomain(product,availability,{vendorId:'137689'});
+  const d=buildBokunDomain(product,availability,{vendorId:'137689',pickupPlaces});
   const matrix=quoteMatrix(d);
   assert.equal(matrix.length,4);
   const day1=matrix.find(x=>x.date==='2026-09-29' && String(x.participantCategoryId)==='10');
@@ -155,7 +155,7 @@ test('domain keeps a date x rate x participant price matrix instead of collapsin
 });
 
 test('schema drift is explicit and raw provider payload is retained losslessly',()=>{
-  const d=buildBokunDomain(product,availability,{vendorId:'137689'});
+  const d=buildBokunDomain(product,availability,{vendorId:'137689',pickupPlaces});
   assert.ok(d.coverage.product.unmappedTopLevelFields.includes('unexpectedNewField'));
   assert.deepEqual(d.providerExtensions.unexpectedNewField,{nested:'must survive schema drift'});
   assert.deepEqual(d.providerRaw.product.unexpectedNewField,{nested:'must survive schema drift'});
