@@ -227,11 +227,28 @@ function pickupConstraint(domain, rate, slot, participantTotal) {
     (pickupCapacity !== null && pickupCapacity >= 0 && participantTotal > pickupCapacity);
 
   const pickupAllowed = productEnabled && selectionType !== 'UNAVAILABLE' && !pickupSoldOut;
-  const required = pickupAllowed && selectionType === 'REQUIRED';
+  const required = pickupAllowed && ['REQUIRED','PRESELECTED'].includes(selectionType);
   const optional = pickupAllowed && selectionType === 'OPTIONAL';
   const modes = [];
   if (!required) modes.push('MEET_ON_LOCATION');
   if (pickupAllowed) modes.push('PICKUP');
+
+  const places = arr(domain?.experience?.pickup?.places).map(item => ({
+    id:item?.id === null || item?.id === undefined ? null : str(item.id),
+    title:str(item?.title),
+    description:str(item?.description),
+    placeType:str(item?.placeType),
+    addressLine1:str(item?.addressLine1),
+    addressLine2:str(item?.addressLine2),
+    city:str(item?.city),
+    state:str(item?.state),
+    countryCode:str(item?.countryCode),
+    postalCode:str(item?.postalCode),
+    latitude:num(item?.latitude),
+    longitude:num(item?.longitude),
+  })).filter(item => item.id);
+
+  const customAllowed = Boolean(domain?.experience?.pickup?.customAllowed);
 
   return {
     selectionType:selectionType || (productEnabled ? 'OPTIONAL' : 'UNAVAILABLE'),
@@ -249,8 +266,9 @@ function pickupConstraint(domain, rate, slot, participantTotal) {
       code:str(item?.code),
       description:str(item?.description),
     })),
-    customAllowed:Boolean(domain?.experience?.pickup?.customAllowed),
-    locationChoiceAvailable:arr(domain?.experience?.pickup?.placeGroups).length > 0 || Boolean(domain?.experience?.pickup?.customAllowed),
+    places,
+    customAllowed,
+    locationChoiceAvailable:places.length > 0 || customAllowed,
   };
 }
 
@@ -468,9 +486,6 @@ export function resolveBookingSelection(domain = {}, input = {}, { now = new Dat
   if (selection.pickup.mode === 'MEET_ON_LOCATION' && pickup.required) {
     errors.push(issue('meet_on_location_not_allowed','pickup.mode','Meeting on location is not allowed for this rate'));
   }
-  if (selection.pickup.mode === 'PICKUP' && pickup.locationChoiceAvailable && !selection.pickup.placeId && !selection.pickup.customLocation) {
-    warnings.push(issue('pickup_location_not_selected','pickup','Pickup is selected but no pickup location has been selected yet'));
-  }
 
   const extras = arr(domain.extras).map(extra => ({
     id:extra?.id === null || extra?.id === undefined ? null : str(extra.id),
@@ -581,6 +596,39 @@ export function resolveBookingSelection(domain = {}, input = {}, { now = new Dat
   if (pickup.optional && !selection.pickup.mode) {
     bookingDataIssues.push(issue('pickup_mode_required','pickup.mode','Choose pickup or meeting on location before booking'));
   }
+  if (selection.pickup.mode === 'PICKUP') {
+    const knownPickupIds = new Set(arr(pickup.places).map(item => str(item.id)).filter(Boolean));
+    if (!pickup.locationChoiceAvailable) {
+      bookingDataIssues.push(issue(
+        'pickup_places_unavailable',
+        'pickup',
+        'Pickup is enabled for the selected rate, but no selectable pickup places or custom pickup option are available',
+      ));
+    } else if (selection.pickup.placeId) {
+      if (!knownPickupIds.has(str(selection.pickup.placeId))) {
+        bookingDataIssues.push(issue(
+          'unknown_pickup_place',
+          'pickup.placeId',
+          'Selected pickup place is not available for this product',
+          { placeId:str(selection.pickup.placeId) },
+        ));
+      }
+    } else if (selection.pickup.customLocation) {
+      if (!pickup.customAllowed) {
+        bookingDataIssues.push(issue(
+          'custom_pickup_not_allowed',
+          'pickup.customLocation',
+          'Custom pickup location is not allowed for this product',
+        ));
+      }
+    } else {
+      bookingDataIssues.push(issue(
+        'pickup_location_required',
+        'pickup',
+        'Choose a pickup place before booking',
+      ));
+    }
+  }
   const blockingQuoteCodes = new Set([
     'product_mismatch','date_not_available','slot_not_available','time_not_available','unknown_rate',
     'rate_not_available_for_slot','participants_required','unknown_participant_category','below_rate_minimum',
@@ -606,6 +654,9 @@ export function resolveBookingSelection(domain = {}, input = {}, { now = new Dat
       rate:currentRate,
       participantTotal,
       pickupMode:selection.pickup.mode,
+      pickupPlace:selection.pickup.placeId
+        ? arr(pickup.places).find(item => str(item.id) === str(selection.pickup.placeId)) || null
+        : null,
     },
     constraints:{
       dates,
