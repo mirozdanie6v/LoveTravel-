@@ -14,7 +14,7 @@
       date:'Дата и время', dateEmpty:'Выберите дату', option:'Вариант', optionEmpty:'Выберите вариант',
       guests:'Участники', guestsEmpty:'Добавьте участников', pickup:'Как добраться', pickupEmpty:'Выберите способ',
       meet:'Встретимся на месте', pickupMode:'Забрать из отеля', included:'включено в цену',
-      total:'Итого', from:'от', continue:'Продолжить', check:'Проверить данные', ready:'Готово к бронированию',
+      total:'Итого', from:'от', continue:'Продолжить', check:'Проверить данные', ready:'Конфигурация проверена',
       unavailable:'Комбинация недоступна', updating:'Проверяем актуальные данные…',
       chooseDate:'Выберите дату', chooseTime:'Выберите время', chooseOption:'Выберите вариант экскурсии',
       chooseGuests:'Укажите участников', choosePickup:'Выберите способ встречи',
@@ -35,7 +35,7 @@
       date:'Date & time', dateEmpty:'Choose a date', option:'Option', optionEmpty:'Choose an option',
       guests:'Guests', guestsEmpty:'Add guests', pickup:'Getting there', pickupEmpty:'Choose a method',
       meet:'Meet on location', pickupMode:'Hotel pickup', included:'included in price',
-      total:'Total', from:'from', continue:'Continue', check:'Check details', ready:'Ready to book',
+      total:'Total', from:'from', continue:'Continue', check:'Check details', ready:'Configuration checked',
       unavailable:'Combination unavailable', updating:'Checking live data…',
       chooseDate:'Choose a date', chooseTime:'Choose a time', chooseOption:'Choose a tour option',
       chooseGuests:'Add guests', choosePickup:'Choose how to meet',
@@ -56,7 +56,7 @@
       date:'Ngày & giờ', dateEmpty:'Chọn ngày', option:'Lựa chọn', optionEmpty:'Chọn chương trình',
       guests:'Khách', guestsEmpty:'Thêm khách', pickup:'Di chuyển', pickupEmpty:'Chọn cách gặp',
       meet:'Gặp tại điểm hẹn', pickupMode:'Đón tại khách sạn', included:'đã gồm trong giá',
-      total:'Tổng', from:'từ', continue:'Tiếp tục', check:'Kiểm tra thông tin', ready:'Sẵn sàng đặt',
+      total:'Tổng', from:'từ', continue:'Tiếp tục', check:'Kiểm tra thông tin', ready:'Đã kiểm tra cấu hình',
       unavailable:'Lựa chọn không khả dụng', updating:'Đang kiểm tra dữ liệu mới nhất…',
       chooseDate:'Chọn ngày', chooseTime:'Chọn giờ', chooseOption:'Chọn chương trình',
       chooseGuests:'Chọn số khách', choosePickup:'Chọn cách gặp',
@@ -77,7 +77,7 @@
       date:'날짜 및 시간', dateEmpty:'날짜 선택', option:'옵션', optionEmpty:'옵션 선택',
       guests:'인원', guestsEmpty:'인원 추가', pickup:'이동 방법', pickupEmpty:'방법 선택',
       meet:'현장 미팅', pickupMode:'호텔 픽업', included:'가격 포함',
-      total:'합계', from:'최저', continue:'계속', check:'정보 확인', ready:'예약 준비 완료',
+      total:'합계', from:'최저', continue:'계속', check:'정보 확인', ready:'구성 확인 완료',
       unavailable:'선택 불가', updating:'실시간 정보를 확인 중…',
       chooseDate:'날짜 선택', chooseTime:'시간 선택', chooseOption:'투어 옵션 선택',
       chooseGuests:'인원 선택', choosePickup:'미팅 방법 선택',
@@ -208,7 +208,7 @@
     const screen=document.querySelector('#tourScreen');
     if(!screen) return;
     screen.classList.add('lt-booking-ui');
-    ['.lt-domain-rates','.lt-domain-dates','.lt-domain-participants'].forEach(sel=>{
+    ['.lt-domain-rates','.lt-domain-dates','.lt-domain-participants','.lt-domain-fieldchips'].forEach(sel=>{
       screen.querySelector(sel)?.closest('.lt-domain-section')?.classList.add('lt-domain-legacy-selection');
     });
   }
@@ -384,29 +384,33 @@
     root.querySelectorAll('[data-lt-guest-plus]').forEach(btn=>btn.addEventListener('click',()=>updateCount(btn.dataset.ltGuestPlus,1)));
     root.querySelector('[data-lt-guests-done]')?.addEventListener('click',async()=>{ await resolve(productId,{quiet:true}); closeSheet(); });
   }
+  function pickupPlaceRows(places,s){
+    if(!places.length) return '<div class="lt-empty">'+esc(t().noPlaces)+'</div>';
+    return places.map(place=>
+      '<button type="button" class="lt-pickup-place '+(String(place.id)===String(s.pickup?.placeId)?'is-active':'')+'" data-lt-place="'+esc(place.id)+'">'+
+        '<span><b>'+esc(place.title)+'</b><small>'+esc(place.wholeAddress||[place.addressLine1,place.city].filter(Boolean).join(', '))+'</small></span>'+
+        (place.askForRoomNumber?'<i>room</i>':'')+
+      '</button>'
+    ).join('');
+  }
   function openPickupSheet(productId,query=''){
     const r=resolutionByProduct.get(productId); if(!r) return;
     const p=r.constraints?.pickup||{};
     const s=selection(productId);
     const mode=s.pickup?.mode;
-    let places=arr(p.places);
-    if(query){
-      const q=query.toLocaleLowerCase();
-      places=places.filter(x=>(x.title+' '+x.wholeAddress+' '+x.city).toLocaleLowerCase().includes(q));
-    }
-    places=places.slice(0,60);
+    const allPlaces=arr(p.places);
+    const filterPlaces=value=>{
+      const q=String(value||'').trim().toLocaleLowerCase();
+      return (q?allPlaces.filter(x=>(x.title+' '+x.wholeAddress+' '+x.city).toLocaleLowerCase().includes(q)):allPlaces).slice(0,60);
+    };
+    const initialPlaces=filterPlaces(query);
     const body='<div class="lt-sheet-scroll">'+
       '<div class="lt-pickup-modes">'+
         (arr(p.modes).includes('MEET_ON_LOCATION')?pickupModeCard('MEET_ON_LOCATION',t().meet,mode==='MEET_ON_LOCATION',''):'')+
         (arr(p.modes).includes('PICKUP')?pickupModeCard('PICKUP',t().pickupMode,mode==='PICKUP',p.pricingType==='INCLUDED_IN_PRICE'?t().included:''):'')+
       '</div>'+
-      (mode==='PICKUP'?'<div class="lt-pickup-search"><label>'+esc(t().pickupPlace)+'</label><input type="search" value="'+esc(query)+'" placeholder="'+esc(t().searchHotel)+'" data-lt-pickup-search></div>'+
-        '<div class="lt-pickup-results">'+(places.length?places.map(place=>
-          '<button type="button" class="lt-pickup-place '+(String(place.id)===String(s.pickup?.placeId)?'is-active':'')+'" data-lt-place="'+esc(place.id)+'">'+
-            '<span><b>'+esc(place.title)+'</b><small>'+esc(place.wholeAddress||[place.addressLine1,place.city].filter(Boolean).join(', '))+'</small></span>'+
-            (place.askForRoomNumber?'<i>room</i>':'')+
-          '</button>'
-        ).join(''):'<div class="lt-empty">'+esc(t().noPlaces)+'</div>')+'</div>':'')+
+      (mode==='PICKUP'?'<div class="lt-pickup-search"><label>'+esc(t().pickupPlace)+'</label><input type="search" value="'+esc(query)+'" placeholder="'+esc(t().searchHotel)+'" data-lt-pickup-search autocomplete="off"></div>'+
+        '<div class="lt-pickup-results" data-lt-pickup-results>'+pickupPlaceRows(initialPlaces,s)+'</div>':'')+
       '</div>';
     const root=showSheet(t().choosePickup,body);
     root.querySelectorAll('[data-lt-pickup-mode]').forEach(btn=>btn.addEventListener('click',async()=>{
@@ -415,19 +419,22 @@
       await resolve(productId,{quiet:true});
       if(selectedMode==='MEET_ON_LOCATION') closeSheet(); else openPickupSheet(productId);
     }));
-    root.querySelector('[data-lt-pickup-search]')?.addEventListener('input',e=>{
-      const value=e.target.value; clearTimeout(e.target._timer); e.target._timer=setTimeout(()=>openPickupSheet(productId,value),120);
+    const search=root.querySelector('[data-lt-pickup-search]');
+    const results=root.querySelector('[data-lt-pickup-results]');
+    search?.addEventListener('input',e=>{
+      if(results) results.innerHTML=pickupPlaceRows(filterPlaces(e.target.value),selection(productId));
     });
-    root.querySelectorAll('[data-lt-place]').forEach(btn=>btn.addEventListener('click',async()=>{
+    results?.addEventListener('click',async e=>{
+      const btn=e.target.closest('[data-lt-place]'); if(!btn) return;
+      const currentQuery=search?.value||'';
       patchSelection(productId,{pickup:{mode:'PICKUP',placeId:btn.dataset.ltPlace}});
       const next=await resolve(productId,{quiet:true});
       const place=next.resolved?.pickupPlace;
       if(place?.askForRoomNumber){
-        openPickupSheet(productId,query);
-        const active=sheet.querySelector('[data-lt-place="'+CSS.escape(String(place.id))+'"]');
-        active?.insertAdjacentHTML('afterend','<div class="lt-room-note">'+esc(t().roomNeeded)+'</div>');
+        if(results) results.innerHTML=pickupPlaceRows(filterPlaces(currentQuery),selection(productId));
+        results?.querySelector('[data-lt-place="'+CSS.escape(String(place.id))+'"]')?.insertAdjacentHTML('afterend','<div class="lt-room-note">'+esc(t().roomNeeded)+'</div>');
       } else closeSheet();
-    }));
+    });
   }
   function pickupModeCard(mode,title,active,note){
     return '<button type="button" class="lt-pickup-mode '+(active?'is-active':'')+'" data-lt-pickup-mode="'+esc(mode)+'"><span class="lt-radio"></span><span><b>'+esc(title)+'</b>'+(note?'<small>'+esc(note)+'</small>':'')+'</span></button>';
@@ -483,8 +490,8 @@
     const screen=document.querySelector('#tourScreen');
     const id=String(screen?.dataset?.ltDomainProduct||'');
     if(!PRODUCT_IDS.has(id)) return;
-    if(id!==activeProductId || !resolutionByProduct.has(id)) bootstrap(id);
-    else render(id);
+    const mounted=Boolean(screen.querySelector('[data-lt-config="'+CSS.escape(id)+'"]'));
+    if(id!==activeProductId || !resolutionByProduct.has(id) || !mounted) bootstrap(id);
   }
   const observer=new MutationObserver(()=>detectProduct());
   function start(){
