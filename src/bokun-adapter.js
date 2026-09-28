@@ -1,3 +1,5 @@
+import { buildBokunDomain, quoteMatrix } from './bokun-domain.js';
+
 const DEFAULT_INTEGRATION_BASE_URL = 'https://integration.viiversion.com';
 export const LOVE_TRAVEL_BOKUN_VENDOR_ID = '137689';
 export const LOVE_TRAVEL_BOKUN_PRODUCT_IDS = Object.freeze(['1287578', '1287580']);
@@ -23,102 +25,85 @@ function htmlToList(value) {
   return [...new Set(source.split(/\n+/).map(item => text(item, 300)).filter(Boolean))];
 }
 
-function photoUrl(photo = {}) {
-  const derived = asArray(photo.derived);
-  return text(
-    derived.find(item => item?.name === 'large')?.cleanUrl
-      || derived.find(item => item?.name === 'large')?.url
-      || derived.find(item => item?.name === 'preview')?.cleanUrl
-      || derived.find(item => item?.name === 'preview')?.url
-      || photo.originalUrl,
-    2000,
-  );
-}
-
 function unique(values) {
   return [...new Set(values.filter(Boolean))];
 }
 
-function priceMapForAvailability(entry = {}, preferredRateId = 0) {
-  const byRate = asArray(entry.pricesByRate);
-  const selected = byRate.find(item => Number(item?.activityRateId) === Number(preferredRateId))
-    || byRate[0]
-    || null;
-  return new Map(asArray(selected?.pricePerCategoryUnit).map(item => [
-    String(item?.id ?? ''),
-    money(item?.amount),
-  ]).filter(([, value]) => value));
-}
-
-function categoryByType(product = {}, type) {
-  return asArray(product.pricingCategories).find(item => String(item?.ticketCategory || '').toUpperCase() === type) || null;
+function categoryByType(domain = {}, type) {
+  return asArray(domain.participants).find(item => String(item?.ticketCategory || '').toUpperCase() === type) || null;
 }
 
 function moneyLabel(value) {
-  if (!value) return '';
-  const rounded = Number.isInteger(value.amount) ? String(value.amount) : String(Number(value.amount.toFixed(2)));
-  return value.currency === 'USD' ? `$${rounded}` : `${rounded} ${value.currency}`;
+  if (!value || !Number.isFinite(Number(value.amount))) return '';
+  const amount = Number(value.amount);
+  const rounded = Number.isInteger(amount) ? String(amount) : String(Number(amount.toFixed(2)));
+  return value.currency === 'USD' ? `$${rounded}` : `${rounded} ${value.currency || ''}`.trim();
 }
 
-function defaultRate(product = {}) {
-  const rates = asArray(product.rates);
-  return rates.find(rate => Number(rate?.id) === Number(product.defaultRateId)) || rates[0] || null;
+function quoteMap(slot = {}, rateId = null) {
+  const selected = asArray(slot.priceQuotesByRate)
+    .find(item => String(item.rateId) === String(rateId))
+    || asArray(slot.priceQuotesByRate)[0]
+    || null;
+  return new Map(asArray(selected?.participantPrices).map(item => [
+    String(item.categoryId ?? ''),
+    item.amount,
+  ]).filter(([, value]) => value));
 }
 
-function normalizeDeparture(entry = {}) {
-  const capacity = Math.max(0, Number(entry.availabilityCount) || 0);
-  const taken = Math.max(0, Number(entry.bookedParticipants) || 0);
+function defaultRate(domain = {}) {
+  const product = domain.providerRaw?.product || {};
+  const rates = asArray(domain.rates);
+  return rates.find(rate => String(rate?.id) === String(product.defaultRateId))
+    || rates[0]
+    || null;
+}
+
+function firstBookableSlot(domain = {}) {
+  return asArray(domain.availabilitySlots).find(item => !item?.soldOut && !item?.unavailable)
+    || asArray(domain.availabilitySlots)[0]
+    || {};
+}
+
+function compatibilityDeparture(slot = {}) {
+  const available = Math.max(0, Number(slot.availabilityCount) || 0);
+  const taken = Math.max(0, Number(slot.bookedParticipants) || 0);
   return {
-    id: text(entry.id, 160),
-    iso: text(entry.dateIso || entry.iso || '', 20),
-    date: text(entry.localizedDate || entry.date || '', 80),
-    time: text(entry.startTime, 30),
+    id:text(slot.id, 160),
+    iso:text(slot.date, 20),
+    date:text(slot.localizedDate || slot.date, 80),
+    time:text(slot.startTime, 30),
     taken,
-    capacity: capacity + taken,
-    available: capacity,
-    status: entry.soldOut || entry.unavailable ? 'full' : 'available',
-    soldOut: Boolean(entry.soldOut),
-    unavailable: Boolean(entry.unavailable),
-    startTimeId: Number(entry.startTimeId) || null,
-    recurrenceId: Number(entry.recurrenceId) || null,
+    capacity:available + taken,
+    available,
+    status:slot.soldOut || slot.unavailable ? 'full' : 'available',
+    soldOut:Boolean(slot.soldOut),
+    unavailable:Boolean(slot.unavailable),
+    startTimeId:Number(slot.startTimeId) || null,
+    recurrenceId:Number(slot.recurrenceId) || null,
+    minParticipants:Number(slot.minParticipants) || 0,
+    minParticipantsToBookNow:Number(slot.minParticipantsToBookNow) || 0,
+    pickupAvailabilityCount:Number.isFinite(Number(slot.pickup?.availabilityCount)) ? Number(slot.pickup.availabilityCount) : null,
+    unlimitedAvailability:Boolean(slot.unlimitedAvailability),
+    defaultRateId:slot.defaultRateId ?? null,
   };
 }
 
-function inferIsoDate(entry = {}) {
-  if (/^\d{4}-\d{2}-\d{2}$/.test(String(entry.dateIso || ''))) return String(entry.dateIso);
-  if (/^\d{4}-\d{2}-\d{2}$/.test(String(entry.iso || ''))) return String(entry.iso);
-  const idMatch = String(entry.id || '').match(/_(\d{4})(\d{2})(\d{2})$/);
-  return idMatch ? `${idMatch[1]}-${idMatch[2]}-${idMatch[3]}` : '';
-}
+export function projectBokunDomainToLegacyTour(domain = {}) {
+  const product = domain.providerRaw?.product || {};
+  const firstSlot = firstBookableSlot(domain);
+  const selectedRate = defaultRate(domain);
+  const prices = quoteMap(firstSlot, selectedRate?.id);
+  const adult = categoryByType(domain, 'ADULT');
+  const child = categoryByType(domain, 'CHILD');
+  const infant = categoryByType(domain, 'INFANT');
 
-export function normalizeBokunAvailability(entries = []) {
-  return asArray(entries).map(entry => normalizeDeparture({
-    ...entry,
-    dateIso: inferIsoDate(entry),
-  }));
-}
-
-export function normalizeBokunProduct(product = {}, availability = []) {
-  const productId = text(product.id, 40);
-  if (!productId) throw new Error('Bókun product is missing id');
-
-  const departures = normalizeBokunAvailability(availability);
-  const firstAvailable = asArray(availability).find(item => !item?.soldOut && !item?.unavailable) || asArray(availability)[0] || {};
-  const selectedRate = defaultRate(product);
-  const prices = priceMapForAvailability(firstAvailable, selectedRate?.id);
-  const adult = categoryByType(product, 'ADULT');
-  const child = categoryByType(product, 'CHILD');
-  const infant = categoryByType(product, 'INFANT');
   const adultPrice = prices.get(String(adult?.id ?? '')) || money(product.nextDefaultPriceMoney);
   const childPrice = prices.get(String(child?.id ?? ''));
   const infantPrice = prices.get(String(infant?.id ?? ''));
 
-  const gallery = unique([
-    photoUrl(product.keyPhoto),
-    ...asArray(product.photos).map(photoUrl),
-  ]);
-
-  const route = asArray(product.agendaItems)
+  const gallery = unique(asArray(domain.experience?.media?.photos).map(item => text(item?.url, 2000)));
+  const route = asArray(domain.experience?.itinerary)
     .map((item, index) => [
       text(item?.title, 140) || `Stop ${index + 1}`,
       text(item?.body, 1200),
@@ -128,37 +113,41 @@ export function normalizeBokunProduct(product = {}, availability = []) {
   const languages = unique(asArray(product.guidanceTypes)
     .flatMap(item => asArray(item?.displayLanguages).map(value => text(value, 80))));
 
-  const included = htmlToList(product.included);
-  const excluded = htmlToList(product.excluded);
-  const rateOptions = asArray(product.rates).map(rate => {
-    const live = asArray(firstAvailable?.pricesByRate)
-      .find(item => Number(item?.activityRateId) === Number(rate?.id));
-    const livePrices = new Map(asArray(live?.pricePerCategoryUnit).map(item => [
-      String(item?.id ?? ''),
-      money(item?.amount),
-    ]).filter(([, value]) => value));
+  const included = htmlToList(domain.experience?.content?.included);
+  const excluded = htmlToList(domain.experience?.content?.excluded);
+
+  const rateOptions = asArray(domain.rates).map(rate => {
+    const livePrices = quoteMap(firstSlot, rate.id);
     return {
-      id: Number(rate?.id) || null,
-      code: text(rate?.rateCode, 80),
-      title: text(rate?.title, 180),
-      description: text(rate?.description, 800),
-      minPerBooking: Math.max(0, Number(rate?.minPerBooking) || 0),
-      maxPerBooking: Math.max(0, Number(rate?.maxPerBooking) || 0),
-      pricedPerPerson: Boolean(rate?.pricedPerPerson),
-      prices: {
-        adult: moneyLabel(livePrices.get(String(adult?.id ?? ''))),
-        child: moneyLabel(livePrices.get(String(child?.id ?? ''))),
-        infant: moneyLabel(livePrices.get(String(infant?.id ?? ''))),
+      id:Number(rate?.id) || rate?.id || null,
+      code:text(rate?.code, 80),
+      title:text(rate?.title, 180),
+      description:text(rate?.description, 800),
+      minPerBooking:Math.max(0, Number(rate?.minPerBooking) || 0),
+      maxPerBooking:Math.max(0, Number(rate?.maxPerBooking) || 0),
+      pricedPerPerson:Boolean(rate?.pricedPerPerson),
+      pickup:rate?.pickup || null,
+      dropoff:rate?.dropoff || null,
+      cancellationPolicy:rate?.cancellationPolicy || null,
+      startTimeIds:asArray(rate?.startTimeIds),
+      tieredPricingEnabled:Boolean(rate?.tieredPricingEnabled),
+      tiers:asArray(rate?.tiers),
+      extraConfigs:asArray(rate?.extraConfigs),
+      prices:{
+        adult:moneyLabel(livePrices.get(String(adult?.id ?? ''))),
+        child:moneyLabel(livePrices.get(String(child?.id ?? ''))),
+        infant:moneyLabel(livePrices.get(String(infant?.id ?? ''))),
       },
     };
   });
 
-  const priceFromUsd = adultPrice?.currency === 'USD' ? adultPrice.amount : 0;
+  const priceFromUsd = adultPrice?.currency === 'USD' ? Number(adultPrice.amount) || 0 : 0;
+  const meetingPoints = asArray(domain.experience?.meeting?.startPoints);
   const searchText = [
-    product.title,
-    product.description,
-    product.locationCode?.name,
-    product.startPoints?.[0]?.title,
+    domain.experience?.title,
+    domain.experience?.description,
+    domain.experience?.location?.city,
+    ...meetingPoints.map(item => item.title),
     ...languages,
     ...included,
     ...route.flat(),
@@ -166,73 +155,93 @@ export function normalizeBokunProduct(product = {}, availability = []) {
   ].map(value => text(value, 500)).filter(Boolean).join(' ').toLocaleLowerCase('en-US');
 
   return {
-    id: productId,
-    source: 'bokun',
-    popular: true,
-    bokunProductId: productId,
-    externalId: text(product.externalId, 120),
-    title: text(product.title, 240),
-    description: text(product.description, 3000),
-    city: text(product.locationCode?.name || product.googlePlace?.city || 'Nha Trang', 100),
-    region: text(product.startPoints?.[0]?.address?.state || product.locationCode?.country || 'Khánh Hòa', 100),
-    category: text(product.activityType || product.productCategory, 100),
-    duration: text(product.durationText, 80),
-    time: departures[0]?.time || '',
-    activity: text(product.difficultyLevel, 80),
-    tags: unique([
+    id:String(domain.experience?.id || domain.provider?.productId || ''),
+    source:'bokun',
+    popular:true,
+    bokunProductId:String(domain.provider?.productId ?? ''),
+    externalId:text(domain.experience?.externalId, 120),
+    title:text(domain.experience?.title, 240),
+    description:text(domain.experience?.description, 3000),
+    city:text(domain.experience?.location?.city || 'Nha Trang', 100),
+    region:text(meetingPoints[0]?.state || 'Khánh Hòa', 100),
+    category:text(domain.experience?.category, 100),
+    duration:text(domain.experience?.duration?.text, 80),
+    time:text(firstSlot?.startTime, 30),
+    activity:text(domain.experience?.difficulty, 80),
+    tags:unique([
       ...asArray(product.keywords).map(value => text(value, 60)),
       ...asArray(product.activityCategories).map(value => text(value, 60)),
       ...asArray(product.activityAttributes).map(value => text(value, 60)),
     ]),
-    audience: [],
-    childrenOk: Boolean(child || infant),
-    image: gallery[0] || '',
-    fallbackImage: gallery[0] || '',
+    audience:[],
+    childrenOk:Boolean(child || infant),
+    image:gallery[0] || '',
+    fallbackImage:gallery[0] || '',
     gallery,
     included,
     excluded,
-    take: [],
+    take:[],
     route,
     languages,
-    meetingPoint: {
-      title: text(product.startPoints?.[0]?.title, 180),
-      address: text(product.startPoints?.[0]?.address?.addressLine1, 180),
-      city: text(product.startPoints?.[0]?.address?.city, 100),
-      latitude: Number(product.startPoints?.[0]?.address?.geoPoint?.latitude) || null,
-      longitude: Number(product.startPoints?.[0]?.address?.geoPoint?.longitude) || null,
-    },
+    meetingPoint:meetingPoints[0] ? {
+      title:text(meetingPoints[0].title, 180),
+      address:text(meetingPoints[0].addressLine1, 180),
+      city:text(meetingPoints[0].city, 100),
+      latitude:meetingPoints[0].latitude,
+      longitude:meetingPoints[0].longitude,
+    } : null,
+    meetingPoints,
     searchText,
-    formatsLabel: 'групповой',
+    formatsLabel:'групповой',
     priceFromUsd,
-    liked: false,
-    group: {
-      from: moneyLabel(adultPrice),
-      adult: moneyLabel(adultPrice),
-      child: moneyLabel(childPrice),
-      infant: moneyLabel(infantPrice),
-      deposit: '',
-      notes: [],
-      departures,
+    liked:false,
+    group:{
+      from:moneyLabel(adultPrice),
+      adult:moneyLabel(adultPrice),
+      child:moneyLabel(childPrice),
+      infant:moneyLabel(infantPrice),
+      deposit:'',
+      notes:[],
+      departures:asArray(domain.availabilitySlots).map(compatibilityDeparture),
     },
-    individual: null,
-    bokun: {
-      vendorId: LOVE_TRAVEL_BOKUN_VENDOR_ID,
-      productId,
-      defaultRateId: Number(selectedRate?.id) || null,
-      pricingCategories: asArray(product.pricingCategories).map(item => ({
-        id: Number(item?.id) || null,
-        title: text(item?.title, 100),
-        ticketCategory: text(item?.ticketCategory, 40),
-        minAge: Number.isFinite(Number(item?.minAge)) ? Number(item.minAge) : null,
-        maxAge: Number.isFinite(Number(item?.maxAge)) ? Number(item.maxAge) : null,
+    individual:null,
+    bokun:{
+      domainSchemaVersion:domain.schemaVersion,
+      vendorId:String(domain.provider?.vendorId ?? LOVE_TRAVEL_BOKUN_VENDOR_ID),
+      productId:String(domain.provider?.productId ?? ''),
+      defaultRateId:selectedRate?.id ?? null,
+      pricingCategories:asArray(domain.participants).map(item => ({
+        id:item.id,
+        title:text(item.title, 100),
+        ticketCategory:text(item.ticketCategory, 40),
+        minAge:item.minAge,
+        maxAge:item.maxAge,
       })),
-      rates: rateOptions,
-      bookingCutoffHours: Math.max(0, Number(product.bookingCutoffHours) || 0),
-      pickupService: Boolean(product.pickupService),
-      cancellationPolicy: product.cancellationPolicy || null,
-      rawAvailabilityCount: asArray(availability).length,
+      rates:rateOptions,
+      bookingRequirements:domain.bookingRequirements || null,
+      bookingCutoffHours:Math.max(0, Number(domain.bookingRequirements?.cutoff?.hours) || 0),
+      pickup:domain.experience?.pickup || null,
+      dropoff:domain.experience?.dropoff || null,
+      pickupService:Boolean(domain.experience?.pickup?.enabled),
+      cancellationPolicy:domain.cancellationPolicy || null,
+      extras:asArray(domain.extras),
+      accessibility:asArray(domain.experience?.accessibility),
+      content:{
+        requirements:domain.experience?.content?.requirements ?? null,
+        attention:domain.experience?.content?.attention ?? null,
+        dressCode:domain.experience?.content?.dressCode ?? null,
+        knowBeforeYouGoItems:asArray(domain.experience?.content?.knowBeforeYouGoItems),
+      },
+      quoteMatrix:quoteMatrix(domain),
+      coverage:domain.coverage,
+      rawAvailabilityCount:asArray(domain.availabilitySlots).length,
     },
   };
+}
+
+export function normalizeBokunProduct(product = {}, availability = []) {
+  const domain = buildBokunDomain(product, availability, { vendorId:LOVE_TRAVEL_BOKUN_VENDOR_ID });
+  return projectBokunDomainToLegacyTour(domain);
 }
 
 function buildUrl(baseUrl, path, params) {
@@ -245,13 +254,37 @@ function buildUrl(baseUrl, path, params) {
 }
 
 async function jsonRequest(fetchImpl, url) {
-  const response = await fetchImpl(url, { headers: { accept: 'application/json' } });
+  const response = await fetchImpl(url, { headers:{ accept:'application/json' } });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(data?.error || `Bókun integration HTTP ${response.status}`);
   return data;
 }
 
-export async function fetchLoveTravelBokunTours({
+async function fetchRawProductPair({
+  fetchImpl,
+  baseUrl,
+  vendorId,
+  productId,
+  start,
+  end,
+  currency,
+}) {
+  const productUrl = buildUrl(baseUrl, '/api/bokun/product', { vendorId, productId });
+  const availabilityUrl = buildUrl(baseUrl, '/api/bokun/availability', {
+    vendorId,
+    productId,
+    start,
+    end,
+    currency,
+  });
+  const [product, availability] = await Promise.all([
+    jsonRequest(fetchImpl, productUrl),
+    jsonRequest(fetchImpl, availabilityUrl),
+  ]);
+  return { product, availability };
+}
+
+export async function fetchLoveTravelBokunDomains({
   fetchImpl = globalThis.fetch,
   baseUrl = DEFAULT_INTEGRATION_BASE_URL,
   vendorId = LOVE_TRAVEL_BOKUN_VENDOR_ID,
@@ -261,28 +294,27 @@ export async function fetchLoveTravelBokunTours({
   currency = 'USD',
 } = {}) {
   if (typeof fetchImpl !== 'function') throw new Error('fetch implementation is required');
+  const pairs = await Promise.all(productIds.map(productId => fetchRawProductPair({
+    fetchImpl,
+    baseUrl,
+    vendorId,
+    productId,
+    start,
+    end,
+    currency,
+  })));
+  return pairs.map(({ product, availability }) => buildBokunDomain(product, availability, { vendorId }));
+}
 
-  return Promise.all(productIds.map(async productId => {
-    const productUrl = buildUrl(baseUrl, '/api/bokun/product', { vendorId, productId });
-    const availabilityUrl = buildUrl(baseUrl, '/api/bokun/availability', {
-      vendorId,
-      productId,
-      start,
-      end,
-      currency,
-    });
-    const [product, availability] = await Promise.all([
-      jsonRequest(fetchImpl, productUrl),
-      jsonRequest(fetchImpl, availabilityUrl),
-    ]);
-    return normalizeBokunProduct(product, availability);
-  }));
+export async function fetchLoveTravelBokunTours(options = {}) {
+  const domains = await fetchLoveTravelBokunDomains(options);
+  return domains.map(projectBokunDomainToLegacyTour);
 }
 
 export const _test = {
   htmlToList,
   moneyLabel,
-  photoUrl,
-  inferIsoDate,
-  priceMapForAvailability,
+  quoteMap,
+  firstBookableSlot,
+  compatibilityDeparture,
 };
