@@ -87,7 +87,7 @@ test('LoveTravel worker exposes only the two agreed Bókun products in read-only
     assert.equal(body.tours.length,2);
     assert.deepEqual(body.tours.map(t=>t.id),['1287578','1287580']);
     assert.equal(body.tours[0].group.adult,'$35');
-    assert.equal(calls.length,6);
+    assert.equal(calls.length,4);
     assert.ok(calls.every(url=>url.searchParams.get('vendorId') === '137689'));
     assert.deepEqual(
       calls.filter(url=>url.pathname.endsWith('/product')).map(url=>url.searchParams.get('productId')).sort(),
@@ -138,12 +138,13 @@ test('LoveTravel exposes the domain model separately from the legacy catalog vie
   };
   try {
     const response=await handleLoveTravelBokunTours(
-      new Request('https://lovetravel.viiversion.com/api/bokun/domain?start=2026-09-28&end=2026-10-02'),
+      new Request('https://lovetravel.viiversion.com/api/bokun/domain?start=2026-09-28&end=2026-10-02&includePickupPlaces=1'),
       {BOKUN_INTEGRATION_BASE_URL:'https://integration.example'},
     );
     const body=await response.json();
     assert.equal(response.status,200);
     assert.equal(body.schema,'lovetravel.bokun-domain.v1');
+    assert.equal(body.includePickupPlaces,true);
     assert.equal(body.domains.length,2);
     assert.equal('providerRaw' in body.domains[0],false);
     assert.equal(body.domains[0].bookingRequirements.questions[0].title,'Hotel name');
