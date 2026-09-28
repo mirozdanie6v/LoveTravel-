@@ -10,6 +10,7 @@ import {
   LOVE_TRAVEL_BOKUN_PRODUCT_IDS,
   LOVE_TRAVEL_BOKUN_VENDOR_ID,
 } from './bokun-adapter.js';
+import { resolveBookingSelection } from './booking-selection-engine.js';
 
 const CONTENT_TYPES = {
   jpg: 'image/jpeg',
@@ -145,6 +146,94 @@ export async function handleLoveTravelBokunTours(request, env, url = new URL(req
       ok:false,
       error:'bokun_upstream_unavailable',
     }, {
+      status:502,
+      headers:{ 'cache-control':'no-store' },
+    });
+  }
+}
+
+export async function handleLoveTravelBookingSelection(request, env, url = new URL(request.url)) {
+  if (url.pathname !== '/api/bokun/booking-selection/resolve') return null;
+  if (request.method !== 'POST') {
+    return json({ ok:false, error:'method_not_allowed' }, {
+      status:405,
+      headers:{ allow:'POST', 'cache-control':'no-store' },
+    });
+  }
+
+  const declaredLength = Number(request.headers.get('content-length') || 0);
+  if (Number.isFinite(declaredLength) && declaredLength > 65536) {
+    return json({ ok:false, error:'payload_too_large' }, {
+      status:413,
+      headers:{ 'cache-control':'no-store' },
+    });
+  }
+
+  const body = await request.clone().json().catch(() => null);
+  const selection = body?.selection && typeof body.selection === 'object' ? body.selection : body;
+  if (!selection || typeof selection !== 'object' || Array.isArray(selection)) {
+    return json({ ok:false, error:'invalid_selection' }, {
+      status:400,
+      headers:{ 'cache-control':'no-store' },
+    });
+  }
+
+  const productId = String(selection.productId || '').trim();
+  if (!LOVE_TRAVEL_BOKUN_PRODUCT_IDS.includes(productId)) {
+    return json({ ok:false, error:'unsupported_product' }, {
+      status:400,
+      headers:{ 'cache-control':'no-store' },
+    });
+  }
+
+  const today = vietnamTodayIso();
+  const date = selection.date ? String(selection.date).trim() : '';
+  if (date && !validIsoDate(date)) {
+    return json({ ok:false, error:'invalid_date' }, {
+      status:400,
+      headers:{ 'cache-control':'no-store' },
+    });
+  }
+
+  const start = date || today;
+  const end = date || addIsoDays(today, 14);
+
+  try {
+    const domains = await fetchLoveTravelBokunDomains({
+      fetchImpl:fetch,
+      baseUrl:env.BOKUN_INTEGRATION_BASE_URL || 'https://integration.viiversion.com',
+      vendorId:LOVE_TRAVEL_BOKUN_VENDOR_ID,
+      productIds:[productId],
+      start,
+      end,
+      currency:'USD',
+    });
+    const domain = domains[0];
+    if (!domain) {
+      return json({ ok:false, error:'product_domain_unavailable' }, {
+        status:502,
+        headers:{ 'cache-control':'no-store' },
+      });
+    }
+
+    const resolution = resolveBookingSelection(domain, selection, { now:new Date() });
+    return json({
+      ok:true,
+      source:'bokun',
+      mode:'read-only-revalidation',
+      fetchedAt:new Date().toISOString(),
+      start,
+      end,
+      ...resolution,
+    }, {
+      headers:{
+        'cache-control':'no-store, max-age=0',
+        'x-content-type-options':'nosniff',
+      },
+    });
+  } catch (error) {
+    console.error('LoveTravel BookingSelection resolve failed', error?.message || error);
+    return json({ ok:false, error:'bokun_upstream_unavailable' }, {
       status:502,
       headers:{ 'cache-control':'no-store' },
     });
@@ -377,6 +466,8 @@ export default {
     if (url.pathname.startsWith('/tour-media/')) {
       return serveTourMedia(request, env, url.pathname);
     }
+    const bookingSelectionResponse = await handleLoveTravelBookingSelection(request, env, url);
+    if (bookingSelectionResponse) return bookingSelectionResponse;
     const bokunToursResponse = await handleLoveTravelBokunTours(request, env, url);
     if (bokunToursResponse) return bokunToursResponse;
     // VI/EN use the locale-aware AI core directly. All fast-path/orchestrator
