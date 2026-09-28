@@ -94,7 +94,7 @@
 
   function brandHeader() {
     document.documentElement.classList.add('love-travel-branded');
-    document.title='Nha Trang Love Travel';
+    if (document.title !== 'Nha Trang Love Travel') document.title='Nha Trang Love Travel';
     const brand=document.querySelector('.brandmark-real');
     if (!brand) return;
     brand.setAttribute('aria-label','Nha Trang Love Travel');
@@ -188,8 +188,8 @@
     const lang=locale();
     const title=screen.querySelector('.catalog-title-v26 h2');
     const hint=screen.querySelector('.catalog-title-v26 .hint');
-    if (title) title.textContent=c.catalogTitle;
-    if (hint) hint.textContent=c.catalogHint;
+    if (title && title.textContent !== c.catalogTitle) title.textContent=c.catalogTitle;
+    if (hint && hint.textContent !== c.catalogHint) hint.textContent=c.catalogHint;
 
     let intro=screen.querySelector('.lt-catalog-intro');
     const sectionTitle=screen.querySelector('.catalog-title-v26');
@@ -213,7 +213,8 @@
         action.className='lt-card-action';
         priceRow.appendChild(action);
       }
-      action.textContent=`${c.card} →`;
+      const label=`${c.card} →`;
+      if (action.textContent !== label) action.textContent=label;
     });
   }
 
