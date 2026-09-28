@@ -16,7 +16,7 @@ test('tour lightbox script is syntactically valid and targets R2 and Bókun tour
   assert.match(script, /catalog\.v28\.json/);
   assert.match(script, /uniqueMedia/);
   assert.match(script, /sourceFromImage/);
-  assert.match(script, /cache: 'no-store'/);
+  assert.match(script, /cache:\s*'no-store'/);
   assert.match(script, /ArrowLeft/);
   assert.match(script, /ArrowRight/);
   assert.match(script, /touchstart/);
