@@ -1,0 +1,151 @@
+name: Audit BookingSelection configuration coverage
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.audit-booking-selection-coverage'
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - shell: bash
+        run: |
+          set -euo pipefail
+          base='https://lovetravel.viiversion.com'
+          start='2026-09-29'
+          end='2026-10-29'
+          curl -fsS "$base/api/bokun/domain?start=$start&end=$end&includePickupPlaces=1" > /tmp/domain.json
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import { resolveBookingSelection, rateSupportsSlot } from './src/booking-selection-engine.js';
+
+          const payload=JSON.parse(fs.readFileSync('/tmp/domain.json','utf8'));
+          if(!payload.ok || payload.schema!=='lovetravel.bokun-domain.v1') throw new Error('invalid production domain payload');
+          const now=new Date('2026-09-28T14:05:00Z');
+          const out={schema:payload.schema,start:payload.start,end:payload.end,products:[],failures:[]};
+
+          for(const d of payload.domains){
+            const knownRateIds=new Set((d.rates||[]).map(r=>String(r.id)));
+            const knownCategoryIds=new Set((d.participants||[]).map(p=>String(p.id)));
+            const rateSlotPairs=[];
+            const quoteCoverage=[];
+            const unsupportedPricing=[];
+            const badQuoteRefs=[];
+            const badCategoryRefs=[];
+            const pickupRates=[];
+            const dropoffRates=[];
+
+            for(const slot of d.availabilitySlots||[]){
+              for(const quote of slot.priceQuotesByRate||[]){
+                if(!knownRateIds.has(String(quote.rateId))) badQuoteRefs.push({slotId:slot.id,rateId:quote.rateId});
+                for(const row of quote.participantPrices||[]){
+                  if(!knownCategoryIds.has(String(row.categoryId))) badCategoryRefs.push({slotId:slot.id,rateId:quote.rateId,categoryId:row.categoryId});
+                }
+              }
+              for(const rate of d.rates||[]){
+                if(!rateSupportsSlot(rate,slot)) continue;
+                const quote=(slot.priceQuotesByRate||[]).find(q=>String(q.rateId)===String(rate.id));
+                rateSlotPairs.push({slotId:slot.id,date:slot.date,startTimeId:String(slot.startTimeId),rateId:String(rate.id),hasQuote:Boolean(quote)});
+                if(rate.pricedPerPerson){
+                  const ids=new Set((quote?.participantPrices||[]).map(x=>String(x.categoryId)));
+                  quoteCoverage.push({
+                    slotId:slot.id,rateId:String(rate.id),
+                    missingCategories:[...knownCategoryIds].filter(id=>!ids.has(id))
+                  });
+                }else{
+                  unsupportedPricing.push({slotId:slot.id,rateId:String(rate.id),reason:'pricedPerBooking'});
+                }
+              }
+            }
+
+            for(const rate of d.rates||[]){
+              const pickup=String(rate.pickup?.selectionType||'').toUpperCase();
+              const dropoff=String(rate.dropoff?.selectionType||'').toUpperCase();
+              if(pickup && pickup!=='UNAVAILABLE') pickupRates.push({id:String(rate.id),selectionType:pickup,pricingType:rate.pickup?.pricingType||''});
+              if(dropoff && dropoff!=='UNAVAILABLE') dropoffRates.push({id:String(rate.id),selectionType:dropoff,pricingType:rate.dropoff?.pricingType||''});
+            }
+
+            const adult=(d.participants||[]).find(p=>String(p.ticketCategory).toUpperCase()==='ADULT') || (d.participants||[])[0];
+            const resolverFailures=[];
+            let resolverChecks=0;
+            for(const pair of rateSlotPairs){
+              const slot=(d.availabilitySlots||[]).find(s=>String(s.id)===String(pair.slotId));
+              const rate=(d.rates||[]).find(r=>String(r.id)===String(pair.rateId));
+              if(!slot || !rate || !adult || slot.soldOut || slot.unavailable) continue;
+              const maxByRate=Number(rate.maxPerBooking)||50;
+              const maxBySlot=slot.unlimitedAvailability?50:(Number(slot.availabilityCount)||0);
+              const minimum=Math.max(1,Number(rate.minPerBooking)||1,Number(slot.minParticipantsToBookNow)||1);
+              const maximum=Math.min(maxByRate,maxBySlot,50);
+              if(maximum<minimum) continue;
+              const totals=[minimum,Math.min(maximum,Math.max(minimum,2)),maximum].filter((v,i,a)=>a.indexOf(v)===i);
+              for(const total of totals){
+                const selection={
+                  productId:String(d.experience.id),
+                  date:slot.date,
+                  slotId:String(slot.id),
+                  startTimeId:String(slot.startTimeId),
+                  rateId:String(rate.id),
+                  participants:{[String(adult.id)]:total},
+                  pickup:{mode:'MEET_ON_LOCATION'},
+                };
+                const r=resolveBookingSelection(d,selection,{now});
+                resolverChecks++;
+                if(!r.readyToQuote){
+                  resolverFailures.push({
+                    slotId:String(slot.id),rateId:String(rate.id),total,
+                    errors:r.errors.map(e=>e.code),warnings:r.warnings.map(e=>e.code)
+                  });
+                }
+              }
+            }
+
+            const pickupPlaces=d.experience?.pickup?.places||[];
+            const roomNumberPlaces=pickupPlaces.filter(p=>p.askForRoomNumber===true).length;
+
+            const product={
+              id:String(d.experience.id),
+              title:d.experience.title,
+              rates:(d.rates||[]).length,
+              slots:(d.availabilitySlots||[]).length,
+              participantCategories:(d.participants||[]).map(p=>({id:String(p.id),type:p.ticketCategory,minAge:p.minAge,maxAge:p.maxAge})),
+              rateSlotPairs:rateSlotPairs.length,
+              rateSlotPairsWithoutQuote:rateSlotPairs.filter(x=>!x.hasQuote).length,
+              missingQuoteCategories:quoteCoverage.filter(x=>x.missingCategories.length).length,
+              unknownQuoteRates:badQuoteRefs.length,
+              unknownQuoteCategories:badCategoryRefs.length,
+              unsupportedPricing,
+              pickup:{
+                enabled:Boolean(d.experience?.pickup?.enabled),
+                customAllowed:Boolean(d.experience?.pickup?.customAllowed),
+                places:pickupPlaces.length,
+                askForRoomNumber:roomNumberPlaces,
+                activeRates:pickupRates,
+              },
+              dropoff:{enabled:Boolean(d.experience?.dropoff?.enabled),activeRates:dropoffRates},
+              extras:(d.extras||[]).length,
+              productQuestions:(d.bookingRequirements?.questions||[]).length,
+              requiredCustomerFields:d.bookingRequirements?.requiredCustomerFields||[],
+              passengerFields:d.bookingRequirements?.passengerFields||[],
+              customFields:(d.bookingRequirements?.customFields||[]).length,
+              resolverChecks,
+              resolverFailures,
+            };
+            out.products.push(product);
+
+            if(product.rateSlotPairsWithoutQuote) out.failures.push({productId:product.id,type:'rate_slot_without_quote',count:product.rateSlotPairsWithoutQuote});
+            if(product.missingQuoteCategories) out.failures.push({productId:product.id,type:'missing_quote_categories',count:product.missingQuoteCategories});
+            if(product.unknownQuoteRates) out.failures.push({productId:product.id,type:'unknown_quote_rates',count:product.unknownQuoteRates});
+            if(product.unknownQuoteCategories) out.failures.push({productId:product.id,type:'unknown_quote_categories',count:product.unknownQuoteCategories});
+            if(product.resolverFailures.length) out.failures.push({productId:product.id,type:'resolver_failures',count:product.resolverFailures.length});
+          }
+
+          console.log(JSON.stringify(out,null,2));
+          if(out.failures.length) process.exit(1);
+          NODE
