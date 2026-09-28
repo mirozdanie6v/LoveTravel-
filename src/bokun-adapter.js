@@ -268,6 +268,7 @@ async function fetchRawProductPair({
   start,
   end,
   currency,
+  includePickupPlaces = false,
 }) {
   const productUrl = buildUrl(baseUrl, '/api/bokun/product', { vendorId, productId });
   const availabilityUrl = buildUrl(baseUrl, '/api/bokun/availability', {
@@ -281,7 +282,9 @@ async function fetchRawProductPair({
   const [product, availability, pickupPlaces] = await Promise.all([
     jsonRequest(fetchImpl, productUrl),
     jsonRequest(fetchImpl, availabilityUrl),
-    jsonRequest(fetchImpl, pickupPlacesUrl),
+    includePickupPlaces
+      ? jsonRequest(fetchImpl, pickupPlacesUrl)
+      : Promise.resolve({ pickupPlaces:[], dropoffPlaces:[] }),
   ]);
   return { product, availability, pickupPlaces };
 }
@@ -294,6 +297,7 @@ export async function fetchLoveTravelBokunDomains({
   start,
   end,
   currency = 'USD',
+  includePickupPlaces = false,
 } = {}) {
   if (typeof fetchImpl !== 'function') throw new Error('fetch implementation is required');
   const pairs = await Promise.all(productIds.map(productId => fetchRawProductPair({
@@ -304,12 +308,13 @@ export async function fetchLoveTravelBokunDomains({
     start,
     end,
     currency,
+    includePickupPlaces,
   })));
   return pairs.map(({ product, availability, pickupPlaces }) => buildBokunDomain(product, availability, { vendorId, pickupPlaces }));
 }
 
 export async function fetchLoveTravelBokunTours(options = {}) {
-  const domains = await fetchLoveTravelBokunDomains(options);
+  const domains = await fetchLoveTravelBokunDomains({ ...options, includePickupPlaces:false });
   return domains.map(projectBokunDomainToLegacyTour);
 }
 
