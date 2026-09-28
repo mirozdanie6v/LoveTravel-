@@ -5,6 +5,7 @@ import { selectionFastPath } from './worker-selection-v14.js';
 import { orchestrateAiRequest } from './ai-orchestrator-v23.js';
 import { handleAdminTourMediaApi } from './admin-tour-media-api.js';
 import {
+  fetchLoveTravelBokunDomains,
   fetchLoveTravelBokunTours,
   LOVE_TRAVEL_BOKUN_PRODUCT_IDS,
   LOVE_TRAVEL_BOKUN_VENDOR_ID,
@@ -70,7 +71,9 @@ function validIsoDate(value) {
 }
 
 export async function handleLoveTravelBokunTours(request, env, url = new URL(request.url)) {
-  if (url.pathname !== '/api/bokun/tours') return null;
+  const isTours = url.pathname === '/api/bokun/tours';
+  const isDomain = url.pathname === '/api/bokun/domain';
+  if (!isTours && !isDomain) return null;
   if (request.method !== 'GET') {
     return json({ ok:false, error:'method_not_allowed' }, {
       status:405,
@@ -98,7 +101,7 @@ export async function handleLoveTravelBokunTours(request, env, url = new URL(req
   }
 
   try {
-    const tours = await fetchLoveTravelBokunTours({
+    const common = {
       fetchImpl:fetch,
       baseUrl:env.BOKUN_INTEGRATION_BASE_URL || 'https://integration.viiversion.com',
       vendorId:LOVE_TRAVEL_BOKUN_VENDOR_ID,
@@ -106,18 +109,32 @@ export async function handleLoveTravelBokunTours(request, env, url = new URL(req
       start:requestedStart,
       end:requestedEnd,
       currency:'USD',
-    });
+    };
+
+    const payload = isDomain
+      ? await fetchLoveTravelBokunDomains(common)
+      : await fetchLoveTravelBokunTours(common);
+
+    const includeRaw = isDomain && url.searchParams.get('includeRaw') === '1';
+    const domains = isDomain
+      ? payload.map(domain => {
+          if (includeRaw) return domain;
+          const { providerRaw, ...publicDomain } = domain;
+          return publicDomain;
+        })
+      : null;
 
     return json({
       ok:true,
       source:'bokun',
       mode:'read-only',
+      schema:isDomain ? 'lovetravel.bokun-domain.v1' : 'lovetravel.catalog-compat.v1',
       vendorId:LOVE_TRAVEL_BOKUN_VENDOR_ID,
       productIds:[...LOVE_TRAVEL_BOKUN_PRODUCT_IDS],
       start:requestedStart,
       end:requestedEnd,
       fetchedAt:new Date().toISOString(),
-      tours,
+      ...(isDomain ? { includeRaw, domains } : { tours:payload }),
     }, {
       headers:{
         'cache-control':'no-store, max-age=0',
