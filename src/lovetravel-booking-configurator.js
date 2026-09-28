@@ -489,7 +489,7 @@
   function detectProduct(){
     const screen=document.querySelector('#tourScreen');
     const id=String(screen?.dataset?.ltDomainProduct||'');
-    if(!PRODUCT_IDS.has(id)) return;
+    if(!PRODUCT_IDS.has(id) || !screen.querySelector('.lt-domain-shell')) return;
     const mounted=Boolean(screen.querySelector('[data-lt-config="'+CSS.escape(id)+'"]'));
     if(id!==activeProductId || !resolutionByProduct.has(id) || !mounted) bootstrap(id);
   }
