@@ -4,6 +4,7 @@
 
   const OFFICIAL_LOGO = 'https://bizweb.dktcdn.net/100/416/263/themes/809458/assets/logo.png?1787117096236';
   const PRODUCT_IDS = ['1287578','1287580'];
+  const DEFAULT_HERO_IMAGE = 'https://imgcdn.bokun.tools/52c09496-ca88-434c-9e4a-5ec811d31fc2.jpg?w=1200&h=1200';
   const copy = {
     ru:{
       badge:'Местный туроператор Нячанга',
@@ -87,9 +88,13 @@
 
   function currentImage() {
     const items=tours();
-    return items.find(item => String(item?.id) === PRODUCT_IDS[0])?.image
-      || items[0]?.image
-      || 'https://imgcdn.bokun.tools/52c09496-ca88-434c-9e4a-5ec811d31fc2.jpg?w=1200&h=1200';
+    const robinson=items.find(item => String(item?.id) === PRODUCT_IDS[0])?.image;
+    if (/^https:\/\/imgcdn\.bokun\.tools\//.test(String(robinson || ''))) return robinson;
+    const liveBokun=items.find(item => /^https:\/\/imgcdn\.bokun\.tools\//.test(String(item?.image || '')))?.image;
+    if (liveBokun) return liveBokun;
+    const rendered=document.querySelector('#catalogScreen img[src*="imgcdn.bokun.tools"]')?.currentSrc
+      || document.querySelector('#catalogScreen img[src*="imgcdn.bokun.tools"]')?.src;
+    return rendered || DEFAULT_HERO_IMAGE;
   }
 
   function brandHeader() {
