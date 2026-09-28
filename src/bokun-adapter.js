@@ -153,9 +153,22 @@ export function normalizeBokunProduct(product = {}, availability = []) {
     };
   });
 
+  const priceFromUsd = adultPrice?.currency === 'USD' ? adultPrice.amount : 0;
+  const searchText = [
+    product.title,
+    product.description,
+    product.locationCode?.name,
+    product.startPoints?.[0]?.title,
+    ...languages,
+    ...included,
+    ...route.flat(),
+    ...rateOptions.map(rate => rate.title),
+  ].map(value => text(value, 500)).filter(Boolean).join(' ').toLocaleLowerCase('en-US');
+
   return {
     id: productId,
     source: 'bokun',
+    popular: true,
     bokunProductId: productId,
     externalId: text(product.externalId, 120),
     title: text(product.title, 240),
@@ -188,6 +201,10 @@ export function normalizeBokunProduct(product = {}, availability = []) {
       latitude: Number(product.startPoints?.[0]?.address?.geoPoint?.latitude) || null,
       longitude: Number(product.startPoints?.[0]?.address?.geoPoint?.longitude) || null,
     },
+    searchText,
+    formatsLabel: 'групповой',
+    priceFromUsd,
+    liked: false,
     group: {
       from: moneyLabel(adultPrice),
       adult: moneyLabel(adultPrice),
