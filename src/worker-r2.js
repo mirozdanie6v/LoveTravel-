@@ -4,6 +4,11 @@ import { compactTourForAi, findTourForQuestion } from './ai-faq-knowledge.js';
 import { selectionFastPath } from './worker-selection-v14.js';
 import { orchestrateAiRequest } from './ai-orchestrator-v23.js';
 import { handleAdminTourMediaApi } from './admin-tour-media-api.js';
+import {
+  fetchLoveTravelBokunTours,
+  LOVE_TRAVEL_BOKUN_PRODUCT_IDS,
+  LOVE_TRAVEL_BOKUN_VENDOR_ID,
+} from './bokun-adapter.js';
 
 const CONTENT_TYPES = {
   jpg: 'image/jpeg',
@@ -58,6 +63,77 @@ function addIsoDays(iso, days) {
   const date = new Date(`${iso}T00:00:00Z`);
   date.setUTCDate(date.getUTCDate() + Number(days || 0));
   return date.toISOString().slice(0, 10);
+}
+
+function validIsoDate(value) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(String(value || ''));
+}
+
+export async function handleLoveTravelBokunTours(request, env, url = new URL(request.url)) {
+  if (url.pathname !== '/api/bokun/tours') return null;
+  if (request.method !== 'GET') {
+    return json({ ok:false, error:'method_not_allowed' }, {
+      status:405,
+      headers:{ allow:'GET', 'cache-control':'no-store' },
+    });
+  }
+
+  const today = vietnamTodayIso();
+  const requestedStart = url.searchParams.get('start') || today;
+  const requestedEnd = url.searchParams.get('end') || addIsoDays(requestedStart, 14);
+
+  if (!validIsoDate(requestedStart) || !validIsoDate(requestedEnd) || requestedEnd < requestedStart) {
+    return json({ ok:false, error:'invalid_date_range' }, {
+      status:400,
+      headers:{ 'cache-control':'no-store' },
+    });
+  }
+
+  const maxEnd = addIsoDays(requestedStart, 31);
+  if (requestedEnd > maxEnd) {
+    return json({ ok:false, error:'date_range_too_large', maxDays:31 }, {
+      status:400,
+      headers:{ 'cache-control':'no-store' },
+    });
+  }
+
+  try {
+    const tours = await fetchLoveTravelBokunTours({
+      fetchImpl:fetch,
+      baseUrl:env.BOKUN_INTEGRATION_BASE_URL || 'https://integration.viiversion.com',
+      vendorId:LOVE_TRAVEL_BOKUN_VENDOR_ID,
+      productIds:LOVE_TRAVEL_BOKUN_PRODUCT_IDS,
+      start:requestedStart,
+      end:requestedEnd,
+      currency:'USD',
+    });
+
+    return json({
+      ok:true,
+      source:'bokun',
+      mode:'read-only',
+      vendorId:LOVE_TRAVEL_BOKUN_VENDOR_ID,
+      productIds:[...LOVE_TRAVEL_BOKUN_PRODUCT_IDS],
+      start:requestedStart,
+      end:requestedEnd,
+      fetchedAt:new Date().toISOString(),
+      tours,
+    }, {
+      headers:{
+        'cache-control':'no-store, max-age=0',
+        'x-content-type-options':'nosniff',
+      },
+    });
+  } catch (error) {
+    console.error('LoveTravel Bókun read-only fetch failed', error?.message || error);
+    return json({
+      ok:false,
+      error:'bokun_upstream_unavailable',
+    }, {
+      status:502,
+      headers:{ 'cache-control':'no-store' },
+    });
+  }
 }
 
 function normalizeRussian(value) {
@@ -286,6 +362,8 @@ export default {
     if (url.pathname.startsWith('/tour-media/')) {
       return serveTourMedia(request, env, url.pathname);
     }
+    const bokunToursResponse = await handleLoveTravelBokunTours(request, env, url);
+    if (bokunToursResponse) return bokunToursResponse;
     // VI/EN use the locale-aware AI core directly. All fast-path/orchestrator
     // layers below were written for Russian and may emit Russian fallback copy.
     if (url.pathname === '/api/ai/chat' && request.method === 'POST' && locale !== 'ru') {
