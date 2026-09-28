@@ -293,7 +293,7 @@
     const root=ensureSheet();
     root.hidden=false;
     root.querySelector('.lt-booking-sheet__content').innerHTML=
-      '<header class="lt-booking-sheet__header"><div><h3>'+esc(title)+'</h3></div><button type="button" data-lt-sheet-close aria-label="'+esc(t().close)+'">×</button></header>'+body;
+      '<header class="lt-booking-sheet__header"><div><h3>'+esc(title)+'</h3></div><button type="button" data-lt-sheet-close data-lt-sheet-close-button aria-label="'+esc(t().close)+'">×</button></header>'+body;
     requestAnimationFrame(()=>root.classList.add('is-open'));
     document.documentElement.classList.add('lt-sheet-open');
     return root.querySelector('.lt-booking-sheet__content');
@@ -431,9 +431,10 @@
       const next=await resolve(productId,{quiet:true});
       const place=next.resolved?.pickupPlace;
       if(place?.askForRoomNumber){
-        if(results) results.innerHTML=pickupPlaceRows(filterPlaces(currentQuery),selection(productId));
-        results?.querySelector('[data-lt-place="'+CSS.escape(String(place.id))+'"]')?.insertAdjacentHTML('afterend','<div class="lt-room-note">'+esc(t().roomNeeded)+'</div>');
-      } else closeSheet();
+        const config=document.querySelector('[data-lt-config="'+CSS.escape(productId)+'"]');
+        if(config) config.dataset.ltPickupRoomRequired='1';
+      }
+      closeSheet();
     });
   }
   function pickupModeCard(mode,title,active,note){
