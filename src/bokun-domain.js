@@ -62,22 +62,35 @@ function point(item = {}) {
 }
 
 function pickupPlace(item = {}) {
-  const address = item.address || item.location?.address || {};
-  const geo = address.geoPoint || item.geoPoint || item.location?.geoPoint || {};
-  const label = item.title || item.name || item.label || item.addressLine1 || address.addressLine1 || '';
+  const location = item.location && typeof item.location === 'object' ? item.location : {};
+  const addressObject = item.address && typeof item.address === 'object'
+    ? item.address
+    : location.address && typeof location.address === 'object'
+      ? location.address
+      : {};
+  const geo = addressObject.geoPoint || item.geoPoint || location.geoPoint || {};
+  const addressLine1 = typeof item.address === 'string'
+    ? item.address
+    : typeof location.address === 'string'
+      ? location.address
+      : item.addressLine1 || addressObject.addressLine1 || '';
+  const label = item.title || item.name || item.label || addressLine1 || location.wholeAddress || '';
   return {
     id:id(item.id),
     title:text(label, 300),
     description:text(item.description || item.pickupDescription || item.notes, 3000),
     placeType:text(item.placeType || item.type, 80),
-    addressLine1:text(item.addressLine1 || address.addressLine1, 300),
-    addressLine2:text(item.addressLine2 || address.addressLine2, 300),
-    city:text(item.city || address.city, 160),
-    state:text(item.state || address.state, 160),
-    countryCode:text(item.countryCode || address.countryCode, 16),
-    postalCode:text(item.postalCode || address.postalCode, 40),
-    latitude:numeric(item.latitude ?? geo.latitude),
-    longitude:numeric(item.longitude ?? geo.longitude),
+    externalId:text(item.externalId, 180),
+    askForRoomNumber:item.askForRoomNumber === undefined ? null : bool(item.askForRoomNumber),
+    addressLine1:text(addressLine1, 300),
+    addressLine2:text(item.addressLine2 || addressObject.addressLine2, 300),
+    wholeAddress:text(item.wholeAddress || location.wholeAddress, 600),
+    city:text(item.city || location.city || addressObject.city, 160),
+    state:text(item.state || location.state || addressObject.state, 160),
+    countryCode:text(item.countryCode || location.countryCode || addressObject.countryCode, 16),
+    postalCode:text(item.postalCode || item.postCode || location.postalCode || location.postCode || addressObject.postalCode, 40),
+    latitude:numeric(item.latitude ?? location.latitude ?? geo.latitude),
+    longitude:numeric(item.longitude ?? location.longitude ?? geo.longitude),
     providerData:item,
   };
 }
