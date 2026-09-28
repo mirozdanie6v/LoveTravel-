@@ -277,11 +277,13 @@ async function fetchRawProductPair({
     end,
     currency,
   });
-  const [product, availability] = await Promise.all([
+  const pickupPlacesUrl = buildUrl(baseUrl, '/api/bokun/pickup-places', { vendorId, productId });
+  const [product, availability, pickupPlaces] = await Promise.all([
     jsonRequest(fetchImpl, productUrl),
     jsonRequest(fetchImpl, availabilityUrl),
+    jsonRequest(fetchImpl, pickupPlacesUrl),
   ]);
-  return { product, availability };
+  return { product, availability, pickupPlaces };
 }
 
 export async function fetchLoveTravelBokunDomains({
@@ -303,7 +305,7 @@ export async function fetchLoveTravelBokunDomains({
     end,
     currency,
   })));
-  return pairs.map(({ product, availability }) => buildBokunDomain(product, availability, { vendorId }));
+  return pairs.map(({ product, availability, pickupPlaces }) => buildBokunDomain(product, availability, { vendorId, pickupPlaces }));
 }
 
 export async function fetchLoveTravelBokunTours(options = {}) {
