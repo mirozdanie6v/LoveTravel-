@@ -15,11 +15,12 @@ jobs:
         run: |
           set -euo pipefail
           base='https://lovetravel.viiversion.com'
-          curl -fsS "$base/api/bokun/domain?start=2026-09-29&end=2026-09-30" > /tmp/domain.json
+          curl -fsS "$base/api/bokun/domain?start=2026-09-29&end=2026-09-30&includePickupPlaces=1" > /tmp/domain.json
 
           jq -e '
             .ok == true and
             .schema == "lovetravel.bokun-domain.v1" and
+            .includePickupPlaces == true and
             (.domains|length) == 2 and
             (all(.domains[];
               .experience.pickup.enabled == true and
