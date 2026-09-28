@@ -1,0 +1,90 @@
+html.love-travel-branded #tourScreen.lt-domain-tour{padding:0 0 28px!important;background:#f7fbfe!important}
+.lt-domain-shell{max-width:760px;margin:0 auto;padding:0 14px 26px}
+.lt-domain-back{appearance:none;border:0;background:transparent;color:#38627d;font:800 12px/1.2 inherit;padding:14px 2px 12px;cursor:pointer}
+.lt-domain-gallery{margin:0 -2px 16px}
+.lt-domain-gallery__hero{display:block;width:100%;height:330px;padding:0;border:0;border-radius:28px;overflow:hidden;background:#dcebf4;box-shadow:0 18px 42px rgba(20,64,94,.16);cursor:zoom-in}
+.lt-domain-gallery__hero img{display:block;width:100%;height:100%;object-fit:cover}
+.lt-domain-gallery__strip{display:flex;gap:7px;overflow-x:auto;padding:8px 1px 2px;scrollbar-width:none}
+.lt-domain-gallery__strip::-webkit-scrollbar{display:none}
+.lt-domain-gallery__thumb{flex:0 0 74px;width:74px;height:58px;padding:0;border:2px solid transparent;border-radius:13px;overflow:hidden;background:#dcebf4;cursor:zoom-in}
+.lt-domain-gallery__thumb img{width:100%;height:100%;object-fit:cover}
+.lt-domain-hero,.lt-domain-section{background:#fff;border:1px solid rgba(27,76,109,.09);border-radius:24px;box-shadow:0 12px 32px rgba(29,72,101,.08)}
+.lt-domain-hero{padding:20px;margin-bottom:14px}
+.lt-domain-live{display:inline-flex;align-items:center;gap:7px;padding:7px 10px;border-radius:999px;background:#edf7ff;color:#24618d;font-size:10px;font-weight:900;letter-spacing:.03em}
+.lt-domain-live span{width:7px;height:7px;border-radius:50%;background:#27be73;box-shadow:0 0 0 4px rgba(39,190,115,.12)}
+.lt-domain-hero h1{margin:13px 0 10px!important;color:#102a3a!important;font-size:28px!important;line-height:1.03!important;letter-spacing:-.045em!important}
+.lt-domain-hero>p{margin:0;color:#60798a;font-size:13px;line-height:1.55}
+.lt-domain-facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:17px}
+.lt-domain-facts>div{min-width:0;padding:10px 11px;border-radius:15px;background:#f5f9fc;border:1px solid rgba(54,131,232,.08)}
+.lt-domain-facts small,.lt-domain-rate__price small{display:block;color:#7a91a1;font-size:8px;font-weight:900;letter-spacing:.07em;text-transform:uppercase}
+.lt-domain-facts b{display:block;margin-top:3px;color:#18374b;font-size:11px;line-height:1.2}
+.lt-domain-section{padding:17px;margin-bottom:14px}
+.lt-domain-section__head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px}
+.lt-domain-section__head p{margin:4px 0 0;color:#72899a;font-size:11px;line-height:1.4}
+.lt-domain-eyebrow{display:block;color:#18374b;font-size:13px;font-weight:950;letter-spacing:-.01em}
+.lt-domain-rates,.lt-domain-dates{display:grid;gap:8px}
+.lt-domain-rate,.lt-domain-date{appearance:none;width:100%;border:1px solid rgba(31,81,115,.11);border-radius:17px;background:#f8fbfd;color:#18374b;text-align:left;cursor:pointer}
+.lt-domain-rate{display:grid;grid-template-columns:24px minmax(0,1fr) auto;gap:8px;align-items:center;padding:12px}
+.lt-domain-rate.is-active,.lt-domain-date.is-active{border-color:#3683e8;background:#eef7ff;box-shadow:0 0 0 2px rgba(54,131,232,.08)}
+.lt-domain-rate__check{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;border:1px solid rgba(54,131,232,.22);background:#fff;color:#3683e8;font-size:12px;font-weight:950}
+.lt-domain-rate.is-active .lt-domain-rate__check{background:#3683e8;color:#fff}
+.lt-domain-rate__copy{min-width:0}
+.lt-domain-rate__copy b{display:block;font-size:12px;line-height:1.25}
+.lt-domain-rate__copy small{display:block;margin-top:3px;color:#738b9b;font-size:10px;line-height:1.3}
+.lt-domain-rate__price{text-align:right}
+.lt-domain-rate__price b{display:block;margin-top:2px;color:#ff5a1f;font-size:18px;line-height:1}
+.lt-domain-date{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,.9fr) auto;grid-template-areas:"date availability price" "date action action";gap:4px 8px;align-items:center;padding:11px 12px}
+.lt-domain-date>span:first-child{grid-area:date}
+.lt-domain-date>span:first-child b{display:block;font-size:11px}
+.lt-domain-date>span:first-child small{display:block;margin-top:3px;color:#6e8797;font-size:10px}
+.lt-domain-date__availability{grid-area:availability;color:#387252;font-size:9px;font-weight:850}
+.lt-domain-date__price{grid-area:price;color:#ff5a1f;font-size:15px;font-weight:950;text-align:right}
+.lt-domain-date__action{grid-area:action;justify-self:end;color:#286a9b;font-size:9px;font-weight:900}
+.lt-domain-date.is-disabled{opacity:.55;cursor:not-allowed}
+.lt-domain-participants{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.lt-domain-participant{padding:12px;border-radius:15px;background:#f5f9fc;border:1px solid rgba(54,131,232,.08)}
+.lt-domain-participant b{display:block;color:#17384c;font-size:11px}
+.lt-domain-participant span{display:block;margin-top:2px;color:#7b91a0;font-size:9px}
+.lt-domain-participant strong{display:block;margin-top:10px;color:#ff5a1f;font-size:19px}
+.lt-domain-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.lt-domain-grid.lt-domain-section{grid-template-columns:repeat(2,minmax(0,1fr))}
+.lt-domain-info{padding:14px;border-radius:17px;background:#f7fafc;border:1px solid rgba(31,81,115,.08)}
+.lt-domain-info__row{margin-top:9px}
+.lt-domain-info__row b{display:block;color:#17384b;font-size:11px;line-height:1.3}
+.lt-domain-info__row span{display:block;margin-top:3px;color:#72899a;font-size:10px;line-height:1.4}
+.lt-domain-itinerary{display:grid;gap:12px}
+.lt-domain-itinerary__item{display:grid;grid-template-columns:28px minmax(0,1fr);gap:10px}
+.lt-domain-itinerary__item>span{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:#eef7ff;color:#2b6d9d;font-size:10px;font-weight:950}
+.lt-domain-itinerary__item b{display:block;color:#17384b;font-size:12px}
+.lt-domain-itinerary__item p{margin:2px 0 0;color:#647d8e;font-size:11px;line-height:1.5}
+.lt-domain-list{margin:0;padding:0;list-style:none;display:grid;gap:8px}
+.lt-domain-list li{position:relative;padding-left:18px;color:#526f82;font-size:11px;line-height:1.45}
+.lt-domain-list li::before{content:"✓";position:absolute;left:0;top:0;color:#2f8d63;font-weight:950}
+.lt-domain-policy{padding:14px;border-radius:17px;background:#fff8f2;border:1px solid rgba(255,90,31,.12)}
+.lt-domain-policy>b{display:block;margin-bottom:8px;color:#17384b;font-size:12px}
+.lt-domain-rule{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-top:1px solid rgba(56,79,94,.07);font-size:10px}
+.lt-domain-rule span{color:#748a99}.lt-domain-rule b{color:#3b5363;text-align:right}
+.lt-domain-fieldchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
+.lt-domain-fieldchips span{padding:7px 9px;border-radius:999px;background:#edf7ff;color:#2e6388;font-size:9px;font-weight:800}
+.lt-domain-empty{padding:16px;text-align:center;color:#708897;font-size:11px}
+.lt-domain-loading{min-height:62vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:30px;color:#45677d;text-align:center}
+.lt-domain-loading button{appearance:none;border:0;border-radius:14px;padding:11px 15px;background:#3683e8;color:#fff;font-weight:900}
+.lt-domain-spinner{width:28px;height:28px;border:3px solid rgba(54,131,232,.18);border-top-color:#3683e8;border-radius:50%;animation:lt-domain-spin .8s linear infinite}
+@keyframes lt-domain-spin{to{transform:rotate(360deg)}}
+@media(max-width:520px){
+  .lt-domain-shell{padding:0 10px 22px}
+  .lt-domain-gallery__hero{height:290px;border-radius:24px}
+  .lt-domain-hero{padding:17px}
+  .lt-domain-hero h1{font-size:25px!important}
+  .lt-domain-facts{grid-template-columns:1fr 1fr}
+  .lt-domain-facts>div:last-child{grid-column:1/-1}
+  .lt-domain-grid,.lt-domain-grid.lt-domain-section{grid-template-columns:1fr}
+  .lt-domain-participants{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .lt-domain-date{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"date price" "availability action"}
+  .lt-domain-date__availability{align-self:end}
+}
+@media(max-width:360px){
+  .lt-domain-gallery__hero{height:255px}
+  .lt-domain-participants{grid-template-columns:1fr}
+}
+@media(prefers-reduced-motion:reduce){.lt-domain-spinner{animation:none}}
