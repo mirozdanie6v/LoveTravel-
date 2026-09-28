@@ -1,0 +1,57 @@
+name: Verify booking selection readiness
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.verify-booking-selection-readiness'
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - shell: bash
+        run: |
+          set -euo pipefail
+          start=2026-09-29
+          end=2026-10-05
+          for id in 1287578 1287580; do
+            curl -fsS "https://integration.viiversion.com/api/bokun/product?vendorId=137689&productId=$id" > "/tmp/p-$id.json"
+            curl -fsS "https://integration.viiversion.com/api/bokun/availability?vendorId=137689&productId=$id&start=$start&end=$end&currency=USD" > "/tmp/a-$id.json"
+            echo "=== PRODUCT $id ==="
+            jq '{
+              id,title,bookingType,meetingType,pickupService,customPickupAllowed,
+              pickupPlaceGroups,requiredCustomerFields,mainContactFields,passengerFields,
+              bookingQuestions,bookableExtras,
+              bookingCutoff,bookingCutoffDays,bookingCutoffHours,bookingCutoffMinutes,cutoffType,
+              requestDeadline,requestDeadlineDays,requestDeadlineHours,requestDeadlineMinutes,
+              rates:[.rates[]|{id,title,rateCode,minPerBooking,maxPerBooking,pricedPerPerson,
+                pickupSelectionType,pickupPricingType,pickupPricedPerPerson,
+                dropoffSelectionType,dropoffPricingType,dropoffPricedPerPerson,
+                startTimeIds,allStartTimes,tieredPricingEnabled,pricingCategoryIds,
+                tiers,extraConfigs
+              }],
+              pricingCategories
+            }' "/tmp/p-$id.json"
+            echo "=== AVAILABILITY $id SUMMARY ==="
+            jq '{
+              slots:length,
+              startTimeIds:([.[].startTimeId]|unique),
+              allRateIds:([.[].rates[].id]|unique),
+              allQuoteRateIds:([.[].pricesByRate[].activityRateId]|unique),
+              categoryIds:([.[].pricesByRate[].pricePerCategoryUnit[].id]|unique),
+              samplePriceByRateKeys:(.[0].pricesByRate[0]|keys),
+              samplePriceByRate:.[0].pricesByRate[0],
+              capacities:[.[]|{id,localizedDate,startTime,startTimeId,availabilityCount,bookedParticipants,
+                unlimitedAvailability,soldOut,unavailable,minParticipants,minParticipantsToBookNow,
+                pickupAllotment,pickupAvailabilityCount,pickupSoldOut,defaultRateId
+              }]
+            }' "/tmp/a-$id.json"
+            jq -e '
+              length > 0 and
+              all(.[]; (.rates|length)>0 and (.pricesByRate|length)>0) and
+              all(.[]; ([.rates[].id]|sort) == ([.pricesByRate[].activityRateId]|sort)) and
+              all(.[]; all(.pricesByRate[]; (.pricePerCategoryUnit|length) == 3))
+            ' "/tmp/a-$id.json" >/dev/null
+          done
