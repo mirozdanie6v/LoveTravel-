@@ -45,6 +45,43 @@ const product={
   unexpectedNewField:{ nested:'must survive schema drift' },
 };
 
+const pickupPlaces={
+  pickupPlaces:[
+    {
+      id:15136970,
+      title:'Thien Anh Hotel',
+      type:'ACCOMMODATION',
+      askForRoomNumber:true,
+      externalId:'19140929',
+      location:{
+        address:'59 Nguyen Bieu',
+        city:'Nha Trang',
+        countryCode:'VN',
+        postCode:'650000',
+        latitude:12.2377,
+        longitude:109.19385,
+        wholeAddress:'59 Nguyen Bieu, 650000 Nha Trang',
+      },
+    },
+    {
+      id:15136191,
+      title:'Bến Tàu Du Lịch Nha Trang',
+      type:'OTHER',
+      askForRoomNumber:false,
+      externalId:'ChIJxyWUaShhcDERBuvbaj8N6eY',
+      location:{
+        address:'388 Võ Thị Sáu',
+        city:'Nam Nha Trang',
+        countryCode:'VN',
+        latitude:12.1986608,
+        longitude:109.2025212,
+        wholeAddress:'388 Võ Thị Sáu, Nam Nha Trang',
+      },
+    },
+  ],
+  dropoffPlaces:[],
+};
+
 const availability=[
   {
     id:'30_20260929',
@@ -84,7 +121,7 @@ const availability=[
 ];
 
 test('domain model preserves provider structures that do not exist in legacy MAX TOUR model',()=>{
-  const d=buildBokunDomain(product,availability,{vendorId:'137689'});
+  const d=buildBokunDomain(product,availability,{vendorId:'137689',pickupPlaces});
   assert.equal(d.schemaVersion,'lovetravel.bokun-domain.v1');
   assert.equal(d.experience.meeting.startPoints.length,2);
   assert.equal(d.rates[0].pickup.selectionType,'OPTIONAL');
@@ -93,6 +130,14 @@ test('domain model preserves provider structures that do not exist in legacy MAX
   assert.equal(d.bookingRequirements.questions[0].title,'Hotel name');
   assert.deepEqual(d.bookingRequirements.requiredCustomerFields,['FIRST_NAME','LAST_NAME','PHONE']);
   assert.equal(d.experience.pickup.placeGroups[0].title,'Nha Trang hotels');
+  assert.equal(d.experience.pickup.places.length,2);
+  assert.equal(d.experience.pickup.places[0].id,15136970);
+  assert.equal(d.experience.pickup.places[0].title,'Thien Anh Hotel');
+  assert.equal(d.experience.pickup.places[0].addressLine1,'59 Nguyen Bieu');
+  assert.equal(d.experience.pickup.places[0].city,'Nha Trang');
+  assert.equal(d.experience.pickup.places[0].postalCode,'650000');
+  assert.equal(d.experience.pickup.places[0].askForRoomNumber,true);
+  assert.equal(d.experience.pickup.places[0].latitude,12.2377);
   assert.equal(d.availabilitySlots[0].pickup.availabilityCount,999);
   assert.equal(d.availabilitySlots[0].minParticipantsToBookNow,1);
 });
@@ -115,5 +160,6 @@ test('schema drift is explicit and raw provider payload is retained losslessly',
   assert.deepEqual(d.providerExtensions.unexpectedNewField,{nested:'must survive schema drift'});
   assert.deepEqual(d.providerRaw.product.unexpectedNewField,{nested:'must survive schema drift'});
   assert.equal(d.providerRaw.availability.length,2);
+  assert.equal(d.providerRaw.pickupPlaces.pickupPlaces.length,2);
   assert.equal(d.coverage.rawPreserved,true);
 });
