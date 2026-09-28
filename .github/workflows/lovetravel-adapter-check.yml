@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'src/bokun-adapter.js'
+      - 'src/bokun-domain.js'
       - 'src/worker-r2.js'
       - 'src/runtime-api.js'
       - 'src/tour-lightbox.js'
@@ -14,6 +15,7 @@ on:
       - 'build.mjs'
       - 'wrangler.jsonc'
       - 'tests/bokun-adapter.test.mjs'
+      - 'tests/bokun-domain.test.mjs'
       - 'tests/bokun-worker.test.mjs'
       - 'tests/bokun-catalog-runtime.test.mjs'
       - 'tests/tour-lightbox.test.mjs'
