@@ -1,0 +1,56 @@
+name: Audit Bókun raw schema coverage
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.audit-bokun-schema'
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - shell: bash
+        run: |
+          set -euo pipefail
+          for id in 1287578 1287580; do
+            curl -fsS "https://integration.viiversion.com/api/bokun/product?vendorId=137689&productId=$id" > "/tmp/product-$id.json"
+            curl -fsS "https://integration.viiversion.com/api/bokun/availability?vendorId=137689&productId=$id&start=2026-09-29&end=2026-10-02&currency=USD" > "/tmp/availability-$id.json"
+            echo "=== PRODUCT $id TOP LEVEL KEYS ==="
+            jq -r 'keys[]' "/tmp/product-$id.json"
+            echo "=== PRODUCT $id NESTED SHAPES ==="
+            jq '{
+              rates0:(.rates[0] // null),
+              pricingCategory0:(.pricingCategories[0] // null),
+              startPoint0:(.startPoints[0] // null),
+              guidance0:(.guidanceTypes[0] // null),
+              agenda0:(.agendaItems[0] // null),
+              cancellationPolicy,
+              bookingFields:(.bookingFields // null),
+              questions:(.questions // null),
+              extras:(.extras // null),
+              pickupPlaces:(.pickupPlaces // null),
+              dropoffPlaces:(.dropoffPlaces // null),
+              customFields:(.customFields // null)
+            }' "/tmp/product-$id.json"
+            echo "=== AVAILABILITY $id ENTRY KEYS ==="
+            jq -r '.[0] | keys[]' "/tmp/availability-$id.json"
+            echo "=== AVAILABILITY $id NESTED SHAPES ==="
+            jq '.[0] | {
+              sample: .,
+              rate0:(.rates[0] // null),
+              pricesByRate0:(.pricesByRate[0] // null),
+              pickupPricing:(.pickupPricing // null),
+              pickupAvailabilityCount,
+              minParticipants,
+              minParticipantsToBookNow,
+              bookingCutoff,
+              localDate,
+              startTime,
+              startTimeId,
+              recurrenceId,
+              capacity:.availabilityCount,
+              bookedParticipants
+            }' "/tmp/availability-$id.json"
+          done
