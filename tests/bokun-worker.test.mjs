@@ -215,7 +215,9 @@ test('BookingSelection resolve revalidates one product/date against fresh Bókun
     assert.equal(body.quote.available,true);
     assert.equal(body.quote.total,95);
     assert.equal(body.readyToQuote,true);
-    assert.equal(calls.length,3);
+    assert.equal(calls.length,2);
+    assert.equal(body.includePickupPlaces,false);
+    assert.equal(calls.some(url=>url.pathname.endsWith('/pickup-places')),false);
     assert.ok(calls.every(url=>url.searchParams.get('productId')==='1287578'));
     assert.ok(calls.some(url=>url.pathname.endsWith('/availability') && url.searchParams.get('start')==='2026-09-28' && url.searchParams.get('end')==='2026-09-28'));
     assert.equal(response.headers.get('cache-control'),'no-store, max-age=0');
