@@ -198,7 +198,10 @@ export async function handleLoveTravelBookingSelection(request, env, url = new U
   }
 
   const start = date || today;
-  const end = date || addIsoDays(today, 14);
+  const end = date || addIsoDays(today, 30);
+  const includePickupPlaces =
+    String(selection?.pickup?.mode || '').toUpperCase() === 'PICKUP' ||
+    body?.includePickupPlaces === true;
 
   try {
     const domains = await fetchLoveTravelBokunDomains({
@@ -209,7 +212,7 @@ export async function handleLoveTravelBookingSelection(request, env, url = new U
       start,
       end,
       currency:'USD',
-      includePickupPlaces:true,
+      includePickupPlaces,
     });
     const domain = domains[0];
     if (!domain) {
@@ -227,6 +230,7 @@ export async function handleLoveTravelBookingSelection(request, env, url = new U
       fetchedAt:new Date().toISOString(),
       start,
       end,
+      includePickupPlaces,
       ...resolution,
     }, {
       headers:{
