@@ -101,3 +101,44 @@ test('LoveTravel Bókun endpoint rejects write methods and oversized date ranges
   assert.equal(large.status,400);
   assert.equal((await large.json()).error,'date_range_too_large');
 });
+
+
+test('LoveTravel exposes the domain model separately from the legacy catalog view', async () => {
+  const originalFetch=globalThis.fetch;
+  globalThis.fetch=async input => {
+    const url=new URL(typeof input === 'string' ? input : input.url);
+    if (url.pathname.endsWith('/product')) {
+      return new Response(JSON.stringify({
+        ...product(url.searchParams.get('productId')),
+        bookingQuestions:[{id:1,title:'Hotel name',required:true}],
+        unexpectedNewField:{value:'preserved'},
+      }),{status:200,headers:{'content-type':'application/json'}});
+    }
+    return new Response(JSON.stringify(availability),{status:200,headers:{'content-type':'application/json'}});
+  };
+  try {
+    const compact=await handleLoveTravelBokunTours(
+      new Request('https://lovetravel.viiversion.com/api/bokun/domain?start=2026-09-28&end=2026-10-02'),
+      {BOKUN_INTEGRATION_BASE_URL:'https://integration.example'},
+    );
+    const compactBody=await compact.json();
+    assert.equal(compact.status,200);
+    assert.equal(compactBody.schema,'lovetravel.bokun-domain.v1');
+    assert.equal(compactBody.domains.length,2);
+    assert.equal(compactBody.includeRaw,false);
+    assert.equal('providerRaw' in compactBody.domains[0],false);
+    assert.equal(compactBody.domains[0].bookingRequirements.questions[0].title,'Hotel name');
+    assert.deepEqual(compactBody.domains[0].providerExtensions.unexpectedNewField,{value:'preserved'});
+
+    const raw=await handleLoveTravelBokunTours(
+      new Request('https://lovetravel.viiversion.com/api/bokun/domain?start=2026-09-28&end=2026-10-02&includeRaw=1'),
+      {BOKUN_INTEGRATION_BASE_URL:'https://integration.example'},
+    );
+    const rawBody=await raw.json();
+    assert.equal(rawBody.includeRaw,true);
+    assert.equal(rawBody.domains[0].providerRaw.product.unexpectedNewField.value,'preserved');
+    assert.equal(rawBody.domains[0].providerRaw.availability.length,1);
+  } finally {
+    globalThis.fetch=originalFetch;
+  }
+});
