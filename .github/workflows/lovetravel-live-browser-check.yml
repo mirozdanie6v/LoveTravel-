@@ -187,8 +187,7 @@ jobs:
             const pickupResults=page.locator('.lt-booking-sheet.is-open [data-lt-place]');
             if ((await pickupResults.count()) < 1) throw new Error('pickup search did not find a real Bókun place');
             await pickupResults.first().click();
-            await page.waitForTimeout(900);
-            await page.locator('.lt-booking-sheet.is-open [data-lt-sheet-close]').click().catch(()=>{});
+            await page.waitForSelector('.lt-booking-sheet', { state:'hidden', timeout:10000 });
 
             const configured=await page.evaluate(() => ({
               selection:globalThis.LoveTravelBookingConfigurator?.selection?.(),
