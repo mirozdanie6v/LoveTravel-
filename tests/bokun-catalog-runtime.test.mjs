@@ -33,7 +33,10 @@ test('local MAX TOUR demo tours and departures do not contaminate the live Bóku
 });
 
 test('Bókun tours expose fields expected by the existing LoveTravel catalog renderer', () => {
-  for (const token of ['popular: true','searchText','formatsLabel','priceFromUsd','liked: false','group: {']) {
-    assert.ok(adapter.includes(token), token);
-  }
+  assert.match(adapter,/popular\s*:\s*true/);
+  assert.match(adapter,/searchText/);
+  assert.match(adapter,/formatsLabel/);
+  assert.match(adapter,/priceFromUsd/);
+  assert.match(adapter,/liked\s*:\s*false/);
+  assert.match(adapter,/group\s*:\s*\{/);
 });
