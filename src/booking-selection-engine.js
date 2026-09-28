@@ -288,24 +288,35 @@ function hasValue(value) {
   return value !== null && value !== undefined && str(value).trim() !== '';
 }
 
-function customerFieldKeys(field) {
+function canonicalCustomerField(field) {
   const normalized = str(field).replace(/[^a-z0-9]/gi,'').toLowerCase();
-  const aliases = {
-    firstname:['firstname','firstName'],
-    lastname:['lastname','lastName'],
-    phonenumber:['phonenumber','phoneNumber','phone'],
-    phone:['phone','phoneNumber'],
-    email:['email'],
+  const canonical = {
+    firstname:'firstName',
+    lastname:'lastName',
+    phonenumber:'phoneNumber',
+    phone:'phoneNumber',
+    email:'email',
   };
-  return aliases[normalized] || [field];
+  return canonical[normalized] || str(field);
 }
 
-function missingBookingData(domain, selection, participantTotal) {
+function customerFieldKeys(field) {
+  const canonical = canonicalCustomerField(field);
+  const aliases = {
+    firstName:['firstName','firstname','FIRST_NAME'],
+    lastName:['lastName','lastname','LAST_NAME'],
+    phoneNumber:['phoneNumber','phonenumber','phone','PHONE_NUMBER'],
+    email:['email','EMAIL'],
+  };
+  return aliases[canonical] || [field];
+}
+
+function missingBookingData(domain, selection, participantTotal, pickup = null) {
   const missing = [];
   const req = domain.bookingRequirements || {};
-  const requiredFields = new Set(arr(req.requiredCustomerFields).map(str));
+  const requiredFields = new Set(arr(req.requiredCustomerFields).map(canonicalCustomerField));
   for (const item of arr(req.mainContactFields)) {
-    if (item?.required && item?.field) requiredFields.add(str(item.field));
+    if (item?.required && item?.field) requiredFields.add(canonicalCustomerField(item.field));
   }
   for (const field of requiredFields) {
     const aliases = customerFieldKeys(field);
@@ -566,7 +577,10 @@ export function resolveBookingSelection(domain = {}, input = {}, { now = new Dat
   if (!selectedSlot) errors.push(issue('slot_required','slotId','A specific date/time slot is required'));
   if (!selectedRate) errors.push(issue('rate_required','rateId','A rate/option is required'));
 
-  const bookingDataIssues = missingBookingData(domain, selection, participantTotal);
+  const bookingDataIssues = missingBookingData(domain, selection, participantTotal, pickup);
+  if (pickup.optional && !selection.pickup.mode) {
+    bookingDataIssues.push(issue('pickup_mode_required','pickup.mode','Choose pickup or meeting on location before booking'));
+  }
   const blockingQuoteCodes = new Set([
     'product_mismatch','date_not_available','slot_not_available','time_not_available','unknown_rate',
     'rate_not_available_for_slot','participants_required','unknown_participant_category','below_rate_minimum',
