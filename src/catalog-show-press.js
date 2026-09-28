@@ -66,6 +66,7 @@
 
   function injectVerifiedIslandTours() {
     try {
+      if (globalThis.LOVE_TRAVEL_BOKUN_ACTIVE) return 0;
       if (!Array.isArray(TOURS)) return 0;
       const existing = new Set(TOURS.map(tour => String(tour?.id || '')));
       let added = 0;
@@ -83,6 +84,7 @@
 
   function verifiedIslandToursReady() {
     try {
+      if (globalThis.LOVE_TRAVEL_BOKUN_ACTIVE) return true;
       if (!Array.isArray(TOURS)) return false;
       const ids = new Set(TOURS.map(tour => String(tour?.id || '')));
       return VERIFIED_NHATRANG_ISLAND_TOURS.every(tour => ids.has(tour.id));
