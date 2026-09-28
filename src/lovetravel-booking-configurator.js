@@ -4,6 +4,8 @@
   const PRODUCT_IDS = new Set(['1287578','1287580']);
   const stateByProduct = new Map();
   const resolutionByProduct = new Map();
+  const calendarByKey = new Map();
+  const calendarRequestSeqByProduct = new Map();
   let activeProductId = null;
   let requestSeq = 0;
   let sheet = null;
@@ -133,6 +135,63 @@
     saveSelection(productId,next);
     return next;
   }
+  function calendarKey(productId,rateId=null){
+    return String(productId)+':'+(rateId ? String(rateId) : '*');
+  }
+  function storeCalendar(productId,data){
+    const dates=arr(data?.constraints?.dates);
+    const times=arr(data?.constraints?.times);
+    if(!dates.length) return null;
+    const rateId=data?.selection?.rateId || null;
+    const value={
+      productId:String(productId),
+      rateId:rateId ? String(rateId) : null,
+      dates,
+      times,
+      fetchedAt:Date.now(),
+      start:data?.start || null,
+      end:data?.end || null,
+    };
+    calendarByKey.set(calendarKey(productId,value.rateId),value);
+    return value;
+  }
+  function calendarFor(productId){
+    const rateId=selection(productId).rateId || null;
+    return calendarByKey.get(calendarKey(productId,rateId))
+      || calendarByKey.get(calendarKey(productId,null))
+      || null;
+  }
+  function calendarTimesForDate(productId,date){
+    return arr(calendarFor(productId)?.times).filter(item=>String(item?.date||'')===String(date||''));
+  }
+  async function refreshCalendar(productId,{force=false}={}){
+    const currentSelection=selection(productId);
+    const rateId=currentSelection.rateId || null;
+    const cached=calendarByKey.get(calendarKey(productId,rateId));
+    if(!force && cached && Date.now()-cached.fetchedAt < 60000) return cached;
+
+    const seq=(calendarRequestSeqByProduct.get(productId)||0)+1;
+    calendarRequestSeqByProduct.set(productId,seq);
+    const calendarSelection={
+      ...currentSelection,
+      date:null,
+      startTimeId:null,
+      slotId:null,
+      pickup:{mode:null,placeId:null,customLocation:null},
+    };
+    const response=await fetch('/api/bokun/booking-selection/resolve',{
+      method:'POST',
+      headers:{'content-type':'application/json'},
+      cache:'no-store',
+      credentials:'same-origin',
+      body:JSON.stringify({selection:calendarSelection}),
+    });
+    if(!response.ok) throw new Error('calendar resolve HTTP '+response.status);
+    const data=await response.json();
+    if(!data?.ok || data?.schemaVersion!=='lovetravel.booking-selection-resolution.v1') throw new Error('invalid calendar resolution');
+    if(calendarRequestSeqByProduct.get(productId)!==seq) return calendarFor(productId);
+    return storeCalendar(productId,data);
+  }
   async function resolve(productId,{quiet=false}={}){
     const seq=++requestSeq;
     const card=document.querySelector('[data-lt-config="'+CSS.escape(productId)+'"]');
@@ -148,6 +207,7 @@
       if(seq!==requestSeq || activeProductId!==productId) return data;
       resolutionByProduct.set(productId,data);
       saveSelection(productId,data.selection);
+      if(!data.selection?.date) storeCalendar(productId,data);
       render(productId);
       return data;
     }catch(error){
@@ -314,10 +374,15 @@
     }
     return [...groups.entries()];
   }
-  function openDateSheet(productId){
+  function openDateSheet(productId,{skipRefresh=false}={}){
     const r=resolutionByProduct.get(productId); if(!r) return;
     const s=selection(productId);
-    const groups=monthGroups(arr(r.constraints?.dates));
+    const calendar=calendarFor(productId);
+    const dateRows=arr(calendar?.dates).length ? arr(calendar.dates) : arr(r.constraints?.dates);
+    const timeRows=s.date
+      ? (calendarTimesForDate(productId,s.date).length ? calendarTimesForDate(productId,s.date) : arr(r.constraints?.times))
+      : [];
+    const groups=monthGroups(dateRows);
     const calendars=groups.map(([key,items])=>{
       const first=items[0]?.date;
       return '<div class="lt-date-group"><h4>'+esc(formatDate(first,{month:'long',year:'numeric'}))+'</h4><div class="lt-date-grid">'+
@@ -327,18 +392,45 @@
         }).join('')+'</div></div>';
     }).join('');
     const times=s.date?'<div class="lt-time-block"><h4>'+esc(t().chooseTime)+'</h4><div class="lt-time-grid">'+
-      arr(r.constraints?.times).map(item=>'<button type="button" class="lt-time-chip '+(String(item.id)===String(s.slotId)?'is-active':'')+'" data-lt-slot="'+esc(item.id)+'" data-lt-time="'+esc(item.startTimeId||'')+'"><b>'+esc(item.startTime||'')+'</b><small>'+(item.unlimitedAvailability?esc(t().available):esc((item.availabilityCount??0)+' '+t().available))+'</small></button>').join('')+
+      timeRows.map(item=>'<button type="button" class="lt-time-chip '+(String(item.id)===String(s.slotId)?'is-active':'')+'" data-lt-slot="'+esc(item.id)+'" data-lt-time="'+esc(item.startTimeId||'')+'"><b>'+esc(item.startTime||'')+'</b><small>'+(item.unlimitedAvailability?esc(t().available):esc((item.availabilityCount??0)+' '+t().available))+'</small></button>').join('')+
       '</div></div>':'';
     const root=showSheet(t().chooseDate,'<div class="lt-sheet-scroll">'+calendars+times+'</div>');
+
+    if(!skipRefresh){
+      const matching=calendarByKey.get(calendarKey(productId,s.rateId||null));
+      const stale=!matching || Date.now()-matching.fetchedAt>=60000;
+      if(stale){
+        refreshCalendar(productId,{force:true}).then(()=>{
+          if(activeProductId===productId && sheet && !sheet.hidden && sheet.classList.contains('is-open')){
+            openDateSheet(productId,{skipRefresh:true});
+          }
+        }).catch(error=>console.error('[LoveTravel] calendar refresh failed',error));
+      }
+    }
+
     root.querySelectorAll('[data-lt-date]').forEach(btn=>btn.addEventListener('click',async()=>{
-      patchSelection(productId,{date:btn.dataset.ltDate});
-      const next=await resolve(productId,{quiet:true});
-      const times=arr(next.constraints?.times);
-      if(times.length===1){
-        patchSelection(productId,{slotId:times[0].id,startTimeId:times[0].startTimeId});
+      const date=btn.dataset.ltDate;
+      patchSelection(productId,{date});
+      const cachedTimes=calendarTimesForDate(productId,date);
+      if(cachedTimes.length===1){
+        patchSelection(productId,{slotId:cachedTimes[0].id,startTimeId:cachedTimes[0].startTimeId});
         await resolve(productId,{quiet:true});
         closeSheet();
-      } else openDateSheet(productId);
+        return;
+      }
+      if(cachedTimes.length>1){
+        openDateSheet(productId,{skipRefresh:true});
+        return;
+      }
+      const next=await resolve(productId,{quiet:true});
+      const exactTimes=arr(next.constraints?.times);
+      if(exactTimes.length===1){
+        patchSelection(productId,{slotId:exactTimes[0].id,startTimeId:exactTimes[0].startTimeId});
+        await resolve(productId,{quiet:true});
+        closeSheet();
+      } else {
+        openDateSheet(productId,{skipRefresh:true});
+      }
     }));
     root.querySelectorAll('[data-lt-slot]').forEach(btn=>btn.addEventListener('click',async()=>{
       patchSelection(productId,{slotId:btn.dataset.ltSlot,startTimeId:btn.dataset.ltTime||null});
@@ -361,6 +453,7 @@
       patchSelection(productId,{rateId:btn.dataset.ltRate});
       await resolve(productId,{quiet:true});
       closeSheet();
+      refreshCalendar(productId,{force:true}).catch(error=>console.error('[LoveTravel] rate calendar refresh failed',error));
     }));
   }
   function openGuestsSheet(productId){
@@ -509,6 +602,8 @@
     resolve:()=>activeProductId?resolve(activeProductId):Promise.resolve(null),
     selection:()=>activeProductId?selection(activeProductId):null,
     resolution:()=>activeProductId?resolutionByProduct.get(activeProductId)||null:null,
+    calendar:()=>activeProductId?calendarFor(activeProductId):null,
+    refreshCalendar:()=>activeProductId?refreshCalendar(activeProductId,{force:true}):Promise.resolve(null),
     open:step=>activeProductId&&openSheet(activeProductId,step||firstBlockingStep(resolutionByProduct.get(activeProductId))),
   };
 })();
