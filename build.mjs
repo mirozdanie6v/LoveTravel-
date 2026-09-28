@@ -108,7 +108,7 @@ function stripSalesContinuityV24(source) {
 }
 
 const telegramSdk = '<script src="https://telegram.org/js/telegram-web-app.js?63"></script>';
-const analyticsTracker = '<script defer src="https://dashboard.viiversion.com/tracker.js" data-project="MAX TOUR Demo"></script>';
+const analyticsTracker = '<script defer src="https://dashboard.viiversion.com/tracker.js" data-project="LoveTravel"></script>';
 const productionEmbedCss = '<link rel="stylesheet" href="/production-embed-polish.css">';
 const i18nCss = '<link rel="stylesheet" href="/i18n-v1.css">';
 const productionEmbedJs = '<script defer src="/production-embed-polish.js"></script>';
@@ -157,7 +157,7 @@ await mkdir(dist, { recursive: true });
 await mkdir(resolve(dist, 'admin'), { recursive: true });
 await mkdir(resolve(dist, 'director'), { recursive: true });
 const marker = '</body>';
-const injection = '<script src="/booking-pricing.js"></script>\n<script src="/traveler-profile.js"></script>\n<link rel="stylesheet" href="/traveler-picker-list.css">\n<script src="/trip-actions.js"></script>\n<script src="/trip-policy-live-v2.js"></script>\n<link rel="stylesheet" href="/hero-redesign.css">\n<script src="/hero-redesign.js"></script>\n<link rel="stylesheet" href="/role-switch.css">\n<script src="/role-switch.js"></script>\n<link rel="stylesheet" href="/ai-consultant.css">\n<link rel="stylesheet" href="/ai-consultant-v5.css">\n<script src="/ai-network-guard-v8.js"></script>\n<script src="/ai-consultant.js"></script>\n<script src="/ai-consultant-v5.js?v=26"></script>\n<script src="/ai-location-guard-v6.js"></script>\n<script src="/ai-catalog-card-v7.js"></script>\n<script src="/tour-departure-live-v3.js"></script>\n<link rel="stylesheet" href="/catalog-show-press.css">\n<script src="/catalog-show-press.js" defer></script>\n<script src="/ai-selection-polish-v15.js" defer></script>\n<script src="/ai-explicit-tour-v16.js" defer></script>\n<script src="/ai-booking-bridge-v25.js" defer></script>\n<link rel="stylesheet" href="/tour-lightbox.css">\n<script src="/tour-lightbox.js" defer></script>\n<script src="/runtime-api.js" defer></script>\n';
+const injection = '<script src="/booking-pricing.js"></script>\n<script src="/traveler-profile.js"></script>\n<link rel="stylesheet" href="/traveler-picker-list.css">\n<script src="/trip-actions.js"></script>\n<script src="/trip-policy-live-v2.js"></script>\n<link rel="stylesheet" href="/hero-redesign.css">\n<script src="/hero-redesign.js"></script>\n<link rel="stylesheet" href="/role-switch.css">\n<script src="/role-switch.js"></script>\n<link rel="stylesheet" href="/ai-consultant.css">\n<link rel="stylesheet" href="/ai-consultant-v5.css">\n<script src="/ai-network-guard-v8.js"></script>\n<script src="/ai-consultant.js"></script>\n<script src="/ai-consultant-v5.js?v=26"></script>\n<script src="/ai-location-guard-v6.js"></script>\n<script src="/ai-catalog-card-v7.js"></script>\n<script src="/tour-departure-live-v3.js"></script>\n<link rel="stylesheet" href="/catalog-show-press.css">\n<script src="/catalog-show-press.js" defer></script>\n<script src="/ai-selection-polish-v15.js" defer></script>\n<script src="/ai-explicit-tour-v16.js" defer></script>\n<script src="/ai-booking-bridge-v25.js" defer></script>\n<link rel="stylesheet" href="/tour-lightbox.css">\n<script src="/tour-lightbox.js" defer></script>\n<link rel="stylesheet" href="/lovetravel-brand.css">\n<script src="/runtime-api.js" defer></script>\n<script src="/lovetravel-brand.js" defer></script>\n';
 if (!prototypeHtml.includes(marker)) throw new Error('Prototype has no </body> marker');
 const builtHtml = withViiversionAnalytics(cleanCustomerCopy(replaceBrandLogos(replaceLegacyAdmin(prototypeHtml)).replace(marker, `${injection}${marker}`)));
 await writeFile(resolve(dist, 'index.html'), builtHtml, 'utf8');
@@ -187,6 +187,8 @@ await copyFile(resolve(root, 'src/catalog-show-press.css'), resolve(dist, 'catal
 await copyFile(resolve(root, 'src/catalog-show-press.js'), resolve(dist, 'catalog-show-press.js'));
 await copyFile(resolve(root, 'src/tour-lightbox.css'), resolve(dist, 'tour-lightbox.css'));
 await copyFile(resolve(root, 'src/tour-lightbox.js'), resolve(dist, 'tour-lightbox.js'));
+await copyFile(resolve(root, 'src/lovetravel-brand.css'), resolve(dist, 'lovetravel-brand.css'));
+await copyFile(resolve(root, 'src/lovetravel-brand.js'), resolve(dist, 'lovetravel-brand.js'));
 await copyFile(resolve(root, 'src/production-embed-polish.css'), resolve(dist, 'production-embed-polish.css'));
 await copyFile(resolve(root, 'src/production-embed-polish.js'), resolve(dist, 'production-embed-polish.js'));
 await copyFile(resolve(root, 'src/i18n-v1.css'), resolve(dist, 'i18n-v1.css'));
@@ -203,4 +205,4 @@ await copyFile(resolve(root, 'src/admin-app.css'), resolve(dist, 'admin-app.css'
 await copyFile(resolve(root, 'src/admin-app.js'), resolve(dist, 'admin-app.js'));
 await copyFile(resolve(root, 'src/admin-tour-media.js'), resolve(dist, 'admin-tour-media.js'));
 await copyFile(resolve(root, 'src/runtime-api.js'), resolve(dist, 'runtime-api.js'));
-console.log(`Built standalone v28: ${catalog.length} tours with curated location-correct imagery + photo lightbox + live trip/departure policy + AI consultant v8 network guard, v15 selection ranking and v16 explicit-tour guard without sales-continuity reply rewriting + v25 safe booking bridge + v7 catalog-card parity + admin v3 + editable R2 tour photos + director v3 + Telegram analytics; exact source checksums verified.`);
+console.log(`Built LoveTravel v28 shell: ${catalog.length} fallback tours + live Bókun catalog + Nha Trang Love Travel public branding + photo lightbox + booking/profile/AI runtime; exact source checksums verified.`);
