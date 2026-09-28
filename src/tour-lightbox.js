@@ -1,5 +1,6 @@
 (() => {
   const MEDIA_PREFIX = '/tour-media/';
+  const BOKUN_IMAGE_HOST = 'imgcdn.bokun.tools';
   let modal = null;
   let modalImage = null;
   let counter = null;
@@ -16,42 +17,84 @@
   let openSequence = 0;
   let renderedGalleryKey = '';
 
-  function pathFromImage(image) {
+  function mediaUrl(value) {
     try {
-      return new URL(image.currentSrc || image.src, window.location.href).pathname;
+      return new URL(String(value || ''), window.location.href).href;
     } catch {
       return '';
     }
   }
 
+  function sourceFromImage(image) {
+    return mediaUrl(image?.currentSrc || image?.src || '');
+  }
+
+  function liveCatalog() {
+    try {
+      if (typeof TOURS !== 'undefined' && Array.isArray(TOURS) && TOURS.length) return TOURS;
+    } catch (_) {}
+    return null;
+  }
+
+  function isSupportedMedia(value) {
+    const absolute = mediaUrl(value);
+    if (!absolute) return false;
+    try {
+      const url = new URL(absolute);
+      return url.pathname.startsWith(MEDIA_PREFIX) || url.hostname === BOKUN_IMAGE_HOST;
+    } catch {
+      return false;
+    }
+  }
+
+  function uniqueMedia(values) {
+    const seen = new Set();
+    const result = [];
+    values.forEach(value => {
+      if (!isSupportedMedia(value)) return;
+      const absolute = mediaUrl(value);
+      if (!absolute || seen.has(absolute)) return;
+      seen.add(absolute);
+      result.push(absolute);
+    });
+    return result;
+  }
+
   function isTourImage(image) {
-    return image instanceof HTMLImageElement && pathFromImage(image).startsWith(MEDIA_PREFIX);
+    if (!(image instanceof HTMLImageElement)) return false;
+    const source = sourceFromImage(image);
+    if (!source) return false;
+    const catalog = liveCatalog();
+    if (catalog?.some(item => uniqueMedia([item.image, item.fallbackImage, ...(item.gallery || [])]).includes(source))) return true;
+    return isSupportedMedia(source);
   }
 
   function loadCatalog() {
+    const current = liveCatalog();
+    if (current) return Promise.resolve(current);
     if (!catalogPromise) {
-      catalogPromise = fetch('/catalog.v28.json', { cache: 'no-store' })
-        .then(response => {
-          if (!response.ok) throw new Error(`catalog HTTP ${response.status}`);
-          return response.json();
+      catalogPromise = fetch('/api/bokun/tours', { cache:'no-store', credentials:'same-origin' })
+        .then(async response => {
+          if (!response.ok) throw new Error(`Bókun catalog HTTP ${response.status}`);
+          const data = await response.json();
+          return Array.isArray(data?.tours) ? data.tours : [];
         })
-        .catch(() => []);
+        .catch(() => fetch('/catalog.v28.json', { cache:'no-store' })
+          .then(response => response.ok ? response.json() : [])
+          .catch(() => []));
     }
     return catalogPromise;
   }
 
-  function uniquePaths(values) {
-    return [...new Set(values.filter(value => typeof value === 'string' && value.startsWith(MEDIA_PREFIX)))];
-  }
-
-  async function resolveGallery(path) {
+  async function resolveGallery(source) {
+    const normalizedSource = mediaUrl(source);
     const catalog = await loadCatalog();
     const tour = Array.isArray(catalog)
-      ? catalog.find(item => uniquePaths([item.image, item.fallbackImage, ...(item.gallery || [])]).includes(path))
+      ? catalog.find(item => uniqueMedia([item.image, item.fallbackImage, ...(item.gallery || [])]).includes(normalizedSource))
       : null;
-    if (!tour) return { paths: [path], title: '' };
-    const paths = uniquePaths([...(tour.gallery || []), tour.image, tour.fallbackImage]);
-    return { paths: paths.length ? paths : [path], title: String(tour.title || '') };
+    if (!tour) return { paths: normalizedSource ? [normalizedSource] : [], title: '' };
+    const paths = uniqueMedia([...(tour.gallery || []), tour.image, tour.fallbackImage]);
+    return { paths: paths.length ? paths : [normalizedSource], title: String(tour.title || '') };
   }
 
   function ensureModal() {
@@ -175,11 +218,12 @@
     render();
   }
 
-  async function open(path, alt = '', trigger = null) {
+  async function open(source, alt = '', trigger = null) {
     ensureModal();
     const sequence = ++openSequence;
     sourceImage = trigger instanceof HTMLElement ? trigger : null;
-    gallery = [path];
+    const normalizedSource = mediaUrl(source);
+    gallery = normalizedSource ? [normalizedSource] : [];
     renderedGalleryKey = '';
     index = 0;
     modalImage.alt = alt || 'Фотография экскурсии';
@@ -191,11 +235,11 @@
     requestAnimationFrame(() => modal.classList.add('is-open'));
     modal.querySelector('.tour-lightbox__close').focus({ preventScroll: true });
 
-    const resolved = await resolveGallery(path);
+    const resolved = await resolveGallery(normalizedSource);
     if (sequence !== openSequence || modal.hidden) return;
     gallery = resolved.paths;
     renderedGalleryKey = '';
-    index = Math.max(0, gallery.indexOf(path));
+    index = Math.max(0, gallery.indexOf(normalizedSource));
     titleNode.textContent = resolved.title;
     render();
   }
@@ -220,7 +264,7 @@
     if (modal?.contains(image)) return;
     event.preventDefault();
     event.stopPropagation();
-    open(pathFromImage(image), image.alt || '', image);
+    open(sourceFromImage(image), image.alt || '', image);
   }, true);
 
   document.addEventListener('keydown', event => {
