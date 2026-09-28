@@ -14,7 +14,7 @@ test('LoveTravel public branding script is valid and uses the official Nha Trang
   assert.match(js,/Nha Trang Love Travel/);
   assert.match(js,/Robinson Beach/);
   assert.match(js,/Hòn Mun Marine Park/);
-  assert.match(js,/LOVE_TRAVEL_BOKUN_ACTIVE/);
+  assert.match(js,/PRODUCT_IDS = \['1287578','1287580'\]/);
 });
 
 test('LoveTravel branding replaces the old multi-destination hero with a two-product client experience', () => {
