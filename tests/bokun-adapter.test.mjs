@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   LOVE_TRAVEL_BOKUN_PRODUCT_IDS,
   LOVE_TRAVEL_BOKUN_VENDOR_ID,
+  fetchLoveTravelBokunDomains,
   fetchLoveTravelBokunTours,
   normalizeBokunProduct,
 } from '../src/bokun-adapter.js';
@@ -95,7 +96,7 @@ test('normalizes Bókun product into the existing LoveTravel tour shape', () => 
   assert.equal(tour.route[0][1], 'Visit Bich Dam fishing village.');
 });
 
-test('fetch helper reads product, availability and pickup places endpoints and returns normalized tours', async () => {
+test('catalog fetch helper reads product and availability only', async () => {
   const calls = [];
   const fakeFetch = async url => {
     calls.push(String(url));
@@ -133,10 +134,47 @@ test('fetch helper reads product, availability and pickup places endpoints and r
   });
 
   assert.equal(tours.length, 2);
-  assert.equal(calls.length, 6);
+  assert.equal(calls.length, 4);
   assert.ok(calls.every(url => url.includes('vendorId=137689')));
   assert.ok(calls.some(url => url.includes('productId=1287578')));
   assert.ok(calls.some(url => url.includes('productId=1287580')));
   assert.ok(calls.filter(url => url.includes('/availability')).every(url => url.includes('currency=USD')));
-  assert.equal(calls.filter(url => url.includes('/pickup-places')).length,2);
+  assert.equal(calls.filter(url => url.includes('/pickup-places')).length,0);
+});
+
+
+test('domain fetch includes pickup places only when explicitly requested', async () => {
+  const calls=[];
+  const fakeFetch=async url => {
+    calls.push(String(url));
+    const current=new URL(url);
+    if (current.pathname.endsWith('/product')) {
+      return new Response(JSON.stringify({...product,id:Number(current.searchParams.get('productId'))}),{
+        status:200,headers:{'content-type':'application/json'},
+      });
+    }
+    if (current.pathname.endsWith('/pickup-places')) {
+      return new Response(JSON.stringify({
+        pickupPlaces:[{
+          id:15136970,title:'Thien Anh Hotel',type:'ACCOMMODATION',askForRoomNumber:true,
+          location:{address:'59 Nguyen Bieu',city:'Nha Trang',countryCode:'VN',latitude:12.2377,longitude:109.19385}
+        }],
+        dropoffPlaces:[],
+      }),{status:200,headers:{'content-type':'application/json'}});
+    }
+    return new Response(JSON.stringify(availability),{status:200,headers:{'content-type':'application/json'}});
+  };
+
+  const domains=await fetchLoveTravelBokunDomains({
+    fetchImpl:fakeFetch,
+    baseUrl:'https://integration.example',
+    start:'2026-09-26',
+    end:'2026-10-10',
+    includePickupPlaces:true,
+  });
+
+  assert.equal(calls.length,6);
+  assert.equal(calls.filter(url=>url.includes('/pickup-places')).length,2);
+  assert.equal(domains[0].experience.pickup.places[0].title,'Thien Anh Hotel');
+  assert.equal(domains[0].experience.pickup.places[0].askForRoomNumber,true);
 });
