@@ -174,7 +174,16 @@ jobs:
             const optionCount=await page.locator('.lt-booking-sheet.is-open [data-lt-rate]').count();
             if (optionCount !== 7) throw new Error('Robinson configurator expected 7 options, got '+optionCount);
             await page.locator('.lt-booking-sheet.is-open [data-lt-rate]').first().click();
-            await page.waitForTimeout(700);
+            await page.waitForTimeout(900);
+
+            await page.locator('#tourScreen [data-lt-step="date"]').click();
+            await page.waitForSelector('.lt-booking-sheet.is-open [data-lt-date]', { state:'visible', timeout:10000 });
+            const reopenedDateCount=await page.locator('.lt-booking-sheet.is-open [data-lt-date]').count();
+            const calendarState=await page.evaluate(() => globalThis.LoveTravelBookingConfigurator?.calendar?.());
+            if (reopenedDateCount < 20) throw new Error('calendar collapsed after exact date/rate revalidation: '+reopenedDateCount);
+            if (!calendarState || (calendarState.dates||[]).length < 20) throw new Error('calendar cache was not preserved: '+JSON.stringify(calendarState));
+            await page.locator('.lt-booking-sheet.is-open [data-lt-sheet-close-button]').click();
+            await page.locator('.lt-booking-sheet').waitFor({ state:'hidden', timeout:10000 });
 
             await page.locator('#tourScreen [data-lt-step="pickup"]').click();
             await page.waitForSelector('.lt-booking-sheet.is-open [data-lt-pickup-mode="PICKUP"]', { state:'visible', timeout:10000 });
@@ -225,7 +234,7 @@ jobs:
             if (honMun.text.includes('Дополнительные услуги') || honMun.text.includes('Дополнительные вопросы')) throw new Error('empty extras/questions rendered unexpectedly');
 
             if (errors.length) throw new Error('page errors: '+JSON.stringify(errors));
-            console.log(JSON.stringify({ ok:true, model, brand, filterState, cards, renderedImages, configurator:{readyToQuote:configured.resolution.readyToQuote,total:configured.resolution.quote.total,pickupPlaceId:configured.selection.pickup.placeId,readyToBook:checked.readyToBook}, robinson:{rates:robinson.rates,dates:robinson.dates,participants:robinson.participants}, honMun:{rates:honMun.rates,dates:honMun.dates,participants:honMun.participants}, pageErrors:errors }, null, 2));
+            console.log(JSON.stringify({ ok:true, model, brand, filterState, cards, renderedImages, configurator:{readyToQuote:configured.resolution.readyToQuote,total:configured.resolution.quote.total,pickupPlaceId:configured.selection.pickup.placeId,readyToBook:checked.readyToBook,reopenedDateCount,calendarDates:(calendarState.dates||[]).length}, robinson:{rates:robinson.rates,dates:robinson.dates,participants:robinson.participants}, honMun:{rates:honMun.rates,dates:honMun.dates,participants:honMun.participants}, pageErrors:errors }, null, 2));
             await browser.close();
           })().catch(error => {
             console.error(error);
