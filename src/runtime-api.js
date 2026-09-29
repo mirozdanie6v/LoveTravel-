@@ -125,9 +125,20 @@
     return true;
   }
 
+  function currentCatalogLocale(){
+    const localized=globalThis.LoveTravelTourLocale?.locale?.();
+    if(['ru','vi','en','ko'].includes(localized)) return localized;
+    try {
+      const stored=String(localStorage.getItem('max-tour-locale-v1')||'').toLowerCase();
+      if(['ru','vi','en','ko'].includes(stored)) return stored;
+    } catch (_) {}
+    return 'ru';
+  }
+
   async function loadCanonicalCatalog() {
     try {
-      const response = await fetch('/api/bokun/tours', { cache:'no-store', credentials:'same-origin' });
+      const locale=currentCatalogLocale();
+      const response = await fetch('/api/bokun/tours?locale='+encodeURIComponent(locale), { cache:'no-store', credentials:'same-origin' });
       if (response.ok) {
         const data = await response.json();
         if (
@@ -169,6 +180,17 @@
     if (state.screen === 'home') renderHome();
     else showScreen(state.screen);
   }
+
+  document.addEventListener('click', event => {
+    if(!event.target.closest?.('.mt-language-switcher button')) return;
+    setTimeout(async () => {
+      try {
+        await loadCanonicalCatalog();
+        if(state.screen==='home') renderHome();
+        else if(typeof showScreen==='function') showScreen(state.screen);
+      } catch (_) {}
+    },120);
+  },true);
 
   async function persistFavorites() {
     saveFallback();
