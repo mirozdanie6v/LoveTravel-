@@ -73,7 +73,7 @@ test('LoveTravel customer build does not publish the MAX TOUR logo asset', () =>
   assert.match(director, /max-tour-logo\.svg/);
 });
 
-test('published Mini App replaces the legacy inline admin with protected v3', () => {
-  assert.match(build, /replaceLegacyAdmin/);
-  assert.match(build, /window\.location\.assign\('\/admin\/'\)/);
+test('published LoveTravel customer shell contains no legacy admin renderer', () => {
+  assert.doesNotMatch(build, /replaceLegacyAdmin/);
+  assert.doesNotMatch(build, /window\.location\.assign\('\/admin\/'\)/);
 });
