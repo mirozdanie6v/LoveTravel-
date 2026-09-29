@@ -47,6 +47,8 @@ export function normalizeBookingSelection(input = {}, domain = {}) {
       customLocation:input?.pickup?.customLocation && typeof input.pickup.customLocation === 'object'
         ? { ...input.pickup.customLocation }
         : null,
+      roomNumber:input?.pickup?.roomNumber === null || input?.pickup?.roomNumber === undefined
+        ? '' : str(input.pickup.roomNumber).trim(),
     },
     extras:extraMap(input.extras),
     customer:input.customer && typeof input.customer === 'object' && !Array.isArray(input.customer) ? { ...input.customer } : {},
@@ -275,16 +277,60 @@ function pickupConstraint(domain, rate, slot, participantTotal) {
   };
 }
 
+function canonicalCustomerField(field) {
+  const normalized = str(field).replace(/[^a-z0-9]/gi,'').toLowerCase();
+  const canonical = {
+    firstname:'firstName',
+    lastname:'lastName',
+    phonenumber:'phoneNumber',
+    phone:'phoneNumber',
+    email:'email',
+  };
+  return canonical[normalized] || str(field);
+}
+
+function customerFieldKeys(field) {
+  const canonical = canonicalCustomerField(field);
+  const aliases = {
+    firstName:['firstName','firstname','FIRST_NAME'],
+    lastName:['lastName','lastname','LAST_NAME'],
+    phoneNumber:['phoneNumber','phonenumber','phone','PHONE_NUMBER','PHONE'],
+    email:['email','EMAIL'],
+  };
+  return aliases[canonical] || [field, canonical].filter(Boolean);
+}
+
+function fieldSpec(item) {
+  if (typeof item === 'string') {
+    return {
+      field:canonicalCustomerField(item),
+      required:null,
+      requiredBeforeDeparture:null,
+    };
+  }
+  if (!item || typeof item !== 'object') return null;
+  const raw = item.field ?? item.name ?? item.code ?? item.id ?? '';
+  const field = canonicalCustomerField(raw);
+  if (!field) return null;
+  return {
+    field,
+    required:item.required === undefined ? null : Boolean(item.required),
+    requiredBeforeDeparture:item.requiredBeforeDeparture === undefined ? null : Boolean(item.requiredBeforeDeparture),
+  };
+}
+
+function passengerFieldName(item) {
+  if (typeof item === 'string') return canonicalCustomerField(item);
+  if (!item || typeof item !== 'object') return '';
+  return canonicalCustomerField(item.field ?? item.name ?? item.code ?? item.id ?? '');
+}
+
 function bookingRequirements(domain = {}) {
   const req = domain.bookingRequirements || {};
   return {
-    requiredCustomerFields:arr(req.requiredCustomerFields),
-    mainContactFields:arr(req.mainContactFields).map(item => ({
-      field:str(item?.field),
-      required:Boolean(item?.required),
-      requiredBeforeDeparture:Boolean(item?.requiredBeforeDeparture),
-    })),
-    passengerFields:arr(req.passengerFields),
+    requiredCustomerFields:arr(req.requiredCustomerFields).map(canonicalCustomerField).filter(Boolean),
+    mainContactFields:arr(req.mainContactFields).map(fieldSpec).filter(Boolean),
+    passengerFields:arr(req.passengerFields).map(passengerFieldName).filter(Boolean),
     questions:arr(req.questions).map(item => ({
       id:item?.id === null || item?.id === undefined ? null : str(item.id),
       title:str(item?.title),
@@ -309,35 +355,23 @@ function hasValue(value) {
   return value !== null && value !== undefined && str(value).trim() !== '';
 }
 
-function canonicalCustomerField(field) {
-  const normalized = str(field).replace(/[^a-z0-9]/gi,'').toLowerCase();
-  const canonical = {
-    firstname:'firstName',
-    lastname:'lastName',
-    phonenumber:'phoneNumber',
-    phone:'phoneNumber',
-    email:'email',
-  };
-  return canonical[normalized] || str(field);
+function answerKey(item = {}) {
+  return str(item.id || item.code || item.title);
 }
 
-function customerFieldKeys(field) {
-  const canonical = canonicalCustomerField(field);
-  const aliases = {
-    firstName:['firstName','firstname','FIRST_NAME'],
-    lastName:['lastName','lastname','LAST_NAME'],
-    phoneNumber:['phoneNumber','phonenumber','phone','PHONE_NUMBER'],
-    email:['email','EMAIL'],
-  };
-  return aliases[canonical] || [field];
+function pickupLocationHasValue(value) {
+  if (!value || typeof value !== 'object') return false;
+  return ['wholeAddress','addressLine1','address','title','name']
+    .some(key => hasValue(value[key]));
 }
 
 function missingBookingData(domain, selection, participantTotal, pickup = null) {
   const missing = [];
-  const req = domain.bookingRequirements || {};
+  const req = bookingRequirements(domain);
   const requiredFields = new Set(arr(req.requiredCustomerFields).map(canonicalCustomerField));
+
   for (const item of arr(req.mainContactFields)) {
-    if (item?.required && item?.field) requiredFields.add(canonicalCustomerField(item.field));
+    if (item?.required === true && item?.field) requiredFields.add(canonicalCustomerField(item.field));
   }
   for (const field of requiredFields) {
     const aliases = customerFieldKeys(field);
@@ -345,20 +379,77 @@ function missingBookingData(domain, selection, participantTotal, pickup = null) 
       missing.push(issue('required_customer_field_missing', 'customer.'+field, 'Required customer field is missing', { field }));
     }
   }
+
   for (const question of arr(req.questions)) {
     if (!question?.required) continue;
-    const key = str(question.id || question.code || question.title);
-    if (!hasValue(selection.answers?.[key])) {
+    const key = answerKey(question);
+    if (key && !hasValue(selection.answers?.[key])) {
       missing.push(issue('required_booking_question_missing', 'answers.'+key, 'Required booking question is missing', { questionId:key }));
     }
   }
-  if (arr(req.passengerFields).length && selection.passengers.length < participantTotal) {
-    missing.push(issue('passenger_details_incomplete','passengers','Passenger details are incomplete',{
-      requiredCount:participantTotal,
-      currentCount:selection.passengers.length,
-      fields:req.passengerFields,
-    }));
+
+  for (const custom of arr(req.customFields)) {
+    if (!custom?.required) continue;
+    const key = answerKey(custom);
+    if (key && !hasValue(selection.answers?.[key])) {
+      missing.push(issue('required_custom_field_missing', 'answers.'+key, 'Required custom field is missing', { customFieldId:key }));
+    }
   }
+
+  const passengerFields = [...new Set(arr(req.passengerFields).map(canonicalCustomerField).filter(Boolean))];
+  if (passengerFields.length) {
+    if (selection.passengers.length < participantTotal) {
+      missing.push(issue('passenger_details_incomplete','passengers','Passenger details are incomplete',{
+        requiredCount:participantTotal,
+        currentCount:selection.passengers.length,
+        fields:passengerFields,
+      }));
+    }
+    for (let index=0; index<participantTotal; index+=1) {
+      const passenger = selection.passengers[index] || {};
+      for (const field of passengerFields) {
+        const aliases = customerFieldKeys(field);
+        if (!aliases.some(key => hasValue(passenger?.[key]))) {
+          missing.push(issue(
+            'passenger_field_missing',
+            'passengers.'+index+'.'+field,
+            'Required passenger field is missing',
+            { passengerIndex:index, field },
+          ));
+        }
+      }
+    }
+  }
+
+  for (const extra of arr(domain.extras)) {
+    if (!extra?.required) continue;
+    const extraId = str(extra.id);
+    if (extraId && Number(selection.extras?.[extraId] || 0) <= 0) {
+      missing.push(issue('required_extra_missing','extras.'+extraId,'Required extra must be selected',{ extraId }));
+    }
+  }
+
+  if (selection.pickup?.mode === 'PICKUP') {
+    const selectedPlace = selection.pickup.placeId
+      ? arr(pickup?.places).find(item => str(item?.id) === str(selection.pickup.placeId)) || null
+      : null;
+    if (selectedPlace?.askForRoomNumber && !hasValue(selection.pickup.roomNumber)) {
+      missing.push(issue(
+        'pickup_room_number_required',
+        'pickup.roomNumber',
+        'Room number is required for the selected pickup place',
+        { placeId:str(selectedPlace.id) },
+      ));
+    }
+    if (selection.pickup.customLocation && !pickupLocationHasValue(selection.pickup.customLocation)) {
+      missing.push(issue(
+        'custom_pickup_location_incomplete',
+        'pickup.customLocation',
+        'Custom pickup location is incomplete',
+      ));
+    }
+  }
+
   return missing;
 }
 
