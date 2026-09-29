@@ -111,10 +111,11 @@ test('customer interactions preserve mobile input and allow removing a companion
   assert.match(profile, /profile-delete-button/);
 });
 
-test('standalone LoveTravel customer build hides implementation and legacy product details', () => {
-  assert.doesNotMatch(buildScript, /runtime-api\.js|catalog\.v28\.json|ai-consultant-v5\.js|trip-actions\.js|role-switch\.js|admin\/index\.html|director\/index\.html/);
-  assert.doesNotMatch(buildScript, /MaxTour Mini App Prototype v28|MAX TOUR/);
-  assert.match(buildScript, /Nha Trang Love Travel/);
-  assert.match(buildScript, /lovetravel-runtime\.js/);
-  assert.match(buildScript, /lovetravel-booking-configurator\.js/);
+test('customer-facing copy hides implementation details', () => {
+  assert.doesNotMatch(ai, /рабочей CRM|в рабочей версии CRM|CRM|D1|AI\s*[·•]\s*demo|бриф/iu);
+  assert.doesNotMatch(runtime, /CRM|D1|demo-(?:интерфейс|рассылка)|платёжной интеграции/iu);
+  assert.doesNotMatch(adminHtml, /CRM-профили|back-office|Создать заказ в D1/iu);
+  assert.doesNotMatch(adminApp, /CRM\s*[·:]|по данным D1|из D1|сохраняются в (?:CRM|D1)|master-source|AI-лид|AI-заяв/iu);
+  assert.doesNotMatch(directorHtml, /<span>CRM<\/span>|demo CRM|demo D1|Фактический слой CRM|Пришли в CRM|AI-copilot|data-toast="Демо:/iu);
+  assert.match(buildScript, /cleanCustomerCopy/);
 });
