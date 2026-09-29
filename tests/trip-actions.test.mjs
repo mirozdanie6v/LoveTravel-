@@ -42,9 +42,7 @@ test('worker keeps booking columns in sync with payload json', () => {
   assert.match(worker, /url\.pathname === '\/api\/travelers'/);
 });
 
-test('build includes functional trip actions before runtime adapter', () => {
-  const tripIndex = build.indexOf('/trip-actions.js');
-  const runtimeIndex = build.indexOf('/runtime-api.js');
-  assert.ok(tripIndex >= 0);
-  assert.ok(runtimeIndex > tripIndex);
+test('LoveTravel customer build excludes legacy trip actions and runtime adapter', () => {
+  assert.doesNotMatch(build, /trip-actions\.js/);
+  assert.doesNotMatch(build, /runtime-api\.js/);
 });
