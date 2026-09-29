@@ -287,12 +287,12 @@
     return arr(domain.availabilitySlots).find(slot=>String(slot.id)===String(state.slotId)) || null;
   }
   function pickupText(rate,domain){
-    if(!rate || !domain?.experience?.pickup?.enabled) return '';
     const selection=String(rate?.pickup?.selectionType || '').toUpperCase();
-    if(selection==='OPTIONAL') return t().pickupOptional;
-    if(selection==='REQUIRED') return t().pickupRequired;
-    if(selection==='UNAVAILABLE') return '';
-    return '';
+    const pricing=String(rate?.pickup?.pricingType || '').toUpperCase();
+    if(!domain?.experience?.pickup?.enabled && !selection) return '';
+    const mode=selection==='OPTIONAL' ? t().pickupOptional : selection==='REQUIRED' ? t().pickupRequired : selection==='UNAVAILABLE' ? t().pickupUnavailable : selection.toLowerCase();
+    const included=pricing==='INCLUDED_IN_PRICE' ? ' · '+t().includedInPrice : '';
+    return [mode,included].join('');
   }
   function cancellationRows(policy){
     const rules=arr(policy?.penaltyRules).filter(rule=>Number.isFinite(Number(rule?.cutoffHours))&&Number.isFinite(Number(rule?.percentage ?? rule?.charge)));
@@ -310,8 +310,8 @@
     const hero=photos[0];
     const thumbs=photos.slice(1,7);
     return '<section class="lt-domain-gallery">'+
-      '<div class="lt-domain-gallery__hero"><img src="'+esc(hero.url)+'" alt="'+esc(domain.experience.title)+'"></div>'+
-      (thumbs.length?'<div class="lt-domain-gallery__strip">'+thumbs.map((p,i)=>'<div class="lt-domain-gallery__thumb"><img src="'+esc(p.url)+'" alt="'+esc(domain.experience.title)+' '+(i+2)+'"></div>').join('')+'</div>':'')+
+      '<button class="lt-domain-gallery__hero" type="button"><img src="'+esc(hero.url)+'" alt="'+esc(domain.experience.title)+'"></button>'+
+      (thumbs.length?'<div class="lt-domain-gallery__strip">'+thumbs.map((p,i)=>'<button type="button" class="lt-domain-gallery__thumb"><img src="'+esc(p.url)+'" alt="'+esc(domain.experience.title)+' '+(i+2)+'"></button>').join('')+'</div>':'')+
       '</section>';
   }
   function rateCards(domain,state){
@@ -372,9 +372,11 @@
     const pickupTiming=Number.isFinite(pickupMinutes)&&pickupMinutes>0
       ? pickupMinutes+' '+t().minutesBefore+(Number.isFinite(pickupWindow)&&pickupWindow>0?' · ±'+pickupWindow+' min':'')
       : '';
-    if(!points.length && !pickup) return '';
+    const meetingType=String(domain?.experience?.meeting?.type||'').replaceAll('_',' ').toLowerCase();
+    if(!points.length && !pickup && !meetingType) return '';
     return '<section class="lt-domain-section lt-domain-grid">'+
-      (points.length?'<div class="lt-domain-info"><span class="lt-domain-eyebrow">'+esc(t().meeting)+'</span>'+
+      (points.length||meetingType?'<div class="lt-domain-info"><span class="lt-domain-eyebrow">'+esc(t().meeting)+'</span>'+
+        (meetingType?'<div class="lt-domain-info__row"><b>'+esc(meetingType)+'</b></div>':'')+
         points.map(point=>'<div class="lt-domain-info__row"><b>'+esc(point.title || point.addressLine1 || '')+'</b><span>'+esc([point.addressLine1,point.city,point.state].filter(Boolean).join(', '))+'</span></div>').join('')+'</div>':'')+
       (pickup?'<div class="lt-domain-info"><span class="lt-domain-eyebrow">'+esc(t().pickup)+'</span><div class="lt-domain-info__row"><b>'+esc(pickup)+'</b></div>'+
         (pickupTiming?'<div class="lt-domain-info__row"><span>'+esc(t().pickupTiming)+'</span><b>'+esc(pickupTiming)+'</b></div>':'')+
@@ -447,13 +449,16 @@
             (domain.experience.duration?.text?'<div><small>'+esc(t().duration)+'</small><b>'+esc(domain.experience.duration.text)+'</b></div>':'')+
             (languages.length?'<div><small>'+esc(t().languages)+'</small><b>'+esc(languages.join(' · '))+'</b></div>':'')+
             (domain.experience.difficulty?'<div><small>'+esc(t().difficulty)+'</small><b>'+esc(domain.experience.difficulty)+'</b></div>':'')+
-            (domain.experience.minAge!=null && domain.experience.minAge!=='' && Number.isFinite(Number(domain.experience.minAge))?'<div><small>'+esc(t().minAge)+'</small><b>'+esc(domain.experience.minAge)+'+</b></div>':'')+
+            (Number.isFinite(Number(domain.experience.minAge))?'<div><small>'+esc(t().minAge)+'</small><b>'+esc(domain.experience.minAge)+'+</b></div>':'')+
             (Number.isFinite(Number(domain.experience.reviews?.rating))?'<div><small>'+esc(t().reviews)+'</small><b>'+esc(domain.experience.reviews.rating)+(Number.isFinite(Number(domain.experience.reviews?.count))?' · '+esc(domain.experience.reviews.count):'')+'</b></div>':'')+
             (String(domain.experience.booking?.capacityType||'').toUpperCase()==='ON_REQUEST'?'<div><small>'+esc(t().confirmation)+'</small><b>'+esc(t().onRequest)+'</b></div>':'')+
             (slot?'<div><small>'+esc(t().chooseDate)+'</small><b>'+esc((slot.localizedDate||slot.date)+' · '+(slot.startTime||''))+'</b></div>':'')+
           '</div>'+
         '</section>'+
-        meeting(domain,null)+
+        rateCards(domain,state)+
+        availabilityCards(domain,state)+
+        participantPrices(domain,state)+
+        meeting(domain,rate)+
         itinerary(domain)+
         videoSection(domain)+
         listSection(t().included,included)+
@@ -463,6 +468,7 @@
         listSection(t().offers,domain?.offers)+
         listSection(t().currencies,domain?.experience?.paymentCurrencies)+
         (cancellation?'<section class="lt-domain-section"><div class="lt-domain-section__head"><span class="lt-domain-eyebrow">'+esc(t().conditions)+'</span></div><div class="lt-domain-policy"><b>'+esc(cancellation.title||'')+'</b>'+cancellationRows(cancellation)+'</div></section>':'')+
+        bookingDynamic(domain)+
         (firstPhoto?'<div class="lt-domain-source-note" aria-hidden="true"></div>':'')+
       '</div>';
 
