@@ -2,10 +2,10 @@
   "ok": true,
   "stage": "verified",
   "deploymentPath": "RIC shared Cloudflare runner",
-  "workflowRunId": "36620278790",
-  "cloudflareVersionId": "4ac03847-8591-4a75-8d15-dc22916eee32",
+  "workflowRunId": "36622577595",
+  "cloudflareVersionId": "fd925dc3-6350-4412-bbfe-9a3abff6c664",
   "tests": {
-    "passed": 262,
+    "passed": 271,
     "failed": 0
   },
   "worker": "love-travel-v28",
@@ -31,7 +31,17 @@
     "localizedBooleanAnswers": true,
     "transportStartPointConditional": true,
     "selectedHotelPickupShown": true,
-    "transportTranslationsRuEnViKo": true
+    "transportTranslationsRuEnViKo": true,
+    "fullTourLocalizationRuEnViKo": true,
+    "bokunProductContentLocalization": true,
+    "bokunRateLocalization": true,
+    "bokunItineraryLocalization": true,
+    "localizedBokunDates": true,
+    "localizedDurationLanguagesDifficulty": true,
+    "localizedCancellationPolicy": true,
+    "localizedDynamicBookingFields": true,
+    "localizedCatalogCompatibility": true,
+    "savedLocaleFirstRender": true
   },
   "realBookingCreated": false
 }
