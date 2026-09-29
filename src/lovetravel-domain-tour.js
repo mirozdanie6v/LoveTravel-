@@ -218,6 +218,12 @@
     return copy[value] ? value : 'ru';
   }
   function t(){ return copy[locale()]; }
+  function l10n(){ return globalThis.LoveTravelTourLocale || null; }
+  function providerText(value){ return l10n()?.providerText?.(value) ?? String(value ?? ''); }
+  function localizedProductTitle(domain){ return l10n()?.productTitle?.(domain?.experience?.id,domain?.experience?.title||'') ?? String(domain?.experience?.title||''); }
+  function localizedProductDescription(domain){ return l10n()?.productDescription?.(domain?.experience?.id,domain?.experience?.description||'') ?? String(domain?.experience?.description||''); }
+  function localizedRateTitle(domain,rate){ return l10n()?.rateTitle?.(domain?.experience?.id,rate?.id,rate?.title||rate?.code||rate?.id||'') ?? String(rate?.title||rate?.code||rate?.id||''); }
+  function localizedDate(iso,options){ return l10n()?.formatDate?.(iso,options) ?? String(iso||''); }
   function arr(value){ return Array.isArray(value) ? value : []; }
   function esc(value){
     return String(value ?? '')
@@ -244,11 +250,13 @@
     if(type==='ADULT') return t().adult;
     if(type==='CHILD') return t().child;
     if(type==='INFANT') return t().infant;
-    return item?.title || type || '—';
+    return providerText(item?.title || type || '—');
   }
   function ageLabel(item){
     const min=Number(item?.minAge), max=Number(item?.maxAge);
-    return Number.isFinite(min)&&Number.isFinite(max) ? min+'–'+max : '';
+    return Number.isFinite(min)&&Number.isFinite(max)
+      ? (l10n()?.ageRange?.(min,max) ?? (min+'–'+max))
+      : '';
   }
   function fieldLabel(value){
     const labels={
@@ -257,7 +265,7 @@
       PHONE:{ru:'Телефон',en:'Phone',vi:'Điện thoại',ko:'전화번호'},
       EMAIL:{ru:'Email',en:'Email',vi:'Email',ko:'이메일'}
     };
-    return labels[String(value || '').toUpperCase()]?.[locale()] || String(value || '').replaceAll('_',' ').toLowerCase();
+    return labels[String(value || '').toUpperCase()]?.[locale()] || providerText(String(value || '').replaceAll('_',' ').toLowerCase());
   }
   function quoteFor(slot,rateId){
     return arr(slot?.priceQuotesByRate).find(item=>String(item?.rateId)===String(rateId)) || null;
@@ -318,8 +326,8 @@
     const hero=photos[0];
     const thumbs=photos.slice(1,7);
     return '<section class="lt-domain-gallery">'+
-      '<button class="lt-domain-gallery__hero" type="button"><img src="'+esc(hero.url)+'" alt="'+esc(domain.experience.title)+'"></button>'+
-      (thumbs.length?'<div class="lt-domain-gallery__strip">'+thumbs.map((p,i)=>'<button type="button" class="lt-domain-gallery__thumb"><img src="'+esc(p.url)+'" alt="'+esc(domain.experience.title)+' '+(i+2)+'"></button>').join('')+'</div>':'')+
+      '<button class="lt-domain-gallery__hero" type="button"><img src="'+esc(hero.url)+'" alt="'+esc(localizedProductTitle(domain))+'"></button>'+
+      (thumbs.length?'<div class="lt-domain-gallery__strip">'+thumbs.map((p,i)=>'<button type="button" class="lt-domain-gallery__thumb"><img src="'+esc(p.url)+'" alt="'+esc(localizedProductTitle(domain))+' '+(i+2)+'"></button>').join('')+'</div>':'')+
       '</section>';
   }
   function rateCards(domain,state){
@@ -333,11 +341,11 @@
           rate.description,
           ...arr(rate.details).map(item=>item?.description||item?.title||''),
           ...arr(rate.textItems).map(item=>item?.description||item?.title||''),
-        ].map(value=>String(value||'').trim()).filter(Boolean);
+        ].map(value=>providerText(String(value||'').trim())).filter(Boolean);
         const detailText=[...new Set(details)].join(' · ');
         return '<button type="button" class="lt-domain-rate '+(active?'is-active':'')+'" data-lt-domain-rate="'+esc(rate.id)+'">'+
           '<span class="lt-domain-rate__check">'+(active?'✓':'')+'</span>'+
-          '<span class="lt-domain-rate__copy"><b>'+esc(rate.title || rate.code || rate.id)+'</b>'+(detailText?'<small>'+esc(detailText)+'</small>':'')+'</span>'+
+          '<span class="lt-domain-rate__copy"><b>'+esc(localizedRateTitle(domain,rate))+'</b>'+(detailText?'<small>'+esc(detailText)+'</small>':'')+'</span>'+
           '<span class="lt-domain-rate__price">'+(price?'<small>'+esc(t().from)+'</small><strong>'+esc(money(price))+'</strong>':'')+'</span>'+
         '</button>';
       }).join('')+'</div></section>';
@@ -354,7 +362,7 @@
         const count=Number(slot.availabilityCount);
         const availability=slot.unlimitedAvailability ? t().unlimited : unavailable ? t().soldOut : Number.isFinite(count) ? Math.max(0,count)+' '+t().available : t().unlimited;
         return '<button type="button" class="lt-domain-date '+(active?'is-active ':'')+(unavailable?'is-disabled':'')+'" data-lt-domain-slot="'+esc(slot.id)+'" '+(unavailable?'disabled':'')+'>'+
-          '<span><b>'+esc(slot.localizedDate || slot.date)+'</b><small>'+esc(slot.startTime || '')+'</small></span>'+
+          '<span><b>'+esc(localizedDate(slot.date,{weekday:'short',day:'numeric',month:'short'}))+'</b><small>'+esc(slot.startTime || '')+'</small></span>'+
           '<span class="lt-domain-date__availability">'+esc(availability)+'</span>'+
           '<span class="lt-domain-date__price">'+(price?esc(money(price)):'')+'</span>'+
           '<span class="lt-domain-date__action">'+esc(active?t().selected:t().select)+'</span>'+
@@ -370,7 +378,7 @@
       return '<div class="lt-domain-participant"><div><b>'+esc(categoryLabel(category))+'</b>'+(ageLabel(category)?'<span>'+esc(ageLabel(category))+'</span>':'')+'</div><strong>'+esc(money(price))+'</strong></div>';
     }).filter(Boolean);
     if(!rows.length) return '';
-    return '<section class="lt-domain-section"><div class="lt-domain-section__head"><div><span class="lt-domain-eyebrow">'+esc(t().participants)+'</span><p>'+esc(t().priceFor)+' · '+esc(slot.localizedDate || slot.date)+' · '+esc(slot.startTime || '')+'</p></div></div><div class="lt-domain-participants">'+rows.join('')+'</div></section>';
+    return '<section class="lt-domain-section"><div class="lt-domain-section__head"><div><span class="lt-domain-eyebrow">'+esc(t().participants)+'</span><p>'+esc(t().priceFor)+' · '+esc(localizedDate(slot.date,{day:'numeric',month:'short'}))+' · '+esc(slot.startTime || '')+'</p></div></div><div class="lt-domain-participants">'+rows.join('')+'</div></section>';
   }
   function meeting(domain,rate){
     const points=arr(domain?.experience?.meeting?.startPoints);
@@ -378,14 +386,14 @@
     const pickupMinutes=Number(domain?.experience?.pickup?.minutesBefore);
     const pickupWindow=Number(domain?.experience?.pickup?.timeWindowMinutes);
     const pickupTiming=Number.isFinite(pickupMinutes)&&pickupMinutes>0
-      ? pickupMinutes+' '+t().minutesBefore+(Number.isFinite(pickupWindow)&&pickupWindow>0?' · ±'+pickupWindow+' min':'')
+      ? pickupMinutes+' '+t().minutesBefore+(Number.isFinite(pickupWindow)&&pickupWindow>0?' · ±'+(l10n()?.minutes?.(pickupWindow)??(pickupWindow+' min')):'')
       : '';
-    const meetingType=String(domain?.experience?.meeting?.type||'').replaceAll('_',' ').toLowerCase();
+    const meetingType=l10n()?.meetingType?.(domain?.experience?.meeting?.type||'') || '';
     if(!points.length && !pickup && !meetingType) return '';
     return '<section class="lt-domain-section lt-domain-grid" data-lt-transport-info>'+
       (points.length||meetingType?'<div class="lt-domain-info" data-lt-start-point-card><span class="lt-domain-eyebrow">'+esc(t().meeting)+'</span>'+
         '<p class="lt-domain-transport-note">'+esc(t().meetingNote)+'</p>'+
-        (meetingType?'<div class="lt-domain-info__row"><b>'+esc(meetingType)+'</b></div>':'')+
+        (!points.length&&meetingType?'<div class="lt-domain-info__row"><b>'+esc(meetingType)+'</b></div>':'')+
         points.map(point=>'<div class="lt-domain-info__row"><b>'+esc(point.title || point.addressLine1 || '')+'</b><span>'+esc([point.addressLine1,point.city,point.state].filter(Boolean).join(', '))+'</span></div>').join('')+'</div>':'')+
       (pickup?'<div class="lt-domain-info" data-lt-pickup-card><span class="lt-domain-eyebrow">'+esc(t().pickup)+'</span><div class="lt-domain-info__row"><b>'+esc(pickup)+'</b></div>'+
         '<div class="lt-domain-info__row lt-domain-selected-pickup" data-lt-selected-pickup hidden><span>'+esc(t().selectedPickup)+'</span><b data-lt-selected-pickup-value></b></div>'+
@@ -397,17 +405,21 @@
   function itinerary(domain){
     const items=arr(domain?.experience?.itinerary).filter(item=>item?.title||item?.body);
     if(!items.length) return '';
-    return '<section class="lt-domain-section"><div class="lt-domain-section__head"><div><span class="lt-domain-eyebrow">'+esc(t().itinerary)+'</span>'+(arr(domain.rates).length>1?'<p>'+esc(t().itineraryHint)+'</p>':'')+'</div></div><div class="lt-domain-itinerary">'+items.map((item,index)=>'<div class="lt-domain-itinerary__item"><span>'+(index+1)+'</span><div>'+(item.title?'<b>'+esc(item.title)+'</b>':'')+(item.body?'<p>'+esc(textFromHtml(item.body))+'</p>':'')+'</div></div>').join('')+'</div></section>';
+    return '<section class="lt-domain-section"><div class="lt-domain-section__head"><div><span class="lt-domain-eyebrow">'+esc(t().itinerary)+'</span>'+(arr(domain.rates).length>1?'<p>'+esc(t().itineraryHint)+'</p>':'')+'</div></div><div class="lt-domain-itinerary">'+items.map((item,index)=>{
+      const title=providerText(item.title||'');
+      const body=l10n()?.itineraryBody?.(domain?.experience?.id,index,textFromHtml(item.body)) ?? textFromHtml(item.body);
+      return '<div class="lt-domain-itinerary__item"><span>'+(index+1)+'</span><div>'+(title?'<b>'+esc(title)+'</b>':'')+(body?'<p>'+esc(body)+'</p>':'')+'</div></div>';
+    }).join('')+'</div></section>';
   }
   function videoSection(domain){
     const videos=arr(domain?.experience?.media?.videos).filter(item=>item?.url);
     if(!videos.length) return '';
     return '<section class="lt-domain-section"><div class="lt-domain-section__head"><span class="lt-domain-eyebrow">'+esc(t().video)+'</span></div><div class="lt-domain-video-list">'+
-      videos.map((item,index)=>'<a class="lt-domain-video" href="'+esc(item.url)+'" target="_blank" rel="noopener noreferrer">'+esc(item.title||t().video+' '+(index+1))+'</a>').join('')+
+      videos.map((item,index)=>'<a class="lt-domain-video" href="'+esc(item.url)+'" target="_blank" rel="noopener noreferrer">'+esc(providerText(item.title||t().video+' '+(index+1)))+'</a>').join('')+
       '</div></section>';
   }
   function listSection(title,items){
-    const clean=arr(items).map(v=>typeof v==='string'?v:(v?.title||v?.description||v?.code||v?.currencyCode||v?.id||'')).map(textFromHtml).filter(Boolean);
+    const clean=arr(items).map(v=>typeof v==='string'?v:(v?.title||v?.description||v?.code||v?.currencyCode||v?.id||'')).map(textFromHtml).map(providerText).filter(Boolean);
     if(!clean.length) return '';
     return '<section class="lt-domain-section"><div class="lt-domain-section__head"><span class="lt-domain-eyebrow">'+esc(title)+'</span></div><ul class="lt-domain-list">'+clean.map(item=>'<li>'+esc(item)+'</li>').join('')+'</ul></section>';
   }
@@ -420,10 +432,10 @@
     const custom=arr(req.customFields);
     if(!extras.length&&!questions.length&&!customer.length&&!passenger.length&&!custom.length) return '';
     let inner='';
-    if(extras.length) inner+='<div class="lt-domain-info"><span class="lt-domain-eyebrow">'+esc(t().extras)+'</span>'+extras.map(x=>'<div class="lt-domain-info__row"><b>'+esc(x.title||x.code||x.id)+'</b>'+(x.description?'<span>'+esc(x.description)+'</span>':'')+'</div>').join('')+'</div>';
+    if(extras.length) inner+='<div class="lt-domain-info"><span class="lt-domain-eyebrow">'+esc(t().extras)+'</span>'+extras.map(x=>'<div class="lt-domain-info__row"><b>'+esc(providerText(x.title||x.code||x.id))+'</b>'+(x.description?'<span>'+esc(providerText(x.description))+'</span>':'')+'</div>').join('')+'</div>';
     if(customer.length) inner+='<div class="lt-domain-info"><span class="lt-domain-eyebrow">'+esc(t().customerFields)+'</span><div class="lt-domain-fieldchips">'+customer.map(x=>'<span>'+esc(fieldLabel(x))+'</span>').join('')+'</div></div>';
     if(passenger.length) inner+='<div class="lt-domain-info"><span class="lt-domain-eyebrow">'+esc(t().passengerFields)+'</span><div class="lt-domain-fieldchips">'+passenger.map(x=>'<span>'+esc(fieldLabel(x))+'</span>').join('')+'</div></div>';
-    if(questions.length||custom.length) inner+='<div class="lt-domain-info"><span class="lt-domain-eyebrow">'+esc(t().questions)+'</span>'+[...questions,...custom].map(x=>'<div class="lt-domain-info__row"><b>'+esc(x.title||x.code||x.id)+'</b>'+(x.required?'<span>*</span>':'')+'</div>').join('')+'</div>';
+    if(questions.length||custom.length) inner+='<div class="lt-domain-info"><span class="lt-domain-eyebrow">'+esc(t().questions)+'</span>'+[...questions,...custom].map(x=>'<div class="lt-domain-info__row"><b>'+esc(providerText(x.title||x.code||x.id))+'</b>'+(x.required?'<span>*</span>':'')+'</div>').join('')+'</div>';
     return '<section class="lt-domain-section"><div class="lt-domain-section__head"><span class="lt-domain-eyebrow">'+esc(t().bookingInfo)+'</span></div><div class="lt-domain-grid">'+inner+'</div></section>';
   }
   function renderDomain(domain){
@@ -432,7 +444,7 @@
     const state=selectedState(domain);
     const rate=selectedRate(domain,state);
     const slot=selectedSlot(domain,state);
-    const languages=arr(domain?.experience?.languages?.guidanceTypes).flatMap(x=>arr(x?.displayLanguages)).filter(Boolean);
+    const languages=arr(domain?.experience?.languages?.guidanceTypes).flatMap(x=>arr(x?.displayLanguages)).filter(Boolean).map(value=>l10n()?.languageName?.(value)??providerText(value));
     const included=listFromHtml(domain?.experience?.content?.included);
     const excluded=listFromHtml(domain?.experience?.content?.excluded);
     const requirements=[
@@ -457,16 +469,16 @@
         photoGallery(domain)+
         '<section class="lt-domain-hero">'+
           '<div class="lt-domain-live"><span></span>'+esc(t().live)+'</div>'+
-          '<h1>'+esc(domain.experience.title)+'</h1>'+
-          '<p>'+esc(domain.experience.description || '')+'</p>'+
+          '<h1>'+esc(localizedProductTitle(domain))+'</h1>'+
+          '<p>'+esc(localizedProductDescription(domain))+'</p>'+
           '<div class="lt-domain-facts">'+
-            (domain.experience.duration?.text?'<div><small>'+esc(t().duration)+'</small><b>'+esc(domain.experience.duration.text)+'</b></div>':'')+
+            (domain.experience.duration?.text?'<div><small>'+esc(t().duration)+'</small><b>'+esc(l10n()?.duration?.(domain.experience.duration)??domain.experience.duration.text)+'</b></div>':'')+
             (languages.length?'<div><small>'+esc(t().languages)+'</small><b>'+esc(languages.join(' · '))+'</b></div>':'')+
-            (domain.experience.difficulty?'<div><small>'+esc(t().difficulty)+'</small><b>'+esc(domain.experience.difficulty)+'</b></div>':'')+
+            (domain.experience.difficulty?'<div><small>'+esc(t().difficulty)+'</small><b>'+esc(l10n()?.difficulty?.(domain.experience.difficulty)??providerText(domain.experience.difficulty))+'</b></div>':'')+
             (Number.isFinite(Number(domain.experience.minAge))?'<div><small>'+esc(t().minAge)+'</small><b>'+esc(domain.experience.minAge)+'+</b></div>':'')+
             (hasReviews?'<div><small>'+esc(t().reviews)+'</small><b>'+esc(reviewRating)+' · '+esc(reviewCount)+'</b></div>':'')+
             (String(domain.experience.booking?.capacityType||'').toUpperCase()==='ON_REQUEST'?'<div><small>'+esc(t().confirmation)+'</small><b>'+esc(t().onRequest)+'</b></div>':'')+
-            (slot?'<div><small>'+esc(t().chooseDate)+'</small><b>'+esc((slot.localizedDate||slot.date)+' · '+(slot.startTime||''))+'</b></div>':'')+
+            (slot?'<div><small>'+esc(t().chooseDate)+'</small><b>'+esc(localizedDate(slot.date,{weekday:'short',day:'numeric',month:'short'})+' · '+(slot.startTime||''))+'</b></div>':'')+
           '</div>'+
           '<button type="button" class="lt-domain-quickbook" data-lt-jump-booking>'+
             '<span>'+(heroPrice?'<small>'+esc(t().from)+'</small><strong>'+esc(money(heroPrice))+'</strong>':'')+'</span>'+
@@ -485,7 +497,7 @@
         listSection(t().accessibility,domain?.experience?.accessibility)+
         listSection(t().offers,domain?.offers)+
         listSection(t().currencies,domain?.experience?.paymentCurrencies)+
-        (cancellation?'<section class="lt-domain-section"><div class="lt-domain-section__head"><span class="lt-domain-eyebrow">'+esc(t().conditions)+'</span></div><div class="lt-domain-policy"><b>'+esc(cancellation.title||'')+'</b>'+cancellationRows(cancellation)+'</div></section>':'')+
+        (cancellation?'<section class="lt-domain-section"><div class="lt-domain-section__head"><span class="lt-domain-eyebrow">'+esc(t().conditions)+'</span></div><div class="lt-domain-policy"><b>'+esc(l10n()?.policyTitle?.(cancellation.title||'')??providerText(cancellation.title||''))+'</b>'+cancellationRows(cancellation)+'</div></section>':'')+
         bookingDynamic(domain)+
         (firstPhoto?'<div class="lt-domain-source-note" aria-hidden="true"></div>':'')+
       '</div>';
