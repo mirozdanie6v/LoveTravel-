@@ -62,3 +62,16 @@ test('tour page exposes a high-position booking CTA and suppresses empty reviews
   assert.match(css,/\.lt-domain-quickbook/);
   assert.match(css,/background:linear-gradient\(135deg,#ee4214,#ff7b2e\)/);
 });
+
+
+test('tour start point is separated from hotel pickup in every supported locale',()=>{
+  assert.match(js,/meeting:'Место начала экскурсии'/);
+  assert.match(js,/meeting:'Tour starting point'/);
+  assert.match(js,/meeting:'Điểm bắt đầu tour'/);
+  assert.match(js,/meeting:'투어 출발 지점'/);
+  assert.match(js,/data-lt-start-point-card/);
+  assert.match(js,/data-lt-pickup-card/);
+  assert.match(js,/data-lt-selected-pickup/);
+  assert.match(css,/\.lt-domain-transport-note/);
+  assert.match(css,/\.lt-domain-selected-pickup/);
+});
