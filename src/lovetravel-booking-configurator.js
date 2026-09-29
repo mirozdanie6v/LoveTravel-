@@ -256,7 +256,10 @@
     return t().pickupEmpty;
   }
   function extrasSummary(r){
-    const count=Object.values(r?.selection?.extras||{}).reduce((sum,value)=>sum+Math.max(0,Number(value)||0),0);
+    const bookingCount=Object.values(r?.selection?.extras||{}).reduce((sum,value)=>sum+Math.max(0,Number(value)||0),0);
+    const passengerCount=arr(r?.selection?.passengers).reduce((sum,passenger)=>
+      sum+Object.values(passenger?.extras||{}).reduce((inner,item)=>inner+Math.max(0,Number(item?.quantity??item)||0),0),0);
+    const count=bookingCount+passengerCount;
     return count>0 ? String(count) : t().extrasEmpty;
   }
   function contactSummary(r){
@@ -278,7 +281,7 @@
     if(codes.has('date_required')||codes.has('slot_required')) return 'date';
     if(codes.has('rate_required')) return 'option';
     if(codes.has('participants_required')||[...codes].some(x=>x.includes('participant')||x.includes('minimum')||x.includes('capacity'))) return 'guests';
-    if(codes.has('required_extra_missing')||codes.has('extras_price_unresolved')||[...codes].some(x=>x.includes('extra_booking_question'))) return 'extras';
+    if(codes.has('required_extra_missing')||codes.has('required_passenger_extra_missing')||codes.has('extras_price_unresolved')||[...codes].some(x=>x.includes('extra_booking_question'))) return 'extras';
     if(
       codes.has('pickup_mode_required')||
       codes.has('pickup_location_required')||
@@ -315,7 +318,7 @@
     const ready=r.readyToBook;
     const cta=ready?t().ready:(r.readyToQuote?t().continue:t().continue);
     const extras=arr(r?.constraints?.extras);
-    const extrasComplete=!arr(r?.bookingDataIssues).some(item=>item.code==='required_extra_missing'||String(item.code).includes('extra_booking_question'));
+    const extrasComplete=!arr(r?.bookingDataIssues).some(item=>item.code==='required_extra_missing'||item.code==='required_passenger_extra_missing'||String(item.code).includes('extra_booking_question'));
     const detailsComplete=!arr(r?.bookingDataIssues).some(item=>
       ['required_customer_field_missing','required_booking_question_missing','invalid_booking_question_answer','required_custom_field_missing','passenger_details_incomplete','passenger_field_missing','required_passenger_booking_question_missing','invalid_passenger_booking_question_answer'].includes(item.code)
     );
@@ -659,18 +662,89 @@
     }
     return list;
   }
+  function passengerExtraState(passenger,extraId){
+    const item=passenger?.extras?.[extraId];
+    if(item&&typeof item==='object') return {quantity:Math.max(0,Number(item.quantity)||0),answers:{...(item.answers||{})}};
+    return {quantity:Math.max(0,Number(item)||0),answers:{}};
+  }
+  function normalizedPassengerList(r,s){
+    const blueprint=passengerBlueprint(r);
+    return blueprint.map((descriptor,index)=>{
+      const previous=s.passengers?.[index]||{};
+      return {
+        ...previous,
+        categoryId:descriptor.categoryId,
+        answers:{...(previous.answers||{})},
+        extras:{...(previous.extras||{})},
+      };
+    });
+  }
   function openExtrasSheet(productId){
     const r=resolutionByProduct.get(productId); if(!r) return;
     const extras=arr(r.constraints?.extras);
     const req=r.constraints?.bookingRequirements||{};
-    const s=selection(productId);
     if(!extras.length){
       showSheet(t().chooseExtras,'<div class="lt-sheet-scroll"><div class="lt-empty">'+esc(t().noExtra)+'</div></div>');
       return;
     }
+
+    let s=selection(productId);
+    const bookingExtras={...s.extras};
+    const passengers=normalizedPassengerList(r,s);
+    let preselectedChanged=false;
+    for(const extra of extras.filter(item=>item.required)){
+      const id=String(extra.id||'');
+      if(!id) continue;
+      if(extra.pricedPerPerson){
+        passengers.forEach(passenger=>{
+          const current=passengerExtraState(passenger,id);
+          if(current.quantity<1){
+            passenger.extras={...passenger.extras,[id]:{...current,quantity:1}};
+            preselectedChanged=true;
+          }
+        });
+      }else if(Number(bookingExtras[id]||0)<1){
+        bookingExtras[id]=1;
+        preselectedChanged=true;
+      }
+    }
+    if(preselectedChanged){
+      patchSelection(productId,{extras:bookingExtras,passengers});
+      s=selection(productId);
+    }
+
     const extraQuestions=arr(req.questions).filter(item=>questionContext(item)==='EXTRA');
+    const blueprint=passengerBlueprint(r);
     const body='<div class="lt-sheet-scroll"><div class="lt-extra-list">'+extras.map(item=>{
       const id=String(item.id||'');
+      if(item.pricedPerPerson){
+        const paxRows=blueprint.map((descriptor,index)=>{
+          const passenger=s.passengers?.[index]||{categoryId:descriptor.categoryId,extras:{}};
+          const extraState=passengerExtraState(passenger,id);
+          const quantity=extraState.quantity;
+          const questions=quantity>0?extraQuestions.filter(question=>
+            questionAppliesToExtra(question,id)&&questionAppliesToCategory(question,descriptor.categoryId)
+          ):[];
+          const questionHtml=questions.length?'<div class="lt-extra-questions">'+questions.map(question=>{
+            const key=answerKey(question);
+            return questionControl(
+              question,
+              extraState.answers?.[key],
+              'data-lt-passenger-extra-answer',
+              key,
+              'data-lt-extra-id="'+esc(id)+'" data-lt-passenger-index="'+index+'"'
+            );
+          }).join('')+'</div>':'';
+          return '<div class="lt-passenger-extra" data-lt-passenger-extra="'+index+':'+esc(id)+'">'+
+            '<div class="lt-extra-row">'+
+              '<div><b>'+esc(descriptor.label)+' '+descriptor.categoryIndex+'</b><small>'+esc(item.title||item.code||id)+(item.required?' · required':'')+'</small></div>'+
+              '<div class="lt-counter"><button type="button" data-lt-passenger-extra-minus data-lt-extra-id="'+esc(id)+'" data-lt-passenger-index="'+index+'">−</button><strong data-lt-passenger-extra-count="'+index+':'+esc(id)+'">'+quantity+'</strong><button type="button" data-lt-passenger-extra-plus data-lt-extra-id="'+esc(id)+'" data-lt-passenger-index="'+index+'">+</button></div>'+
+            '</div>'+questionHtml+
+          '</div>';
+        }).join('');
+        return '<div class="lt-extra-card" data-lt-extra-card="'+esc(id)+'"><div class="lt-extra-card__head"><b>'+esc(item.title||item.code||id)+(item.required?' *':'')+'</b>'+(item.description?'<small>'+esc(item.description)+'</small>':'')+'</div>'+paxRows+'</div>';
+      }
+
       const quantity=Number(s.extras?.[id]||0);
       const questions=quantity>0?extraQuestions.filter(question=>questionAppliesToExtra(question,id)):[];
       const questionHtml=questions.length?'<div class="lt-extra-questions">'+questions.map(question=>{
@@ -691,27 +765,68 @@
       '</div>';
     }).join('')+'</div><div class="lt-sheet-action"><button type="button" class="lt-sheet-primary" data-lt-extras-done>'+esc(t().verify)+'</button></div></div>';
     const root=showSheet(t().chooseExtras,body);
-    const update=(id,delta)=>{
-      const extras={...selection(productId).extras};
-      const item=arr(r.constraints?.extras).find(extra=>String(extra.id)===String(id));
+
+    const updateBookingExtra=(id,delta)=>{
+      const state=selection(productId);
+      const extrasState={...state.extras};
+      const item=extras.find(extra=>String(extra.id)===String(id));
+      const min=item?.required?1:0;
       const max=item?.maxQuantity===null||item?.maxQuantity===undefined?Infinity:Number(item.maxQuantity);
-      const next=Math.max(0,Math.min(max,Number(extras[id]||0)+delta));
-      if(next>0) extras[id]=next; else delete extras[id];
-      patchSelection(productId,{extras});
+      const next=Math.max(min,Math.min(max,Number(extrasState[id]||0)+delta));
+      if(next>0) extrasState[id]=next; else delete extrasState[id];
+      patchSelection(productId,{extras:extrasState});
       const node=root.querySelector('[data-lt-extra-count="'+CSS.escape(id)+'"]'); if(node) node.textContent=String(next);
     };
-    root.querySelectorAll('[data-lt-extra-minus]').forEach(btn=>btn.addEventListener('click',()=>update(btn.dataset.ltExtraMinus,-1)));
-    root.querySelectorAll('[data-lt-extra-plus]').forEach(btn=>btn.addEventListener('click',()=>update(btn.dataset.ltExtraPlus,1)));
+    root.querySelectorAll('[data-lt-extra-minus]').forEach(btn=>btn.addEventListener('click',()=>updateBookingExtra(btn.dataset.ltExtraMinus,-1)));
+    root.querySelectorAll('[data-lt-extra-plus]').forEach(btn=>btn.addEventListener('click',()=>updateBookingExtra(btn.dataset.ltExtraPlus,1)));
+
+    const updatePassengerExtra=(index,id,delta)=>{
+      const state=selection(productId);
+      const passengerList=normalizedPassengerList(r,state);
+      const item=extras.find(extra=>String(extra.id)===String(id));
+      const passenger=passengerList[index]; if(!passenger) return;
+      const current=passengerExtraState(passenger,id);
+      const totalBefore=passengerList.reduce((sum,pax)=>sum+passengerExtraState(pax,id).quantity,0);
+      const min=item?.required?1:0;
+      const maxTotal=item?.maxQuantity===null||item?.maxQuantity===undefined?Infinity:Number(item.maxQuantity);
+      const desired=Math.max(min,current.quantity+delta);
+      const allowed=Math.max(min,Math.min(desired,current.quantity+Math.max(0,maxTotal-totalBefore)));
+      passenger.extras={...passenger.extras};
+      if(allowed>0) passenger.extras[id]={...current,quantity:allowed}; else delete passenger.extras[id];
+      patchSelection(productId,{passengers:passengerList});
+      const node=root.querySelector('[data-lt-passenger-extra-count="'+CSS.escape(index+':'+id)+'"]'); if(node) node.textContent=String(allowed);
+    };
+    root.querySelectorAll('[data-lt-passenger-extra-minus]').forEach(btn=>btn.addEventListener('click',()=>updatePassengerExtra(Number(btn.dataset.ltPassengerIndex),btn.dataset.ltExtraId,-1)));
+    root.querySelectorAll('[data-lt-passenger-extra-plus]').forEach(btn=>btn.addEventListener('click',()=>updatePassengerExtra(Number(btn.dataset.ltPassengerIndex),btn.dataset.ltExtraId,1)));
+
     root.querySelector('[data-lt-extras-done]')?.addEventListener('click',async()=>{
-      const extraAnswers={...selection(productId).extraAnswers};
+      const state=selection(productId);
+      const extraAnswers={...state.extraAnswers};
       root.querySelectorAll('[data-lt-extra-answer]').forEach(control=>{
         const extraId=control.dataset.ltExtraId;
         const key=control.dataset.ltExtraAnswer;
         extraAnswers[extraId]={...(extraAnswers[extraId]||{}),[key]:controlValue(control)};
       });
-      patchSelection(productId,{extraAnswers});
+
+      const passengerList=normalizedPassengerList(r,state);
+      root.querySelectorAll('[data-lt-passenger-extra-answer]').forEach(control=>{
+        const index=Number(control.dataset.ltPassengerIndex);
+        const extraId=control.dataset.ltExtraId;
+        const key=control.dataset.ltPassengerExtraAnswer;
+        const passenger=passengerList[index]; if(!passenger) return;
+        const current=passengerExtraState(passenger,extraId);
+        passenger.extras={...passenger.extras,[extraId]:{
+          ...current,
+          answers:{...current.answers,[key]:controlValue(control)},
+        }};
+      });
+      patchSelection(productId,{extraAnswers,passengers:passengerList});
       const next=await resolve(productId,{quiet:true});
-      if(arr(next.bookingDataIssues).some(item=>item.code==='required_extra_missing'||String(item.code).includes('extra_booking_question'))) openExtrasSheet(productId);
+      if(arr(next.bookingDataIssues).some(item=>
+        item.code==='required_extra_missing'||
+        item.code==='required_passenger_extra_missing'||
+        String(item.code).includes('extra_booking_question')
+      )) openExtrasSheet(productId);
       else closeSheet();
     });
   }
