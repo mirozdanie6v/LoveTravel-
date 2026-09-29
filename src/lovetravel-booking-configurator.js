@@ -114,7 +114,12 @@
   function t(){ return copy[locale()]; }
   function l10n(){ return globalThis.LoveTravelTourLocale || null; }
   function providerText(value){ return l10n()?.providerText?.(value) ?? String(value ?? ''); }
-  function localizedRateTitle(productId,rate){ return l10n()?.rateTitle?.(productId,rate?.id,rate?.title||rate?.code||rate?.id||'') ?? String(rate?.title||rate?.code||rate?.id||''); }
+  function localizedRateTitle(productId,rate,localization=null){
+    if(localization?.locale===locale()&&(localization?.source==='bokun-native'||localization?.source==='viiversion-cache')){
+      return String(rate?.title||rate?.code||rate?.id||'');
+    }
+    return l10n()?.rateTitle?.(productId,rate?.id,rate?.title||rate?.code||rate?.id||'') ?? String(rate?.title||rate?.code||rate?.id||'');
+  }
   function arr(v){ return Array.isArray(v) ? v : []; }
   function esc(v){ return String(v ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
   function money(amount,currency='USD'){
@@ -261,7 +266,7 @@
     if(!slot) return t().dateEmpty;
     return formatDate(slot.date,{day:'numeric',month:'short'})+(slot.startTime?' · '+slot.startTime:'');
   }
-  function optionSummary(r){ return r?.resolved?.rate ? localizedRateTitle(r?.product?.id||activeProductId,r.resolved.rate) : t().optionEmpty; }
+  function optionSummary(r){ return r?.resolved?.rate ? localizedRateTitle(r?.product?.id||activeProductId,r.resolved.rate,r?.product?.localization) : t().optionEmpty; }
   function pickupStepLabel(r){
     const mode=r?.selection?.pickup?.mode;
     if(mode==='PICKUP') return t().pickupHotelLabel;
@@ -549,7 +554,7 @@
     const rows=arr(r.constraints?.rates);
     const body='<div class="lt-sheet-scroll"><div class="lt-option-list">'+rows.map(rate=>
       '<button type="button" class="lt-option-card '+(String(rate.id)===String(s.rateId)?'is-active':'')+'" data-lt-rate="'+esc(rate.id)+'">'+
-        '<span><b>'+esc(localizedRateTitle(productId,rate))+'</b></span>'+
+        '<span><b>'+esc(localizedRateTitle(productId,rate,r?.product?.localization))+'</b></span>'+
         '<span class="lt-option-card__price">'+(rate.fromPrice?'<small>'+esc(t().from)+'</small><strong>'+esc(money(rate.fromPrice.amount,rate.fromPrice.currency))+'</strong>':'')+'</span>'+
       '</button>'
     ).join('')+'</div></div>';
