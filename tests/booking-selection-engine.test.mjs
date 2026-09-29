@@ -511,6 +511,44 @@ test('missing numeric Bókun values stay null instead of becoming zero-capacity 
   assert.equal(result.errors.some(x=>x.code==='pickup_not_available'),false);
 });
 
+test('per-person extras are allocated to passengers, priced by category and carry extra answers',()=>{
+  const d=domain();
+  d.extras=[{id:701,title:'Meal',limitByPax:true,maxPerBooking:0}];
+  d.rates[0].extraConfigs=[{
+    extraId:701,selectionType:'OPTIONAL',pricingType:'PRICED_SEPARATELY',pricedPerPerson:true,
+  }];
+  d.bookingRequirements.questions=[{
+    id:'meal-q',title:'Meal choice',required:true,context:'EXTRA',
+    extraTriggerSelection:'SELECTED_ONLY',extraTriggers:['701'],
+  }];
+  d.availabilitySlots[0].priceQuotesByRate[0].extraPricePerCategoryUnit=[{
+    extraId:701,
+    prices:[
+      {categoryId:101,amount:{amount:10,currency:'USD'}},
+      {categoryId:102,amount:{amount:5,currency:'USD'}},
+    ],
+  }];
+
+  const result=resolveBookingSelection(d,{
+    productId:'1287580',date:'2026-10-01',startTimeId:'301',rateId:'201',
+    participants:{101:1,102:1},
+    pickup:{mode:'MEET_ON_LOCATION'},
+    customer:{firstName:'A',lastName:'B',phoneNumber:'+84000000000'},
+    passengers:[
+      {categoryId:'101',extras:{701:{quantity:1,answers:{'meal-q':'Veg'}}}},
+      {categoryId:'102',extras:{701:{quantity:1,answers:{'meal-q':'Kids'}}}},
+    ],
+  },{now});
+
+  assert.equal(result.constraints.extras[0].quantity,2);
+  assert.equal(result.quote.available,true);
+  assert.equal(result.quote.extrasTotal,15);
+  assert.equal(result.quote.total,99);
+  assert.equal(result.quote.extraLines.length,2);
+  assert.equal(result.bookingDataIssues.length,0);
+  assert.equal(result.readyToBook,true);
+});
+
 test('selectionForPatch clears stale slot/time when date changes',()=>{
   const next=selectionForPatch({
     productId:'1287580',date:'2026-10-01',startTimeId:'301',slotId:'301_20261001',rateId:'201',
