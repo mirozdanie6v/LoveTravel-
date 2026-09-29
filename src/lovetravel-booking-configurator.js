@@ -25,7 +25,7 @@
       pickupPlace:'Место посадки', roomNeeded:'Для этой точки Bókun запрашивает номер комнаты на этапе оформления.',
       contact:'Контактные данные', firstName:'Имя', lastName:'Фамилия', phoneNumber:'Телефон', email:'Email',
       verify:'Проверить', verified:'Данные проверены', noPlaces:'Ничего не найдено',
-      select:'Выбрать', selected:'Выбрано', pricePerPerson:'за человека', liveQuote:'Цена проверена сейчас',
+      select:'Выбрать', selected:'Выбрано', pricePerPerson:'за человека', liveQuote:'Цена проверена сейчас', onRequest:'Требуется подтверждение туроператора',
       refreshError:'Не удалось обновить доступность. Попробуйте ещё раз.',
       minGuests:'Минимум', maxGuests:'Максимум', noExtra:'Дополнительных услуг сейчас нет', extras:'Дополнительно', extrasEmpty:'Без дополнений', chooseExtras:'Дополнительные услуги', extrasRequired:'Выберите обязательную услугу', passengerDetails:'Данные участников', passenger:'Участник', questions:'Вопросы для бронирования', additionalInfo:'Дополнительные данные', roomNumber:'Номер комнаты', save:'Сохранить', customPickup:'Другой адрес', customPickupAddress:'Адрес для посадки',
       bookingNotSent:'Бронирование пока не отправляется в Bókun — на этом этапе проверяется конфигурация.',
@@ -46,7 +46,7 @@
       pickupPlace:'Pickup point', roomNeeded:'Bókun asks for a room number for this pickup point during checkout.',
       contact:'Contact details', firstName:'First name', lastName:'Last name', phoneNumber:'Phone', email:'Email',
       verify:'Check', verified:'Details checked', noPlaces:'No matches',
-      select:'Select', selected:'Selected', pricePerPerson:'per person', liveQuote:'Price checked live',
+      select:'Select', selected:'Selected', pricePerPerson:'per person', liveQuote:'Price checked live', onRequest:'Operator confirmation required',
       refreshError:'Could not refresh availability. Try again.',
       minGuests:'Minimum', maxGuests:'Maximum', noExtra:'No extras are currently configured', extras:'Extras', extrasEmpty:'No extras', chooseExtras:'Additional services', extrasRequired:'Choose the required extra', passengerDetails:'Guest details', passenger:'Guest', questions:'Booking questions', additionalInfo:'Additional details', roomNumber:'Room number', save:'Save', customPickup:'Other address', customPickupAddress:'Pickup address',
       bookingNotSent:'The booking is not sent to Bókun yet — this stage validates the configuration.',
@@ -67,7 +67,7 @@
       pickupPlace:'Điểm đón', roomNeeded:'Bókun yêu cầu số phòng cho điểm đón này trong bước thanh toán.',
       contact:'Thông tin liên hệ', firstName:'Tên', lastName:'Họ', phoneNumber:'Điện thoại', email:'Email',
       verify:'Kiểm tra', verified:'Đã kiểm tra', noPlaces:'Không có kết quả',
-      select:'Chọn', selected:'Đã chọn', pricePerPerson:'mỗi người', liveQuote:'Giá vừa được kiểm tra',
+      select:'Chọn', selected:'Đã chọn', pricePerPerson:'mỗi người', liveQuote:'Giá vừa được kiểm tra', onRequest:'Cần nhà điều hành xác nhận',
       refreshError:'Không thể cập nhật chỗ trống. Vui lòng thử lại.',
       minGuests:'Tối thiểu', maxGuests:'Tối đa', noExtra:'Hiện không có dịch vụ bổ sung', extras:'Dịch vụ thêm', extrasEmpty:'Không chọn thêm', chooseExtras:'Dịch vụ bổ sung', extrasRequired:'Chọn dịch vụ bắt buộc', passengerDetails:'Thông tin hành khách', passenger:'Hành khách', questions:'Câu hỏi đặt chỗ', additionalInfo:'Thông tin bổ sung', roomNumber:'Số phòng', save:'Lưu', customPickup:'Địa chỉ khác', customPickupAddress:'Địa chỉ đón',
       bookingNotSent:'Đặt chỗ chưa được gửi tới Bókun — bước này chỉ xác thực cấu hình.',
@@ -88,7 +88,7 @@
       pickupPlace:'픽업 장소', roomNeeded:'이 픽업 장소는 결제 단계에서 객실 번호가 필요합니다.',
       contact:'연락처 정보', firstName:'이름', lastName:'성', phoneNumber:'전화번호', email:'이메일',
       verify:'확인', verified:'확인 완료', noPlaces:'검색 결과 없음',
-      select:'선택', selected:'선택됨', pricePerPerson:'1인당', liveQuote:'실시간 가격 확인됨',
+      select:'선택', selected:'선택됨', pricePerPerson:'1인당', liveQuote:'실시간 가격 확인됨', onRequest:'운영사 확인 필요',
       refreshError:'예약 가능 여부를 업데이트하지 못했습니다. 다시 시도해 주세요.',
       minGuests:'최소', maxGuests:'최대', noExtra:'현재 추가 옵션이 없습니다', extras:'추가 옵션', extrasEmpty:'추가 옵션 없음', chooseExtras:'추가 서비스', extrasRequired:'필수 추가 서비스를 선택하세요', passengerDetails:'참가자 정보', passenger:'참가자', questions:'예약 질문', additionalInfo:'추가 정보', roomNumber:'객실 번호', save:'저장', customPickup:'다른 주소', customPickupAddress:'픽업 주소',
       bookingNotSent:'아직 Bókun에 예약을 전송하지 않습니다. 이 단계에서는 구성을 검증합니다.',
@@ -160,6 +160,11 @@
     return calendarByKey.get(calendarKey(productId,rateId))
       || calendarByKey.get(calendarKey(productId,null))
       || null;
+  }
+  function availabilityLabel(item){
+    if(item?.unlimitedAvailability) return t().available;
+    const count=Number(item?.availabilityCount);
+    return Number.isFinite(count) ? String(Math.max(0,count))+' '+t().available : t().available;
   }
   function calendarTimesForDate(productId,date){
     return arr(calendarFor(productId)?.times).filter(item=>String(item?.date||'')===String(date||''));
@@ -337,6 +342,7 @@
       '</div>'+
       '<div class="lt-booking-config__status">'+
         (r?.quote?.available?'<span class="is-live">'+esc(t().liveQuote)+'</span>':'<span>'+esc(statusText(r))+'</span>')+
+        (r?.product?.confirmationMode==='ON_REQUEST'?'<span class="is-request">'+esc(t().onRequest)+'</span>':'')+
         '<span data-lt-config-error="'+esc(productId)+'" hidden></span>'+
       '</div>'+
       '<div class="lt-booking-sticky">'+
@@ -429,7 +435,7 @@
         }).join('')+'</div></div>';
     }).join('');
     const times=s.date?'<div class="lt-time-block"><h4>'+esc(t().chooseTime)+'</h4><div class="lt-time-grid">'+
-      timeRows.map(item=>'<button type="button" class="lt-time-chip '+(String(item.id)===String(s.slotId)?'is-active':'')+'" data-lt-slot="'+esc(item.id)+'" data-lt-time="'+esc(item.startTimeId||'')+'"><b>'+esc(item.startTime||'')+'</b><small>'+(item.unlimitedAvailability?esc(t().available):esc((item.availabilityCount??0)+' '+t().available))+'</small></button>').join('')+
+      timeRows.map(item=>'<button type="button" class="lt-time-chip '+(String(item.id)===String(s.slotId)?'is-active':'')+'" data-lt-slot="'+esc(item.id)+'" data-lt-time="'+esc(item.startTimeId||'')+'"><b>'+esc(item.startTime||'')+'</b><small>'+esc(availabilityLabel(item))+'</small></button>').join('')+
       '</div></div>':'';
     const root=showSheet(t().chooseDate,'<div class="lt-sheet-scroll">'+calendars+times+'</div>');
 
