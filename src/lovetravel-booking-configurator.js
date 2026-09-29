@@ -2,7 +2,8 @@
   'use strict';
 
   const PRODUCT_IDS = new Set(['1287578','1287580']);
-  const RELEASE_ID = '2026-09-29-bokun-complete-v1';
+  const RELEASE_ID = '2026-09-29-ux-contract-v2';
+  const CHECKOUT_REQUIRED_CUSTOMER_FIELDS = ['firstName','lastName','email','phoneNumber'];
   const stateByProduct = new Map();
   const resolutionByProduct = new Map();
   const calendarByKey = new Map();
@@ -22,8 +23,8 @@
       chooseDate:'Выберите дату', chooseTime:'Выберите время', chooseOption:'Выберите вариант экскурсии',
       chooseGuests:'Укажите участников', choosePickup:'Выберите способ встречи',
       available:'мест доступно', spots:'мест', adult:'Взрослый', child:'Ребёнок', infant:'Младенец',
-      years:'лет', close:'Закрыть', searchHotel:'Найдите отель или точку посадки',
-      pickupPlace:'Место посадки', roomNeeded:'Для этой точки Bókun запрашивает номер комнаты на этапе оформления.',
+      years:'лет', close:'Закрыть', searchHotel:'Начните вводить название отеля', searchHint:'Введите название отеля или точки посадки',
+      pickupPlace:'Место посадки', chooseHotel:'Выберите отель', enterRoom:'Укажите номер комнаты', roomNeeded:'Для этой точки Bókun запрашивает номер комнаты на этапе оформления.', fillContact:'Заполнить данные',
       contact:'Контактные данные', firstName:'Имя', lastName:'Фамилия', phoneNumber:'Телефон', email:'Email',
       verify:'Проверить', verified:'Данные проверены', noPlaces:'Ничего не найдено',
       select:'Выбрать', selected:'Выбрано', pricePerPerson:'за человека', liveQuote:'Цена проверена сейчас', onRequest:'Требуется подтверждение туроператора',
@@ -43,8 +44,8 @@
       chooseDate:'Choose a date', chooseTime:'Choose a time', chooseOption:'Choose a tour option',
       chooseGuests:'Add guests', choosePickup:'Choose how to meet',
       available:'spots available', spots:'spots', adult:'Adult', child:'Child', infant:'Infant',
-      years:'years', close:'Close', searchHotel:'Search hotel or pickup point',
-      pickupPlace:'Pickup point', roomNeeded:'Bókun asks for a room number for this pickup point during checkout.',
+      years:'years', close:'Close', searchHotel:'Start typing your hotel name', searchHint:'Enter a hotel or pickup point',
+      pickupPlace:'Pickup point', chooseHotel:'Choose hotel', enterRoom:'Enter room number', roomNeeded:'Bókun asks for a room number for this pickup point during checkout.', fillContact:'Add contact details',
       contact:'Contact details', firstName:'First name', lastName:'Last name', phoneNumber:'Phone', email:'Email',
       verify:'Check', verified:'Details checked', noPlaces:'No matches',
       select:'Select', selected:'Selected', pricePerPerson:'per person', liveQuote:'Price checked live', onRequest:'Operator confirmation required',
@@ -64,8 +65,8 @@
       chooseDate:'Chọn ngày', chooseTime:'Chọn giờ', chooseOption:'Chọn chương trình',
       chooseGuests:'Chọn số khách', choosePickup:'Chọn cách gặp',
       available:'chỗ còn trống', spots:'chỗ', adult:'Người lớn', child:'Trẻ em', infant:'Em bé',
-      years:'tuổi', close:'Đóng', searchHotel:'Tìm khách sạn hoặc điểm đón',
-      pickupPlace:'Điểm đón', roomNeeded:'Bókun yêu cầu số phòng cho điểm đón này trong bước thanh toán.',
+      years:'tuổi', close:'Đóng', searchHotel:'Bắt đầu nhập tên khách sạn', searchHint:'Nhập khách sạn hoặc điểm đón',
+      pickupPlace:'Điểm đón', chooseHotel:'Chọn khách sạn', enterRoom:'Nhập số phòng', roomNeeded:'Bókun yêu cầu số phòng cho điểm đón này trong bước thanh toán.', fillContact:'Điền thông tin liên hệ',
       contact:'Thông tin liên hệ', firstName:'Tên', lastName:'Họ', phoneNumber:'Điện thoại', email:'Email',
       verify:'Kiểm tra', verified:'Đã kiểm tra', noPlaces:'Không có kết quả',
       select:'Chọn', selected:'Đã chọn', pricePerPerson:'mỗi người', liveQuote:'Giá vừa được kiểm tra', onRequest:'Cần nhà điều hành xác nhận',
@@ -85,8 +86,8 @@
       chooseDate:'날짜 선택', chooseTime:'시간 선택', chooseOption:'투어 옵션 선택',
       chooseGuests:'인원 선택', choosePickup:'미팅 방법 선택',
       available:'자리 남음', spots:'자리', adult:'성인', child:'아동', infant:'유아',
-      years:'세', close:'닫기', searchHotel:'호텔 또는 픽업 장소 검색',
-      pickupPlace:'픽업 장소', roomNeeded:'이 픽업 장소는 결제 단계에서 객실 번호가 필요합니다.',
+      years:'세', close:'닫기', searchHotel:'호텔 이름을 입력하세요', searchHint:'호텔 또는 픽업 장소 입력',
+      pickupPlace:'픽업 장소', chooseHotel:'호텔 선택', enterRoom:'객실 번호 입력', roomNeeded:'이 픽업 장소는 결제 단계에서 객실 번호가 필요합니다.', fillContact:'연락처 입력',
       contact:'연락처 정보', firstName:'이름', lastName:'성', phoneNumber:'전화번호', email:'이메일',
       verify:'확인', verified:'확인 완료', noPlaces:'검색 결과 없음',
       select:'선택', selected:'선택됨', pricePerPerson:'1인당', liveQuote:'실시간 가격 확인됨', onRequest:'운영사 확인 필요',
@@ -268,10 +269,24 @@
     const count=bookingCount+passengerCount;
     return count>0 ? String(count) : t().extrasEmpty;
   }
+  function checkoutContactComplete(r){
+    const customer=r?.selection?.customer||{};
+    return CHECKOUT_REQUIRED_CUSTOMER_FIELDS.every(field=>String(customer?.[field]??'').trim()!=='');
+  }
   function contactSummary(r){
     const contactCodes=new Set(['required_customer_field_missing','required_booking_question_missing','invalid_booking_question_answer','required_custom_field_missing','passenger_details_incomplete','passenger_field_missing','required_passenger_booking_question_missing','invalid_passenger_booking_question_answer']);
-    const pending=arr(r?.bookingDataIssues).some(item=>contactCodes.has(item.code));
+    const pending=arr(r?.bookingDataIssues).some(item=>contactCodes.has(item.code)) || !checkoutContactComplete(r);
     return pending ? t().contactRequired : t().verified;
+  }
+  function ctaLabel(r,ready){
+    if(ready) return t().verified;
+    const step=firstBlockingStep(r);
+    if(step==='date') return t().chooseDate;
+    if(step==='option') return t().chooseOption;
+    if(step==='guests') return t().chooseGuests;
+    if(step==='pickup') return t().choosePickup;
+    if(step==='extras') return t().chooseExtras;
+    return t().fillContact;
   }
   function quoteSummary(r){
     if(r?.quote?.available) return money(r.quote.total,r.quote.currency);
@@ -321,13 +336,13 @@
     mount.dataset.ltConfig=productId;
     mount.className='lt-booking-config'+(r.readyToQuote?' has-quote':'');
     const quote=quoteSummary(r);
-    const ready=r.readyToBook;
-    const cta=ready?t().ready:(r.readyToQuote?t().continue:t().continue);
+    const ready=Boolean(r.readyToBook && checkoutContactComplete(r));
+    const cta=ctaLabel(r,ready);
     const extras=arr(r?.constraints?.extras);
     const extrasComplete=!arr(r?.bookingDataIssues).some(item=>item.code==='required_extra_missing'||item.code==='required_passenger_extra_missing'||String(item.code).includes('extra_booking_question'));
     const detailsComplete=!arr(r?.bookingDataIssues).some(item=>
       ['required_customer_field_missing','required_booking_question_missing','invalid_booking_question_answer','required_custom_field_missing','passenger_details_incomplete','passenger_field_missing','required_passenger_booking_question_missing','invalid_passenger_booking_question_answer'].includes(item.code)
-    );
+    ) && checkoutContactComplete(r);
     mount.innerHTML=
       '<div class="lt-booking-config__head">'+
         '<div><span class="lt-booking-config__eyebrow"><i></i>'+esc(t().live)+'</span><h2>'+esc(t().title)+'</h2></div>'+
@@ -432,7 +447,7 @@
       return '<div class="lt-date-group"><h4>'+esc(formatDate(first,{month:'long',year:'numeric'}))+'</h4><div class="lt-date-grid">'+
         items.map(item=>{
           const active=item.date===s.date;
-          return '<button type="button" class="lt-date-chip '+(active?'is-active':'')+'" data-lt-date="'+esc(item.date)+'"><small>'+esc(formatDate(item.date,{weekday:'short'}))+'</small><b>'+esc(formatDate(item.date,{day:'numeric'}))+'</b><span>'+esc(item.slots)+'×</span></button>';
+          return '<button type="button" class="lt-date-chip '+(active?'is-active':'')+'" data-lt-date="'+esc(item.date)+'"><small>'+esc(formatDate(item.date,{weekday:'short'}))+'</small><b>'+esc(formatDate(item.date,{day:'numeric'}))+'</b><span>'+esc(Number(item.slots)===1 ? (locale()==='ru'?'1 время':locale()==='vi'?'1 giờ':locale()==='ko'?'시간 1개':'1 time') : String(item.slots)+' '+(locale()==='ru'?'времени':locale()==='vi'?'giờ':locale()==='ko'?'시간':'times'))+'</span></button>';
         }).join('')+'</div></div>';
     }).join('');
     const times=s.date?'<div class="lt-time-block"><h4>'+esc(t().chooseTime)+'</h4><div class="lt-time-grid">'+
@@ -488,7 +503,7 @@
     const rows=arr(r.constraints?.rates);
     const body='<div class="lt-sheet-scroll"><div class="lt-option-list">'+rows.map(rate=>
       '<button type="button" class="lt-option-card '+(String(rate.id)===String(s.rateId)?'is-active':'')+'" data-lt-rate="'+esc(rate.id)+'">'+
-        '<span><b>'+esc(rate.title||rate.code||rate.id)+'</b>'+(rate.code?'<small>'+esc(rate.code)+'</small>':'')+'</span>'+
+        '<span><b>'+esc(rate.title||rate.code||rate.id)+'</b></span>'+
         '<span class="lt-option-card__price">'+(rate.fromPrice?'<small>'+esc(t().from)+'</small><strong>'+esc(money(rate.fromPrice.amount,rate.fromPrice.currency))+'</strong>':'')+'</span>'+
       '</button>'
     ).join('')+'</div></div>';
@@ -526,26 +541,33 @@
     return places.map(place=>
       '<button type="button" class="lt-pickup-place '+(String(place.id)===String(s.pickup?.placeId)?'is-active':'')+'" data-lt-place="'+esc(place.id)+'">'+
         '<span><b>'+esc(place.title)+'</b><small>'+esc(place.wholeAddress||[place.addressLine1,place.city].filter(Boolean).join(', '))+'</small></span>'+
-        (place.askForRoomNumber?'<i>room</i>':'')+
       '</button>'
     ).join('');
   }
-  function openPickupSheet(productId,query=''){
-    const r=resolutionByProduct.get(productId); if(!r) return;
+  function openPickupSheet(productId,query='',resolutionOverride=null){
+    const r=resolutionOverride || resolutionByProduct.get(productId); if(!r) return;
     const p=r.constraints?.pickup||{};
     const s=selection(productId);
     const mode=s.pickup?.mode;
     const allPlaces=arr(p.places);
-    const selectedPlace=allPlaces.find(place=>String(place.id)===String(s.pickup?.placeId))||null;
+    const resolvedPlace=r?.resolved?.pickupPlace||null;
+    const selectedPlace=allPlaces.find(place=>String(place.id)===String(s.pickup?.placeId))
+      || (String(resolvedPlace?.id||'')===String(s.pickup?.placeId||'') ? resolvedPlace : null);
+    const roomRequired=Boolean(
+      selectedPlace?.askForRoomNumber ||
+      (String(resolvedPlace?.id||'')===String(s.pickup?.placeId||'') && resolvedPlace?.askForRoomNumber) ||
+      arr(r?.bookingDataIssues).some(item=>item.code==='pickup_room_number_required')
+    );
     const filterPlaces=value=>{
       const q=String(value||'').trim().toLocaleLowerCase();
-      return (q?allPlaces.filter(x=>(x.title+' '+x.wholeAddress+' '+x.city).toLocaleLowerCase().includes(q)):allPlaces).slice(0,60);
+      if(!q) return selectedPlace ? [selectedPlace] : [];
+      return allPlaces.filter(x=>(x.title+' '+x.wholeAddress+' '+x.city).toLocaleLowerCase().includes(q)).slice(0,40);
     };
     const initialPlaces=filterPlaces(query);
     const pickupDetails=mode==='PICKUP'
       ? '<div class="lt-pickup-search"><label>'+esc(t().pickupPlace)+'</label><input type="search" value="'+esc(query)+'" placeholder="'+esc(t().searchHotel)+'" data-lt-pickup-search autocomplete="off"></div>'+
-        '<div class="lt-pickup-results" data-lt-pickup-results>'+pickupPlaceRows(initialPlaces,s)+'</div>'+
-        (selectedPlace?.askForRoomNumber
+        '<div class="lt-pickup-results" data-lt-pickup-results>'+(initialPlaces.length?pickupPlaceRows(initialPlaces,s):'<div class="lt-empty lt-pickup-hint">'+esc(t().searchHint)+'</div>')+'</div>'+
+        (roomRequired
           ? '<div class="lt-pickup-room"><label><span>'+esc(t().roomNumber)+' *</span><input type="text" value="'+esc(s.pickup?.roomNumber||'')+'" data-lt-room-number autocomplete="off"></label><button type="button" class="lt-sheet-primary" data-lt-room-save>'+esc(t().save)+'</button></div>'
           : '')+
         (p.customAllowed
@@ -557,7 +579,9 @@
         (arr(p.modes).includes('MEET_ON_LOCATION')?pickupModeCard('MEET_ON_LOCATION',t().meet,mode==='MEET_ON_LOCATION',''):'')+
         (arr(p.modes).includes('PICKUP')?pickupModeCard('PICKUP',t().pickupMode,mode==='PICKUP',p.pricingType==='INCLUDED_IN_PRICE'?t().included:''):'')+
       '</div>'+pickupDetails+'</div>';
-    const root=showSheet(t().choosePickup,body);
+    const sheetTitle=roomRequired?t().enterRoom:(mode==='PICKUP'?t().chooseHotel:t().choosePickup);
+    const root=showSheet(sheetTitle,body);
+    if(roomRequired) setTimeout(()=>root.querySelector('[data-lt-room-number]')?.focus({preventScroll:true}),0);
     root.querySelectorAll('[data-lt-pickup-mode]').forEach(btn=>btn.addEventListener('click',async()=>{
       const selectedMode=btn.dataset.ltPickupMode;
       patchSelection(productId,{pickup:{
@@ -580,14 +604,14 @@
       patchSelection(productId,{pickup:{mode:'PICKUP',placeId:btn.dataset.ltPlace,customLocation:null,roomNumber:''}});
       const next=await resolve(productId,{quiet:true});
       const place=next.resolved?.pickupPlace;
-      if(place?.askForRoomNumber) openPickupSheet(productId,currentQuery);
+      if(place?.askForRoomNumber || arr(next?.bookingDataIssues).some(item=>item.code==='pickup_room_number_required')) openPickupSheet(productId,currentQuery,next);
       else closeSheet();
     });
     root.querySelector('[data-lt-room-save]')?.addEventListener('click',async()=>{
       const roomNumber=root.querySelector('[data-lt-room-number]')?.value.trim()||'';
       patchSelection(productId,{pickup:{roomNumber}});
       const next=await resolve(productId,{quiet:true});
-      if(arr(next.bookingDataIssues).some(item=>item.code==='pickup_room_number_required')) openPickupSheet(productId,search?.value||'');
+      if(arr(next.bookingDataIssues).some(item=>item.code==='pickup_room_number_required')) openPickupSheet(productId,search?.value||'',next);
       else closeSheet();
     });
     root.querySelector('[data-lt-custom-pickup-save]')?.addEventListener('click',async()=>{
@@ -844,7 +868,7 @@
     const r=resolutionByProduct.get(productId); if(!r) return;
     const req=r.constraints?.bookingRequirements||{};
     const s=selection(productId);
-    const customerSpecMap=new Map();
+    const customerSpecMap=new Map(CHECKOUT_REQUIRED_CUSTOMER_FIELDS.map(field=>[field,{field,required:true}]));
     for(const field of arr(req.requiredCustomerFields).map(canonicalField).filter(Boolean)){
       customerSpecMap.set(field,{field,required:true});
     }
@@ -923,8 +947,8 @@
       const next=await resolve(productId,{quiet:true});
       const hasContactIssues=arr(next.bookingDataIssues).some(item=>
         ['required_customer_field_missing','required_booking_question_missing','invalid_booking_question_answer','required_custom_field_missing','passenger_details_incomplete','passenger_field_missing','required_passenger_booking_question_missing','invalid_passenger_booking_question_answer'].includes(item.code)
-      );
-      if(next.readyToBook||!hasContactIssues){
+      ) || !checkoutContactComplete(next);
+      if(!hasContactIssues){
         const btn=root.querySelector('[data-lt-contact-check]'); if(btn){btn.textContent=t().verified;btn.classList.add('is-success');}
         setTimeout(closeSheet,550);
       }else openContactSheet(productId);
