@@ -42,11 +42,9 @@ test('traveler edits persist through dedicated D1 API', () => {
   assert.match(worker, /INSERT INTO travelers/);
 });
 
-test('standalone bundle includes profile layer and R2 worker wrapper', () => {
-  assert.match(build, /traveler-profile\.js/);
+test('standalone customer bundle excludes the legacy traveler profile while the worker wrapper remains available', () => {
+  assert.doesNotMatch(build, /traveler-profile\.js/);
   assert.match(wrangler, /\.\/src\/worker-r2\.js/);
   assert.match(wrangler, /"binding": "TOUR_MEDIA"/);
   assert.match(r2Worker, /import profileWorker from '\.\/worker-profile\.js'/);
-  assert.match(r2Worker, /url\.pathname\.startsWith\('\/tour-media\/'\)/);
-  assert.match(r2Worker, /env\.TOUR_MEDIA/);
 });
