@@ -1,0 +1,137 @@
+name: Capture LoveTravel UX audit
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.capture-ux-audit'
+
+permissions:
+  contents: write
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Capture live flow
+        shell: bash
+        run: |
+          rm -rf audit-ui
+          mkdir -p audit-ui
+          node <<'NODE'
+          const { chromium } = require('playwright');
+          const fs = require('fs');
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const page=await browser.newPage({
+              viewport:{width:390,height:844},
+              deviceScaleFactor:1,
+              isMobile:true,
+              hasTouch:true,
+            });
+            const errors=[];
+            page.on('pageerror',e=>errors.push(String(e)));
+            await page.goto('https://lovetravel.viiversion.com/?uxAuditCapture=1',{waitUntil:'domcontentloaded',timeout:60000});
+            await page.waitForFunction(()=>
+              globalThis.LOVE_TRAVEL_BOKUN_ACTIVE===true &&
+              Array.isArray(globalThis.TOURS) &&
+              globalThis.TOURS.length===2 &&
+              document.documentElement.classList.contains('love-travel-branded'),
+              null,{timeout:60000}
+            );
+            await page.waitForTimeout(1200);
+            await page.screenshot({path:'audit-ui/01-home.png'});
+
+            await page.evaluate(()=>showScreen('catalog'));
+            await page.waitForTimeout(700);
+            await page.screenshot({path:'audit-ui/02-catalog.png'});
+
+            await page.evaluate(()=>openTour('1287578'));
+            await page.waitForSelector('#tourScreen .lt-booking-config',{state:'visible',timeout:30000});
+            await page.waitForTimeout(800);
+            await page.screenshot({path:'audit-ui/03-tour-top.png'});
+
+            const cfg=page.locator('#tourScreen .lt-booking-config');
+            await cfg.scrollIntoViewIfNeeded();
+            await page.waitForTimeout(300);
+            await page.screenshot({path:'audit-ui/04-configurator.png'});
+
+            await page.locator('#tourScreen [data-lt-step="date"]').click();
+            await page.waitForSelector('.lt-booking-sheet.is-open [data-lt-date]',{state:'visible',timeout:10000});
+            await page.waitForTimeout(300);
+            await page.screenshot({path:'audit-ui/05-date-sheet.png'});
+            const dateBtn=page.locator('.lt-booking-sheet.is-open [data-lt-date]').first();
+            await dateBtn.click();
+            await page.waitForTimeout(1200);
+            if(await page.locator('.lt-booking-sheet.is-open [data-lt-slot]').count()){
+              await page.screenshot({path:'audit-ui/06-time-sheet.png'});
+              await page.locator('.lt-booking-sheet.is-open [data-lt-slot]').first().click();
+              await page.waitForTimeout(700);
+            }
+            if(await page.locator('.lt-booking-sheet.is-open').count()){
+              await page.locator('.lt-booking-sheet.is-open [data-lt-sheet-close-button]').click().catch(()=>{});
+              await page.waitForTimeout(300);
+            }
+
+            await page.locator('#tourScreen [data-lt-step="pickup"]').click();
+            await page.waitForSelector('.lt-booking-sheet.is-open [data-lt-pickup-mode="PICKUP"]',{state:'visible',timeout:10000});
+            await page.locator('.lt-booking-sheet.is-open [data-lt-pickup-mode="PICKUP"]').click();
+            await page.waitForSelector('.lt-booking-sheet.is-open [data-lt-pickup-search]',{state:'visible',timeout:30000});
+            await page.waitForTimeout(500);
+            await page.screenshot({path:'audit-ui/07-pickup-sheet.png'});
+            await page.locator('.lt-booking-sheet.is-open [data-lt-pickup-search]').fill('Starcity Hotel');
+            await page.waitForTimeout(500);
+            await page.screenshot({path:'audit-ui/08-pickup-search.png'});
+            await page.locator('.lt-booking-sheet.is-open [data-lt-place]').first().click();
+            await page.waitForTimeout(1000);
+
+            await cfg.scrollIntoViewIfNeeded();
+            await page.waitForTimeout(300);
+            await page.screenshot({path:'audit-ui/09-configured.png'});
+
+            await page.locator('#tourScreen [data-lt-config-continue]').click();
+            await page.waitForSelector('.lt-booking-sheet.is-open [data-lt-customer="firstName"]',{state:'visible',timeout:10000});
+            await page.waitForTimeout(300);
+            await page.screenshot({path:'audit-ui/10-contacts.png'});
+
+            const report=await page.evaluate(()=>({
+              title:document.title,
+              bodyFont:getComputedStyle(document.body).fontFamily,
+              bodyBg:getComputedStyle(document.body).backgroundColor,
+              viewport:{w:innerWidth,h:innerHeight},
+              home:{
+                text:document.querySelector('#homeScreen')?.innerText||'',
+                headings:[...document.querySelectorAll('#homeScreen h1,#homeScreen h2,#homeScreen h3')].map(x=>x.innerText.trim()),
+              },
+              catalog:{
+                cards:document.querySelectorAll('#catalogScreen .tour-card').length,
+                text:document.querySelector('#catalogScreen')?.innerText||'',
+              },
+              config:{
+                text:document.querySelector('#tourScreen .lt-booking-config')?.innerText||'',
+                rect:document.querySelector('#tourScreen .lt-booking-config')?.getBoundingClientRect().toJSON?.()||null,
+              },
+              errors,
+            }));
+            fs.writeFileSync('audit-ui/report.json',JSON.stringify(report,null,2));
+            await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
+      - name: Save screenshots
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add audit-ui
+          git commit -m "Capture live LoveTravel UX audit" || true
+          git push origin HEAD:main
