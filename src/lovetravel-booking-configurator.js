@@ -202,7 +202,7 @@
       headers:{'content-type':'application/json'},
       cache:'no-store',
       credentials:'same-origin',
-      body:JSON.stringify({selection:calendarSelection}),
+      body:JSON.stringify({selection:calendarSelection,locale:locale()}),
     });
     if(!response.ok) throw new Error('calendar resolve HTTP '+response.status);
     const data=await response.json();
@@ -217,7 +217,7 @@
     try{
       const response=await fetch('/api/bokun/booking-selection/resolve',{
         method:'POST',headers:{'content-type':'application/json'},cache:'no-store',credentials:'same-origin',
-        body:JSON.stringify({selection:selection(productId)})
+        body:JSON.stringify({selection:selection(productId),locale:locale()})
       });
       if(!response.ok) throw new Error('resolve HTTP '+response.status);
       const data=await response.json();
