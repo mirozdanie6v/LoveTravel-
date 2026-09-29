@@ -19,12 +19,10 @@ async function restore(entry) {
 
 const prototypeHtml = await restore(manifest.html);
 
-test('catalog card parity layer is syntactically valid and loaded after geo routing', () => {
+test('legacy catalog-card parity source remains valid but is excluded from LoveTravel customer build', () => {
   assert.doesNotThrow(() => new vm.Script(v7));
-  const geoIndex = build.indexOf('/ai-location-guard-v6.js');
-  const parityIndex = build.indexOf('/ai-catalog-card-v7.js');
-  assert.ok(geoIndex >= 0 && parityIndex > geoIndex);
-  assert.match(build, /copyFile\(resolve\(root, 'src\/ai-catalog-card-v7\.js'/);
+  assert.doesNotMatch(build, /ai-location-guard-v6\.js/);
+  assert.doesNotMatch(build, /ai-catalog-card-v7\.js/);
 });
 
 test('AI reuses native tour-card and strips AI-specific card layout classes', () => {
