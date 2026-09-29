@@ -128,6 +128,46 @@ function extraEntity(item = {}) {
   };
 }
 
+function referenceIds(values = []) {
+  return asArray(values).map(value => id(
+    value && typeof value === 'object' ? (value.id ?? value.activityRateId ?? value.extraId) : value
+  )).filter(value => value !== null);
+}
+
+function questionEntity(item = {}) {
+  const options=asArray(item.options ?? item.answerOptions).map(option => ({
+    id:id(option.id),
+    label:text(option.label ?? option.title ?? option.value, 300),
+    value:text(option.value ?? option.id ?? option.label, 500),
+    providerData:option,
+  }));
+  return {
+    id:id(item.id ?? item.questionId),
+    title:text(item.title || item.label || item.question, 500),
+    code:text(item.code || item.questionCode, 160),
+    description:text(item.description || item.help, 3000),
+    required:item.required === undefined ? false : bool(item.required),
+    personalData:item.personalData === undefined ? null : bool(item.personalData),
+    placeholder:text(item.placeholder, 500),
+    dataType:text(item.dataType, 80),
+    dataFormat:text(item.dataFormat, 80),
+    pattern:text(item.pattern, 500),
+    defaultValue:item.defaultValue ?? null,
+    context:text(item.context, 100),
+    pricingCategoryTriggerSelection:text(item.pricingCategoryTriggerSelection, 80),
+    pricingCategoryTriggers:referenceIds(item.pricingCategoryTriggers),
+    rateTriggerSelection:text(item.rateTriggerSelection, 80),
+    rateTriggers:referenceIds(item.rateTriggers),
+    extraTriggerSelection:text(item.extraTriggerSelection, 80),
+    extraTriggers:referenceIds(item.extraTriggers),
+    selectFromOptions:item.selectFromOptions === undefined ? options.length > 0 : bool(item.selectFromOptions),
+    selectMultiple:item.selectMultiple === undefined ? false : bool(item.selectMultiple),
+    options,
+    flags:asArray(item.flags),
+    providerData:item,
+  };
+}
+
 function rateExtraConfig(item = {}) {
   const extra = item.extra && typeof item.extra === 'object' ? item.extra : {};
   return {
@@ -483,7 +523,7 @@ export function buildBokunDomain(product = {}, availability = [], { vendorId = n
     extras:asArray(product.bookableExtras).map(extraEntity),
     offers:asArray(product.offers).map(genericProviderEntity),
     bookingRequirements:{
-      questions:asArray(product.bookingQuestions).map(genericProviderEntity),
+      questions:asArray(product.bookingQuestions).map(questionEntity),
       requiredCustomerFields:asArray(product.requiredCustomerFields),
       mainContactFields:asArray(product.mainContactFields),
       passengerFields:asArray(product.passengerFields),
