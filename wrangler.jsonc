@@ -16,7 +16,7 @@
     "binding": "AI"
   },
   "triggers": {
-    "crons": ["0 * * * *"]
+    "crons": ["* * * * *"]
   },
   "assets": {
     "directory": "./dist",
