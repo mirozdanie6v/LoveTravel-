@@ -28,6 +28,55 @@ function extraMap(value = {}) {
     .filter(([key,count]) => key && count > 0));
 }
 
+function passengerExtraMap(value = {}) {
+  if (Array.isArray(value)) {
+    return Object.fromEntries(value.map(item => {
+      const extraId=str(item?.extraId ?? item?.id);
+      const quantity=Math.max(0,Math.floor(Number(item?.quantity ?? 1)||0));
+      const answers=item?.answers && typeof item.answers==='object' && !Array.isArray(item.answers) ? { ...item.answers } : {};
+      return [extraId,{quantity,answers}];
+    }).filter(([extraId,item])=>extraId&&item.quantity>0));
+  }
+  if (!value || typeof value !== 'object') return {};
+  return Object.fromEntries(Object.entries(value).map(([extraId,item])=>{
+    if(item && typeof item==='object' && !Array.isArray(item)){
+      return [str(extraId),{
+        quantity:Math.max(0,Math.floor(Number(item.quantity ?? 1)||0)),
+        answers:item.answers && typeof item.answers==='object' && !Array.isArray(item.answers) ? { ...item.answers } : {},
+      }];
+    }
+    return [str(extraId),{quantity:Math.max(0,Math.floor(Number(item)||0)),answers:{}}];
+  }).filter(([extraId,item])=>extraId&&item.quantity>0));
+}
+
+function normalizePassengers(value = []) {
+  return arr(value).map(item=>{
+    const passenger=item && typeof item==='object' ? { ...item } : {};
+    return {
+      ...passenger,
+      categoryId:passenger.categoryId===null||passenger.categoryId===undefined?'':str(passenger.categoryId),
+      answers:passenger.answers && typeof passenger.answers==='object' && !Array.isArray(passenger.answers) ? { ...passenger.answers } : {},
+      extras:passengerExtraMap(passenger.extras),
+    };
+  });
+}
+
+function passengerExtraQuantity(selection = {}, extraId) {
+  return arr(selection.passengers).reduce((sum,passenger)=>{
+    return sum + Math.max(0,Number(passenger?.extras?.[str(extraId)]?.quantity)||0);
+  },0);
+}
+
+function selectedExtraIds(selection = {}) {
+  const ids=new Set(Object.entries(selection.extras||{}).filter(([,count])=>Number(count)>0).map(([extraId])=>str(extraId)));
+  for(const passenger of arr(selection.passengers)){
+    for(const [extraId,item] of Object.entries(passenger?.extras||{})){
+      if(Number(item?.quantity||0)>0) ids.add(str(extraId));
+    }
+  }
+  return ids;
+}
+
 export function normalizeBookingSelection(input = {}, domain = {}) {
   const productId = str(input.productId || domain?.experience?.id || domain?.provider?.productId) || null;
   return {
@@ -54,7 +103,7 @@ export function normalizeBookingSelection(input = {}, domain = {}) {
     customer:input.customer && typeof input.customer === 'object' && !Array.isArray(input.customer) ? { ...input.customer } : {},
     answers:input.answers && typeof input.answers === 'object' && !Array.isArray(input.answers) ? { ...input.answers } : {},
     extraAnswers:input.extraAnswers && typeof input.extraAnswers === 'object' && !Array.isArray(input.extraAnswers) ? { ...input.extraAnswers } : {},
-    passengers:Array.isArray(input.passengers) ? input.passengers.map(item => item && typeof item === 'object' ? { ...item } : {}) : [],
+    passengers:normalizePassengers(input.passengers),
   };
 }
 
@@ -198,7 +247,7 @@ function extraConstraints(domain = {}, rate = null, participantTotal = 0, select
       pricedPerPerson:config.pricedPerPerson === null || config.pricedPerPerson === undefined ? null : Boolean(config.pricedPerPerson),
       limitByPax,
       maxQuantity,
-      quantity:Number(selection.extras?.[extraId] || 0),
+      quantity:config.pricedPerPerson ? passengerExtraQuantity(selection,extraId) : Number(selection.extras?.[extraId] || 0),
     }];
   });
 }
@@ -430,7 +479,7 @@ function triggerMatches(mode, triggers, selectedIds) {
 function questionTriggered(question, selection) {
   const categoryIds=new Set(Object.entries(selection.participants||{}).filter(([,count])=>Number(count)>0).map(([key])=>str(key)));
   const rateIds=new Set(selection.rateId?[str(selection.rateId)]:[]);
-  const extraIds=new Set(Object.entries(selection.extras||{}).filter(([,count])=>Number(count)>0).map(([key])=>str(key)));
+  const extraIds=selectedExtraIds(selection);
   return triggerMatches(question.pricingCategoryTriggerSelection,question.pricingCategoryTriggers,categoryIds)
     && triggerMatches(question.rateTriggerSelection,question.rateTriggers,rateIds)
     && triggerMatches(question.extraTriggerSelection,question.extraTriggers,extraIds);
@@ -566,16 +615,34 @@ function missingBookingData(domain, selection, participantTotal, pickup = null, 
         );
       }
     }else if(context==='EXTRA'){
-      for(const [extraId,count] of Object.entries(selection.extras||{})){
-        if(Number(count)<=0||!questionAppliesToExtra(question,extraId)) continue;
-        validateQuestionAnswer(
-          question,
-          selection.extraAnswers?.[extraId]?.[key],
-          'extraAnswers.'+extraId+'.'+key,
-          'required_extra_booking_question_missing',
-          'invalid_extra_booking_question_answer',
-          missing,
-        );
+      for(const extra of arr(extras).filter(item=>Number(item.quantity)>0)){
+        const extraId=str(extra.id);
+        if(!questionAppliesToExtra(question,extraId)) continue;
+        if(extra.pricedPerPerson){
+          for(let index=0;index<selection.passengers.length;index+=1){
+            const passenger=selection.passengers[index]||{};
+            const passengerExtra=passenger?.extras?.[extraId];
+            if(Number(passengerExtra?.quantity||0)<=0) continue;
+            if(!questionAppliesToPassenger(question,passenger)) continue;
+            validateQuestionAnswer(
+              question,
+              passengerExtra?.answers?.[key],
+              'passengers.'+index+'.extras.'+extraId+'.answers.'+key,
+              'required_extra_booking_question_missing',
+              'invalid_extra_booking_question_answer',
+              missing,
+            );
+          }
+        }else{
+          validateQuestionAnswer(
+            question,
+            selection.extraAnswers?.[extraId]?.[key],
+            'extraAnswers.'+extraId+'.'+key,
+            'required_extra_booking_question_missing',
+            'invalid_extra_booking_question_answer',
+            missing,
+          );
+        }
       }
     }else{
       validateQuestionAnswer(
@@ -626,7 +693,20 @@ function missingBookingData(domain, selection, participantTotal, pickup = null, 
   for (const extra of arr(extras)) {
     if (!extra?.required) continue;
     const extraId = str(extra.id);
-    if (extraId && Number(selection.extras?.[extraId] || 0) <= 0) {
+    if(!extraId) continue;
+    if(extra.pricedPerPerson){
+      for(let index=0;index<participantTotal;index+=1){
+        const quantity=Number(selection.passengers?.[index]?.extras?.[extraId]?.quantity||0);
+        if(quantity<=0){
+          missing.push(issue(
+            'required_passenger_extra_missing',
+            'passengers.'+index+'.extras.'+extraId,
+            'Preselected per-person extra is required for this passenger',
+            {extraId,passengerIndex:index},
+          ));
+        }
+      }
+    }else if(Number(selection.extras?.[extraId]||0)<=0){
       missing.push(issue('required_extra_missing','extras.'+extraId,'Required extra must be selected',{ extraId }));
     }
   }
@@ -782,13 +862,16 @@ export function resolveBookingSelection(domain = {}, input = {}, { now = new Dat
 
   const extras = extraConstraints(domain,selectedRate,participantTotal,selection);
   const knownExtraIds = new Set(extras.map(item => item.id).filter(Boolean));
-  for (const extraId of Object.keys(selection.extras)) {
+  const selectedIds=selectedExtraIds(selection);
+  for (const extraId of selectedIds) {
     if (!knownExtraIds.has(extraId)) {
       errors.push(issue('unknown_extra','extras.'+extraId,'Selected extra is not available for the selected rate',{ extraId }));
       continue;
     }
     const extra=extras.find(item=>item.id===extraId);
-    const quantity=Math.max(0,Number(selection.extras[extraId])||0);
+    const quantity=extra?.pricedPerPerson
+      ? passengerExtraQuantity(selection,extraId)
+      : Math.max(0,Number(selection.extras?.[extraId])||0);
     if(extra?.maxQuantity!==null && extra?.maxQuantity!==undefined && quantity>extra.maxQuantity){
       errors.push(issue('extra_quantity_exceeds_maximum','extras.'+extraId,'Selected extra quantity exceeds the allowed maximum',{
         extraId,maximum:extra.maxQuantity,quantity,
@@ -901,13 +984,32 @@ export function resolveBookingSelection(domain = {}, input = {}, { now = new Dat
         continue;
       }
       if(extra.pricedPerPerson){
-        quoteComplete=false;
-        warnings.push(issue(
-          'extras_price_unresolved',
-          'extras.'+extra.id,
-          'Per-person extra pricing requires passenger-level allocation before final quoting',
-          {extraId:extra.id},
-        ));
+        const extraPrice=arr(selectedRateQuote?.extraPricePerCategoryUnit).find(item=>str(item?.extraId)===extra.id);
+        for(let index=0;index<selection.passengers.length;index+=1){
+          const passenger=selection.passengers[index]||{};
+          const quantity=Math.max(0,Number(passenger?.extras?.[extra.id]?.quantity)||0);
+          if(quantity<=0) continue;
+          const categoryId=str(passenger.categoryId);
+          const priceRow=arr(extraPrice?.prices).find(item=>str(item?.categoryId)===categoryId);
+          const unit=num(priceRow?.amount?.amount);
+          const currency=moneyCurrency(priceRow?.amount);
+          if(unit===null||!currency){
+            quoteComplete=false;
+            warnings.push(issue(
+              'extras_price_unresolved',
+              'passengers.'+index+'.extras.'+extra.id,
+              'Selected passenger extra has no resolved price for this pricing category',
+              {extraId:extra.id,categoryId},
+            ));
+            continue;
+          }
+          const lineTotal=Number((unit*quantity).toFixed(2));
+          extrasTotal+=lineTotal;
+          extraLines.push({
+            extraId:extra.id,title:extra.title,passengerIndex:index,categoryId,quantity,
+            unitAmount:unit,lineTotal,currency,
+          });
+        }
         continue;
       }
       const row=arr(selectedRateQuote?.extraPricePerUnit).find(item=>str(item?.id)===extra.id);
