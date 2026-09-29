@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: lovetravel-production
@@ -50,3 +50,24 @@ jobs:
           curl -L -fsS --retry 8 --retry-delay 3 --connect-timeout 8 --max-time 60 "$base/api/bokun/domain?start=2026-09-29&end=2026-10-05" -o /tmp/domain.json
           jq -e '.ok == true and .source == "bokun" and (.domains | length) == 2 and all(.domains[]; .schemaVersion == "lovetravel.bokun-domain.v1")' /tmp/domain.json >/dev/null
           echo 'LoveTravel production release verified.'
+      - name: Record verified deployment
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > .deploy-status.json <<EOF
+          {
+            "ok": true,
+            "release": "2026-09-29-bokun-complete-v1",
+            "commit": "$GITHUB_SHA",
+            "workflowRunId": "$GITHUB_RUN_ID",
+            "verifiedDomain": "https://lovetravel.viiversion.com",
+            "verifiedBokunProducts": ["1287578", "1287580"]
+          }
+          EOF
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .deploy-status.json
+          if ! git diff --cached --quiet; then
+            git commit -m "Record verified LoveTravel production deployment"
+            git push origin HEAD:main
+          fi
