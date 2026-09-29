@@ -81,6 +81,13 @@ test('empty/hidden recommendation groups are cleaned after geo filtering', () =>
   assert.match(ai, /CARD_SELECTOR/);
 });
 
-test('LoveTravel customer build excludes legacy trip policy and location AI layers', () => {
-  for (const asset of ['trip-actions.js','trip-policy-live-v2.js','ai-consultant-v5.js','ai-location-guard-v6.js','runtime-api.js']) assert.equal(build.includes(asset), false, asset);
+test('build ships live policy after trip actions and location guard after AI v5', () => {
+  const trip = build.indexOf('/trip-actions.js');
+  const policyIndex = build.indexOf('/trip-policy-live-v2.js');
+  const aiV5 = build.indexOf('/ai-consultant-v5.js');
+  const aiV6 = build.indexOf('/ai-location-guard-v6.js');
+  const runtime = build.indexOf('/runtime-api.js');
+  assert.ok(trip >= 0 && policyIndex > trip);
+  assert.ok(aiV5 >= 0 && aiV6 > aiV5);
+  assert.ok(runtime > aiV6);
 });
