@@ -110,3 +110,12 @@ test('dynamic question controls support select, date and numeric provider types'
   assert.match(css,/\.lt-contact-field select/);
   assert.match(css,/\.lt-extra-questions/);
 });
+
+test('passenger-level extras have dedicated allocation and answer controls',()=>{
+  assert.match(js,/passengerExtraState/);
+  assert.match(js,/data-lt-passenger-extra-plus/);
+  assert.match(js,/data-lt-passenger-extra-minus/);
+  assert.match(js,/data-lt-passenger-extra-answer/);
+  assert.match(js,/pricedPerPerson/);
+  assert.match(css,/\.lt-passenger-extra/);
+});
