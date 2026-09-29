@@ -361,8 +361,8 @@ function fieldSpec(item) {
   if (typeof item === 'string') {
     return {
       field:canonicalCustomerField(item),
-      required:null,
-      requiredBeforeDeparture:null,
+      required:true,
+      requiredBeforeDeparture:false,
     };
   }
   if (!item || typeof item !== 'object') return null;
@@ -376,10 +376,17 @@ function fieldSpec(item) {
   };
 }
 
-function passengerFieldName(item) {
-  if (typeof item === 'string') return canonicalCustomerField(item);
-  if (!item || typeof item !== 'object') return '';
-  return canonicalCustomerField(item.field ?? item.name ?? item.code ?? item.id ?? '');
+function passengerFieldSpec(item) {
+  if (typeof item === 'string') {
+    return { field:canonicalCustomerField(item), required:true };
+  }
+  if (!item || typeof item !== 'object') return null;
+  const field=canonicalCustomerField(item.field ?? item.name ?? item.code ?? item.id ?? '');
+  if(!field) return null;
+  return {
+    field,
+    required:item.required === undefined ? true : Boolean(item.required),
+  };
 }
 
 function bookingRequirements(domain = {}) {
@@ -387,7 +394,7 @@ function bookingRequirements(domain = {}) {
   return {
     requiredCustomerFields:arr(req.requiredCustomerFields).map(canonicalCustomerField).filter(Boolean),
     mainContactFields:arr(req.mainContactFields).map(fieldSpec).filter(Boolean),
-    passengerFields:arr(req.passengerFields).map(passengerFieldName).filter(Boolean),
+    passengerFields:arr(req.passengerFields).map(passengerFieldSpec).filter(Boolean),
     questions:arr(req.questions).map(item => ({
       id:item?.id === null || item?.id === undefined ? null : str(item.id),
       title:str(item?.title),
@@ -453,18 +460,19 @@ function missingBookingData(domain, selection, participantTotal, pickup = null, 
     }
   }
 
-  const passengerFields = [...new Set(arr(req.passengerFields).map(canonicalCustomerField).filter(Boolean))];
-  if (passengerFields.length) {
+  const passengerSpecs=arr(req.passengerFields).filter(item=>item?.field);
+  const requiredPassengerFields=[...new Set(passengerSpecs.filter(item=>item.required!==false).map(item=>canonicalCustomerField(item.field)).filter(Boolean))];
+  if (requiredPassengerFields.length) {
     if (selection.passengers.length < participantTotal) {
       missing.push(issue('passenger_details_incomplete','passengers','Passenger details are incomplete',{
         requiredCount:participantTotal,
         currentCount:selection.passengers.length,
-        fields:passengerFields,
+        fields:requiredPassengerFields,
       }));
     }
     for (let index=0; index<participantTotal; index+=1) {
       const passenger = selection.passengers[index] || {};
-      for (const field of passengerFields) {
+      for (const field of requiredPassengerFields) {
         const aliases = customerFieldKeys(field);
         if (!aliases.some(key => hasValue(passenger?.[key]))) {
           missing.push(issue(
