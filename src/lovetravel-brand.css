@@ -536,3 +536,50 @@ html.love-travel-branded #aiScreen .ai-message.user{
   html.love-travel-branded .lt-hero__action,
   html.love-travel-branded #catalogScreen .wide-card{transition:none!important}
 }
+
+
+/* 2026-09-29 focused booking UX */
+html.love-travel-branded .lt-hero__actions{
+  grid-template-columns:1fr!important;
+}
+html.love-travel-branded .lt-card-action{
+  background:linear-gradient(135deg,var(--lt-orange-deep),#ff7b2e)!important;
+  box-shadow:0 8px 18px rgba(238,66,20,.24)!important;
+}
+html.love-travel-branded #catalogScreen .wide-card .tag-row{
+  display:none!important;
+}
+html.love-travel-branded #catalogScreen .wide-card .card-body h3{
+  display:-webkit-box!important;
+  -webkit-box-orient:vertical;
+  -webkit-line-clamp:3;
+  overflow:hidden;
+}
+html.love-travel-branded .bottom-nav .nav-btn:nth-child(n+3){
+  display:none!important;
+}
+html.love-travel-branded .bottom-nav .nav-btn.active{
+  color:var(--lt-orange-deep)!important;
+}
+html.love-travel-branded .bottom-nav .nav-btn.active .nav-icon{
+  color:var(--lt-orange)!important;
+}
+html.love-travel-branded .bottom-nav .nav-btn.active::before{
+  background:rgba(255,90,31,.10)!important;
+}
+@media(max-width:420px){
+  html.love-travel-branded #catalogScreen .wide-card .img-wrap{
+    min-height:190px!important;
+    height:190px!important;
+  }
+  html.love-travel-branded #catalogScreen .wide-card .card-body{
+    padding:15px 16px 15px!important;
+  }
+  html.love-travel-branded #catalogScreen .wide-card .card-time{
+    margin-top:11px!important;
+  }
+  html.love-travel-branded #catalogScreen .wide-card .price-row{
+    margin-top:12px!important;
+    padding-top:12px!important;
+  }
+}
