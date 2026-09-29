@@ -268,9 +268,18 @@
     const count=bookingCount+passengerCount;
     return count>0 ? String(count) : t().extrasEmpty;
   }
+  function requiredCustomerComplete(r){
+    const req=r?.constraints?.bookingRequirements||{};
+    const required=new Set(arr(req.requiredCustomerFields).map(canonicalField).filter(Boolean));
+    for(const spec of arr(req.mainContactFields).map(item=>bookingFieldSpec(item,true)).filter(Boolean)){
+      if(spec.required) required.add(spec.field);
+    }
+    const customer=r?.selection?.customer||{};
+    return [...required].every(field=>String(customer?.[field]??'').trim().length>0);
+  }
   function contactSummary(r){
     const contactCodes=new Set(['required_customer_field_missing','required_booking_question_missing','invalid_booking_question_answer','required_custom_field_missing','passenger_details_incomplete','passenger_field_missing','required_passenger_booking_question_missing','invalid_passenger_booking_question_answer']);
-    const pending=arr(r?.bookingDataIssues).some(item=>contactCodes.has(item.code));
+    const pending=arr(r?.bookingDataIssues).some(item=>contactCodes.has(item.code)) || !requiredCustomerComplete(r);
     return pending ? t().contactRequired : t().verified;
   }
   function quoteSummary(r){
@@ -325,7 +334,7 @@
     const cta=ready?t().ready:(r.readyToQuote?t().continue:t().continue);
     const extras=arr(r?.constraints?.extras);
     const extrasComplete=!arr(r?.bookingDataIssues).some(item=>item.code==='required_extra_missing'||item.code==='required_passenger_extra_missing'||String(item.code).includes('extra_booking_question'));
-    const detailsComplete=!arr(r?.bookingDataIssues).some(item=>
+    const detailsComplete=requiredCustomerComplete(r) && !arr(r?.bookingDataIssues).some(item=>
       ['required_customer_field_missing','required_booking_question_missing','invalid_booking_question_answer','required_custom_field_missing','passenger_details_incomplete','passenger_field_missing','required_passenger_booking_question_missing','invalid_passenger_booking_question_answer'].includes(item.code)
     );
     mount.innerHTML=
@@ -924,7 +933,7 @@
       const hasContactIssues=arr(next.bookingDataIssues).some(item=>
         ['required_customer_field_missing','required_booking_question_missing','invalid_booking_question_answer','required_custom_field_missing','passenger_details_incomplete','passenger_field_missing','required_passenger_booking_question_missing','invalid_passenger_booking_question_answer'].includes(item.code)
       );
-      if(next.readyToBook||!hasContactIssues){
+      if(next.readyToBook||(!hasContactIssues&&requiredCustomerComplete(next))){
         const btn=root.querySelector('[data-lt-contact-check]'); if(btn){btn.textContent=t().verified;btn.classList.add('is-success');}
         setTimeout(closeSheet,550);
       }else openContactSheet(productId);
