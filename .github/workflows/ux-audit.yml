@@ -34,7 +34,7 @@ jobs:
         with:
           node-version: '22'
       - run: npm install --no-audit --no-fund
-      - run: npm run build
+      - run: npm run check
       - name: Install browser
         run: |
           npm install --no-save playwright@1.55.0
