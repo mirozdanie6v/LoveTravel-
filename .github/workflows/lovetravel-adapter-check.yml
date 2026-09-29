@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'src/bokun-adapter.js'
+      - 'src/bokun-content-localization.js'
       - 'src/bokun-domain.js'
       - 'src/booking-selection-engine.js'
       - 'src/bokun-booking-draft.js'
@@ -20,7 +21,9 @@ on:
       - 'src/lovetravel-booking-configurator.css'
       - 'build.mjs'
       - 'wrangler.jsonc'
+      - 'migrations/0007_bokun_content_localizations.sql'
       - 'tests/bokun-adapter.test.mjs'
+      - 'tests/bokun-content-localization.test.mjs'
       - 'tests/bokun-domain.test.mjs'
       - 'tests/booking-selection-engine.test.mjs'
       - 'tests/bokun-booking-draft.test.mjs'
