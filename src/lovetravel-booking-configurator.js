@@ -2,7 +2,7 @@
   'use strict';
 
   const PRODUCT_IDS = new Set(['1287578','1287580']);
-  const RELEASE_ID = '2026-09-30-ux-clarity-v3';
+  const RELEASE_ID = '2026-09-30-full-tour-localization-v4';
   const CHECKOUT_REQUIRED_CUSTOMER_FIELDS = ['firstName','lastName','email','phoneNumber'];
   const stateByProduct = new Map();
   const resolutionByProduct = new Map();
@@ -108,6 +108,9 @@
     return copy[value] ? value : 'ru';
   }
   function t(){ return copy[locale()]; }
+  function l10n(){ return globalThis.LoveTravelTourLocale || null; }
+  function providerText(value){ return l10n()?.providerText?.(value) ?? String(value ?? ''); }
+  function localizedRateTitle(productId,rate){ return l10n()?.rateTitle?.(productId,rate?.id,rate?.title||rate?.code||rate?.id||'') ?? String(rate?.title||rate?.code||rate?.id||''); }
   function arr(v){ return Array.isArray(v) ? v : []; }
   function esc(v){ return String(v ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
   function money(amount,currency='USD'){
@@ -242,7 +245,7 @@
     if(type==='ADULT') return t().adult;
     if(type==='CHILD') return t().child;
     if(type==='INFANT') return t().infant;
-    return item?.title || type;
+    return providerText(item?.title || type);
   }
   function guestSummary(r){
     const items=arr(r?.constraints?.participants).filter(x=>Number(x.count)>0);
@@ -254,7 +257,7 @@
     if(!slot) return t().dateEmpty;
     return formatDate(slot.date,{day:'numeric',month:'short'})+(slot.startTime?' · '+slot.startTime:'');
   }
-  function optionSummary(r){ return r?.resolved?.rate?.title || t().optionEmpty; }
+  function optionSummary(r){ return r?.resolved?.rate ? localizedRateTitle(r?.product?.id||activeProductId,r.resolved.rate) : t().optionEmpty; }
   function pickupStepLabel(r){
     const mode=r?.selection?.pickup?.mode;
     if(mode==='PICKUP') return t().pickupHotelLabel;
@@ -542,7 +545,7 @@
     const rows=arr(r.constraints?.rates);
     const body='<div class="lt-sheet-scroll"><div class="lt-option-list">'+rows.map(rate=>
       '<button type="button" class="lt-option-card '+(String(rate.id)===String(s.rateId)?'is-active':'')+'" data-lt-rate="'+esc(rate.id)+'">'+
-        '<span><b>'+esc(rate.title||rate.code||rate.id)+'</b></span>'+
+        '<span><b>'+esc(localizedRateTitle(productId,rate))+'</b></span>'+
         '<span class="lt-option-card__price">'+(rate.fromPrice?'<small>'+esc(t().from)+'</small><strong>'+esc(money(rate.fromPrice.amount,rate.fromPrice.currency))+'</strong>':'')+'</span>'+
       '</button>'
     ).join('')+'</div></div>';
@@ -691,11 +694,12 @@
   }
   function questionControl(item,value,attributeName,attributeValue,extraAttributes=''){
     const key=String(attributeValue||answerKey(item));
-    const title=item?.title||item?.code||key;
+    const view=l10n()?.localizeQuestion?.(item) || item;
+    const title=view?.title||view?.code||key;
     const required=item?.required?' *':'';
-    const description=item?.description?'<small>'+esc(item.description)+'</small>':'';
+    const description=view?.description?'<small>'+esc(view.description)+'</small>':'';
     const attrs=' '+attributeName+'="'+esc(key)+'" '+extraAttributes;
-    const options=arr(item?.options);
+    const options=arr(view?.options);
     const normalizedValues=Array.isArray(value)?value.map(String):[String(value??'')];
     let control='';
     const typeName=String(item?.dataType||'').toUpperCase();
@@ -714,7 +718,7 @@
     }else{
       const type=typeName.includes('DATE')?'date':typeName.includes('NUMBER')||typeName.includes('INTEGER')||typeName.includes('DECIMAL')?'number':'text';
       control='<input type="'+type+'" value="'+esc(Array.isArray(value)?value[0]||'':value||'')+'"'+attrs+
-        (item?.placeholder?' placeholder="'+esc(item.placeholder)+'"':'')+
+        (view?.placeholder?' placeholder="'+esc(view.placeholder)+'"':'')+
         (item?.pattern?' pattern="'+esc(item.pattern)+'"':'')+
         ' autocomplete="off">';
     }
@@ -811,12 +815,12 @@
           }).join('')+'</div>':'';
           return '<div class="lt-passenger-extra" data-lt-passenger-extra="'+index+':'+esc(id)+'">'+
             '<div class="lt-extra-row">'+
-              '<div><b>'+esc(descriptor.label)+' '+descriptor.categoryIndex+'</b><small>'+esc(item.title||item.code||id)+(item.required?' · required':'')+'</small></div>'+
+              '<div><b>'+esc(descriptor.label)+' '+descriptor.categoryIndex+'</b><small>'+esc(providerText(item.title||item.code||id))+(item.required?' · '+esc(providerText('required')):'')+'</small></div>'+
               '<div class="lt-counter"><button type="button" data-lt-passenger-extra-minus data-lt-extra-id="'+esc(id)+'" data-lt-passenger-index="'+index+'">−</button><strong data-lt-passenger-extra-count="'+index+':'+esc(id)+'">'+quantity+'</strong><button type="button" data-lt-passenger-extra-plus data-lt-extra-id="'+esc(id)+'" data-lt-passenger-index="'+index+'">+</button></div>'+
             '</div>'+questionHtml+
           '</div>';
         }).join('');
-        return '<div class="lt-extra-card" data-lt-extra-card="'+esc(id)+'"><div class="lt-extra-card__head"><b>'+esc(item.title||item.code||id)+(item.required?' *':'')+'</b>'+(item.description?'<small>'+esc(item.description)+'</small>':'')+'</div>'+paxRows+'</div>';
+        return '<div class="lt-extra-card" data-lt-extra-card="'+esc(id)+'"><div class="lt-extra-card__head"><b>'+esc(providerText(item.title||item.code||id))+(item.required?' *':'')+'</b>'+(item.description?'<small>'+esc(providerText(item.description))+'</small>':'')+'</div>'+paxRows+'</div>';
       }
 
       const quantity=Number(s.extras?.[id]||0);
@@ -833,7 +837,7 @@
       }).join('')+'</div>':'';
       return '<div class="lt-extra-card" data-lt-extra-card="'+esc(id)+'">'+
         '<div class="lt-extra-row" data-lt-extra-row="'+esc(id)+'">'+
-          '<div><b>'+esc(item.title||item.code||id)+(item.required?' *':'')+'</b>'+(item.description?'<small>'+esc(item.description)+'</small>':'')+'</div>'+
+          '<div><b>'+esc(providerText(item.title||item.code||id))+(item.required?' *':'')+'</b>'+(item.description?'<small>'+esc(providerText(item.description))+'</small>':'')+'</div>'+
           '<div class="lt-counter"><button type="button" data-lt-extra-minus="'+esc(id)+'">−</button><strong data-lt-extra-count="'+esc(id)+'">'+esc(quantity)+'</strong><button type="button" data-lt-extra-plus="'+esc(id)+'">+</button></div>'+
         '</div>'+questionHtml+
       '</div>';
@@ -927,8 +931,8 @@
       ...bookingQuestions.map(item=>questionControl(item,s.answers?.[answerKey(item)],'data-lt-answer',answerKey(item))),
       ...arr(req.customFields).map(item=>{
         const key=answerKey(item);
-        return '<label class="lt-contact-field lt-contact-field--wide"><span>'+esc(item.title||item.code||key)+(item.required?' *':'')+'</span>'+
-          (item.description?'<small>'+esc(item.description)+'</small>':'')+
+        return '<label class="lt-contact-field lt-contact-field--wide"><span>'+esc(providerText(item.title||item.code||key))+(item.required?' *':'')+'</span>'+
+          (item.description?'<small>'+esc(providerText(item.description))+'</small>':'')+
           '<input type="text" value="'+esc(s.answers?.[key]||'')+'" data-lt-answer="'+esc(key)+'" autocomplete="off"></label>';
       }),
     ].join('');
@@ -1014,7 +1018,7 @@
   function fieldLabel(field){
     const known={firstName:t().firstName,lastName:t().lastName,phoneNumber:t().phoneNumber,email:t().email};
     if(known[field]) return known[field];
-    return String(field||'').replace(/[_-]+/g,' ').replace(/([a-z])([A-Z])/g,'$1 $2').trim();
+    return providerText(String(field||'').replace(/[_-]+/g,' ').replace(/([a-z])([A-Z])/g,'$1 $2').trim());
   }
   function autoComplete(field){ return ({firstName:'given-name',lastName:'family-name',phoneNumber:'tel',email:'email'})[field]||'off'; }
 
