@@ -63,24 +63,9 @@
     "http://127.0.0.1:4173/i18n-ko-v1.js",
     "http://127.0.0.1:4173/i18n-v1.js"
   ],
-  "globalSource": null,
+  "globalSource": "bokun",
   "tourIds": [
-    "orchid-monkey-islands",
-    "hon-tam-island",
-    "dalat-premium",
-    "dalat-vip",
-    "fuyen",
-    "nhatrang-day",
-    "nhatrang-night",
-    "dalat-2days",
-    "fast-track",
-    "danang-ba-na-hoian",
-    "danang-city-sontra",
-    "phuquoc-4-islands",
-    "phuquoc-vinwonders-safari",
-    "hanoi-halong-2d",
-    "hanoi-sapa-3d",
-    "hanoi-ninhbinh",
-    "muine-dunes-jeep"
+    "1287578",
+    "1287580"
   ]
 }
