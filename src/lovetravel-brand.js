@@ -16,7 +16,7 @@
       ai:'Спросить AI',
       trust1:['Местная команда','только Нячанг'],
       trust2:['Живые даты','актуальная доступность'],
-      trust3:['EN · VI','поддержка языков'],
+      trust3:['RU · VI · EN · KO','4 языка'],
       catalogTitle:'Островные экскурсии',
       catalogHint:'2 тура',
       catalogIntro:'Выберите одну из двух программ',
@@ -33,7 +33,7 @@
       ai:'Hỏi trợ lý AI',
       trust1:['Đội ngũ địa phương','chỉ chuyên Nha Trang'],
       trust2:['Lịch trực tiếp','cập nhật chỗ trống'],
-      trust3:['EN · VI','hỗ trợ đa ngôn ngữ'],
+      trust3:['RU · VI · EN · KO','4 ngôn ngữ'],
       catalogTitle:'Trải nghiệm biển đảo',
       catalogHint:'2 tour',
       catalogIntro:'Chọn một trong hai chương trình',
@@ -50,7 +50,7 @@
       ai:'Ask AI assistant',
       trust1:['Local team','Nha Trang specialists'],
       trust2:['Live dates','current availability'],
-      trust3:['EN · VI','multilingual support'],
+      trust3:['RU · VI · EN · KO','4 languages'],
       catalogTitle:'Island experiences',
       catalogHint:'2 tours',
       catalogIntro:'Choose your island experience',
@@ -67,7 +67,7 @@
       ai:'AI에게 묻기',
       trust1:['현지 팀','나트랑 전문'],
       trust2:['실시간 일정','예약 가능 정보'],
-      trust3:['EN · VI','다국어 지원'],
+      trust3:['RU · VI · EN · KO','4개 언어'],
       catalogTitle:'아일랜드 투어',
       catalogHint:'투어 2개',
       catalogIntro:'두 가지 섬 투어 중 선택하세요',
@@ -144,7 +144,6 @@
           </div>
           <div class="lt-hero__actions">
             <button class="lt-hero__action lt-hero__action--primary" type="button" data-lt-action="catalog">${c.tours} →</button>
-            <button class="lt-hero__action lt-hero__action--secondary" type="button" data-lt-action="ai">${c.ai}</button>
           </div>
         </div>
       </div>`;
