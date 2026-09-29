@@ -20,7 +20,7 @@ test('booking configurator exposes all current selection dimensions',()=>{
   for(const token of ['date','startTimeId','slotId','rateId','participants','pickup','extras','customer','answers','passengers']){
     assert.ok(js.includes(token),token);
   }
-  for(const step of ["'date'","'option'","'guests'","'pickup'","'contact'"]){
+  for(const step of ["'date'","'option'","'guests'","'pickup'","'extras'","'contact'"]){
     assert.ok(js.includes(step),step);
   }
 });
@@ -33,10 +33,15 @@ test('calendar, rate, guest and pickup sheets are interactive',()=>{
   assert.match(js,/data-lt-pickup-mode/);
   assert.match(js,/data-lt-place/);
   assert.match(js,/data-lt-customer/);
+  assert.match(js,/data-lt-answer/);
+  assert.match(js,/data-lt-passenger-field/);
+  assert.match(js,/data-lt-room-number/);
+  assert.match(js,/data-lt-custom-pickup/);
+  assert.match(js,/data-lt-extra-plus/);
 });
 
 test('configurator uses professional mobile sheet and sticky summary styles',()=>{
-  for(const token of ['.lt-booking-config','.lt-booking-sheet__panel','.lt-booking-sticky','.lt-date-grid','.lt-pickup-results','.lt-contact-grid']){
+  for(const token of ['.lt-booking-config','.lt-booking-sheet__panel','.lt-booking-sticky','.lt-date-grid','.lt-pickup-results','.lt-contact-grid','.lt-passenger-card','.lt-extra-row','.lt-custom-pickup']){
     assert.ok(css.includes(token),token);
   }
   assert.match(css,/env\(safe-area-inset-bottom\)/);
@@ -76,4 +81,13 @@ test('single-time date selection uses cached month data and only one exact reval
 test('rate selection refreshes its calendar range without blocking the sheet flow',()=>{
   assert.match(js,/refreshCalendar\(productId,\{force:true\}\)\.catch/);
   assert.match(js,/calendar:\(\)=>activeProductId\?calendarFor\(activeProductId\):null/);
+});
+
+test('Bókun-only checkout requirements have dedicated editable controls',()=>{
+  assert.match(js,/required_booking_question_missing/);
+  assert.match(js,/required_custom_field_missing/);
+  assert.match(js,/passenger_field_missing/);
+  assert.match(js,/pickup_room_number_required/);
+  assert.match(js,/required_extra_missing/);
+  assert.match(js,/mainContactFields/);
 });
