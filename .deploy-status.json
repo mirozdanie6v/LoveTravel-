@@ -2,11 +2,10 @@
   "ok": true,
   "stage": "verified",
   "deploymentPath": "RIC shared Cloudflare runner",
-  "workflowRunId": "36597591279",
-  "cloudflareVersionId": "c4dad5e4-bc2b-4995-ae83-cdbcca1ed200",
-  "liveBrowserRunId": "36598094857",
+  "workflowRunId": "36619151509",
+  "cloudflareVersionId": "3c92518c-44e5-421a-a45d-7cf4e54ce8f1",
   "tests": {
-    "passed": 258,
+    "passed": 260,
     "failed": 0
   },
   "worker": "love-travel-v28",
@@ -25,7 +24,11 @@
     "pickupRoomNumber": true,
     "mobileSingleColumn": true,
     "focusedPublicNav": true,
-    "quickBookingCta": true
+    "quickBookingCta": true,
+    "selectionStateClarity": true,
+    "pickupSemantics": true,
+    "mobileKeyboardViewport": true,
+    "localizedBooleanAnswers": true
   },
   "realBookingCreated": false
 }
