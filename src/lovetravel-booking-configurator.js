@@ -27,7 +27,7 @@
       verify:'Проверить', verified:'Данные проверены', noPlaces:'Ничего не найдено',
       select:'Выбрать', selected:'Выбрано', pricePerPerson:'за человека', liveQuote:'Цена проверена сейчас',
       refreshError:'Не удалось обновить доступность. Попробуйте ещё раз.',
-      minGuests:'Минимум', maxGuests:'Максимум', noExtra:'Дополнительных услуг сейчас нет',
+      minGuests:'Минимум', maxGuests:'Максимум', noExtra:'Дополнительных услуг сейчас нет', extras:'Дополнительно', extrasEmpty:'Без дополнений', chooseExtras:'Дополнительные услуги', extrasRequired:'Выберите обязательную услугу', passengerDetails:'Данные участников', passenger:'Участник', questions:'Вопросы для бронирования', additionalInfo:'Дополнительные данные', roomNumber:'Номер комнаты', save:'Сохранить', customPickup:'Другой адрес', customPickupAddress:'Адрес для посадки',
       bookingNotSent:'Бронирование пока не отправляется в Bókun — на этом этапе проверяется конфигурация.',
       selectDateFirst:'Сначала выберите дату', selectOptionFirst:'Выберите вариант', selectGuestsFirst:'Добавьте участников',
       pickupRequired:'Нужно выбрать способ встречи', contactRequired:'Нужно заполнить контактные данные'
@@ -48,7 +48,7 @@
       verify:'Check', verified:'Details checked', noPlaces:'No matches',
       select:'Select', selected:'Selected', pricePerPerson:'per person', liveQuote:'Price checked live',
       refreshError:'Could not refresh availability. Try again.',
-      minGuests:'Minimum', maxGuests:'Maximum', noExtra:'No extras are currently configured',
+      minGuests:'Minimum', maxGuests:'Maximum', noExtra:'No extras are currently configured', extras:'Extras', extrasEmpty:'No extras', chooseExtras:'Additional services', extrasRequired:'Choose the required extra', passengerDetails:'Guest details', passenger:'Guest', questions:'Booking questions', additionalInfo:'Additional details', roomNumber:'Room number', save:'Save', customPickup:'Other address', customPickupAddress:'Pickup address',
       bookingNotSent:'The booking is not sent to Bókun yet — this stage validates the configuration.',
       selectDateFirst:'Choose a date first', selectOptionFirst:'Choose an option', selectGuestsFirst:'Add guests',
       pickupRequired:'Choose how to meet', contactRequired:'Complete the contact details'
@@ -69,7 +69,7 @@
       verify:'Kiểm tra', verified:'Đã kiểm tra', noPlaces:'Không có kết quả',
       select:'Chọn', selected:'Đã chọn', pricePerPerson:'mỗi người', liveQuote:'Giá vừa được kiểm tra',
       refreshError:'Không thể cập nhật chỗ trống. Vui lòng thử lại.',
-      minGuests:'Tối thiểu', maxGuests:'Tối đa', noExtra:'Hiện không có dịch vụ bổ sung',
+      minGuests:'Tối thiểu', maxGuests:'Tối đa', noExtra:'Hiện không có dịch vụ bổ sung', extras:'Dịch vụ thêm', extrasEmpty:'Không chọn thêm', chooseExtras:'Dịch vụ bổ sung', extrasRequired:'Chọn dịch vụ bắt buộc', passengerDetails:'Thông tin hành khách', passenger:'Hành khách', questions:'Câu hỏi đặt chỗ', additionalInfo:'Thông tin bổ sung', roomNumber:'Số phòng', save:'Lưu', customPickup:'Địa chỉ khác', customPickupAddress:'Địa chỉ đón',
       bookingNotSent:'Đặt chỗ chưa được gửi tới Bókun — bước này chỉ xác thực cấu hình.',
       selectDateFirst:'Hãy chọn ngày trước', selectOptionFirst:'Chọn chương trình', selectGuestsFirst:'Thêm khách',
       pickupRequired:'Chọn cách gặp', contactRequired:'Điền thông tin liên hệ'
@@ -90,7 +90,7 @@
       verify:'확인', verified:'확인 완료', noPlaces:'검색 결과 없음',
       select:'선택', selected:'선택됨', pricePerPerson:'1인당', liveQuote:'실시간 가격 확인됨',
       refreshError:'예약 가능 여부를 업데이트하지 못했습니다. 다시 시도해 주세요.',
-      minGuests:'최소', maxGuests:'최대', noExtra:'현재 추가 옵션이 없습니다',
+      minGuests:'최소', maxGuests:'최대', noExtra:'현재 추가 옵션이 없습니다', extras:'추가 옵션', extrasEmpty:'추가 옵션 없음', chooseExtras:'추가 서비스', extrasRequired:'필수 추가 서비스를 선택하세요', passengerDetails:'참가자 정보', passenger:'참가자', questions:'예약 질문', additionalInfo:'추가 정보', roomNumber:'객실 번호', save:'저장', customPickup:'다른 주소', customPickupAddress:'픽업 주소',
       bookingNotSent:'아직 Bókun에 예약을 전송하지 않습니다. 이 단계에서는 구성을 검증합니다.',
       selectDateFirst:'먼저 날짜를 선택하세요', selectOptionFirst:'옵션 선택', selectGuestsFirst:'인원 추가',
       pickupRequired:'미팅 방법을 선택하세요', contactRequired:'연락처 정보를 입력하세요'
@@ -113,7 +113,7 @@
     if(!stateByProduct.has(productId)){
       stateByProduct.set(productId,{
         productId,date:null,startTimeId:null,slotId:null,rateId:null,
-        participants:{},pickup:{mode:null,placeId:null},extras:{},customer:{},answers:{},passengers:[]
+        participants:{},pickup:{mode:null,placeId:null,customLocation:null,roomNumber:''},extras:{},customer:{},answers:{},passengers:[]
       });
     }
     return stateByProduct.get(productId);
@@ -177,7 +177,7 @@
       date:null,
       startTimeId:null,
       slotId:null,
-      pickup:{mode:null,placeId:null,customLocation:null},
+      pickup:{mode:null,placeId:null,customLocation:null,roomNumber:''},
     };
     const response=await fetch('/api/bokun/booking-selection/resolve',{
       method:'POST',
@@ -247,8 +247,22 @@
   function pickupSummary(r){
     const mode=r?.selection?.pickup?.mode;
     if(mode==='MEET_ON_LOCATION') return t().meet;
-    if(mode==='PICKUP') return r?.resolved?.pickupPlace?.title || t().pickupMode;
+    if(mode==='PICKUP'){
+      if(r?.resolved?.pickupPlace?.title) return r.resolved.pickupPlace.title;
+      const custom=r?.selection?.pickup?.customLocation;
+      if(custom?.wholeAddress||custom?.addressLine1) return custom.wholeAddress||custom.addressLine1;
+      return t().pickupMode;
+    }
     return t().pickupEmpty;
+  }
+  function extrasSummary(r){
+    const count=Object.values(r?.selection?.extras||{}).reduce((sum,value)=>sum+Math.max(0,Number(value)||0),0);
+    return count>0 ? String(count) : t().extrasEmpty;
+  }
+  function contactSummary(r){
+    const contactCodes=new Set(['required_customer_field_missing','required_booking_question_missing','required_custom_field_missing','passenger_details_incomplete','passenger_field_missing']);
+    const pending=arr(r?.bookingDataIssues).some(item=>contactCodes.has(item.code));
+    return pending ? t().contactRequired : t().verified;
   }
   function quoteSummary(r){
     if(r?.quote?.available) return money(r.quote.total,r.quote.currency);
@@ -256,12 +270,23 @@
     return from ? t().from+' '+money(from.amount,from.currency) : '—';
   }
   function firstBlockingStep(r){
-    const codes=new Set([...(r?.errors||[]).map(x=>x.code),...(r?.bookingDataIssues||[]).map(x=>x.code)]);
+    const codes=new Set([
+      ...(r?.errors||[]).map(x=>x.code),
+      ...(r?.bookingDataIssues||[]).map(x=>x.code),
+      ...(r?.warnings||[]).map(x=>x.code),
+    ]);
     if(codes.has('date_required')||codes.has('slot_required')) return 'date';
     if(codes.has('rate_required')) return 'option';
     if(codes.has('participants_required')||[...codes].some(x=>x.includes('participant')||x.includes('minimum')||x.includes('capacity'))) return 'guests';
-    if(codes.has('pickup_mode_required')||codes.has('pickup_location_required')||codes.has('pickup_places_unavailable')) return 'pickup';
-    if([...codes].some(x=>x.includes('customer_field')||x.includes('booking_question')||x.includes('passenger'))) return 'contact';
+    if(codes.has('required_extra_missing')||codes.has('extras_price_unresolved')) return 'extras';
+    if(
+      codes.has('pickup_mode_required')||
+      codes.has('pickup_location_required')||
+      codes.has('pickup_places_unavailable')||
+      codes.has('pickup_room_number_required')||
+      codes.has('custom_pickup_location_incomplete')
+    ) return 'pickup';
+    if([...codes].some(x=>x.includes('customer_field')||x.includes('booking_question')||x.includes('custom_field')||x.includes('passenger'))) return 'contact';
     return r?.readyToQuote ? 'contact' : 'date';
   }
   function markLegacySelection(){
@@ -289,6 +314,11 @@
     const quote=quoteSummary(r);
     const ready=r.readyToBook;
     const cta=ready?t().ready:(r.readyToQuote?t().continue:t().continue);
+    const extras=arr(r?.constraints?.extras);
+    const extrasComplete=!arr(r?.bookingDataIssues).some(item=>item.code==='required_extra_missing');
+    const detailsComplete=!arr(r?.bookingDataIssues).some(item=>
+      ['required_customer_field_missing','required_booking_question_missing','required_custom_field_missing','passenger_details_incomplete','passenger_field_missing'].includes(item.code)
+    );
     mount.innerHTML=
       '<div class="lt-booking-config__head">'+
         '<div><span class="lt-booking-config__eyebrow"><i></i>'+esc(t().live)+'</span><h2>'+esc(t().title)+'</h2></div>'+
@@ -298,7 +328,9 @@
         stepButton('date',t().date,dateSummary(r),Boolean(r?.resolved?.slot))+
         stepButton('option',t().option,optionSummary(r),Boolean(r?.resolved?.rate))+
         stepButton('guests',t().guests,guestSummary(r),Number(r?.resolved?.participantTotal)>0)+
-        stepButton('pickup',t().pickup,pickupSummary(r),Boolean(r?.selection?.pickup?.mode))+
+        stepButton('pickup',t().pickup,pickupSummary(r),Boolean(r?.selection?.pickup?.mode)&&!arr(r?.bookingDataIssues).some(item=>String(item.code).startsWith('pickup_')||item.code==='custom_pickup_location_incomplete'))+
+        (extras.length?stepButton('extras',t().extras,extrasSummary(r),extrasComplete):'')+
+        stepButton('contact',t().contact,contactSummary(r),detailsComplete)+
       '</div>'+
       '<div class="lt-booking-config__status">'+
         (r?.quote?.available?'<span class="is-live">'+esc(t().liveQuote)+'</span>':'<span>'+esc(statusText(r))+'</span>')+
@@ -321,6 +353,7 @@
     if(step==='date') return t().selectDateFirst;
     if(step==='option') return t().selectOptionFirst;
     if(step==='guests') return t().selectGuestsFirst;
+    if(step==='extras') return t().extrasRequired;
     if(step==='pickup') return t().pickupRequired;
     if(step==='contact') return t().contactRequired;
     return t().unavailable;
@@ -363,6 +396,7 @@
     if(step==='option') return openOptionSheet(productId);
     if(step==='guests') return openGuestsSheet(productId);
     if(step==='pickup') return openPickupSheet(productId);
+    if(step==='extras') return openExtrasSheet(productId);
     if(step==='contact') return openContactSheet(productId);
   }
   function monthGroups(dates){
@@ -492,23 +526,36 @@
     const s=selection(productId);
     const mode=s.pickup?.mode;
     const allPlaces=arr(p.places);
+    const selectedPlace=allPlaces.find(place=>String(place.id)===String(s.pickup?.placeId))||null;
     const filterPlaces=value=>{
       const q=String(value||'').trim().toLocaleLowerCase();
       return (q?allPlaces.filter(x=>(x.title+' '+x.wholeAddress+' '+x.city).toLocaleLowerCase().includes(q)):allPlaces).slice(0,60);
     };
     const initialPlaces=filterPlaces(query);
+    const pickupDetails=mode==='PICKUP'
+      ? '<div class="lt-pickup-search"><label>'+esc(t().pickupPlace)+'</label><input type="search" value="'+esc(query)+'" placeholder="'+esc(t().searchHotel)+'" data-lt-pickup-search autocomplete="off"></div>'+
+        '<div class="lt-pickup-results" data-lt-pickup-results>'+pickupPlaceRows(initialPlaces,s)+'</div>'+
+        (selectedPlace?.askForRoomNumber
+          ? '<div class="lt-pickup-room"><label><span>'+esc(t().roomNumber)+' *</span><input type="text" value="'+esc(s.pickup?.roomNumber||'')+'" data-lt-room-number autocomplete="off"></label><button type="button" class="lt-sheet-primary" data-lt-room-save>'+esc(t().save)+'</button></div>'
+          : '')+
+        (p.customAllowed
+          ? '<div class="lt-custom-pickup"><span class="lt-form-caption">'+esc(t().customPickup)+'</span><label><span>'+esc(t().customPickupAddress)+'</span><input type="text" value="'+esc(s.pickup?.customLocation?.wholeAddress||s.pickup?.customLocation?.addressLine1||'')+'" data-lt-custom-pickup autocomplete="street-address"></label><button type="button" class="lt-sheet-secondary" data-lt-custom-pickup-save>'+esc(t().save)+'</button></div>'
+          : '')
+      : '';
     const body='<div class="lt-sheet-scroll">'+
       '<div class="lt-pickup-modes">'+
         (arr(p.modes).includes('MEET_ON_LOCATION')?pickupModeCard('MEET_ON_LOCATION',t().meet,mode==='MEET_ON_LOCATION',''):'')+
         (arr(p.modes).includes('PICKUP')?pickupModeCard('PICKUP',t().pickupMode,mode==='PICKUP',p.pricingType==='INCLUDED_IN_PRICE'?t().included:''):'')+
-      '</div>'+
-      (mode==='PICKUP'?'<div class="lt-pickup-search"><label>'+esc(t().pickupPlace)+'</label><input type="search" value="'+esc(query)+'" placeholder="'+esc(t().searchHotel)+'" data-lt-pickup-search autocomplete="off"></div>'+
-        '<div class="lt-pickup-results" data-lt-pickup-results>'+pickupPlaceRows(initialPlaces,s)+'</div>':'')+
-      '</div>';
+      '</div>'+pickupDetails+'</div>';
     const root=showSheet(t().choosePickup,body);
     root.querySelectorAll('[data-lt-pickup-mode]').forEach(btn=>btn.addEventListener('click',async()=>{
       const selectedMode=btn.dataset.ltPickupMode;
-      patchSelection(productId,{pickup:{mode:selectedMode,placeId:selectedMode==='PICKUP'?selection(productId).pickup.placeId:null}});
+      patchSelection(productId,{pickup:{
+        mode:selectedMode,
+        placeId:selectedMode==='PICKUP'?selection(productId).pickup.placeId:null,
+        customLocation:selectedMode==='PICKUP'?selection(productId).pickup.customLocation:null,
+        roomNumber:selectedMode==='PICKUP'?selection(productId).pickup.roomNumber:'',
+      }});
       await resolve(productId,{quiet:true});
       if(selectedMode==='MEET_ON_LOCATION') closeSheet(); else openPickupSheet(productId);
     }));
@@ -520,37 +567,139 @@
     results?.addEventListener('click',async e=>{
       const btn=e.target.closest('[data-lt-place]'); if(!btn) return;
       const currentQuery=search?.value||'';
-      patchSelection(productId,{pickup:{mode:'PICKUP',placeId:btn.dataset.ltPlace}});
+      patchSelection(productId,{pickup:{mode:'PICKUP',placeId:btn.dataset.ltPlace,customLocation:null,roomNumber:''}});
       const next=await resolve(productId,{quiet:true});
       const place=next.resolved?.pickupPlace;
-      if(place?.askForRoomNumber){
-        const config=document.querySelector('[data-lt-config="'+CSS.escape(productId)+'"]');
-        if(config) config.dataset.ltPickupRoomRequired='1';
-      }
-      closeSheet();
+      if(place?.askForRoomNumber) openPickupSheet(productId,currentQuery);
+      else closeSheet();
+    });
+    root.querySelector('[data-lt-room-save]')?.addEventListener('click',async()=>{
+      const roomNumber=root.querySelector('[data-lt-room-number]')?.value.trim()||'';
+      patchSelection(productId,{pickup:{roomNumber}});
+      const next=await resolve(productId,{quiet:true});
+      if(arr(next.bookingDataIssues).some(item=>item.code==='pickup_room_number_required')) openPickupSheet(productId,search?.value||'');
+      else closeSheet();
+    });
+    root.querySelector('[data-lt-custom-pickup-save]')?.addEventListener('click',async()=>{
+      const address=root.querySelector('[data-lt-custom-pickup]')?.value.trim()||'';
+      patchSelection(productId,{pickup:{
+        mode:'PICKUP',
+        placeId:null,
+        roomNumber:'',
+        customLocation:address?{addressLine1:address,wholeAddress:address}: {},
+      }});
+      const next=await resolve(productId,{quiet:true});
+      if(arr(next.bookingDataIssues).some(item=>item.code==='custom_pickup_location_incomplete')) openPickupSheet(productId,search?.value||'');
+      else closeSheet();
     });
   }
   function pickupModeCard(mode,title,active,note){
     return '<button type="button" class="lt-pickup-mode '+(active?'is-active':'')+'" data-lt-pickup-mode="'+esc(mode)+'"><span class="lt-radio"></span><span><b>'+esc(title)+'</b>'+(note?'<small>'+esc(note)+'</small>':'')+'</span></button>';
   }
+  function openExtrasSheet(productId){
+    const r=resolutionByProduct.get(productId); if(!r) return;
+    const extras=arr(r.constraints?.extras);
+    const s=selection(productId);
+    if(!extras.length){
+      showSheet(t().chooseExtras,'<div class="lt-sheet-scroll"><div class="lt-empty">'+esc(t().noExtra)+'</div></div>');
+      return;
+    }
+    const body='<div class="lt-sheet-scroll"><div class="lt-extra-list">'+extras.map(item=>{
+      const id=String(item.id||'');
+      const quantity=Number(s.extras?.[id]||0);
+      return '<div class="lt-extra-row" data-lt-extra-row="'+esc(id)+'">'+
+        '<div><b>'+esc(item.title||item.code||id)+(item.required?' *':'')+'</b>'+(item.description?'<small>'+esc(item.description)+'</small>':'')+'</div>'+
+        '<div class="lt-counter"><button type="button" data-lt-extra-minus="'+esc(id)+'">−</button><strong data-lt-extra-count="'+esc(id)+'">'+esc(quantity)+'</strong><button type="button" data-lt-extra-plus="'+esc(id)+'">+</button></div>'+
+      '</div>';
+    }).join('')+'</div><div class="lt-sheet-action"><button type="button" class="lt-sheet-primary" data-lt-extras-done>'+esc(t().verify)+'</button></div></div>';
+    const root=showSheet(t().chooseExtras,body);
+    const update=(id,delta)=>{
+      const extras={...selection(productId).extras};
+      const next=Math.max(0,Number(extras[id]||0)+delta);
+      if(next>0) extras[id]=next; else delete extras[id];
+      patchSelection(productId,{extras});
+      const node=root.querySelector('[data-lt-extra-count="'+CSS.escape(id)+'"]'); if(node) node.textContent=String(next);
+    };
+    root.querySelectorAll('[data-lt-extra-minus]').forEach(btn=>btn.addEventListener('click',()=>update(btn.dataset.ltExtraMinus,-1)));
+    root.querySelectorAll('[data-lt-extra-plus]').forEach(btn=>btn.addEventListener('click',()=>update(btn.dataset.ltExtraPlus,1)));
+    root.querySelector('[data-lt-extras-done]')?.addEventListener('click',async()=>{
+      const next=await resolve(productId,{quiet:true});
+      if(arr(next.bookingDataIssues).some(item=>item.code==='required_extra_missing')) openExtrasSheet(productId);
+      else closeSheet();
+    });
+  }
+  function mainContactFieldName(item){
+    if(typeof item==='string') return canonicalField(item);
+    return canonicalField(item?.field||item?.name||item?.code||'');
+  }
+  function answerKey(item){ return String(item?.id||item?.code||item?.title||''); }
+  function inputType(field){ return field==='phoneNumber'?'tel':field==='email'?'email':'text'; }
+  function passengerBlueprint(r){
+    const list=[];
+    for(const category of arr(r?.constraints?.participants)){
+      const count=Math.max(0,Number(category.count)||0);
+      for(let i=0;i<count;i+=1) list.push({categoryId:String(category.id),label:guestLabel(category),categoryIndex:i+1});
+    }
+    return list;
+  }
   function openContactSheet(productId){
     const r=resolutionByProduct.get(productId); if(!r) return;
     const req=r.constraints?.bookingRequirements||{};
-    const fields=[...new Set(arr(req.requiredCustomerFields).map(canonicalField))];
     const s=selection(productId);
-    const inputs=fields.map(field=>
-      '<label class="lt-contact-field"><span>'+esc(fieldLabel(field))+'</span><input type="'+(field==='phoneNumber'?'tel':field==='email'?'email':'text')+'" value="'+esc(s.customer?.[field]||'')+'" data-lt-customer="'+esc(field)+'" autocomplete="'+esc(autoComplete(field))+'"></label>'
+    const customerFields=[...new Set([
+      ...arr(req.requiredCustomerFields).map(canonicalField),
+      ...arr(req.mainContactFields).map(mainContactFieldName),
+    ].filter(Boolean))];
+    const customerInputs=customerFields.map(field=>
+      '<label class="lt-contact-field"><span>'+esc(fieldLabel(field))+'</span><input type="'+inputType(field)+'" value="'+esc(s.customer?.[field]||'')+'" data-lt-customer="'+esc(field)+'" autocomplete="'+esc(autoComplete(field))+'"></label>'
     ).join('');
-    const body='<div class="lt-sheet-scroll"><div class="lt-contact-grid">'+inputs+'</div>'+
+
+    const questions=[...arr(req.questions).map(item=>({...item,_kind:'question'})),...arr(req.customFields).map(item=>({...item,_kind:'custom'}))];
+    const questionInputs=questions.map(item=>{
+      const key=answerKey(item);
+      return '<label class="lt-contact-field lt-contact-field--wide"><span>'+esc(item.title||item.code||key)+(item.required?' *':'')+'</span>'+
+        (item.description?'<small>'+esc(item.description)+'</small>':'')+
+        '<input type="text" value="'+esc(s.answers?.[key]||'')+'" data-lt-answer="'+esc(key)+'" autocomplete="off"></label>';
+    }).join('');
+
+    const passengerFields=[...new Set(arr(req.passengerFields).map(canonicalField).filter(Boolean))];
+    const passengers=passengerBlueprint(r);
+    const passengerInputs=passengerFields.length?passengers.map((descriptor,index)=>{
+      const existing=s.passengers?.[index]||{};
+      return '<div class="lt-passenger-card" data-lt-passenger="'+index+'" data-lt-category="'+esc(descriptor.categoryId)+'">'+
+        '<div class="lt-passenger-card__head"><b>'+esc(t().passenger)+' '+(index+1)+'</b><small>'+esc(descriptor.label)+' '+descriptor.categoryIndex+'</small></div>'+
+        '<div class="lt-contact-grid">'+passengerFields.map(field=>
+          '<label class="lt-contact-field"><span>'+esc(fieldLabel(field))+' *</span><input type="'+inputType(field)+'" value="'+esc(existing?.[field]||'')+'" data-lt-passenger-field="'+esc(field)+'" autocomplete="'+esc(autoComplete(field))+'"></label>'
+        ).join('')+'</div></div>';
+    }).join(''):'';
+
+    const body='<div class="lt-sheet-scroll">'+
+      (customerInputs?'<div class="lt-form-section"><span class="lt-form-caption">'+esc(t().contact)+'</span><div class="lt-contact-grid">'+customerInputs+'</div></div>':'')+
+      (questionInputs?'<div class="lt-form-section"><span class="lt-form-caption">'+esc(t().questions)+'</span><div class="lt-contact-grid">'+questionInputs+'</div></div>':'')+
+      (passengerInputs?'<div class="lt-form-section"><span class="lt-form-caption">'+esc(t().passengerDetails)+'</span>'+passengerInputs+'</div>':'')+
       '<p class="lt-booking-note">'+esc(t().bookingNotSent)+'</p>'+
       '<div class="lt-sheet-action"><button type="button" class="lt-sheet-primary" data-lt-contact-check>'+esc(r.readyToBook?t().verified:t().verify)+'</button></div></div>';
     const root=showSheet(t().contact,body);
     root.querySelector('[data-lt-contact-check]')?.addEventListener('click',async()=>{
       const customer={...selection(productId).customer};
       root.querySelectorAll('[data-lt-customer]').forEach(input=>customer[input.dataset.ltCustomer]=input.value.trim());
-      patchSelection(productId,{customer});
+
+      const answers={...selection(productId).answers};
+      root.querySelectorAll('[data-lt-answer]').forEach(input=>answers[input.dataset.ltAnswer]=input.value.trim());
+
+      const passengerRows=[...root.querySelectorAll('[data-lt-passenger]')];
+      const passengers=passengerRows.map(row=>{
+        const item={categoryId:row.dataset.ltCategory||null};
+        row.querySelectorAll('[data-lt-passenger-field]').forEach(input=>item[input.dataset.ltPassengerField]=input.value.trim());
+        return item;
+      });
+
+      patchSelection(productId,{customer,answers,passengers});
       const next=await resolve(productId,{quiet:true});
-      if(next.readyToBook){
+      const hasContactIssues=arr(next.bookingDataIssues).some(item=>
+        ['required_customer_field_missing','required_booking_question_missing','required_custom_field_missing','passenger_details_incomplete','passenger_field_missing'].includes(item.code)
+      );
+      if(next.readyToBook||!hasContactIssues){
         const btn=root.querySelector('[data-lt-contact-check]'); if(btn){btn.textContent=t().verified;btn.classList.add('is-success');}
         setTimeout(closeSheet,550);
       }else openContactSheet(productId);
@@ -558,9 +707,13 @@
   }
   function canonicalField(field){
     const key=String(field||'').replace(/[^a-z0-9]/gi,'').toLowerCase();
-    return ({firstname:'firstName',lastname:'lastName',phonenumber:'phoneNumber',phone:'phoneNumber',email:'email'})[key]||field;
+    return ({firstname:'firstName',lastname:'lastName',phonenumber:'phoneNumber',phone:'phoneNumber',email:'email'})[key]||String(field||'');
   }
-  function fieldLabel(field){ return ({firstName:t().firstName,lastName:t().lastName,phoneNumber:t().phoneNumber,email:t().email})[field]||field; }
+  function fieldLabel(field){
+    const known={firstName:t().firstName,lastName:t().lastName,phoneNumber:t().phoneNumber,email:t().email};
+    if(known[field]) return known[field];
+    return String(field||'').replace(/[_-]+/g,' ').replace(/([a-z])([A-Z])/g,'$1 $2').trim();
+  }
   function autoComplete(field){ return ({firstName:'given-name',lastName:'family-name',phoneNumber:'tel',email:'email'})[field]||'off'; }
 
   async function bootstrap(productId){
