@@ -48,12 +48,13 @@ test('configurator uses professional mobile sheet and sticky summary styles',()=
   assert.match(css,/@media\(max-width:520px\)/);
 });
 
-test('production build includes configurator after the domain tour runtime',()=>{
+test('production build includes configurator after the standalone LoveTravel domain runtime',()=> {
   assert.match(build,/lovetravel-booking-configurator\.css/);
   assert.match(build,/lovetravel-booking-configurator\.js/);
-  const domain=build.indexOf('<script src="/lovetravel-domain-tour.js" defer></script>');
-  const config=build.indexOf('<script src="/lovetravel-booking-configurator.js" defer></script>');
+  const domain=build.indexOf('<script src="/lovetravel-domain-tour.js"></script>');
+  const config=build.indexOf('<script src="/lovetravel-booking-configurator.js"></script>');
   assert.ok(domain>=0 && config>domain);
+  assert.doesNotMatch(build,/runtime-api\.js/);
 });
 
 test('interactive resolver loads a 31-day window and pickup places lazily',()=>{
