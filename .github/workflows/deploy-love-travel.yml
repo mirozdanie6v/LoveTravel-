@@ -12,7 +12,7 @@ permissions:
 
 concurrency:
   group: lovetravel-production
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   deploy:
@@ -23,21 +23,48 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Record deploy start
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > .deploy-status.json <<EOF
+          {
+            "ok": false,
+            "stage": "running",
+            "release": "2026-09-29-bokun-complete-v1",
+            "commit": "$GITHUB_SHA",
+            "workflowRunId": "$GITHUB_RUN_ID"
+          }
+          EOF
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .deploy-status.json
+          git commit -m "Record LoveTravel deployment start"
+          git push origin HEAD:main
+
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+
       - name: Require Cloudflare credentials
         shell: bash
         run: |
           set -euo pipefail
           test -n "${CLOUDFLARE_API_TOKEN:-}" || { echo 'CLOUDFLARE_API_TOKEN is missing'; exit 1; }
           test -n "${CLOUDFLARE_ACCOUNT_ID:-}" || { echo 'CLOUDFLARE_ACCOUNT_ID is missing'; exit 1; }
+
       - name: Install dependencies
         run: npm install --no-audit --no-fund
+
       - name: Full project check
         run: npm run check
+
       - name: Deploy LoveTravel worker and assets
         run: npx wrangler deploy --config wrangler.jsonc
+
       - name: Verify deployed release and Bókun read-only endpoints
         shell: bash
         run: |
@@ -49,14 +76,23 @@ jobs:
           jq -e '.ok == true and .source == "bokun" and (.productIds | sort) == ["1287578","1287580"] and (.tours | length) == 2' /tmp/tours.json >/dev/null
           curl -L -fsS --retry 8 --retry-delay 3 --connect-timeout 8 --max-time 60 "$base/api/bokun/domain?start=2026-09-29&end=2026-10-05" -o /tmp/domain.json
           jq -e '.ok == true and .source == "bokun" and (.domains | length) == 2 and all(.domains[]; .schemaVersion == "lovetravel.bokun-domain.v1")' /tmp/domain.json >/dev/null
-          echo 'LoveTravel production release verified.'
-      - name: Record verified deployment
+
+      - name: Record final deployment status
+        if: always()
         shell: bash
         run: |
           set -euo pipefail
+          git fetch origin main
+          git checkout main
+          git reset --hard origin/main
+          status="${{ job.status }}"
+          ok=false
+          stage="$status"
+          if [ "$status" = "success" ]; then ok=true; stage="verified"; fi
           cat > .deploy-status.json <<EOF
           {
-            "ok": true,
+            "ok": $ok,
+            "stage": "$stage",
             "release": "2026-09-29-bokun-complete-v1",
             "commit": "$GITHUB_SHA",
             "workflowRunId": "$GITHUB_RUN_ID",
@@ -68,6 +104,6 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add .deploy-status.json
           if ! git diff --cached --quiet; then
-            git commit -m "Record verified LoveTravel production deployment"
+            git commit -m "Record LoveTravel deployment status"
             git push origin HEAD:main
           fi
