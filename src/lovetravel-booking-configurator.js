@@ -628,9 +628,11 @@
       else closeSheet();
     });
   }
-  function mainContactFieldName(item){
-    if(typeof item==='string') return canonicalField(item);
-    return canonicalField(item?.field||item?.name||item?.code||'');
+  function bookingFieldSpec(item,defaultRequired=true){
+    if(typeof item==='string') return {field:canonicalField(item),required:defaultRequired};
+    const field=canonicalField(item?.field||item?.name||item?.code||'');
+    if(!field) return null;
+    return {field,required:item?.required===undefined?defaultRequired:Boolean(item.required)};
   }
   function answerKey(item){ return String(item?.id||item?.code||item?.title||''); }
   function inputType(field){ return field==='phoneNumber'?'tel':field==='email'?'email':'text'; }
@@ -646,13 +648,19 @@
     const r=resolutionByProduct.get(productId); if(!r) return;
     const req=r.constraints?.bookingRequirements||{};
     const s=selection(productId);
-    const customerFields=[...new Set([
-      ...arr(req.requiredCustomerFields).map(canonicalField),
-      ...arr(req.mainContactFields).map(mainContactFieldName),
-    ].filter(Boolean))];
-    const customerInputs=customerFields.map(field=>
-      '<label class="lt-contact-field"><span>'+esc(fieldLabel(field))+'</span><input type="'+inputType(field)+'" value="'+esc(s.customer?.[field]||'')+'" data-lt-customer="'+esc(field)+'" autocomplete="'+esc(autoComplete(field))+'"></label>'
-    ).join('');
+    const customerSpecMap=new Map();
+    for(const field of arr(req.requiredCustomerFields).map(canonicalField).filter(Boolean)){
+      customerSpecMap.set(field,{field,required:true});
+    }
+    for(const spec of arr(req.mainContactFields).map(item=>bookingFieldSpec(item,true)).filter(Boolean)){
+      const previous=customerSpecMap.get(spec.field);
+      customerSpecMap.set(spec.field,{field:spec.field,required:Boolean(previous?.required||spec.required)});
+    }
+    const customerSpecs=[...customerSpecMap.values()];
+    const customerInputs=customerSpecs.map(spec=>{
+      const field=spec.field;
+      return '<label class="lt-contact-field"><span>'+esc(fieldLabel(field))+(spec.required?' *':'')+'</span><input type="'+inputType(field)+'" value="'+esc(s.customer?.[field]||'')+'" data-lt-customer="'+esc(field)+'" autocomplete="'+esc(autoComplete(field))+'"></label>';
+    }).join('');
 
     const questions=[...arr(req.questions).map(item=>({...item,_kind:'question'})),...arr(req.customFields).map(item=>({...item,_kind:'custom'}))];
     const questionInputs=questions.map(item=>{
@@ -662,15 +670,21 @@
         '<input type="text" value="'+esc(s.answers?.[key]||'')+'" data-lt-answer="'+esc(key)+'" autocomplete="off"></label>';
     }).join('');
 
-    const passengerFields=[...new Set(arr(req.passengerFields).map(canonicalField).filter(Boolean))];
+    const passengerSpecMap=new Map();
+    for(const spec of arr(req.passengerFields).map(item=>bookingFieldSpec(item,true)).filter(Boolean)){
+      const previous=passengerSpecMap.get(spec.field);
+      passengerSpecMap.set(spec.field,{field:spec.field,required:Boolean(previous?.required||spec.required)});
+    }
+    const passengerSpecs=[...passengerSpecMap.values()];
     const passengers=passengerBlueprint(r);
-    const passengerInputs=passengerFields.length?passengers.map((descriptor,index)=>{
+    const passengerInputs=passengerSpecs.length?passengers.map((descriptor,index)=>{
       const existing=s.passengers?.[index]||{};
       return '<div class="lt-passenger-card" data-lt-passenger="'+index+'" data-lt-category="'+esc(descriptor.categoryId)+'">'+
         '<div class="lt-passenger-card__head"><b>'+esc(t().passenger)+' '+(index+1)+'</b><small>'+esc(descriptor.label)+' '+descriptor.categoryIndex+'</small></div>'+
-        '<div class="lt-contact-grid">'+passengerFields.map(field=>
-          '<label class="lt-contact-field"><span>'+esc(fieldLabel(field))+' *</span><input type="'+inputType(field)+'" value="'+esc(existing?.[field]||'')+'" data-lt-passenger-field="'+esc(field)+'" autocomplete="'+esc(autoComplete(field))+'"></label>'
-        ).join('')+'</div></div>';
+        '<div class="lt-contact-grid">'+passengerSpecs.map(spec=>{
+          const field=spec.field;
+          return '<label class="lt-contact-field"><span>'+esc(fieldLabel(field))+(spec.required?' *':'')+'</span><input type="'+inputType(field)+'" value="'+esc(existing?.[field]||'')+'" data-lt-passenger-field="'+esc(field)+'" autocomplete="'+esc(autoComplete(field))+'"></label>';
+        }).join('')+'</div></div>';
     }).join(''):'';
 
     const body='<div class="lt-sheet-scroll">'+
