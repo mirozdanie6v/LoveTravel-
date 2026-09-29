@@ -18,6 +18,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
       - name: Record audit start
         shell: bash
         run: |
@@ -30,16 +31,20 @@ jobs:
           git add .ux-audit-status.json
           git commit -m "Record LoveTravel UX audit start"
           git push origin HEAD:main
+
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+
       - run: npm install --no-audit --no-fund
       - run: npm run check
+
       - name: Install browser
         run: |
           npm install --no-save playwright@1.55.0
           npx playwright install chromium
-      - name: Run visual/DOM audit
+
+      - name: Run standalone customer UX audit
         shell: bash
         run: |
           python3 -m http.server 4173 -d dist >/tmp/lovetravel-http.log 2>&1 &
@@ -49,88 +54,158 @@ jobs:
           cat > ux-audit.mjs <<'NODE'
           import { chromium } from 'playwright';
           import fs from 'node:fs';
+          import assert from 'node:assert/strict';
 
           const browser=await chromium.launch({headless:true});
           const context=await browser.newContext({viewport:{width:390,height:844}});
           const page=await context.newPage();
 
+          const svg='data:image/svg+xml;charset=utf-8,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800"><rect width="1200" height="800" fill="#dcebf4"/></svg>');
           const tours=[
             {
               id:'1287578',title:'Robinson Beach',city:'Nha Trang',region:'Khánh Hòa',duration:'7 hours',
-              image:'https://imgcdn.bokun.tools/a.jpg',gallery:['https://imgcdn.bokun.tools/a.jpg'],
-              tags:['island'],audience:['family'],childrenOk:true,formatsLabel:'',popular:false,liked:false,
-              priceFromUsd:49,searchText:'robinson beach nha trang',
-              group:{from:'$49',adult:'$49',child:'$35',infant:'$0',departures:[]},individual:null
+              image:svg,gallery:[svg],tags:['island'],audience:['family'],childrenOk:true,popular:false,liked:false,
+              priceFromUsd:49,searchText:'robinson beach nha trang',group:{from:'$49',adult:'$49',child:'$35',infant:'$0',departures:[]},individual:null
             },
             {
               id:'1287580',title:'Hòn Mun Marine Park Snorkeling and Nha Trang Island Tour',city:'Nha Trang',region:'Khánh Hòa',duration:'7 hours',
-              image:'https://imgcdn.bokun.tools/b.jpg',gallery:['https://imgcdn.bokun.tools/b.jpg'],
-              tags:['island','snorkeling'],audience:['family'],childrenOk:true,formatsLabel:'',popular:false,liked:false,
-              priceFromUsd:55,searchText:'hon mun marine park nha trang',
-              group:{from:'$55',adult:'$55',child:'$40',infant:'$0',departures:[]},individual:null
+              image:svg,gallery:[svg],tags:['island','snorkeling'],audience:['family'],childrenOk:true,popular:false,liked:false,
+              priceFromUsd:55,searchText:'hon mun marine park nha trang',group:{from:'$55',adult:'$55',child:'$40',infant:'$0',departures:[]},individual:null
             }
           ];
+
+          const domainFor=tour=>({
+            schemaVersion:'lovetravel.bokun-domain.v1',
+            experience:{
+              id:tour.id,title:tour.title,description:'Island experience in Nha Trang.',
+              duration:{text:'7 hours'},difficulty:null,minAge:null,reviews:null,
+              booking:{capacityType:'INSTANT'},
+              media:{photos:[{url:svg}],videos:[]},
+              languages:{guidanceTypes:[{displayLanguages:['English','Vietnamese']}]},
+              meeting:{type:'MEET_ON_LOCATION',startPoints:[{title:'Nha Trang meeting point',addressLine1:'Nha Trang',city:'Nha Trang'}]},
+              pickup:{enabled:true,minutesBefore:30,timeWindowMinutes:10,noPickupMessage:''},
+              itinerary:[{title:'Departure',body:'Meet the local team and start the island program.'}],
+              content:{included:['Guide','Boat'],excluded:[],requirements:[],attention:[],dressCode:[],knowBeforeYouGoItems:[]},
+              accessibility:[],paymentCurrencies:['USD'],passportRequired:false
+            },
+            rates:[{id:'rate-1',title:'Standard',code:'STD',pickup:{selectionType:'OPTIONAL',pricingType:'INCLUDED_IN_PRICE'}}],
+            availabilitySlots:[],
+            participants:[{id:'adult',title:'Adult',ticketCategory:'ADULT',minParticipants:1,maxParticipants:20}],
+            priceQuotesByRate:{},
+            defaultRateId:'rate-1',
+            bookingRequirements:{requiredCustomerFields:['firstName','lastName','phoneNumber'],passengerFields:[],questions:[],customFields:[]},
+            extras:[],
+            cancellationPolicy:null,
+            offers:[]
+          });
+
+          function resolution(body){
+            const incoming=body?.selection||{};
+            const participants={...(incoming.participants||{})};
+            const selection={
+              productId:String(incoming.productId||'1287578'),
+              date:incoming.date||null,startTimeId:incoming.startTimeId||null,slotId:incoming.slotId||null,
+              rateId:incoming.rateId||'rate-1',participants,
+              pickup:{mode:incoming.pickup?.mode||null,placeId:incoming.pickup?.placeId||null,customLocation:incoming.pickup?.customLocation||null,roomNumber:incoming.pickup?.roomNumber||''},
+              extras:{...(incoming.extras||{})},customer:{...(incoming.customer||{})},answers:{...(incoming.answers||{})},
+              extraAnswers:{...(incoming.extraAnswers||{})},passengers:Array.isArray(incoming.passengers)?incoming.passengers:[]
+            };
+            const adultCount=Number(selection.participants.adult||0);
+            const slot=selection.date?{id:'slot-1',date:selection.date,startTime:'09:00',startTimeId:'time-1',availabilityCount:12,unlimitedAvailability:false}:null;
+            const errors=[];
+            if(!selection.date) errors.push({code:'date_required'});
+            if(adultCount<1) errors.push({code:'participants_required'});
+            return {
+              ok:true,schemaVersion:'lovetravel.booking-selection-resolution.v1',source:'bokun',mode:'read-only-revalidation',
+              product:{id:selection.productId,title:'Robinson Beach',confirmationMode:'INSTANT'},
+              selection,
+              resolved:{rate:{id:'rate-1',title:'Standard',code:'STD'},slot,participantTotal:adultCount,pickupPlace:null},
+              constraints:{
+                rates:[{id:'rate-1',title:'Standard',code:'STD',fromPrice:{amount:49,currency:'USD'}}],
+                dates:[{date:'2026-10-01',slots:1},{date:'2026-10-02',slots:1}],
+                times:selection.date?[{id:'slot-1',date:selection.date,startTime:'09:00',startTimeId:'time-1',availabilityCount:12,unlimitedAvailability:false}]:[],
+                participants:[{id:'adult',title:'Adult',ticketCategory:'ADULT',count:adultCount,minParticipants:1,maxParticipants:20}],
+                pickup:{selectionType:'OPTIONAL',places:[]},extras:[],bookingRequirements:{requiredCustomerFields:['firstName','lastName','phoneNumber'],questions:[],customFields:[],passengerFields:[]}
+              },
+              quote:{available:Boolean(slot&&adultCount),total:slot&&adultCount?49*adultCount:null,currency:'USD'},
+              errors,warnings:[],bookingDataIssues:[],readyToQuote:Boolean(slot&&adultCount),readyToBook:false
+            };
+          }
 
           await page.route('**/api/bokun/tours**',route=>route.fulfill({
             status:200,contentType:'application/json',
             body:JSON.stringify({ok:true,source:'bokun',vendorId:'137689',productIds:['1287578','1287580'],tours})
           }));
-          await page.route('**/api/bootstrap',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({hasData:false})}));
-          await page.route('**/api/**',route=>{
-            if(route.request().url().includes('/api/bokun/tours')) return route.fallback();
-            return route.fulfill({status:200,contentType:'application/json',body:'{}'});
+          await page.route('**/api/bokun/domain**',route=>route.fulfill({
+            status:200,contentType:'application/json',
+            body:JSON.stringify({ok:true,source:'bokun',schema:'lovetravel.bokun-domain.v1',domains:tours.map(domainFor)})
+          }));
+          await page.route('**/api/bokun/booking-selection/resolve**',async route=>{
+            const body=JSON.parse(route.request().postData()||'{}');
+            await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(resolution(body))});
           });
+          await page.route('https://dashboard.viiversion.com/**',route=>route.abort());
+          await page.route('https://telegram.org/**',route=>route.abort());
 
           await page.goto('http://127.0.0.1:4173/',{waitUntil:'domcontentloaded',timeout:15000});
-          await page.waitForTimeout(1300);
+          await page.waitForFunction(()=>globalThis.LOVE_TRAVEL_CATALOG_SOURCE==='bokun',{timeout:8000});
+          await page.waitForTimeout(300);
 
-          const snapshot=async(label)=>{
+          const collect=async label=>{
             const data=await page.evaluate(()=>{
               const visible=el=>{
                 const s=getComputedStyle(el),r=el.getBoundingClientRect();
                 return s.display!=='none'&&s.visibility!=='hidden'&&!el.hidden&&r.width>0&&r.height>0;
               };
-              const texts=[...document.querySelectorAll('body *')]
-                .filter(el=>visible(el)&&el.children.length===0)
-                .map(el=>(el.textContent||'').replace(/\s+/g,' ').trim())
-                .filter(Boolean);
-              const buttons=[...document.querySelectorAll('button,a,[role="button"]')]
-                .filter(visible).map(el=>(el.textContent||el.getAttribute('aria-label')||'').replace(/\s+/g,' ').trim()).filter(Boolean);
-              const cards=[...document.querySelectorAll('.wide-card,.tour-card,[data-tour-id]')]
-                .filter(visible).map(el=>(el.textContent||'').replace(/\s+/g,' ').trim().slice(0,240));
-              const scripts=[...document.scripts].map(s=>s.src||'inline').filter(Boolean);
               return {
                 title:document.title,
-                bodyText:document.body.innerText.replace(/\s+/g,' ').trim().slice(0,12000),
-                texts:[...new Set(texts)].slice(0,250),
-                buttons:[...new Set(buttons)].slice(0,120),
-                cards:[...new Set(cards)].slice(0,30),
-                scripts,
-                globalSource:globalThis.LOVE_TRAVEL_CATALOG_SOURCE||null,
-                tourIds:(typeof TOURS!=='undefined'&&Array.isArray(TOURS))?TOURS.map(t=>String(t.id)):[],
+                bodyText:document.body.innerText.replace(/\s+/g,' ').trim(),
+                buttons:[...document.querySelectorAll('button,a,[role="button"]')].filter(visible).map(el=>(el.textContent||el.getAttribute('aria-label')||'').replace(/\s+/g,' ').trim()).filter(Boolean),
+                cards:[...document.querySelectorAll('.wide-card[data-tour-id]')].filter(visible).map(el=>({id:el.dataset.tourId,text:(el.textContent||'').replace(/\s+/g,' ').trim()})),
+                scripts:[...document.scripts].map(s=>s.src||'inline').filter(Boolean),
+                tourIds:Array.isArray(globalThis.TOURS)?globalThis.TOURS.map(t=>String(t.id)):[],
+                source:globalThis.LOVE_TRAVEL_CATALOG_SOURCE||null,
+                bookingConfigurator:Boolean(document.querySelector('.lt-booking-config')),
+                duplicateSelectors:Boolean(document.querySelector('.lt-domain-rates,.lt-domain-dates,.lt-domain-participants,.lt-domain-fieldchips')),
+                nav:[...document.querySelectorAll('.bottom-nav .nav-btn')].map(el=>el.dataset.screen),
               };
             });
             fs.writeFileSync('/tmp/'+label+'.json',JSON.stringify(data,null,2));
             await page.screenshot({path:'/tmp/'+label+'.png',fullPage:true});
-            console.log('\n=== '+label+' ===\n'+JSON.stringify(data,null,2));
+            return data;
           };
 
-          await snapshot('home');
+          const home=await collect('home');
+          assert.deepEqual(home.tourIds.sort(),['1287578','1287580']);
+          assert.deepEqual(home.nav,['home','catalog']);
+          assert.equal(home.source,'bokun');
+          assert.equal(/Далат|Дананг|Фукуок|Ханой|Муйне|Max\s*Tour/i.test(home.bodyText),false);
 
-          await page.evaluate(()=>typeof showScreen==='function'&&showScreen('catalog'));
-          await page.waitForTimeout(300);
-          await snapshot('catalog');
+          await page.evaluate(()=>showScreen('catalog'));
+          await page.waitForTimeout(150);
+          const catalog=await collect('catalog');
+          assert.equal(catalog.cards.length,2);
+          assert.deepEqual(catalog.cards.map(x=>x.id).sort(),['1287578','1287580']);
+          assert.equal(/Далат|Дананг|Фукуок|Ханой|Муйне|Max\s*Tour/i.test(catalog.bodyText),false);
 
-          await page.evaluate(()=>typeof showScreen==='function'&&showScreen('ai'));
-          await page.waitForTimeout(500);
-          await snapshot('ai');
+          await page.evaluate(()=>openTour('1287578'));
+          await page.waitForSelector('#tourScreen .lt-domain-shell',{timeout:5000});
+          await page.waitForSelector('#tourScreen .lt-booking-config',{timeout:5000});
+          const tour=await collect('tour');
+          assert.equal(tour.bookingConfigurator,true);
+          assert.equal(tour.duplicateSelectors,false);
+          assert.equal(/Bókun|Конфигурация проверена|Max\s*Tour/i.test(tour.bodyText),false);
+
+          const forbiddenScripts=['runtime-api.js','ai-consultant','role-switch.js','trip-actions.js','tour-departure-live','catalog-show-press','tour-lightbox.js','traveler-profile.js'];
+          for(const token of forbiddenScripts) assert.equal(tour.scripts.some(src=>src.includes(token)),false,token);
 
           await browser.close();
           NODE
           node ux-audit.mjs
           cp /tmp/home.json .ux-audit-home.json
           cp /tmp/catalog.json .ux-audit-catalog.json
-          cp /tmp/ai.json .ux-audit-ai.json
+          cp /tmp/tour.json .ux-audit-tour.json
+
       - name: Upload UX audit screenshots
         uses: actions/upload-artifact@v4
         with:
@@ -138,19 +213,20 @@ jobs:
           path: |
             /tmp/home.png
             /tmp/catalog.png
-            /tmp/ai.png
+            /tmp/tour.png
             /tmp/home.json
             /tmp/catalog.json
-            /tmp/ai.json
+            /tmp/tour.json
+
       - name: Commit UX audit result
         if: always()
         shell: bash
         run: |
           set -euo pipefail
-          if [ -f .ux-audit-home.json ] && [ -f .ux-audit-catalog.json ] && [ -f .ux-audit-ai.json ]; then
+          if [ -f .ux-audit-home.json ] && [ -f .ux-audit-catalog.json ] && [ -f .ux-audit-tour.json ]; then
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add .ux-audit-home.json .ux-audit-catalog.json .ux-audit-ai.json
+            git add .ux-audit-home.json .ux-audit-catalog.json .ux-audit-tour.json
             git commit -m "Record LoveTravel UX audit" || true
             git push origin HEAD:main || true
           fi
