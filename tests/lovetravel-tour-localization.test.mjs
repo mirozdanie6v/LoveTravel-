@@ -59,6 +59,9 @@ test('live Bókun catalog is localized before it enters legacy catalog rendering
   assert.match(runtimeJs,/LoveTravelTourLocale/);
   assert.match(runtimeJs,/localizeCatalogTour/);
   assert.match(runtimeJs,/catalog\.map\(tour=>localizer\.localizeCatalogTour\(tour\)\)/);
+  assert.match(runtimeJs,/\/api\/bokun\/tours\?locale=/);
+  assert.match(localeJs,/serverLocalizationMatches/);
+  assert.match(domainJs,/serverLocalized/);
 });
 
 test('tour detail renderer never trusts provider localizedDate or raw product metadata for display',()=>{
@@ -77,7 +80,7 @@ test('tour detail renderer never trusts provider localizedDate or raw product me
 
 test('booking sheets localize rates dynamic questions extras and custom fields',()=>{
   assert.match(bookingJs,/full-tour-localization-v4/);
-  assert.match(bookingJs,/localizedRateTitle\(productId,rate\)/);
+  assert.match(bookingJs,/localizedRateTitle\(productId,rate,localization=null\)/);
   assert.match(bookingJs,/localizeQuestion/);
   assert.match(bookingJs,/providerText\(item\.title\|\|item\.code\|\|id\)/);
   assert.match(bookingJs,/providerText\(item\.description\)/);
