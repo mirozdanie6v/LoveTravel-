@@ -115,6 +115,56 @@ function genericProviderEntity(item = {}) {
   };
 }
 
+function extraEntity(item = {}) {
+  return {
+    id:id(item.id),
+    externalId:text(item.externalId, 180),
+    title:text(item.title || item.name, 240),
+    code:text(item.code, 120),
+    description:text(item.description, 3000),
+    maxPerBooking:numeric(item.maxPerBooking),
+    limitByPax:item.limitByPax === undefined ? null : bool(item.limitByPax),
+    providerData:item,
+  };
+}
+
+function rateExtraConfig(item = {}) {
+  const extra = item.extra && typeof item.extra === 'object' ? item.extra : {};
+  return {
+    id:id(item.id),
+    extraId:id(extra.id ?? item.extraId),
+    extraExternalId:text(extra.externalId ?? item.extraExternalId, 180),
+    selectionType:text(item.selectionType, 80),
+    pricingType:text(item.pricingType, 80),
+    pricedPerPerson:item.pricedPerPerson === undefined ? null : bool(item.pricedPerPerson),
+    providerData:item,
+  };
+}
+
+function pricedItem(item = {}) {
+  return {
+    id:id(item.id),
+    amount:money(item.amount),
+    providerData:item,
+  };
+}
+
+function pricedCategoryItem(item = {}) {
+  return {
+    categoryId:id(item.id),
+    amount:money(item.amount),
+    providerData:item,
+  };
+}
+
+function extraCategoryPrice(item = {}) {
+  return {
+    extraId:id(item.id),
+    prices:asArray(item.prices).map(pricedCategoryItem),
+    providerData:item,
+  };
+}
+
 function cancellationPolicy(policy) {
   if (!policy || typeof policy !== 'object') return null;
   return {
@@ -179,7 +229,7 @@ function rateEntity(rate = {}) {
       providerData:tier,
     })),
     pricingCategoryIds:asArray(rate.pricingCategoryIds).map(id),
-    extraConfigs:asArray(rate.extraConfigs).map(genericProviderEntity),
+    extraConfigs:asArray(rate.extraConfigs).map(rateExtraConfig),
     details:asArray(rate.details).map(genericProviderEntity),
     textItems:asArray(rate.textItems).map(genericProviderEntity),
     fixedPassExpiryDate:rate.fixedPassExpiryDate ?? null,
@@ -202,8 +252,13 @@ function rateQuote(item = {}) {
   return {
     rateId:id(item.activityRateId),
     participantPrices:asArray(item.pricePerCategoryUnit).map(categoryQuote),
-    extraPricePerUnit:asArray(item.extraPricePerUnit).map(genericProviderEntity),
-    extraPricePerCategoryUnit:asArray(item.extraPricePerCategoryUnit).map(genericProviderEntity),
+    pricePerBooking:money(item.pricePerBooking),
+    pickupPrice:money(item.pickupPrice),
+    pickupPricePerCategoryUnit:asArray(item.pickupPricePerCategoryUnit).map(pricedCategoryItem),
+    dropoffPrice:money(item.dropoffPrice),
+    dropoffPricePerCategoryUnit:asArray(item.dropoffPricePerCategoryUnit).map(pricedCategoryItem),
+    extraPricePerUnit:asArray(item.extraPricePerUnit).map(pricedItem),
+    extraPricePerCategoryUnit:asArray(item.extraPricePerCategoryUnit).map(extraCategoryPrice),
     providerData:item,
   };
 }
@@ -425,7 +480,7 @@ export function buildBokunDomain(product = {}, availability = [], { vendorId = n
     },
     participants:participantCategories,
     rates,
-    extras:asArray(product.bookableExtras).map(genericProviderEntity),
+    extras:asArray(product.bookableExtras).map(extraEntity),
     offers:asArray(product.offers).map(genericProviderEntity),
     bookingRequirements:{
       questions:asArray(product.bookingQuestions).map(genericProviderEntity),
