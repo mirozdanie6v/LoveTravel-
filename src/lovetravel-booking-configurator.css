@@ -101,6 +101,11 @@ html.lt-sheet-open,html.lt-sheet-open body{overflow:hidden}
 .lt-contact-field select[multiple]{min-height:92px}
 .lt-extra-card{overflow:hidden;border:1px solid rgba(32,78,108,.08);border-radius:17px;background:#fff}
 .lt-extra-card .lt-extra-row{border:0;border-radius:0;background:transparent}
+.lt-extra-card__head{display:grid;gap:3px;padding:13px 14px;border-bottom:1px solid rgba(32,78,108,.06);background:#f8fbfd}
+.lt-extra-card__head b{color:#17384b;font-size:11px}.lt-extra-card__head small{color:#78909f;font-size:8px;line-height:1.35}
+.lt-passenger-extra+.lt-passenger-extra{border-top:1px solid rgba(32,78,108,.06)}
+.lt-passenger-extra .lt-extra-row{padding:11px 14px}
+
 .lt-extra-questions{display:grid;gap:9px;padding:0 14px 14px;border-top:1px solid rgba(32,78,108,.06);padding-top:12px}
 
 .lt-passenger-card{display:grid;gap:9px;padding:12px;border:1px solid rgba(32,78,108,.08);border-radius:17px;background:#fff}
