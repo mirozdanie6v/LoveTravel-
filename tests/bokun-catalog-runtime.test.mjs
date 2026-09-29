@@ -9,7 +9,7 @@ const catalogUi=await readFile(resolve(root,'src/catalog-show-press.js'),'utf8')
 const adapter=await readFile(resolve(root,'src/bokun-adapter.js'),'utf8');
 
 test('LoveTravel customer catalog prefers the live two-product Bókun endpoint', () => {
-  assert.match(runtime, /fetch\('\/api\/bokun\/tours'/);
+  assert.match(runtime, /fetch\('\/api\/bokun\/tours\?locale='\+encodeURIComponent\(locale\)/);
   assert.match(runtime, /data\?\.vendorId === '137689'/);
   assert.match(runtime, /data\.tours\.length === 2/);
   assert.match(runtime, /'1287578','1287580'/);
@@ -18,7 +18,7 @@ test('LoveTravel customer catalog prefers the live two-product Bókun endpoint',
 });
 
 test('LoveTravel keeps the static catalog only as a fail-safe', () => {
-  const liveIndex=runtime.indexOf("fetch('/api/bokun/tours'");
+  const liveIndex=runtime.indexOf("fetch('/api/bokun/tours?locale='");
   const fallbackIndex=runtime.indexOf("fetch('/catalog.v28.json'");
   assert.ok(liveIndex >= 0);
   assert.ok(fallbackIndex > liveIndex);
@@ -41,5 +41,6 @@ test('Bókun tours expose compatibility fields without inventing operator metada
   assert.match(adapter,/searchText/);
   assert.match(adapter,/priceFromUsd/);
   assert.match(adapter,/liked\s*:\s*false/);
+  assert.match(adapter,/localization:domain\.localization \|\| null/);
   assert.match(adapter,/group\s*:\s*\{/);
 });
