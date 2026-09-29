@@ -113,7 +113,11 @@
 
   function applyCatalog(catalog, source = 'static') {
     if (!Array.isArray(catalog) || !catalog.length) return false;
-    TOURS.splice(0, TOURS.length, ...catalog);
+    const localizer=globalThis.LoveTravelTourLocale;
+    const visibleCatalog=localizer?.localizeCatalogTour
+      ? catalog.map(tour=>localizer.localizeCatalogTour(tour))
+      : catalog;
+    TOURS.splice(0, TOURS.length, ...visibleCatalog);
     globalThis.LOVE_TRAVEL_CATALOG_SOURCE = source;
     globalThis.LOVE_TRAVEL_BOKUN_ACTIVE = source === 'bokun';
     if (!TOURS.some(t => String(t.id) === String(state.selectedTour?.id))) state.selectedTour = TOURS[0];
