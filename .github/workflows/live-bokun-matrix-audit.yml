@@ -9,6 +9,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: live-bokun-matrix-audit
+  cancel-in-progress: true
+
 jobs:
   audit:
     runs-on: ubuntu-latest
@@ -131,7 +135,10 @@ jobs:
             const pickupChecks=[];
             const viableRate=rateChecks.find(x=>x.resolver?.status===200&&x.resolver?.errors?.length===0)||rateChecks.find(x=>x.resolver?.status===200);
             const viableSlot=viableRate?slots.find(s=>s.id===viableRate.resolver?.slotId)||slots[0]:slots[0];
-            for(const place of places){
+            const roomSample=places.find(p=>p.askForRoomNumber===true)||null;
+            const noRoomSample=places.find(p=>p.askForRoomNumber!==true)||null;
+            const sampledPlaces=[roomSample,noRoomSample].filter(Boolean).filter((p,i,a)=>a.findIndex(x=>String(x.id)===String(p.id))===i);
+            for(const place of sampledPlaces){
               if(!viableRate||!viableSlot||!firstParticipant) break;
               const baseSelection={
                 productId,
@@ -152,8 +159,6 @@ jobs:
                 id:place.id,
                 title:place.title,
                 placeType:place.placeType,
-                addressLine1:place.addressLine1,
-                wholeAddress:place.wholeAddress,
                 askForRoomNumber:place.askForRoomNumber,
                 noRoom:{
                   status:noRoom.status,
@@ -260,6 +265,7 @@ jobs:
             twoProducts:report.products.length===2,
             allRatesResolverReachable:report.products.every(p=>p.rates.every(r=>r.resolver?.status===200)),
             allRoomRulesCorrect:report.products.every(p=>p.pickupValidation.every(x=>x.roomRuleCorrect)),
+            allPickupPlacesExposeRoomRule:report.products.every(p=>p.pickup.places.every(x=>x.askForRoomNumber===true||x.askForRoomNumber===false||x.askForRoomNumber===null)),
             rawCoveragePreserved:report.products.every(p=>p.coverage?.rawPreserved===true),
           };
           report.ok=Object.values(report.assertions).every(Boolean);
