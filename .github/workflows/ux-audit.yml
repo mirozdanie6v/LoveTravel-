@@ -46,7 +46,7 @@ jobs:
           server_pid=$!
           trap 'kill $server_pid || true' EXIT
           sleep 2
-          cat > /tmp/ux-audit.mjs <<'NODE'
+          cat > ux-audit.mjs <<'NODE'
           import { chromium } from 'playwright';
           import fs from 'node:fs';
 
@@ -127,7 +127,7 @@ jobs:
 
           await browser.close();
           NODE
-          node /tmp/ux-audit.mjs
+          node ux-audit.mjs
           cp /tmp/home.json .ux-audit-home.json
           cp /tmp/catalog.json .ux-audit-catalog.json
           cp /tmp/ai.json .ux-audit-ai.json
