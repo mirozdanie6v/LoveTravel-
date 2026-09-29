@@ -147,8 +147,10 @@
   };
 
   function locale(){
-    const value=String(document.documentElement.lang||localStorage.getItem(STORAGE_KEY)||'ru').toLowerCase();
-    return SUPPORTED.includes(value)?value:'ru';
+    const stored=String(localStorage.getItem(STORAGE_KEY)||'').toLowerCase();
+    if(SUPPORTED.includes(stored)) return stored;
+    const html=String(document.documentElement.lang||'').toLowerCase();
+    return SUPPORTED.includes(html)?html:'ru';
   }
   function pick(row,fallback=''){
     return row?.[locale()] ?? row?.en ?? fallback;
