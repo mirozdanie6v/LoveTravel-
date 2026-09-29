@@ -23,8 +23,10 @@
       select:'Выбрать',
       selected:'Выбрано',
       participants:'Цены по участникам',
-      meeting:'Место встречи',
-      pickup:'Трансфер',
+      meeting:'Место начала экскурсии',
+      meetingNote:'Только если вы добираетесь самостоятельно. При трансфере из отеля сюда ехать не нужно.',
+      pickup:'Трансфер из отеля',
+      selectedPickup:'Вас заберут отсюда',
       pickupOptional:'по выбору',
       pickupRequired:'обязательный',
       pickupUnavailable:'не предусмотрен',
@@ -72,8 +74,10 @@
       select:'Select',
       selected:'Selected',
       participants:'Participant prices',
-      meeting:'Meeting point',
-      pickup:'Pickup',
+      meeting:'Tour starting point',
+      meetingNote:'Only for guests arriving independently. If you choose hotel pickup, you do not need to travel here.',
+      pickup:'Hotel pickup',
+      selectedPickup:'You will be picked up here',
       pickupOptional:'optional',
       pickupRequired:'required',
       pickupUnavailable:'not available',
@@ -121,8 +125,10 @@
       select:'Chọn',
       selected:'Đã chọn',
       participants:'Giá theo khách',
-      meeting:'Điểm gặp',
-      pickup:'Đón khách',
+      meeting:'Điểm bắt đầu tour',
+      meetingNote:'Chỉ dành cho khách tự đến. Nếu chọn đón tại khách sạn, bạn không cần tự đến điểm này.',
+      pickup:'Đón tại khách sạn',
+      selectedPickup:'Xe sẽ đón bạn tại đây',
       pickupOptional:'tùy chọn',
       pickupRequired:'bắt buộc',
       pickupUnavailable:'không áp dụng',
@@ -170,8 +176,10 @@
       select:'선택',
       selected:'선택됨',
       participants:'인원별 가격',
-      meeting:'미팅 포인트',
-      pickup:'픽업',
+      meeting:'투어 출발 지점',
+      meetingNote:'직접 이동하는 경우에만 해당합니다. 호텔 픽업을 선택하면 이곳으로 직접 갈 필요가 없습니다.',
+      pickup:'호텔 픽업',
+      selectedPickup:'여기에서 픽업합니다',
       pickupOptional:'선택 가능',
       pickupRequired:'필수',
       pickupUnavailable:'제공되지 않음',
@@ -374,11 +382,13 @@
       : '';
     const meetingType=String(domain?.experience?.meeting?.type||'').replaceAll('_',' ').toLowerCase();
     if(!points.length && !pickup && !meetingType) return '';
-    return '<section class="lt-domain-section lt-domain-grid">'+
-      (points.length||meetingType?'<div class="lt-domain-info"><span class="lt-domain-eyebrow">'+esc(t().meeting)+'</span>'+
+    return '<section class="lt-domain-section lt-domain-grid" data-lt-transport-info>'+
+      (points.length||meetingType?'<div class="lt-domain-info" data-lt-start-point-card><span class="lt-domain-eyebrow">'+esc(t().meeting)+'</span>'+
+        '<p class="lt-domain-transport-note">'+esc(t().meetingNote)+'</p>'+
         (meetingType?'<div class="lt-domain-info__row"><b>'+esc(meetingType)+'</b></div>':'')+
         points.map(point=>'<div class="lt-domain-info__row"><b>'+esc(point.title || point.addressLine1 || '')+'</b><span>'+esc([point.addressLine1,point.city,point.state].filter(Boolean).join(', '))+'</span></div>').join('')+'</div>':'')+
-      (pickup?'<div class="lt-domain-info"><span class="lt-domain-eyebrow">'+esc(t().pickup)+'</span><div class="lt-domain-info__row"><b>'+esc(pickup)+'</b></div>'+
+      (pickup?'<div class="lt-domain-info" data-lt-pickup-card><span class="lt-domain-eyebrow">'+esc(t().pickup)+'</span><div class="lt-domain-info__row"><b>'+esc(pickup)+'</b></div>'+
+        '<div class="lt-domain-info__row lt-domain-selected-pickup" data-lt-selected-pickup hidden><span>'+esc(t().selectedPickup)+'</span><b data-lt-selected-pickup-value></b></div>'+
         (pickupTiming?'<div class="lt-domain-info__row"><span>'+esc(t().pickupTiming)+'</span><b>'+esc(pickupTiming)+'</b></div>':'')+
         (domain?.experience?.pickup?.noPickupMessage?'<div class="lt-domain-info__row"><span>'+esc(domain.experience.pickup.noPickupMessage)+'</span></div>':'')+
       '</div>':'')+
