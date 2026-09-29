@@ -95,15 +95,22 @@ jobs:
             await page.screenshot({path:'audit-ui/08-pickup-search.png'});
             await page.locator('.lt-booking-sheet.is-open [data-lt-place]').first().click();
             await page.waitForTimeout(1000);
+            if(await page.locator('.lt-booking-sheet.is-open [data-lt-room-number]').count()){
+              await page.screenshot({path:'audit-ui/09-room-number.png'});
+              await page.locator('.lt-booking-sheet.is-open [data-lt-room-number]').fill('804');
+              await page.screenshot({path:'audit-ui/10-room-filled.png'});
+              await page.locator('.lt-booking-sheet.is-open [data-lt-room-save]').click();
+              await page.locator('.lt-booking-sheet').waitFor({state:'hidden',timeout:10000});
+            }
 
             await cfg.scrollIntoViewIfNeeded();
             await page.waitForTimeout(300);
-            await page.screenshot({path:'audit-ui/09-configured.png'});
+            await page.screenshot({path:'audit-ui/11-configured.png'});
 
             await page.locator('#tourScreen [data-lt-config-continue]').click();
             await page.waitForSelector('.lt-booking-sheet.is-open [data-lt-customer="firstName"]',{state:'visible',timeout:10000});
             await page.waitForTimeout(300);
-            await page.screenshot({path:'audit-ui/10-contacts.png'});
+            await page.screenshot({path:'audit-ui/12-contacts.png'});
 
             const report=await page.evaluate(()=>({
               title:document.title,
@@ -129,6 +136,7 @@ jobs:
           })().catch(e=>{console.error(e);process.exit(1)});
           NODE
       - name: Save screenshots
+        if: always()
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
