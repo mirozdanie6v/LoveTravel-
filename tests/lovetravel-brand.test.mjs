@@ -17,10 +17,9 @@ test('LoveTravel public branding script is valid and uses the official Nha Trang
   assert.match(js,/PRODUCT_IDS = \['1287578','1287580'\]/);
 });
 
-test('LoveTravel branding replaces the old multi-destination hero with a two-product client experience', () => {
-  assert.match(js,/className='hero lt-hero'/);
+test('LoveTravel branding exposes one catalog CTA and no legacy AI or multi-destination CTA', () => {
   assert.match(js,/data-lt-action="catalog"/);
-  assert.match(js,/data-lt-action="ai"/);
+  assert.doesNotMatch(js,/data-lt-action="ai"/);
   assert.doesNotMatch(js,/Дананг.*Фукуок.*Муйне/s);
   assert.match(css,/\.lt-hero/);
   assert.match(css,/--lt-hero-image/);
