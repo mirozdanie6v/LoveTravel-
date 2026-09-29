@@ -2,8 +2,8 @@
   "ok": true,
   "stage": "verified",
   "deploymentPath": "RIC shared Cloudflare runner",
-  "workflowRunId": "36622577595",
-  "cloudflareVersionId": "fd925dc3-6350-4412-bbfe-9a3abff6c664",
+  "workflowRunId": "36626310948",
+  "cloudflareVersionId": "1f045c1c-7dd0-44b2-8aa6-9767f7b3f98a",
   "tests": {
     "passed": 271,
     "failed": 0
@@ -43,5 +43,38 @@
     "localizedCatalogCompatibility": true,
     "savedLocaleFirstRender": true
   },
-  "realBookingCreated": false
+  "realBookingCreated": false,
+  "bokunLocalizationProbe": {
+    "checkedAt": "2026-09-30",
+    "requestedLanguages": [
+      "EN",
+      "RU",
+      "VI",
+      "KO"
+    ],
+    "products": {
+      "1287578": {
+        "baseLanguage": "en_GB",
+        "contentLanguages": [
+          "EN_GB"
+        ],
+        "guidanceLanguages": [
+          "en",
+          "vi"
+        ],
+        "localizedResponsesIdentical": true
+      },
+      "1287580": {
+        "baseLanguage": "en_GB",
+        "contentLanguages": [
+          "EN_GB"
+        ],
+        "guidanceLanguages": [
+          "en"
+        ],
+        "localizedResponsesIdentical": true
+      }
+    },
+    "integrationLangParameterEffective": false
+  }
 }
