@@ -6,10 +6,16 @@ import { orchestrateAiRequest } from './ai-orchestrator-v23.js';
 import { handleAdminTourMediaApi } from './admin-tour-media-api.js';
 import {
   fetchLoveTravelBokunDomains,
-  fetchLoveTravelBokunTours,
+  projectBokunDomainToLegacyTour,
   LOVE_TRAVEL_BOKUN_PRODUCT_IDS,
   LOVE_TRAVEL_BOKUN_VENDOR_ID,
 } from './bokun-adapter.js';
+import {
+  bokunLanguage,
+  localizeDomainFromCache,
+  normalizeContentLocale,
+  syncAllDomainLocales,
+} from './bokun-content-localization.js';
 import { resolveBookingSelection } from './booking-selection-engine.js';
 
 const CONTENT_TYPES = {
@@ -71,7 +77,7 @@ function validIsoDate(value) {
   return /^\d{4}-\d{2}-\d{2}$/.test(String(value || ''));
 }
 
-export async function handleLoveTravelBokunTours(request, env, url = new URL(request.url)) {
+export async function handleLoveTravelBokunTours(request, env, url = new URL(request.url), ctx = null) {
   const isTours = url.pathname === '/api/bokun/tours';
   const isDomain = url.pathname === '/api/bokun/domain';
   if (!isTours && !isDomain) return null;
@@ -103,6 +109,7 @@ export async function handleLoveTravelBokunTours(request, env, url = new URL(req
 
   try {
     const includePickupPlaces = isDomain && url.searchParams.get('includePickupPlaces') === '1';
+    const locale = normalizeContentLocale(url.searchParams.get('locale') || url.searchParams.get('lang') || 'ru');
     const common = {
       fetchImpl:fetch,
       baseUrl:env.BOKUN_INTEGRATION_BASE_URL || 'https://integration.viiversion.com',
@@ -111,15 +118,20 @@ export async function handleLoveTravelBokunTours(request, env, url = new URL(req
       start:requestedStart,
       end:requestedEnd,
       currency:'USD',
+      lang:bokunLanguage(locale),
       includePickupPlaces,
     };
 
+    const rawDomains = await fetchLoveTravelBokunDomains(common);
+    const localizedDomains = await Promise.all(
+      rawDomains.map(domain => localizeDomainFromCache(domain, env, locale, ctx))
+    );
     const payload = isDomain
-      ? await fetchLoveTravelBokunDomains(common)
-      : await fetchLoveTravelBokunTours(common);
+      ? localizedDomains
+      : localizedDomains.map(projectBokunDomainToLegacyTour);
 
     const domains = isDomain
-      ? payload.map(domain => {
+      ? localizedDomains.map(domain => {
           const { providerRaw, ...publicDomain } = domain;
           return publicDomain;
         })
@@ -135,6 +147,7 @@ export async function handleLoveTravelBokunTours(request, env, url = new URL(req
       start:requestedStart,
       end:requestedEnd,
       fetchedAt:new Date().toISOString(),
+      locale,
       ...(isDomain ? { includePickupPlaces, domains } : { tours:payload }),
     }, {
       headers:{
@@ -462,6 +475,22 @@ async function filterAdminHostRoles(response, url) {
 
 export const _availabilityTest = { vietnamTodayIso, addIsoDays, departureIso, requestedPeople, availabilityReply, originReply };
 
+async function refreshBokunLocalizationCache(env) {
+  const today = vietnamTodayIso();
+  const domains = await fetchLoveTravelBokunDomains({
+    fetchImpl:fetch,
+    baseUrl:env.BOKUN_INTEGRATION_BASE_URL || 'https://integration.viiversion.com',
+    vendorId:LOVE_TRAVEL_BOKUN_VENDOR_ID,
+    productIds:LOVE_TRAVEL_BOKUN_PRODUCT_IDS,
+    start:today,
+    end:addIsoDays(today, 1),
+    currency:'USD',
+    lang:'EN',
+    includePickupPlaces:false,
+  });
+  return syncAllDomainLocales(domains, env);
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -475,7 +504,7 @@ export default {
     }
     const bookingSelectionResponse = await handleLoveTravelBookingSelection(request, env, url);
     if (bookingSelectionResponse) return bookingSelectionResponse;
-    const bokunToursResponse = await handleLoveTravelBokunTours(request, env, url);
+    const bokunToursResponse = await handleLoveTravelBokunTours(request, env, url, ctx);
     if (bokunToursResponse) return bokunToursResponse;
     // VI/EN use the locale-aware AI core directly. All fast-path/orchestrator
     // layers below were written for Russian and may emit Russian fallback copy.
@@ -492,5 +521,11 @@ export default {
     if (availabilityResponse) return availabilityResponse;
     const response = await profileWorker.fetch(request, env, ctx);
     return filterAdminHostRoles(response, url);
+  },
+
+  async scheduled(_controller, env, ctx) {
+    ctx.waitUntil(refreshBokunLocalizationCache(env).catch(error => {
+      console.error('Scheduled Bókun localization sync failed', error?.message || error);
+    }));
   },
 };
