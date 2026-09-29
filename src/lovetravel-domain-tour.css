@@ -154,3 +154,26 @@ html.love-travel-branded #tourScreen.lt-domain-tour{padding:0 0 28px!important;b
     grid-template-columns:repeat(2,minmax(0,1fr));
   }
 }
+
+
+/* Transport semantics: start point is not an extra obligation for hotel-pickup guests */
+.lt-domain-transport-note{
+  margin:5px 0 0;
+  color:#72899a;
+  font-size:10px;
+  line-height:1.45;
+}
+.lt-domain-selected-pickup{
+  margin-top:10px;
+  padding:10px 11px;
+  border-radius:12px;
+  background:#eef8f2;
+  border:1px solid rgba(22,138,85,.12);
+}
+.lt-domain-selected-pickup span{
+  color:#5b7a69;
+}
+.lt-domain-selected-pickup b{
+  margin-top:4px;
+  color:#17633f;
+}
