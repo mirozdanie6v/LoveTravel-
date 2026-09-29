@@ -214,8 +214,12 @@
   };
 
   function locale() {
-    const value=String(document.documentElement.lang || localStorage.getItem('max-tour-locale-v1') || 'ru').toLowerCase();
-    return copy[value] ? value : 'ru';
+    const localized=globalThis.LoveTravelTourLocale?.locale?.();
+    if(localized&&copy[localized]) return localized;
+    const stored=String(localStorage.getItem('max-tour-locale-v1')||'').toLowerCase();
+    if(copy[stored]) return stored;
+    const html=String(document.documentElement.lang||'').toLowerCase();
+    return copy[html]?html:'ru';
   }
   function t(){ return copy[locale()]; }
   function l10n(){ return globalThis.LoveTravelTourLocale || null; }
