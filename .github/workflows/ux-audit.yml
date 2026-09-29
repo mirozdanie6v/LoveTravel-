@@ -1,0 +1,127 @@
+name: LoveTravel UX Audit
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.ux-audit'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: npm run build
+      - name: Install browser
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install chromium
+      - name: Run visual/DOM audit
+        shell: bash
+        run: |
+          python3 -m http.server 4173 -d dist >/tmp/lovetravel-http.log 2>&1 &
+          server_pid=$!
+          trap 'kill $server_pid || true' EXIT
+          sleep 2
+          cat > /tmp/ux-audit.mjs <<'NODE'
+          import { chromium } from 'playwright';
+          import fs from 'node:fs';
+
+          const browser=await chromium.launch({headless:true});
+          const context=await browser.newContext({viewport:{width:390,height:844}});
+          const page=await context.newPage();
+
+          const tours=[
+            {
+              id:'1287578',title:'Robinson Beach',city:'Nha Trang',region:'Khánh Hòa',duration:'7 hours',
+              image:'https://imgcdn.bokun.tools/a.jpg',gallery:['https://imgcdn.bokun.tools/a.jpg'],
+              tags:['island'],audience:['family'],childrenOk:true,formatsLabel:'',popular:false,liked:false,
+              priceFromUsd:49,searchText:'robinson beach nha trang',
+              group:{from:'$49',adult:'$49',child:'$35',infant:'$0',departures:[]},individual:null
+            },
+            {
+              id:'1287580',title:'Hòn Mun Marine Park Snorkeling and Nha Trang Island Tour',city:'Nha Trang',region:'Khánh Hòa',duration:'7 hours',
+              image:'https://imgcdn.bokun.tools/b.jpg',gallery:['https://imgcdn.bokun.tools/b.jpg'],
+              tags:['island','snorkeling'],audience:['family'],childrenOk:true,formatsLabel:'',popular:false,liked:false,
+              priceFromUsd:55,searchText:'hon mun marine park nha trang',
+              group:{from:'$55',adult:'$55',child:'$40',infant:'$0',departures:[]},individual:null
+            }
+          ];
+
+          await page.route('**/api/bokun/tours**',route=>route.fulfill({
+            status:200,contentType:'application/json',
+            body:JSON.stringify({ok:true,source:'bokun',vendorId:'137689',productIds:['1287578','1287580'],tours})
+          }));
+          await page.route('**/api/bootstrap',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({hasData:false})}));
+          await page.route('**/api/**',route=>{
+            if(route.request().url().includes('/api/bokun/tours')) return;
+            return route.fulfill({status:200,contentType:'application/json',body:'{}'});
+          });
+
+          await page.goto('http://127.0.0.1:4173/',{waitUntil:'networkidle'});
+          await page.waitForTimeout(1300);
+
+          const snapshot=async(label)=>{
+            const data=await page.evaluate(()=>{
+              const visible=el=>{
+                const s=getComputedStyle(el),r=el.getBoundingClientRect();
+                return s.display!=='none'&&s.visibility!=='hidden'&&!el.hidden&&r.width>0&&r.height>0;
+              };
+              const texts=[...document.querySelectorAll('body *')]
+                .filter(el=>visible(el)&&el.children.length===0)
+                .map(el=>(el.textContent||'').replace(/\s+/g,' ').trim())
+                .filter(Boolean);
+              const buttons=[...document.querySelectorAll('button,a,[role="button"]')]
+                .filter(visible).map(el=>(el.textContent||el.getAttribute('aria-label')||'').replace(/\s+/g,' ').trim()).filter(Boolean);
+              const cards=[...document.querySelectorAll('.wide-card,.tour-card,[data-tour-id]')]
+                .filter(visible).map(el=>(el.textContent||'').replace(/\s+/g,' ').trim().slice(0,240));
+              const scripts=[...document.scripts].map(s=>s.src||'inline').filter(Boolean);
+              return {
+                title:document.title,
+                bodyText:document.body.innerText.replace(/\s+/g,' ').trim().slice(0,12000),
+                texts:[...new Set(texts)].slice(0,250),
+                buttons:[...new Set(buttons)].slice(0,120),
+                cards:[...new Set(cards)].slice(0,30),
+                scripts,
+                globalSource:globalThis.LOVE_TRAVEL_CATALOG_SOURCE||null,
+                tourIds:(typeof TOURS!=='undefined'&&Array.isArray(TOURS))?TOURS.map(t=>String(t.id)):[],
+              };
+            });
+            fs.writeFileSync('/tmp/'+label+'.json',JSON.stringify(data,null,2));
+            await page.screenshot({path:'/tmp/'+label+'.png',fullPage:true});
+            console.log('\n=== '+label+' ===\n'+JSON.stringify(data,null,2));
+          };
+
+          await snapshot('home');
+
+          await page.evaluate(()=>typeof showScreen==='function'&&showScreen('catalog'));
+          await page.waitForTimeout(300);
+          await snapshot('catalog');
+
+          await page.evaluate(()=>typeof showScreen==='function'&&showScreen('ai'));
+          await page.waitForTimeout(500);
+          await snapshot('ai');
+
+          await browser.close();
+          NODE
+          node /tmp/ux-audit.mjs
+      - name: Upload UX audit screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: lovetravel-ux-audit
+          path: |
+            /tmp/home.png
+            /tmp/catalog.png
+            /tmp/ai.png
+            /tmp/home.json
+            /tmp/catalog.json
+            /tmp/ai.json
