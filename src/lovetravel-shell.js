@@ -95,6 +95,8 @@
   globalThis.openTour=openTour;
 
   document.addEventListener('click',event=>{
+    const brand=event.target.closest?.('.brandmark-real');
+    if(brand){ event.preventDefault(); showScreen('home'); return; }
     const nav=event.target.closest?.('.bottom-nav .nav-btn');
     if(nav){ event.preventDefault(); showScreen(nav.dataset.screen); return; }
     const lang=event.target.closest?.('.mt-language-switcher button');
