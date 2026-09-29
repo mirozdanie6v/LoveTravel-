@@ -49,18 +49,18 @@ jobs:
         with:
           node-version: '22'
 
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Full project check
+        run: npm run check
+
       - name: Require Cloudflare credentials
         shell: bash
         run: |
           set -euo pipefail
           test -n "${CLOUDFLARE_API_TOKEN:-}" || { echo 'CLOUDFLARE_API_TOKEN is missing'; exit 1; }
           test -n "${CLOUDFLARE_ACCOUNT_ID:-}" || { echo 'CLOUDFLARE_ACCOUNT_ID is missing'; exit 1; }
-
-      - name: Install dependencies
-        run: npm install --no-audit --no-fund
-
-      - name: Full project check
-        run: npm run check
 
       - name: Deploy LoveTravel worker and assets
         run: npx wrangler deploy --config wrangler.jsonc
