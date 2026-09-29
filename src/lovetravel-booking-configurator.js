@@ -113,7 +113,7 @@
     if(!stateByProduct.has(productId)){
       stateByProduct.set(productId,{
         productId,date:null,startTimeId:null,slotId:null,rateId:null,
-        participants:{},pickup:{mode:null,placeId:null,customLocation:null,roomNumber:''},extras:{},customer:{},answers:{},passengers:[]
+        participants:{},pickup:{mode:null,placeId:null,customLocation:null,roomNumber:''},extras:{},customer:{},answers:{},extraAnswers:{},passengers:[]
       });
     }
     return stateByProduct.get(productId);
@@ -260,7 +260,7 @@
     return count>0 ? String(count) : t().extrasEmpty;
   }
   function contactSummary(r){
-    const contactCodes=new Set(['required_customer_field_missing','required_booking_question_missing','required_custom_field_missing','passenger_details_incomplete','passenger_field_missing']);
+    const contactCodes=new Set(['required_customer_field_missing','required_booking_question_missing','invalid_booking_question_answer','required_custom_field_missing','passenger_details_incomplete','passenger_field_missing','required_passenger_booking_question_missing','invalid_passenger_booking_question_answer']);
     const pending=arr(r?.bookingDataIssues).some(item=>contactCodes.has(item.code));
     return pending ? t().contactRequired : t().verified;
   }
@@ -278,7 +278,7 @@
     if(codes.has('date_required')||codes.has('slot_required')) return 'date';
     if(codes.has('rate_required')) return 'option';
     if(codes.has('participants_required')||[...codes].some(x=>x.includes('participant')||x.includes('minimum')||x.includes('capacity'))) return 'guests';
-    if(codes.has('required_extra_missing')||codes.has('extras_price_unresolved')) return 'extras';
+    if(codes.has('required_extra_missing')||codes.has('extras_price_unresolved')||[...codes].some(x=>x.includes('extra_booking_question'))) return 'extras';
     if(
       codes.has('pickup_mode_required')||
       codes.has('pickup_location_required')||
@@ -315,9 +315,9 @@
     const ready=r.readyToBook;
     const cta=ready?t().ready:(r.readyToQuote?t().continue:t().continue);
     const extras=arr(r?.constraints?.extras);
-    const extrasComplete=!arr(r?.bookingDataIssues).some(item=>item.code==='required_extra_missing');
+    const extrasComplete=!arr(r?.bookingDataIssues).some(item=>item.code==='required_extra_missing'||String(item.code).includes('extra_booking_question'));
     const detailsComplete=!arr(r?.bookingDataIssues).some(item=>
-      ['required_customer_field_missing','required_booking_question_missing','required_custom_field_missing','passenger_details_incomplete','passenger_field_missing'].includes(item.code)
+      ['required_customer_field_missing','required_booking_question_missing','invalid_booking_question_answer','required_custom_field_missing','passenger_details_incomplete','passenger_field_missing','required_passenger_booking_question_missing','invalid_passenger_booking_question_answer'].includes(item.code)
     );
     mount.innerHTML=
       '<div class="lt-booking-config__head">'+
@@ -596,37 +596,52 @@
   function pickupModeCard(mode,title,active,note){
     return '<button type="button" class="lt-pickup-mode '+(active?'is-active':'')+'" data-lt-pickup-mode="'+esc(mode)+'"><span class="lt-radio"></span><span><b>'+esc(title)+'</b>'+(note?'<small>'+esc(note)+'</small>':'')+'</span></button>';
   }
-  function openExtrasSheet(productId){
-    const r=resolutionByProduct.get(productId); if(!r) return;
-    const extras=arr(r.constraints?.extras);
-    const s=selection(productId);
-    if(!extras.length){
-      showSheet(t().chooseExtras,'<div class="lt-sheet-scroll"><div class="lt-empty">'+esc(t().noExtra)+'</div></div>');
-      return;
+  function questionContext(item){
+    const value=String(item?.context||'').toUpperCase();
+    if(value.includes('PASSENGER')||value.includes('PARTICIPANT')) return 'PASSENGER';
+    if(value.includes('EXTRA')) return 'EXTRA';
+    return 'BOOKING';
+  }
+  function questionAppliesToCategory(item,categoryId){
+    if(String(item?.pricingCategoryTriggerSelection||'').toUpperCase()!=='SELECTED_ONLY') return true;
+    return arr(item?.pricingCategoryTriggers).some(value=>String(value?.id??value)===String(categoryId));
+  }
+  function questionAppliesToExtra(item,extraId){
+    if(String(item?.extraTriggerSelection||'').toUpperCase()!=='SELECTED_ONLY') return true;
+    return arr(item?.extraTriggers).some(value=>String(value?.id??value)===String(extraId));
+  }
+  function controlValue(node){
+    if(!node) return '';
+    if(node.tagName==='SELECT'&&node.multiple) return [...node.selectedOptions].map(option=>option.value);
+    return String(node.value??'').trim();
+  }
+  function questionControl(item,value,attributeName,attributeValue,extraAttributes=''){
+    const key=String(attributeValue||answerKey(item));
+    const title=item?.title||item?.code||key;
+    const required=item?.required?' *':'';
+    const description=item?.description?'<small>'+esc(item.description)+'</small>':'';
+    const attrs=' '+attributeName+'="'+esc(key)+'" '+extraAttributes;
+    const options=arr(item?.options);
+    const normalizedValues=Array.isArray(value)?value.map(String):[String(value??'')];
+    let control='';
+    if((item?.selectFromOptions||options.length)&&options.length){
+      control='<select'+attrs+(item?.selectMultiple?' multiple':'')+'>'+
+        (item?.selectMultiple?'':'<option value=""></option>')+
+        options.map(option=>{
+          const optionValue=String(option?.value??option?.id??option?.label??'');
+          const selected=normalizedValues.includes(optionValue)?' selected':'';
+          return '<option value="'+esc(optionValue)+'"'+selected+'>'+esc(option?.label||optionValue)+'</option>';
+        }).join('')+
+      '</select>';
+    }else{
+      const typeName=String(item?.dataType||'').toUpperCase();
+      const type=typeName.includes('DATE')?'date':typeName.includes('NUMBER')||typeName.includes('INTEGER')||typeName.includes('DECIMAL')?'number':'text';
+      control='<input type="'+type+'" value="'+esc(Array.isArray(value)?value[0]||'':value||'')+'"'+attrs+
+        (item?.placeholder?' placeholder="'+esc(item.placeholder)+'"':'')+
+        (item?.pattern?' pattern="'+esc(item.pattern)+'"':'')+
+        ' autocomplete="off">';
     }
-    const body='<div class="lt-sheet-scroll"><div class="lt-extra-list">'+extras.map(item=>{
-      const id=String(item.id||'');
-      const quantity=Number(s.extras?.[id]||0);
-      return '<div class="lt-extra-row" data-lt-extra-row="'+esc(id)+'">'+
-        '<div><b>'+esc(item.title||item.code||id)+(item.required?' *':'')+'</b>'+(item.description?'<small>'+esc(item.description)+'</small>':'')+'</div>'+
-        '<div class="lt-counter"><button type="button" data-lt-extra-minus="'+esc(id)+'">−</button><strong data-lt-extra-count="'+esc(id)+'">'+esc(quantity)+'</strong><button type="button" data-lt-extra-plus="'+esc(id)+'">+</button></div>'+
-      '</div>';
-    }).join('')+'</div><div class="lt-sheet-action"><button type="button" class="lt-sheet-primary" data-lt-extras-done>'+esc(t().verify)+'</button></div></div>';
-    const root=showSheet(t().chooseExtras,body);
-    const update=(id,delta)=>{
-      const extras={...selection(productId).extras};
-      const next=Math.max(0,Number(extras[id]||0)+delta);
-      if(next>0) extras[id]=next; else delete extras[id];
-      patchSelection(productId,{extras});
-      const node=root.querySelector('[data-lt-extra-count="'+CSS.escape(id)+'"]'); if(node) node.textContent=String(next);
-    };
-    root.querySelectorAll('[data-lt-extra-minus]').forEach(btn=>btn.addEventListener('click',()=>update(btn.dataset.ltExtraMinus,-1)));
-    root.querySelectorAll('[data-lt-extra-plus]').forEach(btn=>btn.addEventListener('click',()=>update(btn.dataset.ltExtraPlus,1)));
-    root.querySelector('[data-lt-extras-done]')?.addEventListener('click',async()=>{
-      const next=await resolve(productId,{quiet:true});
-      if(arr(next.bookingDataIssues).some(item=>item.code==='required_extra_missing')) openExtrasSheet(productId);
-      else closeSheet();
-    });
+    return '<label class="lt-contact-field lt-contact-field--wide"><span>'+esc(title)+required+'</span>'+description+control+'</label>';
   }
   function bookingFieldSpec(item,defaultRequired=true){
     if(typeof item==='string') return {field:canonicalField(item),required:defaultRequired};
@@ -643,6 +658,62 @@
       for(let i=0;i<count;i+=1) list.push({categoryId:String(category.id),label:guestLabel(category),categoryIndex:i+1});
     }
     return list;
+  }
+  function openExtrasSheet(productId){
+    const r=resolutionByProduct.get(productId); if(!r) return;
+    const extras=arr(r.constraints?.extras);
+    const req=r.constraints?.bookingRequirements||{};
+    const s=selection(productId);
+    if(!extras.length){
+      showSheet(t().chooseExtras,'<div class="lt-sheet-scroll"><div class="lt-empty">'+esc(t().noExtra)+'</div></div>');
+      return;
+    }
+    const extraQuestions=arr(req.questions).filter(item=>questionContext(item)==='EXTRA');
+    const body='<div class="lt-sheet-scroll"><div class="lt-extra-list">'+extras.map(item=>{
+      const id=String(item.id||'');
+      const quantity=Number(s.extras?.[id]||0);
+      const questions=quantity>0?extraQuestions.filter(question=>questionAppliesToExtra(question,id)):[];
+      const questionHtml=questions.length?'<div class="lt-extra-questions">'+questions.map(question=>{
+        const key=answerKey(question);
+        return questionControl(
+          question,
+          s.extraAnswers?.[id]?.[key],
+          'data-lt-extra-answer',
+          key,
+          'data-lt-extra-id="'+esc(id)+'"'
+        );
+      }).join('')+'</div>':'';
+      return '<div class="lt-extra-card" data-lt-extra-card="'+esc(id)+'">'+
+        '<div class="lt-extra-row" data-lt-extra-row="'+esc(id)+'">'+
+          '<div><b>'+esc(item.title||item.code||id)+(item.required?' *':'')+'</b>'+(item.description?'<small>'+esc(item.description)+'</small>':'')+'</div>'+
+          '<div class="lt-counter"><button type="button" data-lt-extra-minus="'+esc(id)+'">−</button><strong data-lt-extra-count="'+esc(id)+'">'+esc(quantity)+'</strong><button type="button" data-lt-extra-plus="'+esc(id)+'">+</button></div>'+
+        '</div>'+questionHtml+
+      '</div>';
+    }).join('')+'</div><div class="lt-sheet-action"><button type="button" class="lt-sheet-primary" data-lt-extras-done>'+esc(t().verify)+'</button></div></div>';
+    const root=showSheet(t().chooseExtras,body);
+    const update=(id,delta)=>{
+      const extras={...selection(productId).extras};
+      const item=arr(r.constraints?.extras).find(extra=>String(extra.id)===String(id));
+      const max=item?.maxQuantity===null||item?.maxQuantity===undefined?Infinity:Number(item.maxQuantity);
+      const next=Math.max(0,Math.min(max,Number(extras[id]||0)+delta));
+      if(next>0) extras[id]=next; else delete extras[id];
+      patchSelection(productId,{extras});
+      const node=root.querySelector('[data-lt-extra-count="'+CSS.escape(id)+'"]'); if(node) node.textContent=String(next);
+    };
+    root.querySelectorAll('[data-lt-extra-minus]').forEach(btn=>btn.addEventListener('click',()=>update(btn.dataset.ltExtraMinus,-1)));
+    root.querySelectorAll('[data-lt-extra-plus]').forEach(btn=>btn.addEventListener('click',()=>update(btn.dataset.ltExtraPlus,1)));
+    root.querySelector('[data-lt-extras-done]')?.addEventListener('click',async()=>{
+      const extraAnswers={...selection(productId).extraAnswers};
+      root.querySelectorAll('[data-lt-extra-answer]').forEach(control=>{
+        const extraId=control.dataset.ltExtraId;
+        const key=control.dataset.ltExtraAnswer;
+        extraAnswers[extraId]={...(extraAnswers[extraId]||{}),[key]:controlValue(control)};
+      });
+      patchSelection(productId,{extraAnswers});
+      const next=await resolve(productId,{quiet:true});
+      if(arr(next.bookingDataIssues).some(item=>item.code==='required_extra_missing'||String(item.code).includes('extra_booking_question'))) openExtrasSheet(productId);
+      else closeSheet();
+    });
   }
   function openContactSheet(productId){
     const r=resolutionByProduct.get(productId); if(!r) return;
@@ -662,13 +733,16 @@
       return '<label class="lt-contact-field"><span>'+esc(fieldLabel(field))+(spec.required?' *':'')+'</span><input type="'+inputType(field)+'" value="'+esc(s.customer?.[field]||'')+'" data-lt-customer="'+esc(field)+'" autocomplete="'+esc(autoComplete(field))+'"></label>';
     }).join('');
 
-    const questions=[...arr(req.questions).map(item=>({...item,_kind:'question'})),...arr(req.customFields).map(item=>({...item,_kind:'custom'}))];
-    const questionInputs=questions.map(item=>{
-      const key=answerKey(item);
-      return '<label class="lt-contact-field lt-contact-field--wide"><span>'+esc(item.title||item.code||key)+(item.required?' *':'')+'</span>'+
-        (item.description?'<small>'+esc(item.description)+'</small>':'')+
-        '<input type="text" value="'+esc(s.answers?.[key]||'')+'" data-lt-answer="'+esc(key)+'" autocomplete="off"></label>';
-    }).join('');
+    const bookingQuestions=arr(req.questions).filter(item=>questionContext(item)==='BOOKING');
+    const questionInputs=[
+      ...bookingQuestions.map(item=>questionControl(item,s.answers?.[answerKey(item)],'data-lt-answer',answerKey(item))),
+      ...arr(req.customFields).map(item=>{
+        const key=answerKey(item);
+        return '<label class="lt-contact-field lt-contact-field--wide"><span>'+esc(item.title||item.code||key)+(item.required?' *':'')+'</span>'+
+          (item.description?'<small>'+esc(item.description)+'</small>':'')+
+          '<input type="text" value="'+esc(s.answers?.[key]||'')+'" data-lt-answer="'+esc(key)+'" autocomplete="off"></label>';
+      }),
+    ].join('');
 
     const passengerSpecMap=new Map();
     for(const spec of arr(req.passengerFields).map(item=>bookingFieldSpec(item,true)).filter(Boolean)){
@@ -676,15 +750,25 @@
       passengerSpecMap.set(spec.field,{field:spec.field,required:Boolean(previous?.required||spec.required)});
     }
     const passengerSpecs=[...passengerSpecMap.values()];
+    const passengerQuestions=arr(req.questions).filter(item=>questionContext(item)==='PASSENGER');
     const passengers=passengerBlueprint(r);
-    const passengerInputs=passengerSpecs.length?passengers.map((descriptor,index)=>{
+    const passengerInputs=(passengerSpecs.length||passengerQuestions.length)?passengers.map((descriptor,index)=>{
       const existing=s.passengers?.[index]||{};
+      const questions=passengerQuestions.filter(question=>questionAppliesToCategory(question,descriptor.categoryId));
       return '<div class="lt-passenger-card" data-lt-passenger="'+index+'" data-lt-category="'+esc(descriptor.categoryId)+'">'+
         '<div class="lt-passenger-card__head"><b>'+esc(t().passenger)+' '+(index+1)+'</b><small>'+esc(descriptor.label)+' '+descriptor.categoryIndex+'</small></div>'+
-        '<div class="lt-contact-grid">'+passengerSpecs.map(spec=>{
-          const field=spec.field;
-          return '<label class="lt-contact-field"><span>'+esc(fieldLabel(field))+(spec.required?' *':'')+'</span><input type="'+inputType(field)+'" value="'+esc(existing?.[field]||'')+'" data-lt-passenger-field="'+esc(field)+'" autocomplete="'+esc(autoComplete(field))+'"></label>';
-        }).join('')+'</div></div>';
+        '<div class="lt-contact-grid">'+
+          passengerSpecs.map(spec=>{
+            const field=spec.field;
+            return '<label class="lt-contact-field"><span>'+esc(fieldLabel(field))+(spec.required?' *':'')+'</span><input type="'+inputType(field)+'" value="'+esc(existing?.[field]||'')+'" data-lt-passenger-field="'+esc(field)+'" autocomplete="'+esc(autoComplete(field))+'"></label>';
+          }).join('')+
+          questions.map(question=>questionControl(
+            question,
+            existing?.answers?.[answerKey(question)],
+            'data-lt-passenger-answer',
+            answerKey(question)
+          )).join('')+
+        '</div></div>';
     }).join(''):'';
 
     const body='<div class="lt-sheet-scroll">'+
@@ -699,19 +783,21 @@
       root.querySelectorAll('[data-lt-customer]').forEach(input=>customer[input.dataset.ltCustomer]=input.value.trim());
 
       const answers={...selection(productId).answers};
-      root.querySelectorAll('[data-lt-answer]').forEach(input=>answers[input.dataset.ltAnswer]=input.value.trim());
+      root.querySelectorAll('[data-lt-answer]').forEach(input=>answers[input.dataset.ltAnswer]=controlValue(input));
 
+      const previousPassengers=selection(productId).passengers||[];
       const passengerRows=[...root.querySelectorAll('[data-lt-passenger]')];
-      const passengers=passengerRows.map(row=>{
-        const item={categoryId:row.dataset.ltCategory||null};
+      const passengers=passengerRows.map((row,index)=>{
+        const item={...previousPassengers[index],categoryId:row.dataset.ltCategory||null,answers:{...(previousPassengers[index]?.answers||{})}};
         row.querySelectorAll('[data-lt-passenger-field]').forEach(input=>item[input.dataset.ltPassengerField]=input.value.trim());
+        row.querySelectorAll('[data-lt-passenger-answer]').forEach(control=>item.answers[control.dataset.ltPassengerAnswer]=controlValue(control));
         return item;
       });
 
       patchSelection(productId,{customer,answers,passengers});
       const next=await resolve(productId,{quiet:true});
       const hasContactIssues=arr(next.bookingDataIssues).some(item=>
-        ['required_customer_field_missing','required_booking_question_missing','required_custom_field_missing','passenger_details_incomplete','passenger_field_missing'].includes(item.code)
+        ['required_customer_field_missing','required_booking_question_missing','invalid_booking_question_answer','required_custom_field_missing','passenger_details_incomplete','passenger_field_missing','required_passenger_booking_question_missing','invalid_passenger_booking_question_answer'].includes(item.code)
       );
       if(next.readyToBook||!hasContactIssues){
         const btn=root.querySelector('[data-lt-contact-check]'); if(btn){btn.textContent=t().verified;btn.classList.add('is-success');}
@@ -719,6 +805,7 @@
       }else openContactSheet(productId);
     });
   }
+
   function canonicalField(field){
     const key=String(field||'').replace(/[^a-z0-9]/gi,'').toLowerCase();
     return ({firstname:'firstName',lastname:'lastName',phonenumber:'phoneNumber',phone:'phoneNumber',email:'email'})[key]||String(field||'');
