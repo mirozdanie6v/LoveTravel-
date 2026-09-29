@@ -15,7 +15,7 @@ function cleanLocale(value) {
   if (raw.startsWith('vi')) return 'vi';
   if (raw.startsWith('ko')) return 'ko';
   if (raw.startsWith('en')) return 'en';
-  return 'ru';
+  return '';
 }
 
 export function normalizeContentLocale(value) {
