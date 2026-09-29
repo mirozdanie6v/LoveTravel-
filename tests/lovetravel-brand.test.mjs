@@ -17,9 +17,10 @@ test('LoveTravel public branding script is valid and uses the official Nha Trang
   assert.match(js,/PRODUCT_IDS = \['1287578','1287580'\]/);
 });
 
-test('LoveTravel branding exposes one catalog CTA and no legacy AI or multi-destination CTA', () => {
+test('LoveTravel branding replaces the old multi-destination hero with a two-product client experience', () => {
+  assert.match(js,/className='hero lt-hero'/);
   assert.match(js,/data-lt-action="catalog"/);
-  assert.doesNotMatch(js,/data-lt-action="ai"/);
+  assert.match(js,/data-lt-action="ai"/);
   assert.doesNotMatch(js,/Дананг.*Фукуок.*Муйне/s);
   assert.match(css,/\.lt-hero/);
   assert.match(css,/--lt-hero-image/);
@@ -34,13 +35,13 @@ test('LoveTravel catalog presentation removes irrelevant MAX TOUR filters and st
   assert.match(js,/catalogIntro/);
 });
 
-test('LoveTravel build publishes and loads branding after the canonical runtime', () => {
+test('LoveTravel build publishes and loads branding after the runtime adapter', () => {
   assert.match(build,/lovetravel-brand\.css/);
   assert.match(build,/lovetravel-brand\.js/);
-  assert.match(build,/copyFile\(resolve\(root, 'src', file\), resolve\(dist, file\)\)/);
-  const runtimeIndex=build.indexOf('<script src="/lovetravel-runtime.js"></script>');
-  const brandIndex=build.indexOf('<script src="/lovetravel-brand.js"></script>');
+  assert.match(build,/copyFile\(resolve\(root, 'src\/lovetravel-brand\.css'/);
+  assert.match(build,/copyFile\(resolve\(root, 'src\/lovetravel-brand\.js'/);
+  const runtimeIndex=build.indexOf('<script src="/runtime-api.js" defer></script>');
+  const brandIndex=build.indexOf('<script src="/lovetravel-brand.js" defer></script>');
   assert.ok(runtimeIndex >= 0 && brandIndex > runtimeIndex);
-  assert.doesNotMatch(build,/runtime-api\.js/);
   assert.match(build,/data-project="LoveTravel"/);
 });
