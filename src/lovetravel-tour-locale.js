@@ -124,7 +124,11 @@
     'Bring sunscreen':{ru:'Возьмите солнцезащитный крем',vi:'Mang theo kem chống nắng',en:'Bring sunscreen',ko:'선크림을 준비하세요'},
     'Nha Trang hotels':{ru:'Отели Нячанга',vi:'Khách sạn Nha Trang',en:'Nha Trang hotels',ko:'나트랑 호텔'},
     'required':{ru:'обязательно',vi:'bắt buộc',en:'required',ko:'필수'},
-    'WALKING':{ru:'Пешая доступность',vi:'Có thể đi bộ',en:'Walking access',ko:'도보 접근'}
+    'WALKING':{ru:'Пешая доступность',vi:'Có thể đi bộ',en:'Walking access',ko:'도보 접근'},
+    'индивидуальный':{ru:'индивидуальный',vi:'riêng',en:'private',ko:'프라이빗'},
+    'групповой':{ru:'групповой',vi:'nhóm',en:'group',ko:'그룹'},
+    'available':{ru:'доступно',vi:'còn chỗ',en:'available',ko:'예약 가능'},
+    'full':{ru:'нет мест',vi:'hết chỗ',en:'sold out',ko:'매진'}
   };
 
   const difficultyMap={
@@ -246,9 +250,61 @@
     if(!tour||typeof tour!=='object') return tour;
     const id=String(tour.id||'');
     if(!products[id]) return tour;
-    const next={...tour,title:productTitle(id,tour.title)};
-    if('description' in next) next.description=productDescription(id,next.description);
+    const next={
+      ...tour,
+      title:productTitle(id,tour.title),
+      description:productDescription(id,tour.description),
+      duration:tour.duration?duration({text:tour.duration}):tour.duration,
+      activity:tour.activity?difficulty(tour.activity):tour.activity,
+      languages:Array.isArray(tour.languages)?tour.languages.map(languageName):tour.languages,
+      included:Array.isArray(tour.included)?tour.included.map(providerText):tour.included,
+      excluded:Array.isArray(tour.excluded)?tour.excluded.map(providerText):tour.excluded,
+      formatsLabel:tour.formatsLabel?providerText(tour.formatsLabel):tour.formatsLabel,
+    };
     if('shortDescription' in next) next.shortDescription=productDescription(id,next.shortDescription);
+    if(Array.isArray(tour.route)){
+      const stopWord={ru:'Остановка',vi:'Điểm',en:'Stop',ko:'코스'}[locale()];
+      next.route=tour.route.map((row,index)=>{
+        const title=Array.isArray(row)?String(row[0]||''):String(row?.title||'');
+        const fallbackBody=Array.isArray(row)?String(row[1]||''):String(row?.body||row?.description||'');
+        const localizedBody=itineraryBody(id,index,fallbackBody);
+        const localizedTitle=/^Stop\s+\d+$/i.test(title)?stopWord+' '+(index+1):providerText(title);
+        return Array.isArray(row)?[localizedTitle,localizedBody]:{...row,title:localizedTitle,body:localizedBody};
+      });
+    }
+    if(tour.group&&typeof tour.group==='object'){
+      next.group={...tour.group};
+      if(Array.isArray(tour.group.departures)){
+        next.group.departures=tour.group.departures.map(item=>({
+          ...item,
+          date:item?.iso?formatDate(item.iso,{day:'numeric',month:'short'}):item?.date,
+          status:providerText(item?.status||'')
+        }));
+      }
+    }
+    if(tour.bokun&&typeof tour.bokun==='object'){
+      next.bokun={...tour.bokun};
+      if(Array.isArray(tour.bokun.rates)){
+        next.bokun.rates=tour.bokun.rates.map(rate=>({
+          ...rate,
+          title:rateTitle(id,rate?.id,rate?.title||rate?.code||''),
+          description:providerText(rate?.description||'')
+        }));
+      }
+      if(Array.isArray(tour.bokun.pricingCategories)){
+        next.bokun.pricingCategories=tour.bokun.pricingCategories.map(item=>{
+          const type=String(item?.ticketCategory||'').toUpperCase();
+          const title=type==='ADULT'
+            ? {ru:'Взрослый',vi:'Người lớn',en:'Adult',ko:'성인'}[locale()]
+            : type==='CHILD'
+              ? {ru:'Ребёнок',vi:'Trẻ em',en:'Child',ko:'아동'}[locale()]
+              : type==='INFANT'
+                ? {ru:'Младенец',vi:'Em bé',en:'Infant',ko:'유아'}[locale()]
+                : providerText(item?.title||type);
+          return {...item,title};
+        });
+      }
+    }
     return next;
   }
   function localizeQuestion(item={}){
