@@ -161,17 +161,68 @@ function sumAmounts(lines, field) {
   return lines.reduce((sum,line) => sum + (Number(line?.[field]) || 0), 0);
 }
 
+function rateQuoteFor(slot = {}, rateId) {
+  return arr(slot.priceQuotesByRate).find(item => str(item?.rateId) === str(rateId)) || null;
+}
+
+function extraConfigMap(rate = {}) {
+  return new Map(arr(rate.extraConfigs)
+    .map(config => [str(config?.extraId || config?.extra?.id), config])
+    .filter(([extraId]) => extraId));
+}
+
+function extraConstraints(domain = {}, rate = null, participantTotal = 0, selection = {}) {
+  const configs=extraConfigMap(rate || {});
+  return arr(domain.extras).flatMap(extra => {
+    const extraId=str(extra?.id);
+    const config=configs.get(extraId);
+    if (!config) return [];
+    const selectionType=str(config.selectionType).toUpperCase();
+    const pricingType=str(config.pricingType).toUpperCase();
+    const limitByPax=Boolean(extra?.limitByPax);
+    const configuredMax=num(extra?.maxPerBooking);
+    const maxQuantity=limitByPax
+      ? Math.max(0,participantTotal)
+      : configuredMax !== null && configuredMax > 0
+        ? configuredMax
+        : null;
+    return [{
+      id:extraId,
+      title:str(extra?.title),
+      code:str(extra?.code),
+      description:str(extra?.description),
+      required:selectionType === 'PRESELECTED' || selectionType === 'REQUIRED',
+      selectionType,
+      pricingType,
+      pricedPerPerson:config.pricedPerPerson === null || config.pricedPerPerson === undefined ? null : Boolean(config.pricedPerPerson),
+      limitByPax,
+      maxQuantity,
+      quantity:Number(selection.extras?.[extraId] || 0),
+    }];
+  });
+}
+
+function moneyCurrency(value) {
+  return str(value?.currency) || null;
+}
+
 function publicRate(rate = {}, domain = {}, slots = []) {
   const adult = arr(domain.participants).find(item => str(item.ticketCategory).toUpperCase() === 'ADULT') || arr(domain.participants)[0] || null;
   let from = null;
-  if (adult) {
-    for (const slot of slots) {
+  for (const slot of slots) {
+    if (rate.pricedPerPerson && adult) {
       const rows = quoteRows(slot, rate.id).filter(row => str(row.categoryId) === str(adult.id));
       for (const row of rows) {
         const amount = num(row?.amount?.amount);
         if (amount !== null && (from === null || amount < from.amount)) {
           from = { amount, currency:row?.amount?.currency || null };
         }
+      }
+    } else {
+      const quote=rateQuoteFor(slot,rate.id);
+      const amount=num(quote?.pricePerBooking?.amount);
+      if(amount!==null && (from===null||amount<from.amount)){
+        from={amount,currency:quote?.pricePerBooking?.currency||null};
       }
     }
   }
@@ -184,6 +235,12 @@ function publicRate(rate = {}, domain = {}, slots = []) {
     pricedPerPerson:Boolean(rate.pricedPerPerson),
     pickup:rate.pickup || null,
     dropoff:rate.dropoff || null,
+    extraConfigs:arr(rate.extraConfigs).map(config=>({
+      extraId:str(config?.extraId || config?.extra?.id),
+      selectionType:str(config?.selectionType),
+      pricingType:str(config?.pricingType),
+      pricedPerPerson:config?.pricedPerPerson === null || config?.pricedPerPerson === undefined ? null : Boolean(config.pricedPerPerson),
+    })),
     fromPrice:from,
   };
 }
@@ -365,7 +422,7 @@ function pickupLocationHasValue(value) {
     .some(key => hasValue(value[key]));
 }
 
-function missingBookingData(domain, selection, participantTotal, pickup = null) {
+function missingBookingData(domain, selection, participantTotal, pickup = null, extras = []) {
   const missing = [];
   const req = bookingRequirements(domain);
   const requiredFields = new Set(arr(req.requiredCustomerFields).map(canonicalCustomerField));
@@ -421,7 +478,7 @@ function missingBookingData(domain, selection, participantTotal, pickup = null) 
     }
   }
 
-  for (const extra of arr(domain.extras)) {
+  for (const extra of arr(extras)) {
     if (!extra?.required) continue;
     const extraId = str(extra.id);
     if (extraId && Number(selection.extras?.[extraId] || 0) <= 0) {
@@ -550,9 +607,6 @@ export function resolveBookingSelection(domain = {}, input = {}, { now = new Dat
     if (max !== null && participantTotal > max) {
       errors.push(issue('above_rate_maximum','participants','Participant count exceeds rate maximum',{ maximum:max, total:participantTotal }));
     }
-    if (!selectedRate.pricedPerPerson) {
-      warnings.push(issue('non_per_person_pricing','rateId','This rate is not priced per person and requires provider-specific quoting'));
-    }
   }
 
   if (selectedSlot && participantTotal > 0) {
@@ -581,17 +635,20 @@ export function resolveBookingSelection(domain = {}, input = {}, { now = new Dat
     errors.push(issue('meet_on_location_not_allowed','pickup.mode','Meeting on location is not allowed for this rate'));
   }
 
-  const extras = arr(domain.extras).map(extra => ({
-    id:extra?.id === null || extra?.id === undefined ? null : str(extra.id),
-    title:str(extra?.title),
-    code:str(extra?.code),
-    description:str(extra?.description),
-    required:Boolean(extra?.required),
-    quantity:selection.extras[str(extra?.id)] || 0,
-  }));
+  const extras = extraConstraints(domain,selectedRate,participantTotal,selection);
   const knownExtraIds = new Set(extras.map(item => item.id).filter(Boolean));
   for (const extraId of Object.keys(selection.extras)) {
-    if (!knownExtraIds.has(extraId)) errors.push(issue('unknown_extra','extras.'+extraId,'Selected extra is not part of this product',{ extraId }));
+    if (!knownExtraIds.has(extraId)) {
+      errors.push(issue('unknown_extra','extras.'+extraId,'Selected extra is not available for the selected rate',{ extraId }));
+      continue;
+    }
+    const extra=extras.find(item=>item.id===extraId);
+    const quantity=Math.max(0,Number(selection.extras[extraId])||0);
+    if(extra?.maxQuantity!==null && extra?.maxQuantity!==undefined && quantity>extra.maxQuantity){
+      errors.push(issue('extra_quantity_exceeds_maximum','extras.'+extraId,'Selected extra quantity exceeds the allowed maximum',{
+        extraId,maximum:extra.maxQuantity,quantity,
+      }));
+    }
   }
 
   let quote = {
@@ -601,51 +658,88 @@ export function resolveBookingSelection(domain = {}, input = {}, { now = new Dat
     participantSubtotal:null,
     pickupTotal:null,
     extrasTotal:null,
+    extraLines:[],
     total:null,
   };
 
-  if (selectedSlot && selectedRate && participantTotal > 0 && selectedRate.pricedPerPerson) {
-    const rows = quoteRows(selectedSlot, selectedRate.id);
+  if (selectedSlot && selectedRate && participantTotal > 0) {
+    const selectedRateQuote=rateQuoteFor(selectedSlot,selectedRate.id);
     const lines = [];
     let quoteComplete = true;
-    for (const category of participantCategories.filter(item => item.count > 0)) {
-      const row = applicableQuote(rows, category.id, participantTotal);
-      const unit = num(row?.amount?.amount);
-      const currency = str(row?.amount?.currency) || null;
-      if (!row || unit === null || !currency) {
-        quoteComplete = false;
-        errors.push(issue('participant_price_unavailable','participants.'+category.id,'No applicable price quote for participant category',{
-          categoryId:category.id,totalParticipants:participantTotal,
-        }));
-        continue;
+    let participantSubtotal = 0;
+    let baseCurrency = null;
+
+    if (selectedRate.pricedPerPerson) {
+      const rows = quoteRows(selectedSlot, selectedRate.id);
+      for (const category of participantCategories.filter(item => item.count > 0)) {
+        const row = applicableQuote(rows, category.id, participantTotal);
+        const unit = num(row?.amount?.amount);
+        const currency = str(row?.amount?.currency) || null;
+        if (!row || unit === null || !currency) {
+          quoteComplete = false;
+          errors.push(issue('participant_price_unavailable','participants.'+category.id,'No applicable price quote for participant category',{
+            categoryId:category.id,totalParticipants:participantTotal,
+          }));
+          continue;
+        }
+        lines.push({
+          categoryId:category.id,
+          title:category.title,
+          ticketCategory:category.ticketCategory,
+          count:category.count,
+          amount:{ amount:unit, currency },
+          minParticipantsRequired:num(row.minParticipantsRequired),
+          maxParticipantsRequired:num(row.maxParticipantsRequired),
+          lineTotal:Number((unit * category.count).toFixed(2)),
+        });
       }
-      lines.push({
-        categoryId:category.id,
-        title:category.title,
-        ticketCategory:category.ticketCategory,
-        count:category.count,
-        amount:{ amount:unit, currency },
-        minParticipantsRequired:num(row.minParticipantsRequired),
-        maxParticipantsRequired:num(row.maxParticipantsRequired),
-        lineTotal:Number((unit * category.count).toFixed(2)),
-      });
+      baseCurrency=currencyOf(lines);
+      if (baseCurrency === 'MIXED') {
+        quoteComplete = false;
+        errors.push(issue('mixed_currencies','quote','Participant prices use multiple currencies'));
+      }
+      participantSubtotal=Number(sumAmounts(lines,'lineTotal').toFixed(2));
+    } else {
+      const amount=num(selectedRateQuote?.pricePerBooking?.amount);
+      baseCurrency=moneyCurrency(selectedRateQuote?.pricePerBooking);
+      if(amount===null||!baseCurrency){
+        quoteComplete=false;
+        errors.push(issue('booking_price_unavailable','rateId','No per-booking price quote is available for this rate',{rateId:str(selectedRate.id)}));
+      }else{
+        participantSubtotal=Number(amount.toFixed(2));
+      }
     }
 
-    const currency = currencyOf(lines);
-    if (currency === 'MIXED') {
-      quoteComplete = false;
-      errors.push(issue('mixed_currencies','quote','Participant prices use multiple currencies'));
-    }
-
-    const participantSubtotal = Number(sumAmounts(lines,'lineTotal').toFixed(2));
     let pickupTotal = 0;
+    let pickupCurrency = null;
     if (selection.pickup.mode === 'PICKUP') {
       if (pickup.pricingType === 'INCLUDED_IN_PRICE' || !pickup.pricingType) {
         pickupTotal = 0;
+      } else if (pickup.pricedPerPerson) {
+        const priceRows=arr(selectedRateQuote?.pickupPricePerCategoryUnit);
+        let resolved=0;
+        for(const category of participantCategories.filter(item=>item.count>0)){
+          const row=priceRows.find(item=>str(item?.categoryId)===category.id);
+          const unit=num(row?.amount?.amount);
+          const currency=moneyCurrency(row?.amount);
+          if(unit===null||!currency){
+            quoteComplete=false;
+            warnings.push(issue('pickup_price_unresolved','pickup','Pickup price is missing for a selected participant category',{categoryId:category.id}));
+            continue;
+          }
+          pickupCurrency=pickupCurrency||currency;
+          if(pickupCurrency!==currency){
+            quoteComplete=false;
+            errors.push(issue('mixed_currencies','pickup','Pickup prices use multiple currencies'));
+          }
+          resolved+=unit*category.count;
+        }
+        pickupTotal=Number(resolved.toFixed(2));
       } else {
-        const direct = num(selectedSlot?.pickup?.price?.amount);
-        if (direct !== null) {
-          pickupTotal = pickup.pricedPerPerson ? Number((direct * participantTotal).toFixed(2)) : direct;
+        const direct = num(selectedRateQuote?.pickupPrice?.amount ?? selectedSlot?.pickup?.price?.amount);
+        pickupCurrency=moneyCurrency(selectedRateQuote?.pickupPrice ?? selectedSlot?.pickup?.price);
+        if (direct !== null && pickupCurrency) {
+          pickupTotal=Number(direct.toFixed(2));
         } else {
           quoteComplete = false;
           warnings.push(issue('pickup_price_unresolved','pickup','Pickup pricing is configured separately but no resolved pickup price is available'));
@@ -654,29 +748,69 @@ export function resolveBookingSelection(domain = {}, input = {}, { now = new Dat
     }
 
     let extrasTotal = 0;
-    if (Object.keys(selection.extras).length) {
-      quoteComplete = false;
-      warnings.push(issue('extras_price_unresolved','extras','Selected extras require provider-specific price resolution before final quoting'));
+    const extraLines=[];
+    for(const extra of extras.filter(item=>Number(item.quantity)>0)){
+      const quantity=Math.max(0,Number(extra.quantity)||0);
+      if(extra.pricingType==='INCLUDED_IN_PRICE'||!extra.pricingType){
+        extraLines.push({extraId:extra.id,title:extra.title,quantity,unitAmount:0,lineTotal:0,currency:baseCurrency});
+        continue;
+      }
+      if(extra.pricedPerPerson){
+        quoteComplete=false;
+        warnings.push(issue(
+          'extras_price_unresolved',
+          'extras.'+extra.id,
+          'Per-person extra pricing requires passenger-level allocation before final quoting',
+          {extraId:extra.id},
+        ));
+        continue;
+      }
+      const row=arr(selectedRateQuote?.extraPricePerUnit).find(item=>str(item?.id)===extra.id);
+      const unit=num(row?.amount?.amount);
+      const currency=moneyCurrency(row?.amount);
+      if(unit===null||!currency){
+        quoteComplete=false;
+        warnings.push(issue('extras_price_unresolved','extras.'+extra.id,'Selected extra has no resolved price',{extraId:extra.id}));
+        continue;
+      }
+      const lineTotal=Number((unit*quantity).toFixed(2));
+      extrasTotal+=lineTotal;
+      extraLines.push({extraId:extra.id,title:extra.title,quantity,unitAmount:unit,lineTotal,currency});
+    }
+    extrasTotal=Number(extrasTotal.toFixed(2));
+
+    const currencies=[
+      baseCurrency==='MIXED'?null:baseCurrency,
+      pickupTotal>0?pickupCurrency:null,
+      ...extraLines.filter(line=>line.lineTotal>0).map(line=>line.currency),
+    ].filter(Boolean);
+    const distinct=[...new Set(currencies)];
+    const quoteCurrency=distinct.length===1?distinct[0]:distinct.length===0?(baseCurrency==='MIXED'?null:baseCurrency):null;
+    if(distinct.length>1){
+      quoteComplete=false;
+      errors.push(issue('mixed_currencies','quote','Booking components use multiple currencies'));
     }
 
     if (quoteComplete) {
       quote = {
         available:true,
-        currency:currency || lines[0]?.amount?.currency || null,
+        currency:quoteCurrency,
         participantLines:lines,
         participantSubtotal,
         pickupTotal,
         extrasTotal,
+        extraLines,
         total:Number((participantSubtotal + pickupTotal + extrasTotal).toFixed(2)),
       };
     } else {
       quote = {
         available:false,
-        currency:currency === 'MIXED' ? null : (currency || lines[0]?.amount?.currency || null),
+        currency:quoteCurrency,
         participantLines:lines,
         participantSubtotal,
         pickupTotal,
-        extrasTotal:null,
+        extrasTotal:extraLines.length?extrasTotal:null,
+        extraLines,
         total:null,
       };
     }
@@ -686,7 +820,7 @@ export function resolveBookingSelection(domain = {}, input = {}, { now = new Dat
   if (!selectedSlot) errors.push(issue('slot_required','slotId','A specific date/time slot is required'));
   if (!selectedRate) errors.push(issue('rate_required','rateId','A rate/option is required'));
 
-  const bookingDataIssues = missingBookingData(domain, selection, participantTotal, pickup);
+  const bookingDataIssues = missingBookingData(domain, selection, participantTotal, pickup, extras);
   if (pickup.optional && !selection.pickup.mode) {
     bookingDataIssues.push(issue('pickup_mode_required','pickup.mode','Choose pickup or meeting on location before booking'));
   }
