@@ -269,7 +269,7 @@ jobs:
             rawCoveragePreserved:report.products.every(p=>p.coverage?.rawPreserved===true),
           };
           report.ok=Object.values(report.assertions).every(Boolean);
-          fs.writeFileSync('.live-bokun-matrix.json',JSON.stringify(report,null,2)+'\n');
+          writeFileSync('.live-bokun-matrix.json',JSON.stringify(report,null,2)+'\n');
           console.log(JSON.stringify(report,null,2));
           if(!report.ok) process.exitCode=2;
           NODE
