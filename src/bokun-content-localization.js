@@ -393,8 +393,19 @@ export async function localizeDomainFromCache(domain, env, requestedLocale, ctx 
 export async function syncAllDomainLocales(domains, env) {
   const results = [];
   for (const domain of asArray(domains)) {
+    const productId = String(domain?.experience?.id || domain?.provider?.productId || '');
     for (const locale of ['ru','vi','ko']) {
-      results.push(await syncDomainTranslations(domain, env, locale));
+      try {
+        results.push(await syncDomainTranslations(domain, env, locale));
+      } catch (error) {
+        results.push({
+          ok:false,
+          productId,
+          locale,
+          translated:0,
+          error:error instanceof Error ? error.message : String(error || 'Unknown localization sync error'),
+        });
+      }
     }
   }
   return results;
