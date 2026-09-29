@@ -31,7 +31,7 @@ test('MAX TOUR group-departure semantics are absent from the domain renderer',()
 
 test('optional provider entities render only when present',()=>{
   assert.match(js,/if\(!extras\.length&&!questions\.length&&!customer\.length&&!passenger\.length&&!custom\.length\) return ''/);
-  assert.match(js,/if\(!points\.length && !pickup && !meetingType\) return ''/);
+  assert.match(js,/if\(!points\.length && !pickup\) return ''/);
   assert.match(js,/if\(!items\.length\) return ''/);
   assert.match(js,/if\(!clean\.length\) return ''/);
 });
