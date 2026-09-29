@@ -162,3 +162,15 @@ test('pickup semantics and mobile keyboard behavior are explicit in the booking 
   assert.match(css,/--lt-vv-height/);
   assert.match(css,/--lt-keyboard-inset/);
 });
+
+
+test('hotel pickup hides the independent start point and labels transport contextually',()=>{
+  assert.match(js,/function pickupStepLabel\(/);
+  assert.match(js,/pickupHotelLabel/);
+  assert.match(js,/startPointLabel/);
+  assert.match(js,/function syncDomainTransport\(/);
+  assert.match(js,/startPointCard\.hidden=mode==='PICKUP'/);
+  assert.match(js,/pickupCard\.hidden=mode==='MEET_ON_LOCATION'/);
+  assert.match(js,/data-lt-selected-pickup-value/);
+  assert.match(js,/stepButton\('pickup',pickupStepLabel\(r\),pickupSummary\(r\)/);
+});
