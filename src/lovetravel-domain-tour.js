@@ -260,12 +260,14 @@
   }
   function fieldLabel(value){
     const labels={
-      FIRST_NAME:{ru:'Имя',en:'First name',vi:'Tên',ko:'이름'},
-      LAST_NAME:{ru:'Фамилия',en:'Last name',vi:'Họ',ko:'성'},
+      FIRSTNAME:{ru:'Имя',en:'First name',vi:'Tên',ko:'이름'},
+      LASTNAME:{ru:'Фамилия',en:'Last name',vi:'Họ',ko:'성'},
       PHONE:{ru:'Телефон',en:'Phone',vi:'Điện thoại',ko:'전화번호'},
+      PHONENUMBER:{ru:'Телефон',en:'Phone',vi:'Điện thoại',ko:'전화번호'},
       EMAIL:{ru:'Email',en:'Email',vi:'Email',ko:'이메일'}
     };
-    return labels[String(value || '').toUpperCase()]?.[locale()] || providerText(String(value || '').replaceAll('_',' ').toLowerCase());
+    const key=String(value||'').replace(/[^a-z0-9]/gi,'').toUpperCase();
+    return labels[key]?.[locale()] || providerText(String(value || '').replaceAll('_',' ').toLowerCase());
   }
   function quoteFor(slot,rateId){
     return arr(slot?.priceQuotesByRate).find(item=>String(item?.rateId)===String(rateId)) || null;
