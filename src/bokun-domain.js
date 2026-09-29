@@ -134,6 +134,16 @@ function referenceIds(values = []) {
   )).filter(value => value !== null);
 }
 
+function videoEntity(item = {}) {
+  return {
+    id:id(item.id),
+    title:text(item.title || item.name, 300),
+    description:text(item.description, 3000),
+    url:text(item.url || item.videoUrl || item.embedUrl || item.originalUrl || item.youtubeUrl, 2000),
+    providerData:item,
+  };
+}
+
 function questionEntity(item = {}) {
   const options=asArray(item.options ?? item.answerOptions).map(option => ({
     id:id(option.id),
@@ -480,7 +490,22 @@ export function buildBokunDomain(product = {}, availability = [], { vendorId = n
       })),
       media:{
         photos:mediaPhotos,
-        videos:asArray(product.videos).map(genericProviderEntity),
+        videos:asArray(product.videos).map(videoEntity),
+      },
+      booking:{
+        type:text(product.bookingType,100),
+        capacityType:text(product.capacityType,100),
+        scheduleType:text(product.scheduleType,100),
+        passesAvailable:numeric(product.passesAvailable),
+        passCapacity:numeric(product.passCapacity),
+        passExpiryType:text(product.passExpiryType,100),
+        passValidForDays:numeric(product.passValidForDays),
+        fixedPassExpiryDate:product.fixedPassExpiryDate ?? null,
+      },
+      ticket:{
+        perPerson:product.ticketPerPerson === undefined ? null : bool(product.ticketPerPerson),
+        message:text(product.ticketMsg,3000),
+        barcodeType:text(product.barcodeType,100),
       },
       meeting:{
         type:text(product.meetingType, 100),
