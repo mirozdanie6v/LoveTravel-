@@ -40,6 +40,13 @@ test('AI booking handoff clears the legacy observer intent before native booking
   assert.match(departure, /dateInput\.min = today/);
 });
 
-test('LoveTravel customer build excludes legacy AI network and departure guards', () => {
-  for (const asset of ['ai-network-guard-v8.js','ai-consultant-v5.js','ai-catalog-card-v7.js','tour-departure-live-v3.js']) assert.equal(build.includes(asset), false, asset);
+test('build loads network guard before AI client and departure guard after card parity', () => {
+  const networkAt = build.indexOf('/ai-network-guard-v8.js');
+  const aiAt = build.indexOf('/ai-consultant-v5.js');
+  const cardAt = build.indexOf('/ai-catalog-card-v7.js');
+  const departureAt = build.indexOf('/tour-departure-live-v3.js');
+  assert.ok(networkAt >= 0 && networkAt < aiAt);
+  assert.ok(cardAt >= 0 && cardAt < departureAt);
+  assert.match(build, /copyFile\(resolve\(root, 'src\/ai-network-guard-v8\.js'/);
+  assert.match(build, /copyFile\(resolve\(root, 'src\/tour-departure-live-v3\.js'/);
 });
