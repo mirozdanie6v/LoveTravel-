@@ -274,6 +274,84 @@ test('pickup cannot silently proceed when provider supplies no places and custom
   assert.ok(result.bookingDataIssues.some(x=>x.code==='pickup_places_unavailable'));
 });
 
+test('dynamic Bókun booking requirements validate contact, questions, custom fields, passengers and pickup room number',()=>{
+  const d=domain();
+  d.bookingRequirements.requiredCustomerFields=['firstName','lastName','phoneNumber'];
+  d.bookingRequirements.mainContactFields=[{field:'EMAIL',required:true,requiredBeforeDeparture:false}];
+  d.bookingRequirements.passengerFields=['FIRST_NAME'];
+  d.bookingRequirements.questions=[{id:'q-hotel',title:'Hotel name',required:true}];
+  d.bookingRequirements.customFields=[{id:'c-note',title:'Booking note',required:true}];
+
+  const base={
+    productId:'1287580',date:'2026-10-01',startTimeId:'301',rateId:'201',
+    participants:{101:2},
+    customer:{firstName:'A',lastName:'B',phoneNumber:'+84000000000'},
+    pickup:{mode:'PICKUP',placeId:'501'},
+  };
+  const incomplete=resolveBookingSelection(d,base,{now});
+  const codes=new Set(incomplete.bookingDataIssues.map(item=>item.code));
+  assert.ok(codes.has('required_customer_field_missing'));
+  assert.ok(codes.has('required_booking_question_missing'));
+  assert.ok(codes.has('required_custom_field_missing'));
+  assert.ok(codes.has('passenger_details_incomplete'));
+  assert.ok(codes.has('passenger_field_missing'));
+  assert.ok(codes.has('pickup_room_number_required'));
+  assert.equal(incomplete.readyToBook,false);
+
+  const complete=resolveBookingSelection(d,{
+    ...base,
+    customer:{...base.customer,email:'guest@example.com'},
+    answers:{'q-hotel':'Thien Anh Hotel','c-note':'Late arrival'},
+    passengers:[
+      {categoryId:'101',firstName:'Anna'},
+      {categoryId:'101',firstName:'Ben'},
+    ],
+    pickup:{mode:'PICKUP',placeId:'501',roomNumber:'804'},
+  },{now});
+  assert.equal(complete.bookingDataIssues.length,0);
+  assert.equal(complete.readyToQuote,true);
+  assert.equal(complete.readyToBook,true);
+  assert.equal(complete.selection.pickup.roomNumber,'804');
+  assert.equal(complete.constraints.bookingRequirements.mainContactFields[0].field,'email');
+});
+
+test('string main contact fields are preserved for the UI instead of being dropped',()=>{
+  const d=domain();
+  d.bookingRequirements.mainContactFields=['EMAIL','PHONE_NUMBER'];
+  const result=resolveBookingSelection(d,{
+    productId:'1287580',date:'2026-10-01',startTimeId:'301',rateId:'201',
+    participants:{101:1},pickup:{mode:'MEET_ON_LOCATION'},
+  },{now});
+  assert.deepEqual(
+    result.constraints.bookingRequirements.mainContactFields.map(item=>item.field),
+    ['email','phoneNumber'],
+  );
+});
+
+test('required extras and custom pickup are represented explicitly in booking validation',()=>{
+  const d=domain();
+  d.extras=[{id:701,title:'Private transfer',required:true}];
+  d.experience.pickup.customAllowed=true;
+
+  const requiredExtra=resolveBookingSelection(d,{
+    productId:'1287580',date:'2026-10-01',startTimeId:'301',rateId:'201',
+    participants:{101:1},
+    customer:{firstName:'A',lastName:'B',phoneNumber:'+84000000000'},
+    pickup:{mode:'MEET_ON_LOCATION'},
+  },{now});
+  assert.ok(requiredExtra.bookingDataIssues.some(x=>x.code==='required_extra_missing'));
+
+  const badCustom=resolveBookingSelection(d,{
+    productId:'1287580',date:'2026-10-01',startTimeId:'301',rateId:'201',
+    participants:{101:1},
+    customer:{firstName:'A',lastName:'B',phoneNumber:'+84000000000'},
+    pickup:{mode:'PICKUP',customLocation:{}},
+    extras:{701:1},
+  },{now});
+  assert.ok(badCustom.bookingDataIssues.some(x=>x.code==='custom_pickup_location_incomplete'));
+  assert.ok(badCustom.warnings.some(x=>x.code==='extras_price_unresolved'));
+});
+
 test('selectionForPatch clears stale slot/time when date changes',()=>{
   const next=selectionForPatch({
     productId:'1287580',date:'2026-10-01',startTimeId:'301',slotId:'301_20261001',rateId:'201',
