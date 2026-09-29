@@ -119,3 +119,25 @@ test('passenger-level extras have dedicated allocation and answer controls',()=>
   assert.match(js,/pricedPerPerson/);
   assert.match(css,/\.lt-passenger-extra/);
 });
+
+
+test('checkout-ready contact UI requires email and all four authoritative main-contact fields',()=>{
+  assert.match(js,/CHECKOUT_REQUIRED_CUSTOMER_FIELDS = \['firstName','lastName','email','phoneNumber'\]/);
+  assert.match(js,/function checkoutContactComplete\(/);
+  assert.match(js,/new Map\(CHECKOUT_REQUIRED_CUSTOMER_FIELDS\.map/);
+  assert.match(js,/!checkoutContactComplete\(next\)/);
+});
+
+test('pickup room requirement survives exact revalidation and uses the latest resolution',()=>{
+  assert.match(js,/function openPickupSheet\(productId,query='',resolutionOverride=null\)/);
+  assert.match(js,/const roomRequired=Boolean\(/);
+  assert.match(js,/pickup_room_number_required/);
+  assert.match(js,/openPickupSheet\(productId,currentQuery,next\)/);
+  assert.match(js,/data-lt-room-number/);
+});
+
+test('mobile configurator uses readable single-column steps and brand primary CTA',()=>{
+  assert.match(css,/@media\(max-width:520px\)[\s\S]*\.lt-booking-config__grid\{[\s\S]*grid-template-columns:1fr/);
+  assert.match(css,/background:linear-gradient\(135deg,#ee4214,#ff7b2e\)/);
+  assert.match(css,/-webkit-line-clamp:2/);
+});
