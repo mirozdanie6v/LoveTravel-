@@ -66,9 +66,7 @@ test('catalog filter press CSS provides visible tactile feedback', () => {
   assert.match(css, /prefers-reduced-motion/);
 });
 
-test('build publishes catalog filter press assets', () => {
-  assert.match(build, /catalog-show-press\.css/);
-  assert.match(build, /catalog-show-press\.js/);
-  assert.match(build, /copyFile\(resolve\(root, 'src\/catalog-show-press\.css'\)/);
-  assert.match(build, /copyFile\(resolve\(root, 'src\/catalog-show-press\.js'\)/);
+test('LoveTravel customer build excludes legacy catalog filter press assets', () => {
+  assert.doesNotMatch(build, /catalog-show-press\.css/);
+  assert.doesNotMatch(build, /catalog-show-press\.js/);
 });
