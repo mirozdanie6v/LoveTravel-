@@ -248,14 +248,18 @@
     if(lang==='ko') return n+'분';
     return n+' min';
   }
+  function serverLocalizationMatches(value){
+    const meta=value?.localization;
+    return Boolean(meta && meta.locale===locale() && (meta.source==='bokun-native'||meta.source==='viiversion-cache'));
+  }
   function localizeCatalogTour(tour){
     if(!tour||typeof tour!=='object') return tour;
     const id=String(tour.id||'');
-    if(!products[id]) return tour;
+    const dynamic=serverLocalizationMatches(tour);
     const next={
       ...tour,
-      title:productTitle(id,tour.title),
-      description:productDescription(id,tour.description),
+      title:dynamic?tour.title:productTitle(id,tour.title),
+      description:dynamic?tour.description:productDescription(id,tour.description),
       duration:tour.duration?duration({text:tour.duration}):tour.duration,
       activity:tour.activity?difficulty(tour.activity):tour.activity,
       languages:Array.isArray(tour.languages)?tour.languages.map(languageName):tour.languages,
@@ -263,13 +267,13 @@
       excluded:Array.isArray(tour.excluded)?tour.excluded.map(providerText):tour.excluded,
       formatsLabel:tour.formatsLabel?providerText(tour.formatsLabel):tour.formatsLabel,
     };
-    if('shortDescription' in next) next.shortDescription=productDescription(id,next.shortDescription);
+    if('shortDescription' in next) next.shortDescription=dynamic?next.shortDescription:productDescription(id,next.shortDescription);
     if(Array.isArray(tour.route)){
       const stopWord={ru:'Остановка',vi:'Điểm',en:'Stop',ko:'코스'}[locale()];
       next.route=tour.route.map((row,index)=>{
         const title=Array.isArray(row)?String(row[0]||''):String(row?.title||'');
         const fallbackBody=Array.isArray(row)?String(row[1]||''):String(row?.body||row?.description||'');
-        const localizedBody=itineraryBody(id,index,fallbackBody);
+        const localizedBody=dynamic?fallbackBody:itineraryBody(id,index,fallbackBody);
         const localizedTitle=/^Stop\s+\d+$/i.test(title)?stopWord+' '+(index+1):providerText(title);
         return Array.isArray(row)?[localizedTitle,localizedBody]:{...row,title:localizedTitle,body:localizedBody};
       });
@@ -289,7 +293,7 @@
       if(Array.isArray(tour.bokun.rates)){
         next.bokun.rates=tour.bokun.rates.map(rate=>({
           ...rate,
-          title:rateTitle(id,rate?.id,rate?.title||rate?.code||''),
+          title:dynamic?(rate?.title||rate?.code||''):rateTitle(id,rate?.id,rate?.title||rate?.code||''),
           description:providerText(rate?.description||'')
         }));
       }
@@ -340,6 +344,7 @@
     ageRange,
     minutes,
     localizeCatalogTour,
-    localizeQuestion
+    localizeQuestion,
+    serverLocalizationMatches
   };
 })();
