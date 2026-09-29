@@ -93,7 +93,38 @@ test('LoveTravel worker exposes only the two agreed Bókun products in read-only
       calls.filter(url=>url.pathname.endsWith('/product')).map(url=>url.searchParams.get('productId')).sort(),
       ['1287578','1287580'],
     );
+    assert.ok(calls.filter(url=>url.pathname.endsWith('/product')).every(url=>url.searchParams.get('lang')==='RU'));
+    assert.equal(body.locale,'ru');
     assert.equal(response.headers.get('cache-control'),'no-store, max-age=0');
+  } finally {
+    globalThis.fetch=originalFetch;
+  }
+});
+
+test('LoveTravel forwards the active locale to Bókun product reads', async () => {
+  const originalFetch=globalThis.fetch;
+  const calls=[];
+  globalThis.fetch=async input => {
+    const url=new URL(typeof input === 'string' ? input : input.url);
+    calls.push(url);
+    if(url.pathname.endsWith('/product')) {
+      const item=product(url.searchParams.get('productId'));
+      item.baseLanguage='en_GB';
+      item.languages=['EN_GB'];
+      return new Response(JSON.stringify(item),{status:200,headers:{'content-type':'application/json'}});
+    }
+    return new Response(JSON.stringify(availability),{status:200,headers:{'content-type':'application/json'}});
+  };
+  try {
+    const response=await handleLoveTravelBokunTours(
+      new Request('https://lovetravel.viiversion.com/api/bokun/tours?locale=ko&start=2026-09-28&end=2026-10-02'),
+      {BOKUN_INTEGRATION_BASE_URL:'https://integration.example'},
+    );
+    const body=await response.json();
+    assert.equal(response.status,200);
+    assert.equal(body.locale,'ko');
+    assert.ok(calls.filter(url=>url.pathname.endsWith('/product')).every(url=>url.searchParams.get('lang')==='KO'));
+    assert.ok(body.tours.every(tour=>tour.localization?.locale==='ko'));
   } finally {
     globalThis.fetch=originalFetch;
   }
