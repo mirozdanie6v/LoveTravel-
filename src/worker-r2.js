@@ -167,7 +167,7 @@ export async function handleLoveTravelBokunTours(request, env, url = new URL(req
   }
 }
 
-export async function handleLoveTravelBookingSelection(request, env, url = new URL(request.url)) {
+export async function handleLoveTravelBookingSelection(request, env, url = new URL(request.url), ctx = null) {
   if (url.pathname !== '/api/bokun/booking-selection/resolve') return null;
   if (request.method !== 'POST') {
     return json({ ok:false, error:'method_not_allowed' }, {
@@ -185,6 +185,7 @@ export async function handleLoveTravelBookingSelection(request, env, url = new U
   }
 
   const body = await request.clone().json().catch(() => null);
+  const locale = normalizeContentLocale(body?.locale || url.searchParams.get('locale') || 'ru');
   const selection = body?.selection && typeof body.selection === 'object' ? body.selection : body;
   if (!selection || typeof selection !== 'object' || Array.isArray(selection)) {
     return json({ ok:false, error:'invalid_selection' }, {
@@ -225,9 +226,11 @@ export async function handleLoveTravelBookingSelection(request, env, url = new U
       start,
       end,
       currency:'USD',
+      lang:bokunLanguage(locale),
       includePickupPlaces,
     });
-    const domain = domains[0];
+    const rawDomain = domains[0];
+    const domain = rawDomain ? await localizeDomainFromCache(rawDomain, env, locale, ctx) : null;
     if (!domain) {
       return json({ ok:false, error:'product_domain_unavailable' }, {
         status:502,
@@ -244,6 +247,7 @@ export async function handleLoveTravelBookingSelection(request, env, url = new U
       start,
       end,
       includePickupPlaces,
+      locale,
       ...resolution,
     }, {
       headers:{
@@ -502,7 +506,7 @@ export default {
     if (url.pathname.startsWith('/tour-media/')) {
       return serveTourMedia(request, env, url.pathname);
     }
-    const bookingSelectionResponse = await handleLoveTravelBookingSelection(request, env, url);
+    const bookingSelectionResponse = await handleLoveTravelBookingSelection(request, env, url, ctx);
     if (bookingSelectionResponse) return bookingSelectionResponse;
     const bokunToursResponse = await handleLoveTravelBokunTours(request, env, url, ctx);
     if (bokunToursResponse) return bokunToursResponse;
