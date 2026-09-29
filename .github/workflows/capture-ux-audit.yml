@@ -84,6 +84,17 @@ jobs:
               await page.waitForTimeout(300);
             }
 
+            await page.locator('#tourScreen [data-lt-step="option"]').click();
+            await page.waitForSelector('.lt-booking-sheet.is-open [data-lt-rate]',{state:'visible',timeout:10000});
+            await page.waitForTimeout(300);
+            await page.screenshot({path:'audit-ui/06-option-sheet.png'});
+            await page.locator('.lt-booking-sheet.is-open [data-lt-rate]').first().click();
+            await page.waitForTimeout(900);
+            if(await page.locator('.lt-booking-sheet.is-open').count()){
+              await page.locator('.lt-booking-sheet.is-open [data-lt-sheet-close-button]').click().catch(()=>{});
+              await page.waitForTimeout(300);
+            }
+
             await page.locator('#tourScreen [data-lt-step="pickup"]').click();
             await page.waitForSelector('.lt-booking-sheet.is-open [data-lt-pickup-mode="PICKUP"]',{state:'visible',timeout:10000});
             await page.locator('.lt-booking-sheet.is-open [data-lt-pickup-mode="PICKUP"]').click();
