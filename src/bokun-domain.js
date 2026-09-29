@@ -1,6 +1,6 @@
 const asArray = value => Array.isArray(value) ? value : [];
 const text = (value, max = 8000) => String(value ?? '').replace(/\s+/g, ' ').trim().slice(0, max);
-const numeric = value => Number.isFinite(Number(value)) ? Number(value) : null;
+const numeric = value => value === null || value === undefined || value === '' ? null : (Number.isFinite(Number(value)) ? Number(value) : null);
 const bool = value => Boolean(value);
 
 function money(value) {
