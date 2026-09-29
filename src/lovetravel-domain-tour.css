@@ -88,3 +88,7 @@ html.love-travel-branded #tourScreen.lt-domain-tour{padding:0 0 28px!important;b
   .lt-domain-participants{grid-template-columns:1fr}
 }
 @media(prefers-reduced-motion:reduce){.lt-domain-spinner{animation:none}}
+
+.lt-domain-video-list{display:grid;gap:8px}
+.lt-domain-video{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border:1px solid rgba(31,79,108,.09);border-radius:16px;background:#fff;color:#245f86;text-decoration:none;font-weight:800;font-size:11px}
+.lt-domain-video::after{content:'↗';font-size:14px;color:#6d91a8}
