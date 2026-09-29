@@ -13,74 +13,74 @@
 
   const copy = {
     ru:{
-      title:'Соберите поездку', live:'Актуальные места и цены',
+      title:'Соберите поездку', live:'Актуальные места и цены из системы туроператора',
       date:'Дата и время', dateEmpty:'Выберите дату', option:'Вариант', optionEmpty:'Выберите вариант',
       guests:'Участники', guestsEmpty:'Добавьте участников', pickup:'Как добраться', pickupEmpty:'Выберите способ',
       meet:'Встретимся на месте', pickupMode:'Забрать из отеля', included:'включено в цену',
-      total:'Итого', from:'от', continue:'Продолжить', check:'Проверить данные', ready:'Данные проверены',
+      total:'Итого', from:'от', continue:'Продолжить', check:'Проверить данные', ready:'Конфигурация проверена',
       unavailable:'Комбинация недоступна', updating:'Проверяем актуальные данные…',
       chooseDate:'Выберите дату', chooseTime:'Выберите время', chooseOption:'Выберите вариант экскурсии',
       chooseGuests:'Укажите участников', choosePickup:'Выберите способ встречи',
       available:'мест доступно', spots:'мест', adult:'Взрослый', child:'Ребёнок', infant:'Младенец',
       years:'лет', close:'Закрыть', searchHotel:'Найдите отель или точку посадки',
-      pickupPlace:'Место посадки', roomNeeded:'Для этой точки нужен номер комнаты при оформлении.',
+      pickupPlace:'Место посадки', roomNeeded:'Для этой точки Bókun запрашивает номер комнаты на этапе оформления.',
       contact:'Контактные данные', firstName:'Имя', lastName:'Фамилия', phoneNumber:'Телефон', email:'Email',
       verify:'Проверить', verified:'Данные проверены', noPlaces:'Ничего не найдено',
       select:'Выбрать', selected:'Выбрано', pricePerPerson:'за человека', liveQuote:'Цена проверена сейчас', onRequest:'Требуется подтверждение туроператора',
       refreshError:'Не удалось обновить доступность. Попробуйте ещё раз.',
       minGuests:'Минимум', maxGuests:'Максимум', noExtra:'Дополнительных услуг сейчас нет', extras:'Дополнительно', extrasEmpty:'Без дополнений', chooseExtras:'Дополнительные услуги', extrasRequired:'Выберите обязательную услугу', passengerDetails:'Данные участников', passenger:'Участник', questions:'Вопросы для бронирования', additionalInfo:'Дополнительные данные', roomNumber:'Номер комнаты', save:'Сохранить', customPickup:'Другой адрес', customPickupAddress:'Адрес для посадки',
-      bookingNotSent:'Данные пока не отправлены туроператору.',
+      bookingNotSent:'Бронирование пока не отправляется в Bókun — на этом этапе проверяется конфигурация.',
       selectDateFirst:'Сначала выберите дату', selectOptionFirst:'Выберите вариант', selectGuestsFirst:'Добавьте участников',
       pickupRequired:'Нужно выбрать способ встречи', contactRequired:'Нужно заполнить контактные данные'
     },
     en:{
-      title:'Build your trip', live:'Live availability and pricing',
+      title:'Build your trip', live:'Live availability and pricing from the operator system',
       date:'Date & time', dateEmpty:'Choose a date', option:'Option', optionEmpty:'Choose an option',
       guests:'Guests', guestsEmpty:'Add guests', pickup:'Getting there', pickupEmpty:'Choose a method',
       meet:'Meet on location', pickupMode:'Hotel pickup', included:'included in price',
-      total:'Total', from:'from', continue:'Continue', check:'Check details', ready:'Details checked',
+      total:'Total', from:'from', continue:'Continue', check:'Check details', ready:'Configuration checked',
       unavailable:'Combination unavailable', updating:'Checking live data…',
       chooseDate:'Choose a date', chooseTime:'Choose a time', chooseOption:'Choose a tour option',
       chooseGuests:'Add guests', choosePickup:'Choose how to meet',
       available:'spots available', spots:'spots', adult:'Adult', child:'Child', infant:'Infant',
       years:'years', close:'Close', searchHotel:'Search hotel or pickup point',
-      pickupPlace:'Pickup point', roomNeeded:'A room number is required for this pickup point during checkout.',
+      pickupPlace:'Pickup point', roomNeeded:'Bókun asks for a room number for this pickup point during checkout.',
       contact:'Contact details', firstName:'First name', lastName:'Last name', phoneNumber:'Phone', email:'Email',
       verify:'Check', verified:'Details checked', noPlaces:'No matches',
       select:'Select', selected:'Selected', pricePerPerson:'per person', liveQuote:'Price checked live', onRequest:'Operator confirmation required',
       refreshError:'Could not refresh availability. Try again.',
       minGuests:'Minimum', maxGuests:'Maximum', noExtra:'No extras are currently configured', extras:'Extras', extrasEmpty:'No extras', chooseExtras:'Additional services', extrasRequired:'Choose the required extra', passengerDetails:'Guest details', passenger:'Guest', questions:'Booking questions', additionalInfo:'Additional details', roomNumber:'Room number', save:'Save', customPickup:'Other address', customPickupAddress:'Pickup address',
-      bookingNotSent:'Your details have not been sent to the operator yet.',
+      bookingNotSent:'The booking is not sent to Bókun yet — this stage validates the configuration.',
       selectDateFirst:'Choose a date first', selectOptionFirst:'Choose an option', selectGuestsFirst:'Add guests',
       pickupRequired:'Choose how to meet', contactRequired:'Complete the contact details'
     },
     vi:{
-      title:'Tạo chuyến đi', live:'Giá và chỗ trống cập nhật',
+      title:'Tạo chuyến đi', live:'Giá và chỗ trống trực tiếp từ hệ thống điều hành',
       date:'Ngày & giờ', dateEmpty:'Chọn ngày', option:'Lựa chọn', optionEmpty:'Chọn chương trình',
       guests:'Khách', guestsEmpty:'Thêm khách', pickup:'Di chuyển', pickupEmpty:'Chọn cách gặp',
       meet:'Gặp tại điểm hẹn', pickupMode:'Đón tại khách sạn', included:'đã gồm trong giá',
-      total:'Tổng', from:'từ', continue:'Tiếp tục', check:'Kiểm tra thông tin', ready:'Đã kiểm tra thông tin',
+      total:'Tổng', from:'từ', continue:'Tiếp tục', check:'Kiểm tra thông tin', ready:'Đã kiểm tra cấu hình',
       unavailable:'Lựa chọn không khả dụng', updating:'Đang kiểm tra dữ liệu mới nhất…',
       chooseDate:'Chọn ngày', chooseTime:'Chọn giờ', chooseOption:'Chọn chương trình',
       chooseGuests:'Chọn số khách', choosePickup:'Chọn cách gặp',
       available:'chỗ còn trống', spots:'chỗ', adult:'Người lớn', child:'Trẻ em', infant:'Em bé',
       years:'tuổi', close:'Đóng', searchHotel:'Tìm khách sạn hoặc điểm đón',
-      pickupPlace:'Điểm đón', roomNeeded:'Điểm đón này yêu cầu số phòng khi đặt tour.',
+      pickupPlace:'Điểm đón', roomNeeded:'Bókun yêu cầu số phòng cho điểm đón này trong bước thanh toán.',
       contact:'Thông tin liên hệ', firstName:'Tên', lastName:'Họ', phoneNumber:'Điện thoại', email:'Email',
       verify:'Kiểm tra', verified:'Đã kiểm tra', noPlaces:'Không có kết quả',
       select:'Chọn', selected:'Đã chọn', pricePerPerson:'mỗi người', liveQuote:'Giá vừa được kiểm tra', onRequest:'Cần nhà điều hành xác nhận',
       refreshError:'Không thể cập nhật chỗ trống. Vui lòng thử lại.',
       minGuests:'Tối thiểu', maxGuests:'Tối đa', noExtra:'Hiện không có dịch vụ bổ sung', extras:'Dịch vụ thêm', extrasEmpty:'Không chọn thêm', chooseExtras:'Dịch vụ bổ sung', extrasRequired:'Chọn dịch vụ bắt buộc', passengerDetails:'Thông tin hành khách', passenger:'Hành khách', questions:'Câu hỏi đặt chỗ', additionalInfo:'Thông tin bổ sung', roomNumber:'Số phòng', save:'Lưu', customPickup:'Địa chỉ khác', customPickupAddress:'Địa chỉ đón',
-      bookingNotSent:'Thông tin chưa được gửi tới nhà điều hành.',
+      bookingNotSent:'Đặt chỗ chưa được gửi tới Bókun — bước này chỉ xác thực cấu hình.',
       selectDateFirst:'Hãy chọn ngày trước', selectOptionFirst:'Chọn chương trình', selectGuestsFirst:'Thêm khách',
       pickupRequired:'Chọn cách gặp', contactRequired:'Điền thông tin liên hệ'
     },
     ko:{
-      title:'여행 구성하기', live:'실시간 좌석 및 가격',
+      title:'여행 구성하기', live:'운영사 시스템의 실시간 좌석 및 가격',
       date:'날짜 및 시간', dateEmpty:'날짜 선택', option:'옵션', optionEmpty:'옵션 선택',
       guests:'인원', guestsEmpty:'인원 추가', pickup:'이동 방법', pickupEmpty:'방법 선택',
       meet:'현장 미팅', pickupMode:'호텔 픽업', included:'가격 포함',
-      total:'합계', from:'최저', continue:'계속', check:'정보 확인', ready:'정보 확인 완료',
+      total:'합계', from:'최저', continue:'계속', check:'정보 확인', ready:'구성 확인 완료',
       unavailable:'선택 불가', updating:'실시간 정보를 확인 중…',
       chooseDate:'날짜 선택', chooseTime:'시간 선택', chooseOption:'투어 옵션 선택',
       chooseGuests:'인원 선택', choosePickup:'미팅 방법 선택',
@@ -92,14 +92,14 @@
       select:'선택', selected:'선택됨', pricePerPerson:'1인당', liveQuote:'실시간 가격 확인됨', onRequest:'운영사 확인 필요',
       refreshError:'예약 가능 여부를 업데이트하지 못했습니다. 다시 시도해 주세요.',
       minGuests:'최소', maxGuests:'최대', noExtra:'현재 추가 옵션이 없습니다', extras:'추가 옵션', extrasEmpty:'추가 옵션 없음', chooseExtras:'추가 서비스', extrasRequired:'필수 추가 서비스를 선택하세요', passengerDetails:'참가자 정보', passenger:'참가자', questions:'예약 질문', additionalInfo:'추가 정보', roomNumber:'객실 번호', save:'저장', customPickup:'다른 주소', customPickupAddress:'픽업 주소',
-      bookingNotSent:'아직 운영사에 정보가 전송되지 않았습니다.',
+      bookingNotSent:'아직 Bókun에 예약을 전송하지 않습니다. 이 단계에서는 구성을 검증합니다.',
       selectDateFirst:'먼저 날짜를 선택하세요', selectOptionFirst:'옵션 선택', selectGuestsFirst:'인원 추가',
       pickupRequired:'미팅 방법을 선택하세요', contactRequired:'연락처 정보를 입력하세요'
     }
   };
 
   function locale(){
-    const value=String(document.documentElement.lang || localStorage.getItem('love-travel-locale-v1') || localStorage.getItem('max-tour-locale-v1') || 'ru').toLowerCase();
+    const value=String(document.documentElement.lang || localStorage.getItem('max-tour-locale-v1') || 'ru').toLowerCase();
     return copy[value] ? value : 'ru';
   }
   function t(){ return copy[locale()]; }
@@ -268,18 +268,9 @@
     const count=bookingCount+passengerCount;
     return count>0 ? String(count) : t().extrasEmpty;
   }
-  function requiredCustomerComplete(r){
-    const req=r?.constraints?.bookingRequirements||{};
-    const required=new Set(arr(req.requiredCustomerFields).map(canonicalField).filter(Boolean));
-    for(const spec of arr(req.mainContactFields).map(item=>bookingFieldSpec(item,true)).filter(Boolean)){
-      if(spec.required) required.add(spec.field);
-    }
-    const customer=r?.selection?.customer||{};
-    return [...required].every(field=>String(customer?.[field]??'').trim().length>0);
-  }
   function contactSummary(r){
     const contactCodes=new Set(['required_customer_field_missing','required_booking_question_missing','invalid_booking_question_answer','required_custom_field_missing','passenger_details_incomplete','passenger_field_missing','required_passenger_booking_question_missing','invalid_passenger_booking_question_answer']);
-    const pending=arr(r?.bookingDataIssues).some(item=>contactCodes.has(item.code)) || !requiredCustomerComplete(r);
+    const pending=arr(r?.bookingDataIssues).some(item=>contactCodes.has(item.code));
     return pending ? t().contactRequired : t().verified;
   }
   function quoteSummary(r){
@@ -334,7 +325,7 @@
     const cta=ready?t().ready:(r.readyToQuote?t().continue:t().continue);
     const extras=arr(r?.constraints?.extras);
     const extrasComplete=!arr(r?.bookingDataIssues).some(item=>item.code==='required_extra_missing'||item.code==='required_passenger_extra_missing'||String(item.code).includes('extra_booking_question'));
-    const detailsComplete=requiredCustomerComplete(r) && !arr(r?.bookingDataIssues).some(item=>
+    const detailsComplete=!arr(r?.bookingDataIssues).some(item=>
       ['required_customer_field_missing','required_booking_question_missing','invalid_booking_question_answer','required_custom_field_missing','passenger_details_incomplete','passenger_field_missing','required_passenger_booking_question_missing','invalid_passenger_booking_question_answer'].includes(item.code)
     );
     mount.innerHTML=
@@ -933,7 +924,7 @@
       const hasContactIssues=arr(next.bookingDataIssues).some(item=>
         ['required_customer_field_missing','required_booking_question_missing','invalid_booking_question_answer','required_custom_field_missing','passenger_details_incomplete','passenger_field_missing','required_passenger_booking_question_missing','invalid_passenger_booking_question_answer'].includes(item.code)
       );
-      if(next.readyToBook||(!hasContactIssues&&requiredCustomerComplete(next))){
+      if(next.readyToBook||!hasContactIssues){
         const btn=root.querySelector('[data-lt-contact-check]'); if(btn){btn.textContent=t().verified;btn.classList.add('is-success');}
         setTimeout(closeSheet,550);
       }else openContactSheet(productId);
