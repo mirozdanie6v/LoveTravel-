@@ -2,6 +2,7 @@
   'use strict';
 
   const PRODUCT_IDS = new Set(['1287578','1287580']);
+  const RELEASE_ID = '2026-09-29-bokun-complete-v1';
   const stateByProduct = new Map();
   const resolutionByProduct = new Map();
   const calendarByKey = new Map();
