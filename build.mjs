@@ -107,6 +107,36 @@ function stripSalesContinuityV24(source) {
   return stripped;
 }
 
+const loveTravelPrepaint = `<style id="lovetravel-prepaint">
+html:not(.love-travel-branded) body{
+  margin:0;
+  min-height:100vh;
+  background:#f2f8fd;
+}
+html:not(.love-travel-branded) .phone{
+  visibility:hidden!important;
+}
+html:not(.love-travel-branded) body::before{
+  content:"Nha Trang Love Travel";
+  position:fixed;
+  inset:0;
+  z-index:2147483647;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:24px;
+  box-sizing:border-box;
+  color:#0b5aa8;
+  background:
+    radial-gradient(circle at 20% 10%,rgba(54,131,232,.10),transparent 32%),
+    linear-gradient(180deg,#f7fbfe 0%,#eef6fa 100%);
+  font:800 20px/1.2 Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  letter-spacing:-.02em;
+}
+html.love-travel-branded body::before{
+  display:none;
+}
+</style>`;
 const telegramSdk = '<script src="https://telegram.org/js/telegram-web-app.js?63"></script>';
 const analyticsTracker = '<script defer src="https://dashboard.viiversion.com/tracker.js" data-project="LoveTravel"></script>';
 const productionEmbedCss = '<link rel="stylesheet" href="/production-embed-polish.css">';
@@ -116,6 +146,10 @@ const i18nJs = '<script defer src="/i18n-en-v1.js"></script>\n<script defer src=
 
 function withViiversionAnalytics(html) {
   let result = html;
+  if (!result.includes('id="lovetravel-prepaint"')) {
+    if (!result.includes('</head>')) throw new Error('HTML has no </head> marker');
+    result = result.replace('</head>', `${loveTravelPrepaint}\n</head>`);
+  }
   if (!result.includes('telegram-web-app.js')) {
     if (!result.includes('</head>')) throw new Error('HTML has no </head> marker');
     result = result.replace('</head>', `${telegramSdk}\n</head>`);
