@@ -143,6 +143,15 @@ export function projectBokunDomainToLegacyTour(domain = {}) {
 
   const priceFromUsd = adultPrice?.currency === 'USD' ? Number(adultPrice.amount) || 0 : 0;
   const meetingPoints = asArray(domain.experience?.meeting?.startPoints);
+  const productFlags = asArray(product.flags).map(value =>
+    text(typeof value === 'string' ? value : (value?.code || value?.name || value?.title), 80).toUpperCase()
+  ).filter(Boolean);
+  const popular = productFlags.some(value => /POPULAR|FEATURED|HIGHLIGHT/.test(value));
+  const formatsLabel = product.privateActivity === true
+    ? 'индивидуальный'
+    : product.privateActivity === false
+      ? 'групповой'
+      : '';
   const searchText = [
     domain.experience?.title,
     domain.experience?.description,
@@ -157,13 +166,13 @@ export function projectBokunDomainToLegacyTour(domain = {}) {
   return {
     id:String(domain.experience?.id || domain.provider?.productId || ''),
     source:'bokun',
-    popular:true,
+    popular,
     bokunProductId:String(domain.provider?.productId ?? ''),
     externalId:text(domain.experience?.externalId, 120),
     title:text(domain.experience?.title, 240),
     description:text(domain.experience?.description, 3000),
-    city:text(domain.experience?.location?.city || 'Nha Trang', 100),
-    region:text(meetingPoints[0]?.state || 'Khánh Hòa', 100),
+    city:text(domain.experience?.location?.city || meetingPoints[0]?.city, 100),
+    region:text(meetingPoints[0]?.state, 100),
     category:text(domain.experience?.category, 100),
     duration:text(domain.experience?.duration?.text, 80),
     time:text(firstSlot?.startTime, 30),
@@ -192,7 +201,7 @@ export function projectBokunDomainToLegacyTour(domain = {}) {
     } : null,
     meetingPoints,
     searchText,
-    formatsLabel:'групповой',
+    formatsLabel,
     priceFromUsd,
     liked:false,
     group:{
