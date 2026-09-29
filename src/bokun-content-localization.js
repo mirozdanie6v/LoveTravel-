@@ -357,7 +357,11 @@ export async function localizeDomainFromCache(domain, env, requestedLocale, ctx 
 
   clone.localization = {
     locale,
-    source:translatedFields ? 'viiversion-cache' : 'source',
+    source:translatedFields && pendingFields === 0
+      ? 'viiversion-cache'
+      : translatedFields
+        ? 'viiversion-cache-partial'
+        : 'source',
     translatedFields,
     pendingFields,
   };
