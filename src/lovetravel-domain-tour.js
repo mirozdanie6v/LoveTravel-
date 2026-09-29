@@ -45,7 +45,7 @@
       customerFields:'Контактные данные',
       passengerFields:'Данные пассажиров',
       requirements:'Важно знать',
-      accessibility:'Доступность', difficulty:'Сложность', minAge:'Минимальный возраст', reviews:'Отзывы', passport:'Требуется паспорт', currencies:'Валюты оплаты', offers:'Предложения', pickupTiming:'Время подачи', minutesBefore:'мин до начала',
+      accessibility:'Доступность', confirmation:'Подтверждение', onRequest:'После подтверждения туроператором', video:'Видео', difficulty:'Сложность', minAge:'Минимальный возраст', reviews:'Отзывы', passport:'Требуется паспорт', currencies:'Валюты оплаты', offers:'Предложения', pickupTiming:'Время подачи', minutesBefore:'мин до начала',
       priceFor:'Цена для выбранной даты',
       chooseDate:'Выберите дату',
       loading:'Загружаем актуальные данные…',
@@ -94,7 +94,7 @@
       customerFields:'Contact details',
       passengerFields:'Passenger details',
       requirements:'Important information',
-      accessibility:'Accessibility', difficulty:'Difficulty', minAge:'Minimum age', reviews:'Reviews', passport:'Passport required', currencies:'Payment currencies', offers:'Offers', pickupTiming:'Pickup timing', minutesBefore:'min before start',
+      accessibility:'Accessibility', confirmation:'Confirmation', onRequest:'After operator confirmation', video:'Video', difficulty:'Difficulty', minAge:'Minimum age', reviews:'Reviews', passport:'Passport required', currencies:'Payment currencies', offers:'Offers', pickupTiming:'Pickup timing', minutesBefore:'min before start',
       priceFor:'Price for selected date',
       chooseDate:'Choose a date',
       loading:'Loading current availability…',
@@ -143,7 +143,7 @@
       customerFields:'Thông tin liên hệ',
       passengerFields:'Thông tin hành khách',
       requirements:'Thông tin quan trọng',
-      accessibility:'Khả năng tiếp cận', difficulty:'Độ khó', minAge:'Tuổi tối thiểu', reviews:'Đánh giá', passport:'Cần hộ chiếu', currencies:'Tiền tệ thanh toán', offers:'Ưu đãi', pickupTiming:'Thời gian đón', minutesBefore:'phút trước giờ bắt đầu',
+      accessibility:'Khả năng tiếp cận', confirmation:'Xác nhận', onRequest:'Sau khi nhà điều hành xác nhận', video:'Video', difficulty:'Độ khó', minAge:'Tuổi tối thiểu', reviews:'Đánh giá', passport:'Cần hộ chiếu', currencies:'Tiền tệ thanh toán', offers:'Ưu đãi', pickupTiming:'Thời gian đón', minutesBefore:'phút trước giờ bắt đầu',
       priceFor:'Giá cho ngày đã chọn',
       chooseDate:'Chọn ngày',
       loading:'Đang tải dữ liệu mới nhất…',
@@ -192,7 +192,7 @@
       customerFields:'연락처 정보',
       passengerFields:'탑승객 정보',
       requirements:'중요 안내',
-      accessibility:'접근성', difficulty:'난이도', minAge:'최소 연령', reviews:'리뷰', passport:'여권 필요', currencies:'결제 통화', offers:'제공 옵션', pickupTiming:'픽업 시간', minutesBefore:'분 전',
+      accessibility:'접근성', confirmation:'확인', onRequest:'운영사 확인 후', video:'동영상', difficulty:'난이도', minAge:'최소 연령', reviews:'리뷰', passport:'여권 필요', currencies:'결제 통화', offers:'제공 옵션', pickupTiming:'픽업 시간', minutesBefore:'분 전',
       priceFor:'선택 날짜 가격',
       chooseDate:'날짜 선택',
       loading:'최신 정보를 불러오는 중…',
@@ -343,7 +343,8 @@
         const unavailable=slot.soldOut||slot.unavailable||(!slot.unlimitedAvailability&&Number(slot.availabilityCount)<=0);
         const adult=firstAdult(domain);
         const price=adult ? priceFor(slot,state.rateId,adult.id) : null;
-        const availability=slot.unlimitedAvailability ? t().unlimited : unavailable ? t().soldOut : Math.max(0,Number(slot.availabilityCount)||0)+' '+t().available;
+        const count=Number(slot.availabilityCount);
+        const availability=slot.unlimitedAvailability ? t().unlimited : unavailable ? t().soldOut : Number.isFinite(count) ? Math.max(0,count)+' '+t().available : t().unlimited;
         return '<button type="button" class="lt-domain-date '+(active?'is-active ':'')+(unavailable?'is-disabled':'')+'" data-lt-domain-slot="'+esc(slot.id)+'" '+(unavailable?'disabled':'')+'>'+
           '<span><b>'+esc(slot.localizedDate || slot.date)+'</b><small>'+esc(slot.startTime || '')+'</small></span>'+
           '<span class="lt-domain-date__availability">'+esc(availability)+'</span>'+
@@ -387,6 +388,13 @@
     const items=arr(domain?.experience?.itinerary).filter(item=>item?.title||item?.body);
     if(!items.length) return '';
     return '<section class="lt-domain-section"><div class="lt-domain-section__head"><div><span class="lt-domain-eyebrow">'+esc(t().itinerary)+'</span>'+(arr(domain.rates).length>1?'<p>'+esc(t().itineraryHint)+'</p>':'')+'</div></div><div class="lt-domain-itinerary">'+items.map((item,index)=>'<div class="lt-domain-itinerary__item"><span>'+(index+1)+'</span><div>'+(item.title?'<b>'+esc(item.title)+'</b>':'')+(item.body?'<p>'+esc(textFromHtml(item.body))+'</p>':'')+'</div></div>').join('')+'</div></section>';
+  }
+  function videoSection(domain){
+    const videos=arr(domain?.experience?.media?.videos).filter(item=>item?.url);
+    if(!videos.length) return '';
+    return '<section class="lt-domain-section"><div class="lt-domain-section__head"><span class="lt-domain-eyebrow">'+esc(t().video)+'</span></div><div class="lt-domain-video-list">'+
+      videos.map((item,index)=>'<a class="lt-domain-video" href="'+esc(item.url)+'" target="_blank" rel="noopener noreferrer">'+esc(item.title||t().video+' '+(index+1))+'</a>').join('')+
+      '</div></section>';
   }
   function listSection(title,items){
     const clean=arr(items).map(v=>typeof v==='string'?v:(v?.title||v?.description||v?.code||v?.currencyCode||v?.id||'')).map(textFromHtml).filter(Boolean);
@@ -443,6 +451,7 @@
             (domain.experience.difficulty?'<div><small>'+esc(t().difficulty)+'</small><b>'+esc(domain.experience.difficulty)+'</b></div>':'')+
             (Number.isFinite(Number(domain.experience.minAge))?'<div><small>'+esc(t().minAge)+'</small><b>'+esc(domain.experience.minAge)+'+</b></div>':'')+
             (Number.isFinite(Number(domain.experience.reviews?.rating))?'<div><small>'+esc(t().reviews)+'</small><b>'+esc(domain.experience.reviews.rating)+(Number.isFinite(Number(domain.experience.reviews?.count))?' · '+esc(domain.experience.reviews.count):'')+'</b></div>':'')+
+            (String(domain.experience.booking?.capacityType||'').toUpperCase()==='ON_REQUEST'?'<div><small>'+esc(t().confirmation)+'</small><b>'+esc(t().onRequest)+'</b></div>':'')+
             (slot?'<div><small>'+esc(t().chooseDate)+'</small><b>'+esc((slot.localizedDate||slot.date)+' · '+(slot.startTime||''))+'</b></div>':'')+
           '</div>'+
         '</section>'+
@@ -451,6 +460,7 @@
         participantPrices(domain,state)+
         meeting(domain,rate)+
         itinerary(domain)+
+        videoSection(domain)+
         listSection(t().included,included)+
         listSection(t().excluded,excluded)+
         listSection(t().requirements,requirements)+
