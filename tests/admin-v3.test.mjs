@@ -63,10 +63,8 @@ test('admin prototype displays money only in rubles', () => {
   assert.doesNotMatch(admin, /\$\d/);
 });
 
-test('standalone build publishes admin and director routes plus role switch assets', () => {
-  for (const token of ["mkdir(resolve(dist, 'admin')", "mkdir(resolve(dist, 'director')", "admin/index.html", "director/index.html", "role-switch.css", "role-switch.js"]) {
-    assert.match(build, new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
-  }
+test('standalone LoveTravel customer build excludes admin/director and role-switch assets', () => {
+  for (const token of ['admin/index.html','director/index.html','role-switch.css','role-switch.js']) assert.equal(build.includes(token), false, token);
 });
 
 test('all three cabinets publish the same approved Max Tour logo asset', () => {
