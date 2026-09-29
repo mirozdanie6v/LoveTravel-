@@ -77,7 +77,7 @@ jobs:
           }));
           await page.route('**/api/bootstrap',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({hasData:false})}));
           await page.route('**/api/**',route=>{
-            if(route.request().url().includes('/api/bokun/tours')) return;
+            if(route.request().url().includes('/api/bokun/tours')) return route.fallback();
             return route.fulfill({status:200,contentType:'application/json',body:'{}'});
           });
 
