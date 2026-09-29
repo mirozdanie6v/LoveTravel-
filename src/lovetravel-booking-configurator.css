@@ -81,8 +81,27 @@ html.lt-sheet-open,html.lt-sheet-open body{overflow:hidden}
 .lt-contact-grid{display:grid;gap:9px}.lt-contact-field span{display:block;margin:0 0 5px 2px;color:#42657a;font-size:9px;font-weight:850}
 .lt-booking-note{margin:12px 2px 0;color:#7b909e;font-size:9px;line-height:1.45}
 .lt-empty{padding:20px;text-align:center;color:#7d929f;font-size:10px}
+
+.lt-sheet-secondary{appearance:none;width:100%;padding:12px;border:1px solid rgba(54,131,232,.18);border-radius:15px;background:#eef7ff;color:#24699a;font:850 11px/1 inherit;cursor:pointer}
+.lt-pickup-room,.lt-custom-pickup{display:grid;gap:8px;margin-top:12px;padding:12px;border:1px solid rgba(34,80,110,.08);border-radius:15px;background:#fff}
+.lt-pickup-room label,.lt-custom-pickup label{display:grid;gap:5px}
+.lt-pickup-room label span,.lt-custom-pickup label span,.lt-form-caption{color:#42657a;font-size:9px;font-weight:850}
+.lt-pickup-room input,.lt-custom-pickup input{box-sizing:border-box;width:100%;height:43px;border:1px solid rgba(34,81,112,.12);border-radius:13px;background:#fff;padding:0 12px;color:#17384b;font:600 12px/1 inherit;outline:none}
+.lt-pickup-room input:focus,.lt-custom-pickup input:focus{border-color:#3683e8;box-shadow:0 0 0 3px rgba(54,131,232,.09)}
+.lt-extra-list{display:grid;gap:8px}
+.lt-extra-row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:13px 14px;border:1px solid rgba(32,78,108,.08);border-radius:17px;background:#fff}
+.lt-extra-row>div:first-child{min-width:0}.lt-extra-row b{display:block;color:#17384b;font-size:11px}.lt-extra-row small{display:block;margin-top:3px;color:#78909f;font-size:8px;line-height:1.35}
+.lt-form-section{display:grid;gap:9px;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid rgba(34,80,110,.07)}
+.lt-form-section:last-of-type{border-bottom:0}
+.lt-form-caption{display:block;margin:0 0 2px 1px;text-transform:uppercase;letter-spacing:.05em}
+.lt-contact-field{display:block}.lt-contact-field--wide{grid-column:1/-1}
+.lt-contact-field small{display:block;margin:-1px 0 6px 2px;color:#8095a3;font-size:8px;line-height:1.35}
+.lt-passenger-card{display:grid;gap:9px;padding:12px;border:1px solid rgba(32,78,108,.08);border-radius:17px;background:#fff}
+.lt-passenger-card+.lt-passenger-card{margin-top:8px}
+.lt-passenger-card__head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.lt-passenger-card__head b{color:#17384b;font-size:11px}.lt-passenger-card__head small{color:#78909f;font-size:8px}
 @media(min-width:720px){
-  .lt-booking-config__grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .lt-booking-config__grid{grid-template-columns:repeat(3,minmax(0,1fr))}
   .lt-booking-sheet__panel{bottom:24px;border-radius:28px}
 }
 @media(max-width:520px){
