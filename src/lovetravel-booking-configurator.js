@@ -2,7 +2,7 @@
   'use strict';
 
   const PRODUCT_IDS = new Set(['1287578','1287580']);
-  const RELEASE_ID = '2026-09-29-ux-contract-v2';
+  const RELEASE_ID = '2026-09-30-ux-clarity-v3';
   const CHECKOUT_REQUIRED_CUSTOMER_FIELDS = ['firstName','lastName','email','phoneNumber'];
   const stateByProduct = new Map();
   const resolutionByProduct = new Map();
@@ -17,14 +17,15 @@
       title:'Соберите поездку', live:'Актуальные места и цены из системы туроператора',
       date:'Дата и время', dateEmpty:'Выберите дату', option:'Вариант', optionEmpty:'Выберите вариант',
       guests:'Участники', guestsEmpty:'Добавьте участников', pickup:'Как добраться', pickupEmpty:'Выберите способ',
-      meet:'Встретимся на месте', pickupMode:'Забрать из отеля', included:'включено в цену',
+      meet:'Самостоятельно к месту начала', pickupMode:'Забрать из отеля', included:'включено в цену',
+      meetNote:'Вы сами приезжаете к указанной точке начала экскурсии. Трансфер из отеля не нужен.', pickupModeNote:'Машина заберёт вас у выбранного отеля или точки посадки. Самостоятельно ехать к месту начала не нужно.',
       total:'Итого', from:'от', continue:'Продолжить', check:'Проверить данные', ready:'Конфигурация проверена',
       unavailable:'Комбинация недоступна', updating:'Проверяем актуальные данные…',
       chooseDate:'Выберите дату', chooseTime:'Выберите время', chooseOption:'Выберите вариант экскурсии',
-      chooseGuests:'Укажите участников', choosePickup:'Выберите способ встречи',
+      chooseGuests:'Укажите участников', choosePickup:'Как вы хотите добраться?',
       available:'мест доступно', spots:'мест', adult:'Взрослый', child:'Ребёнок', infant:'Младенец',
-      years:'лет', close:'Закрыть', searchHotel:'Начните вводить название отеля', searchHint:'Введите название отеля или точки посадки',
-      pickupPlace:'Место посадки', chooseHotel:'Выберите отель', enterRoom:'Укажите номер комнаты', roomNeeded:'Для этой точки Bókun запрашивает номер комнаты на этапе оформления.', fillContact:'Заполнить данные',
+      years:'лет', close:'Закрыть', searchHotel:'Введите название отеля', searchHint:'Начните вводить отель — покажем доступные точки посадки.',
+      pickupPlace:'Отель или точка посадки', chooseHotel:'Откуда вас забрать', enterRoom:'Укажите номер комнаты', roomNeeded:'Для этой точки Bókun запрашивает номер комнаты на этапе оформления.', fillContact:'Заполнить данные',
       contact:'Контактные данные', firstName:'Имя', lastName:'Фамилия', phoneNumber:'Телефон', email:'Email',
       verify:'Проверить', verified:'Данные проверены', noPlaces:'Ничего не найдено',
       select:'Выбрать', selected:'Выбрано', pricePerPerson:'за человека', liveQuote:'Цена проверена сейчас', onRequest:'Требуется подтверждение туроператора',
@@ -32,20 +33,21 @@
       minGuests:'Минимум', maxGuests:'Максимум', noExtra:'Дополнительных услуг сейчас нет', extras:'Дополнительно', extrasEmpty:'Без дополнений', chooseExtras:'Дополнительные услуги', extrasRequired:'Выберите обязательную услугу', passengerDetails:'Данные участников', passenger:'Участник', questions:'Вопросы для бронирования', additionalInfo:'Дополнительные данные', roomNumber:'Номер комнаты', save:'Сохранить', customPickup:'Другой адрес', customPickupAddress:'Адрес для посадки',
       bookingNotSent:'Бронирование пока не отправляется в Bókun — на этом этапе проверяется конфигурация.',
       selectDateFirst:'Сначала выберите дату', selectOptionFirst:'Выберите вариант', selectGuestsFirst:'Добавьте участников',
-      pickupRequired:'Нужно выбрать способ встречи', contactRequired:'Нужно заполнить контактные данные'
+      pickupRequired:'Нужно выбрать способ встречи', contactRequired:'Нужно заполнить контактные данные', yes:'Да', no:'Нет'
     },
     en:{
       title:'Build your trip', live:'Live availability and pricing from the operator system',
       date:'Date & time', dateEmpty:'Choose a date', option:'Option', optionEmpty:'Choose an option',
       guests:'Guests', guestsEmpty:'Add guests', pickup:'Getting there', pickupEmpty:'Choose a method',
-      meet:'Meet on location', pickupMode:'Hotel pickup', included:'included in price',
+      meet:'Go to the starting point yourself', pickupMode:'Hotel pickup', included:'included in price',
+      meetNote:'You travel to the stated tour starting point yourself. No hotel pickup is needed.', pickupModeNote:'A vehicle will collect you from the selected hotel or pickup point. You do not need to travel to the tour start yourself.',
       total:'Total', from:'from', continue:'Continue', check:'Check details', ready:'Configuration checked',
       unavailable:'Combination unavailable', updating:'Checking live data…',
       chooseDate:'Choose a date', chooseTime:'Choose a time', chooseOption:'Choose a tour option',
-      chooseGuests:'Add guests', choosePickup:'Choose how to meet',
+      chooseGuests:'Add guests', choosePickup:'How would you like to get there?',
       available:'spots available', spots:'spots', adult:'Adult', child:'Child', infant:'Infant',
-      years:'years', close:'Close', searchHotel:'Start typing your hotel name', searchHint:'Enter a hotel or pickup point',
-      pickupPlace:'Pickup point', chooseHotel:'Choose hotel', enterRoom:'Enter room number', roomNeeded:'Bókun asks for a room number for this pickup point during checkout.', fillContact:'Add contact details',
+      years:'years', close:'Close', searchHotel:'Enter your hotel name', searchHint:'Start typing a hotel to see available pickup points.',
+      pickupPlace:'Hotel or pickup point', chooseHotel:'Where should we pick you up?', enterRoom:'Enter room number', roomNeeded:'Bókun asks for a room number for this pickup point during checkout.', fillContact:'Add contact details',
       contact:'Contact details', firstName:'First name', lastName:'Last name', phoneNumber:'Phone', email:'Email',
       verify:'Check', verified:'Details checked', noPlaces:'No matches',
       select:'Select', selected:'Selected', pricePerPerson:'per person', liveQuote:'Price checked live', onRequest:'Operator confirmation required',
@@ -53,20 +55,21 @@
       minGuests:'Minimum', maxGuests:'Maximum', noExtra:'No extras are currently configured', extras:'Extras', extrasEmpty:'No extras', chooseExtras:'Additional services', extrasRequired:'Choose the required extra', passengerDetails:'Guest details', passenger:'Guest', questions:'Booking questions', additionalInfo:'Additional details', roomNumber:'Room number', save:'Save', customPickup:'Other address', customPickupAddress:'Pickup address',
       bookingNotSent:'The booking is not sent to Bókun yet — this stage validates the configuration.',
       selectDateFirst:'Choose a date first', selectOptionFirst:'Choose an option', selectGuestsFirst:'Add guests',
-      pickupRequired:'Choose how to meet', contactRequired:'Complete the contact details'
+      pickupRequired:'Choose how to meet', contactRequired:'Complete the contact details', yes:'Yes', no:'No'
     },
     vi:{
       title:'Tạo chuyến đi', live:'Giá và chỗ trống trực tiếp từ hệ thống điều hành',
       date:'Ngày & giờ', dateEmpty:'Chọn ngày', option:'Lựa chọn', optionEmpty:'Chọn chương trình',
       guests:'Khách', guestsEmpty:'Thêm khách', pickup:'Di chuyển', pickupEmpty:'Chọn cách gặp',
-      meet:'Gặp tại điểm hẹn', pickupMode:'Đón tại khách sạn', included:'đã gồm trong giá',
+      meet:'Tự đến điểm khởi hành', pickupMode:'Đón tại khách sạn', included:'đã gồm trong giá',
+      meetNote:'Bạn tự đến điểm bắt đầu tour đã ghi. Không cần xe đón tại khách sạn.', pickupModeNote:'Xe sẽ đón bạn tại khách sạn hoặc điểm đón đã chọn. Bạn không cần tự đi đến điểm bắt đầu tour.',
       total:'Tổng', from:'từ', continue:'Tiếp tục', check:'Kiểm tra thông tin', ready:'Đã kiểm tra cấu hình',
       unavailable:'Lựa chọn không khả dụng', updating:'Đang kiểm tra dữ liệu mới nhất…',
       chooseDate:'Chọn ngày', chooseTime:'Chọn giờ', chooseOption:'Chọn chương trình',
-      chooseGuests:'Chọn số khách', choosePickup:'Chọn cách gặp',
+      chooseGuests:'Chọn số khách', choosePickup:'Bạn muốn di chuyển như thế nào?',
       available:'chỗ còn trống', spots:'chỗ', adult:'Người lớn', child:'Trẻ em', infant:'Em bé',
-      years:'tuổi', close:'Đóng', searchHotel:'Bắt đầu nhập tên khách sạn', searchHint:'Nhập khách sạn hoặc điểm đón',
-      pickupPlace:'Điểm đón', chooseHotel:'Chọn khách sạn', enterRoom:'Nhập số phòng', roomNeeded:'Bókun yêu cầu số phòng cho điểm đón này trong bước thanh toán.', fillContact:'Điền thông tin liên hệ',
+      years:'tuổi', close:'Đóng', searchHotel:'Nhập tên khách sạn', searchHint:'Bắt đầu nhập khách sạn để xem các điểm đón có sẵn.',
+      pickupPlace:'Khách sạn hoặc điểm đón', chooseHotel:'Bạn muốn được đón ở đâu?', enterRoom:'Nhập số phòng', roomNeeded:'Bókun yêu cầu số phòng cho điểm đón này trong bước thanh toán.', fillContact:'Điền thông tin liên hệ',
       contact:'Thông tin liên hệ', firstName:'Tên', lastName:'Họ', phoneNumber:'Điện thoại', email:'Email',
       verify:'Kiểm tra', verified:'Đã kiểm tra', noPlaces:'Không có kết quả',
       select:'Chọn', selected:'Đã chọn', pricePerPerson:'mỗi người', liveQuote:'Giá vừa được kiểm tra', onRequest:'Cần nhà điều hành xác nhận',
@@ -74,20 +77,21 @@
       minGuests:'Tối thiểu', maxGuests:'Tối đa', noExtra:'Hiện không có dịch vụ bổ sung', extras:'Dịch vụ thêm', extrasEmpty:'Không chọn thêm', chooseExtras:'Dịch vụ bổ sung', extrasRequired:'Chọn dịch vụ bắt buộc', passengerDetails:'Thông tin hành khách', passenger:'Hành khách', questions:'Câu hỏi đặt chỗ', additionalInfo:'Thông tin bổ sung', roomNumber:'Số phòng', save:'Lưu', customPickup:'Địa chỉ khác', customPickupAddress:'Địa chỉ đón',
       bookingNotSent:'Đặt chỗ chưa được gửi tới Bókun — bước này chỉ xác thực cấu hình.',
       selectDateFirst:'Hãy chọn ngày trước', selectOptionFirst:'Chọn chương trình', selectGuestsFirst:'Thêm khách',
-      pickupRequired:'Chọn cách gặp', contactRequired:'Điền thông tin liên hệ'
+      pickupRequired:'Chọn cách gặp', contactRequired:'Điền thông tin liên hệ', yes:'Có', no:'Không'
     },
     ko:{
       title:'여행 구성하기', live:'운영사 시스템의 실시간 좌석 및 가격',
       date:'날짜 및 시간', dateEmpty:'날짜 선택', option:'옵션', optionEmpty:'옵션 선택',
       guests:'인원', guestsEmpty:'인원 추가', pickup:'이동 방법', pickupEmpty:'방법 선택',
-      meet:'현장 미팅', pickupMode:'호텔 픽업', included:'가격 포함',
+      meet:'출발지로 직접 이동', pickupMode:'호텔 픽업', included:'가격 포함',
+      meetNote:'안내된 투어 출발지로 직접 이동합니다. 호텔 픽업은 필요하지 않습니다.', pickupModeNote:'선택한 호텔 또는 픽업 지점으로 차량이 옵니다. 투어 출발지까지 직접 이동할 필요가 없습니다.',
       total:'합계', from:'최저', continue:'계속', check:'정보 확인', ready:'구성 확인 완료',
       unavailable:'선택 불가', updating:'실시간 정보를 확인 중…',
       chooseDate:'날짜 선택', chooseTime:'시간 선택', chooseOption:'투어 옵션 선택',
-      chooseGuests:'인원 선택', choosePickup:'미팅 방법 선택',
+      chooseGuests:'인원 선택', choosePickup:'어떻게 이동하시겠어요?',
       available:'자리 남음', spots:'자리', adult:'성인', child:'아동', infant:'유아',
-      years:'세', close:'닫기', searchHotel:'호텔 이름을 입력하세요', searchHint:'호텔 또는 픽업 장소 입력',
-      pickupPlace:'픽업 장소', chooseHotel:'호텔 선택', enterRoom:'객실 번호 입력', roomNeeded:'이 픽업 장소는 결제 단계에서 객실 번호가 필요합니다.', fillContact:'연락처 입력',
+      years:'세', close:'닫기', searchHotel:'호텔 이름을 입력하세요', searchHint:'호텔 이름을 입력하면 이용 가능한 픽업 지점을 보여드립니다.',
+      pickupPlace:'호텔 또는 픽업 지점', chooseHotel:'어디에서 픽업할까요?', enterRoom:'객실 번호 입력', roomNeeded:'이 픽업 장소는 결제 단계에서 객실 번호가 필요합니다.', fillContact:'연락처 입력',
       contact:'연락처 정보', firstName:'이름', lastName:'성', phoneNumber:'전화번호', email:'이메일',
       verify:'확인', verified:'확인 완료', noPlaces:'검색 결과 없음',
       select:'선택', selected:'선택됨', pricePerPerson:'1인당', liveQuote:'실시간 가격 확인됨', onRequest:'운영사 확인 필요',
@@ -95,7 +99,7 @@
       minGuests:'최소', maxGuests:'최대', noExtra:'현재 추가 옵션이 없습니다', extras:'추가 옵션', extrasEmpty:'추가 옵션 없음', chooseExtras:'추가 서비스', extrasRequired:'필수 추가 서비스를 선택하세요', passengerDetails:'참가자 정보', passenger:'참가자', questions:'예약 질문', additionalInfo:'추가 정보', roomNumber:'객실 번호', save:'저장', customPickup:'다른 주소', customPickupAddress:'픽업 주소',
       bookingNotSent:'아직 Bókun에 예약을 전송하지 않습니다. 이 단계에서는 구성을 검증합니다.',
       selectDateFirst:'먼저 날짜를 선택하세요', selectOptionFirst:'옵션 선택', selectGuestsFirst:'인원 추가',
-      pickupRequired:'미팅 방법을 선택하세요', contactRequired:'연락처 정보를 입력하세요'
+      pickupRequired:'미팅 방법을 선택하세요', contactRequired:'연락처 정보를 입력하세요', yes:'예', no:'아니요'
     }
   };
 
@@ -410,6 +414,7 @@
   function showSheet(title,body){
     const root=ensureSheet();
     root.hidden=false;
+    syncVisualViewport();
     root.querySelector('.lt-booking-sheet__content').innerHTML=
       '<header class="lt-booking-sheet__header"><div><h3>'+esc(title)+'</h3></div><button type="button" data-lt-sheet-close data-lt-sheet-close-button aria-label="'+esc(t().close)+'">×</button></header>'+body;
     requestAnimationFrame(()=>root.classList.add('is-open'));
@@ -447,11 +452,11 @@
       return '<div class="lt-date-group"><h4>'+esc(formatDate(first,{month:'long',year:'numeric'}))+'</h4><div class="lt-date-grid">'+
         items.map(item=>{
           const active=item.date===s.date;
-          return '<button type="button" class="lt-date-chip '+(active?'is-active':'')+'" data-lt-date="'+esc(item.date)+'"><small>'+esc(formatDate(item.date,{weekday:'short'}))+'</small><b>'+esc(formatDate(item.date,{day:'numeric'}))+'</b><span>'+esc(Number(item.slots)===1 ? (locale()==='ru'?'1 время':locale()==='vi'?'1 giờ':locale()==='ko'?'시간 1개':'1 time') : String(item.slots)+' '+(locale()==='ru'?'времени':locale()==='vi'?'giờ':locale()==='ko'?'시간':'times'))+'</span></button>';
+          return '<button type="button" class="lt-date-chip '+(active?'is-active':'')+'" aria-pressed="'+(active?'true':'false')+'" '+(active?'aria-current="date" ':'')+'data-lt-date="'+esc(item.date)+'"><small>'+esc(formatDate(item.date,{weekday:'short'}))+'</small><b>'+esc(formatDate(item.date,{day:'numeric'}))+'</b><span>'+esc(Number(item.slots)===1 ? (locale()==='ru'?'1 время':locale()==='vi'?'1 giờ':locale()==='ko'?'시간 1개':'1 time') : String(item.slots)+' '+(locale()==='ru'?'времени':locale()==='vi'?'giờ':locale()==='ko'?'시간':'times'))+'</span></button>';
         }).join('')+'</div></div>';
     }).join('');
     const times=s.date?'<div class="lt-time-block"><h4>'+esc(t().chooseTime)+'</h4><div class="lt-time-grid">'+
-      timeRows.map(item=>'<button type="button" class="lt-time-chip '+(String(item.id)===String(s.slotId)?'is-active':'')+'" data-lt-slot="'+esc(item.id)+'" data-lt-time="'+esc(item.startTimeId||'')+'"><b>'+esc(item.startTime||'')+'</b><small>'+esc(availabilityLabel(item))+'</small></button>').join('')+
+      timeRows.map(item=>{ const active=String(item.id)===String(s.slotId); return '<button type="button" class="lt-time-chip '+(active?'is-active':'')+'" aria-pressed="'+(active?'true':'false')+'" data-lt-slot="'+esc(item.id)+'" data-lt-time="'+esc(item.startTimeId||'')+'"><b>'+esc(item.startTime||'')+'</b><small>'+esc(availabilityLabel(item))+'</small></button>'; }).join('')+
       '</div></div>':'';
     const root=showSheet(t().chooseDate,'<div class="lt-sheet-scroll">'+calendars+times+'</div>');
 
@@ -469,6 +474,12 @@
 
     root.querySelectorAll('[data-lt-date]').forEach(btn=>btn.addEventListener('click',async()=>{
       const date=btn.dataset.ltDate;
+      root.querySelectorAll('[data-lt-date]').forEach(node=>{
+        const active=node===btn;
+        node.classList.toggle('is-active',active);
+        node.setAttribute('aria-pressed',active?'true':'false');
+        if(active) node.setAttribute('aria-current','date'); else node.removeAttribute('aria-current');
+      });
       patchSelection(productId,{date});
       const cachedTimes=calendarTimesForDate(productId,date);
       if(cachedTimes.length===1){
@@ -492,6 +503,11 @@
       }
     }));
     root.querySelectorAll('[data-lt-slot]').forEach(btn=>btn.addEventListener('click',async()=>{
+      root.querySelectorAll('[data-lt-slot]').forEach(node=>{
+        const active=node===btn;
+        node.classList.toggle('is-active',active);
+        node.setAttribute('aria-pressed',active?'true':'false');
+      });
       patchSelection(productId,{slotId:btn.dataset.ltSlot,startTimeId:btn.dataset.ltTime||null});
       await resolve(productId,{quiet:true});
       closeSheet();
@@ -574,10 +590,11 @@
           ? '<div class="lt-custom-pickup"><span class="lt-form-caption">'+esc(t().customPickup)+'</span><label><span>'+esc(t().customPickupAddress)+'</span><input type="text" value="'+esc(s.pickup?.customLocation?.wholeAddress||s.pickup?.customLocation?.addressLine1||'')+'" data-lt-custom-pickup autocomplete="street-address"></label><button type="button" class="lt-sheet-secondary" data-lt-custom-pickup-save>'+esc(t().save)+'</button></div>'
           : '')
       : '';
+    const pickupNote=[t().pickupModeNote,p.pricingType==='INCLUDED_IN_PRICE'?t().included:''].filter(Boolean).join(' · ');
     const body='<div class="lt-sheet-scroll">'+
       '<div class="lt-pickup-modes">'+
-        (arr(p.modes).includes('MEET_ON_LOCATION')?pickupModeCard('MEET_ON_LOCATION',t().meet,mode==='MEET_ON_LOCATION',''):'')+
-        (arr(p.modes).includes('PICKUP')?pickupModeCard('PICKUP',t().pickupMode,mode==='PICKUP',p.pricingType==='INCLUDED_IN_PRICE'?t().included:''):'')+
+        (arr(p.modes).includes('MEET_ON_LOCATION')?pickupModeCard('MEET_ON_LOCATION',t().meet,mode==='MEET_ON_LOCATION',t().meetNote):'')+
+        (arr(p.modes).includes('PICKUP')?pickupModeCard('PICKUP',t().pickupMode,mode==='PICKUP',pickupNote):'')+
       '</div>'+pickupDetails+'</div>';
     const sheetTitle=roomRequired?t().enterRoom:(mode==='PICKUP'?t().chooseHotel:t().choosePickup);
     const root=showSheet(sheetTitle,body);
@@ -628,7 +645,7 @@
     });
   }
   function pickupModeCard(mode,title,active,note){
-    return '<button type="button" class="lt-pickup-mode '+(active?'is-active':'')+'" data-lt-pickup-mode="'+esc(mode)+'"><span class="lt-radio"></span><span><b>'+esc(title)+'</b>'+(note?'<small>'+esc(note)+'</small>':'')+'</span></button>';
+    return '<button type="button" class="lt-pickup-mode '+(active?'is-active':'')+'" aria-pressed="'+(active?'true':'false')+'" data-lt-pickup-mode="'+esc(mode)+'"><span class="lt-radio"></span><span><b>'+esc(title)+'</b>'+(note?'<small>'+esc(note)+'</small>':'')+'</span></button>';
   }
   function questionContext(item){
     const value=String(item?.context||'').toUpperCase();
@@ -670,7 +687,7 @@
       '</select>';
     }else if(typeName.includes('BOOLEAN')){
       const current=String(Array.isArray(value)?value[0]??'':value??'').toLowerCase();
-      control='<select'+attrs+'><option value=""></option><option value="true"'+(current==='true'||current==='1'||current==='yes'?' selected':'')+'>Yes</option><option value="false"'+(current==='false'||current==='0'||current==='no'?' selected':'')+'>No</option></select>';
+      control='<select'+attrs+'><option value=""></option><option value="true"'+(current==='true'||current==='1'||current==='yes'?' selected':'')+'>'+esc(t().yes)+'</option><option value="false"'+(current==='false'||current==='0'||current==='no'?' selected':'')+'>'+esc(t().no)+'</option></select>';
     }else{
       const type=typeName.includes('DATE')?'date':typeName.includes('NUMBER')||typeName.includes('INTEGER')||typeName.includes('DECIMAL')?'number':'text';
       control='<input type="'+type+'" value="'+esc(Array.isArray(value)?value[0]||'':value||'')+'"'+attrs+
@@ -955,6 +972,18 @@
     });
   }
 
+  function syncVisualViewport(){
+    const viewport=window.visualViewport;
+    const height=Math.max(320,Math.round(viewport?.height||window.innerHeight||720));
+    const inset=Math.max(0,Math.round((window.innerHeight||height)-(height+(viewport?.offsetTop||0))));
+    document.documentElement.style.setProperty('--lt-vv-height',height+'px');
+    document.documentElement.style.setProperty('--lt-keyboard-inset',inset+'px');
+  }
+  function keepFocusedFieldVisible(target){
+    if(!target?.closest?.('.lt-booking-sheet')) return;
+    setTimeout(()=>target.scrollIntoView?.({block:'center',inline:'nearest',behavior:'auto'}),180);
+  }
+
   function canonicalField(field){
     const key=String(field||'').replace(/[^a-z0-9]/gi,'').toLowerCase();
     return ({firstname:'firstName',lastname:'lastName',phonenumber:'phoneNumber',phone:'phoneNumber',email:'email'})[key]||String(field||'');
@@ -994,6 +1023,13 @@
   function start(){
     const screen=document.querySelector('#tourScreen');
     if(!screen){ setTimeout(start,60); return; }
+    syncVisualViewport();
+    window.addEventListener('resize',syncVisualViewport,{passive:true});
+    window.visualViewport?.addEventListener('resize',syncVisualViewport,{passive:true});
+    window.visualViewport?.addEventListener('scroll',syncVisualViewport,{passive:true});
+    document.addEventListener('focusin',event=>{
+      if(event.target?.matches?.('.lt-booking-sheet input,.lt-booking-sheet select,.lt-booking-sheet textarea')) keepFocusedFieldVisible(event.target);
+    });
     observer.observe(screen,{subtree:true,childList:true,attributes:true,attributeFilter:['data-lt-domain-product','class']});
     detectProduct();
   }
