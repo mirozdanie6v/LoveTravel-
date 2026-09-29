@@ -21,24 +21,6 @@ const CONTENT_TYPES = {
 };
 
 const ADMIN_HOST = 'max-tour-demo-admin.viiversion.com';
-const LOVE_TRAVEL_PUBLIC_HOST = 'lovetravel.viiversion.com';
-const LOVE_TRAVEL_LEGACY_PUBLIC_PREFIXES = [
-  '/admin','/director',
-  '/api/bootstrap','/api/favorites','/api/bookings','/api/travelers','/api/consultations','/api/admin','/api/ai',
-];
-
-function blockLoveTravelLegacyPublicPath(url) {
-  if (url.hostname !== LOVE_TRAVEL_PUBLIC_HOST) return null;
-  if (!LOVE_TRAVEL_LEGACY_PUBLIC_PREFIXES.some(prefix => url.pathname === prefix || url.pathname.startsWith(prefix + '/'))) return null;
-  return new Response('Not Found', {
-    status:404,
-    headers:{
-      'cache-control':'no-store',
-      'x-content-type-options':'nosniff',
-    },
-  });
-}
-
 const ADMIN_SHARED_ASSETS = new Set([
   '/max-tour-logo.svg',
   '/admin-app.css',
@@ -484,8 +466,6 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const locale = await requestedLocale(request, url);
-    const legacyPublicResponse = blockLoveTravelLegacyPublicPath(url);
-    if (legacyPublicResponse) return legacyPublicResponse;
     const adminHostResponse = routeAdminHost(url);
     if (adminHostResponse) return adminHostResponse;
     const mediaAdminResponse = await handleAdminTourMediaApi(request, env, url);
