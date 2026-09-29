@@ -68,4 +68,4 @@ for (const file of [
   await copyFile(resolve(root, 'src', file), resolve(dist, file));
 }
 
-console.log('Built standalone LoveTravel customer shell: canonical Bókun catalog + domain tour + booking configurator; no MAX TOUR customer runtime.');
+console.log('Built standalone LoveTravel customer shell: canonical Bókun catalog + domain tour + booking configurator; no legacy customer runtime.');
