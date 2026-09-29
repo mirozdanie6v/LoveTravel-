@@ -16,6 +16,20 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Record audit start
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > .ux-audit-status.json <<EOF
+          {"stage":"running","workflowRunId":"$GITHUB_RUN_ID","commit":"$GITHUB_SHA"}
+          EOF
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .ux-audit-status.json
+          git commit -m "Record LoveTravel UX audit start"
+          git push origin HEAD:main
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -140,3 +154,13 @@ jobs:
             git commit -m "Record LoveTravel UX audit" || true
             git push origin HEAD:main || true
           fi
+          status="${{ job.status }}"
+          git fetch origin main
+          git checkout main
+          git reset --hard origin/main
+          cat > .ux-audit-status.json <<EOF
+          {"stage":"$status","workflowRunId":"$GITHUB_RUN_ID","commit":"$GITHUB_SHA"}
+          EOF
+          git add .ux-audit-status.json
+          git commit -m "Record LoveTravel UX audit status" || true
+          git push origin HEAD:main || true
