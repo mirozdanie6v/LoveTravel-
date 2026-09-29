@@ -1,26 +1,6 @@
 {
   "title": "Nha Trang Love Travel",
   "bodyText": "RU VI EN Островные экскурсии 2 тура Выберите одну из двух программ Фото, программа, цены и свободные даты загружаются из системы туроператора. Robinson Beach Nha Trang · 7 hours от $49 Открыть тур → Hòn Mun Marine Park Snorkeling and Nha Trang Island Tour Nha Trang · 7 hours от $55 Открыть тур → ⌂ Главная ☰ Экскурсии",
-  "texts": [
-    "RU",
-    "VI",
-    "EN",
-    "Островные экскурсии",
-    "2 тура",
-    "Выберите одну из двух программ",
-    "Фото, программа, цены и свободные даты загружаются из системы туроператора.",
-    "Robinson Beach",
-    "Nha Trang · 7 hours",
-    "от",
-    "$49",
-    "Открыть тур →",
-    "Hòn Mun Marine Park Snorkeling and Nha Trang Island Tour",
-    "$55",
-    "⌂",
-    "Главная",
-    "☰",
-    "Экскурсии"
-  ],
   "buttons": [
     "RU",
     "VI",
@@ -31,8 +11,14 @@
     "☰Экскурсии"
   ],
   "cards": [
-    "Robinson BeachNha Trang · 7 hoursот$49Открыть тур →",
-    "Hòn Mun Marine Park Snorkeling and Nha Trang Island TourNha Trang · 7 hoursот$55Открыть тур →"
+    {
+      "id": "1287578",
+      "text": "Robinson BeachNha Trang · 7 hoursот$49Открыть тур →"
+    },
+    {
+      "id": "1287580",
+      "text": "Hòn Mun Marine Park Snorkeling and Nha Trang Island TourNha Trang · 7 hoursот$55Открыть тур →"
+    }
   ],
   "scripts": [
     "https://telegram.org/js/telegram-web-app.js?63",
@@ -43,9 +29,15 @@
     "http://127.0.0.1:4173/lovetravel-booking-configurator.js",
     "https://dashboard.viiversion.com/tracker.js"
   ],
-  "globalSource": "bokun",
   "tourIds": [
     "1287578",
     "1287580"
+  ],
+  "source": "bokun",
+  "bookingConfigurator": false,
+  "duplicateSelectors": false,
+  "nav": [
+    "home",
+    "catalog"
   ]
 }

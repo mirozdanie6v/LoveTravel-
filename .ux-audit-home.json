@@ -1,28 +1,6 @@
 {
   "title": "Nha Trang Love Travel",
   "bodyText": "RU VI EN Актуальные места NHA TRANG · ISLAND EXPERIENCES Откройте Нячанг с местной командой Robinson Beach и Hòn Mun — реальные даты, актуальные цены и удобный путь от выбора до бронирования. Robinson Beach Hòn Mun Marine Park Смотреть экскурсии → Местная команда только Нячанг Живые даты актуальная доступность RU · VI · EN поддержка языков ⌂ Главная ☰ Экскурсии",
-  "texts": [
-    "RU",
-    "VI",
-    "EN",
-    "Актуальные места",
-    "NHA TRANG · ISLAND EXPERIENCES",
-    "с местной командой",
-    "Robinson Beach и Hòn Mun — реальные даты, актуальные цены и удобный путь от выбора до бронирования.",
-    "Robinson Beach",
-    "Hòn Mun Marine Park",
-    "Смотреть экскурсии →",
-    "Местная команда",
-    "только Нячанг",
-    "Живые даты",
-    "актуальная доступность",
-    "RU · VI · EN",
-    "поддержка языков",
-    "⌂",
-    "Главная",
-    "☰",
-    "Экскурсии"
-  ],
   "buttons": [
     "RU",
     "VI",
@@ -41,9 +19,15 @@
     "http://127.0.0.1:4173/lovetravel-booking-configurator.js",
     "https://dashboard.viiversion.com/tracker.js"
   ],
-  "globalSource": "bokun",
   "tourIds": [
     "1287578",
     "1287580"
+  ],
+  "source": "bokun",
+  "bookingConfigurator": false,
+  "duplicateSelectors": false,
+  "nav": [
+    "home",
+    "catalog"
   ]
 }
