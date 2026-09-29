@@ -1,5 +1,5 @@
 const arr = value => Array.isArray(value) ? value : [];
-const num = value => Number.isFinite(Number(value)) ? Number(value) : null;
+const num = value => value === null || value === undefined || value === '' ? null : (Number.isFinite(Number(value)) ? Number(value) : null);
 const str = value => value === null || value === undefined ? '' : String(value);
 
 export const BOOKING_SELECTION_SCHEMA = 'lovetravel.booking-selection.v1';
