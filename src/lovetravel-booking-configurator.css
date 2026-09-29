@@ -265,3 +265,67 @@ html.lt-sheet-open,html.lt-sheet-open body{overflow:hidden}
     padding:13px 16px;
   }
 }
+
+
+/* 2026-09-30 UX clarity: unmistakable selection states + keyboard-safe mobile sheets */
+.lt-date-chip.is-active{
+  border-color:#ee4214;
+  background:#fff1eb;
+  box-shadow:0 0 0 2px rgba(238,66,20,.16),0 6px 16px rgba(238,66,20,.10);
+}
+.lt-date-chip.is-active small,
+.lt-date-chip.is-active b,
+.lt-date-chip.is-active span{
+  color:#9d2d10;
+}
+.lt-time-chip.is-active,
+.lt-option-card.is-active,
+.lt-pickup-mode.is-active{
+  border-color:#ee4214;
+  background:#fff1eb;
+  box-shadow:0 0 0 2px rgba(238,66,20,.13);
+}
+.lt-time-chip.is-active b,
+.lt-time-chip.is-active small,
+.lt-pickup-mode.is-active b,
+.lt-pickup-mode.is-active small{
+  color:#9d2d10;
+}
+.lt-pickup-mode.is-active .lt-radio{
+  border-color:#ee4214;
+  background:#ee4214;
+}
+.lt-pickup-mode{
+  min-height:78px;
+}
+.lt-pickup-mode small{
+  margin-top:5px;
+  font-size:9px;
+  line-height:1.35;
+}
+.lt-booking-sheet__panel{
+  max-height:min(calc(var(--lt-vv-height, 100vh) - 8px),760px);
+}
+.lt-booking-sheet__content{
+  max-height:calc(min(calc(var(--lt-vv-height, 100vh) - 8px),760px) - 15px);
+}
+.lt-booking-sheet input,
+.lt-booking-sheet select,
+.lt-booking-sheet textarea{
+  scroll-margin-block:84px 140px;
+}
+@media(max-width:520px){
+  .lt-booking-sheet__panel{
+    bottom:var(--lt-keyboard-inset,0px);
+    max-height:calc(var(--lt-vv-height, 100vh) - 4px);
+  }
+  .lt-booking-sheet__content{
+    max-height:calc(var(--lt-vv-height, 100vh) - 19px);
+  }
+  .lt-sheet-scroll{
+    padding-bottom:calc(32px + env(safe-area-inset-bottom));
+  }
+  .lt-pickup-modes{
+    grid-template-columns:1fr;
+  }
+}
