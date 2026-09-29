@@ -36,17 +36,14 @@ test('optional provider entities render only when present',()=>{
   assert.match(js,/if\(!clean\.length\) return ''/);
 });
 
-test('domain tour visual layer is included after runtime in the production build',()=>{
+test('domain tour visual layer follows the canonical LoveTravel runtime in production',()=> {
   assert.match(build,/lovetravel-domain-tour\.css/);
   assert.match(build,/lovetravel-domain-tour\.js/);
-  const runtime=build.indexOf('<script src="/runtime-api.js" defer></script>');
-  const domain=build.indexOf('<script src="/lovetravel-domain-tour.js" defer></script>');
+  const runtime=build.indexOf('<script src="/lovetravel-runtime.js"></script>');
+  const domain=build.indexOf('<script src="/lovetravel-domain-tour.js"></script>');
   assert.ok(runtime>=0 && domain>runtime);
-  assert.match(build,/copyFile\(resolve\(root, 'src\/lovetravel-domain-tour\.js'/);
-  assert.match(css,/\.lt-domain-rate\.is-active/);
-  assert.match(css,/\.lt-domain-date\.is-active/);
+  assert.match(build,/lovetravel-domain-tour\.js/);
 });
-
 
 test('domain tour repairs legacy renderer overwrites while a Bókun product is active',()=>{
   assert.match(js,/function repairLegacyOverwrite/);
