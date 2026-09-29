@@ -1,7 +1,9 @@
 {
   "ok": false,
-  "stage": "running",
+  "stage": "failure",
   "release": "2026-09-29-bokun-complete-v1",
   "commit": "12acdb2ff7fc6fcd7f94ad59260b8654c76a2cf8",
-  "workflowRunId": "36541319151"
+  "workflowRunId": "36541319151",
+  "verifiedDomain": "https://lovetravel.viiversion.com",
+  "verifiedBokunProducts": ["1287578", "1287580"]
 }
