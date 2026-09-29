@@ -10,11 +10,10 @@ const css = await readFile(resolve(root, 'src/ai-consultant-v5.css'), 'utf8');
 const build = await readFile(resolve(root, 'build.mjs'), 'utf8');
 const worker = await import('../src/worker-profile.js?ai-sales-v5-test');
 
-test('AI consultant v5 source is syntactically valid and wired into build', () => {
+test('legacy AI consultant v5 source stays valid but is not shipped to LoveTravel customers', () => {
   assert.doesNotThrow(() => new vm.Script(ai));
-  assert.match(build, /ai-consultant-v5\.js\?v=26/);
-  assert.match(build, /ai-consultant-v5\.css/);
-  assert.match(build, /copyFile\(resolve\(root, 'src\/ai-consultant-v5\.js'/);
+  assert.doesNotMatch(build, /ai-consultant-v5\.js/);
+  assert.doesNotMatch(build, /ai-consultant-v5\.css/);
 });
 
 test('AI booking prefill ignores hidden checkout and does not redispatch an unchanged date', () => {
