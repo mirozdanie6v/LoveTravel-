@@ -38,8 +38,8 @@ test('hero uses Lucide inline SVG system and glass layout', () => {
   assert.match(css, /hero-lux__cta--primary/);
 });
 
-test('build ships hero assets without touching compressed v28 source', () => {
-  assert.match(build, /hero-redesign\.css/);
-  assert.match(build, /hero-redesign\.js/);
-  assert.match(build, /exact source checksums verified/);
+test('LoveTravel customer build excludes the old multi-destination hero assets', () => {
+  assert.doesNotMatch(build, /hero-redesign\.css/);
+  assert.doesNotMatch(build, /hero-redesign\.js/);
+  assert.match(build, /standalone LoveTravel customer shell/);
 });
