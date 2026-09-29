@@ -53,6 +53,7 @@ export function normalizeBookingSelection(input = {}, domain = {}) {
     extras:extraMap(input.extras),
     customer:input.customer && typeof input.customer === 'object' && !Array.isArray(input.customer) ? { ...input.customer } : {},
     answers:input.answers && typeof input.answers === 'object' && !Array.isArray(input.answers) ? { ...input.answers } : {},
+    extraAnswers:input.extraAnswers && typeof input.extraAnswers === 'object' && !Array.isArray(input.extraAnswers) ? { ...input.extraAnswers } : {},
     passengers:Array.isArray(input.passengers) ? input.passengers.map(item => item && typeof item === 'object' ? { ...item } : {}) : [],
   };
 }
@@ -389,19 +390,59 @@ function passengerFieldSpec(item) {
   };
 }
 
-function bookingRequirements(domain = {}) {
+function bookingQuestion(item = {}) {
+  return {
+    id:item?.id === null || item?.id === undefined ? null : str(item.id),
+    title:str(item?.title || item?.label),
+    code:str(item?.code),
+    description:str(item?.description || item?.help),
+    required:Boolean(item?.required),
+    personalData:item?.personalData === null || item?.personalData === undefined ? null : Boolean(item.personalData),
+    placeholder:str(item?.placeholder),
+    dataType:str(item?.dataType),
+    dataFormat:str(item?.dataFormat),
+    pattern:str(item?.pattern),
+    defaultValue:item?.defaultValue ?? null,
+    context:str(item?.context),
+    pricingCategoryTriggerSelection:str(item?.pricingCategoryTriggerSelection),
+    pricingCategoryTriggers:arr(item?.pricingCategoryTriggers).map(value=>str(value?.id ?? value)).filter(Boolean),
+    rateTriggerSelection:str(item?.rateTriggerSelection),
+    rateTriggers:arr(item?.rateTriggers).map(value=>str(value?.id ?? value)).filter(Boolean),
+    extraTriggerSelection:str(item?.extraTriggerSelection),
+    extraTriggers:arr(item?.extraTriggers).map(value=>str(value?.id ?? value)).filter(Boolean),
+    selectFromOptions:Boolean(item?.selectFromOptions || arr(item?.options).length),
+    selectMultiple:Boolean(item?.selectMultiple),
+    options:arr(item?.options).map(option=>({
+      id:option?.id === null || option?.id === undefined ? null : str(option.id),
+      label:str(option?.label || option?.title || option?.value),
+      value:str(option?.value ?? option?.id ?? option?.label),
+    })),
+  };
+}
+
+function triggerMatches(mode, triggers, selectedIds) {
+  const normalized=str(mode).toUpperCase();
+  if(normalized!=='SELECTED_ONLY') return true;
+  const wanted=new Set(arr(triggers).map(str).filter(Boolean));
+  return [...selectedIds].some(value=>wanted.has(str(value)));
+}
+
+function questionTriggered(question, selection) {
+  const categoryIds=new Set(Object.entries(selection.participants||{}).filter(([,count])=>Number(count)>0).map(([key])=>str(key)));
+  const rateIds=new Set(selection.rateId?[str(selection.rateId)]:[]);
+  const extraIds=new Set(Object.entries(selection.extras||{}).filter(([,count])=>Number(count)>0).map(([key])=>str(key)));
+  return triggerMatches(question.pricingCategoryTriggerSelection,question.pricingCategoryTriggers,categoryIds)
+    && triggerMatches(question.rateTriggerSelection,question.rateTriggers,rateIds)
+    && triggerMatches(question.extraTriggerSelection,question.extraTriggers,extraIds);
+}
+
+function bookingRequirements(domain = {}, selection = {}) {
   const req = domain.bookingRequirements || {};
   return {
     requiredCustomerFields:arr(req.requiredCustomerFields).map(canonicalCustomerField).filter(Boolean),
     mainContactFields:arr(req.mainContactFields).map(fieldSpec).filter(Boolean),
     passengerFields:arr(req.passengerFields).map(passengerFieldSpec).filter(Boolean),
-    questions:arr(req.questions).map(item => ({
-      id:item?.id === null || item?.id === undefined ? null : str(item.id),
-      title:str(item?.title),
-      code:str(item?.code),
-      description:str(item?.description),
-      required:Boolean(item?.required),
-    })),
+    questions:arr(req.questions).map(bookingQuestion).filter(question=>questionTriggered(question,selection)),
     customFields:arr(req.customFields).map(item => ({
       id:item?.id === null || item?.id === undefined ? null : str(item.id),
       title:str(item?.title),
@@ -423,6 +464,69 @@ function answerKey(item = {}) {
   return str(item.id || item.code || item.title);
 }
 
+function questionContext(question = {}) {
+  const value=str(question.context).toUpperCase();
+  if(value.includes('PASSENGER')||value.includes('PARTICIPANT')) return 'PASSENGER';
+  if(value.includes('EXTRA')) return 'EXTRA';
+  return 'BOOKING';
+}
+
+function questionAppliesToPassenger(question, passenger = {}) {
+  if(str(question.pricingCategoryTriggerSelection).toUpperCase()!=='SELECTED_ONLY') return true;
+  const wanted=new Set(arr(question.pricingCategoryTriggers).map(str));
+  return wanted.has(str(passenger.categoryId));
+}
+
+function questionAppliesToExtra(question, extraId) {
+  if(str(question.extraTriggerSelection).toUpperCase()!=='SELECTED_ONLY') return true;
+  const wanted=new Set(arr(question.extraTriggers).map(str));
+  return wanted.has(str(extraId));
+}
+
+function answerPresent(value) {
+  if(Array.isArray(value)) return value.length>0 && value.some(hasValue);
+  return hasValue(value);
+}
+
+function validateQuestionAnswer(question, value, path, missingCode, invalidCode, issues) {
+  const present=answerPresent(value);
+  if(question.required && !present){
+    issues.push(issue(missingCode,path,'Required booking question is missing',{questionId:answerKey(question)}));
+    return;
+  }
+  if(!present) return;
+
+  const values=Array.isArray(value)?value:[value];
+  if(question.selectFromOptions && arr(question.options).length){
+    const allowed=new Set(arr(question.options).map(option=>str(option.value)));
+    if(values.some(item=>!allowed.has(str(item)))){
+      issues.push(issue(invalidCode,path,'Booking question answer is not one of the allowed options',{questionId:answerKey(question)}));
+      return;
+    }
+    if(!question.selectMultiple && values.length>1){
+      issues.push(issue(invalidCode,path,'Booking question accepts only one answer',{questionId:answerKey(question)}));
+      return;
+    }
+  }
+
+  const type=str(question.dataType).toUpperCase();
+  const scalar=Array.isArray(value)?value[0]:value;
+  if(type.includes('NUMBER')||type.includes('INTEGER')||type.includes('DECIMAL')){
+    if(!Number.isFinite(Number(scalar))) issues.push(issue(invalidCode,path,'Booking question requires a numeric answer',{questionId:answerKey(question)}));
+  }else if(type.includes('DATE') && !/^\d{4}-\d{2}-\d{2}$/.test(str(scalar))){
+    issues.push(issue(invalidCode,path,'Booking question requires a date answer',{questionId:answerKey(question)}));
+  }else if(type.includes('BOOLEAN') && !['true','false','1','0','yes','no'].includes(str(scalar).toLowerCase())){
+    issues.push(issue(invalidCode,path,'Booking question requires a boolean answer',{questionId:answerKey(question)}));
+  }
+
+  if(question.pattern){
+    try{
+      const regex=new RegExp(question.pattern);
+      if(!values.every(item=>regex.test(str(item)))) issues.push(issue(invalidCode,path,'Booking question answer does not match the required format',{questionId:answerKey(question)}));
+    }catch(_){}
+  }
+}
+
 function pickupLocationHasValue(value) {
   if (!value || typeof value !== 'object') return false;
   return ['wholeAddress','addressLine1','address','title','name']
@@ -431,7 +535,7 @@ function pickupLocationHasValue(value) {
 
 function missingBookingData(domain, selection, participantTotal, pickup = null, extras = []) {
   const missing = [];
-  const req = bookingRequirements(domain);
+  const req = bookingRequirements(domain,selection);
   const requiredFields = new Set(arr(req.requiredCustomerFields).map(canonicalCustomerField));
 
   for (const item of arr(req.mainContactFields)) {
@@ -445,10 +549,43 @@ function missingBookingData(domain, selection, participantTotal, pickup = null, 
   }
 
   for (const question of arr(req.questions)) {
-    if (!question?.required) continue;
-    const key = answerKey(question);
-    if (key && !hasValue(selection.answers?.[key])) {
-      missing.push(issue('required_booking_question_missing', 'answers.'+key, 'Required booking question is missing', { questionId:key }));
+    const key=answerKey(question);
+    if(!key) continue;
+    const context=questionContext(question);
+    if(context==='PASSENGER'){
+      for(let index=0;index<participantTotal;index+=1){
+        const passenger=selection.passengers[index]||{};
+        if(!questionAppliesToPassenger(question,passenger)) continue;
+        validateQuestionAnswer(
+          question,
+          passenger?.answers?.[key],
+          'passengers.'+index+'.answers.'+key,
+          'required_passenger_booking_question_missing',
+          'invalid_passenger_booking_question_answer',
+          missing,
+        );
+      }
+    }else if(context==='EXTRA'){
+      for(const [extraId,count] of Object.entries(selection.extras||{})){
+        if(Number(count)<=0||!questionAppliesToExtra(question,extraId)) continue;
+        validateQuestionAnswer(
+          question,
+          selection.extraAnswers?.[extraId]?.[key],
+          'extraAnswers.'+extraId+'.'+key,
+          'required_extra_booking_question_missing',
+          'invalid_extra_booking_question_answer',
+          missing,
+        );
+      }
+    }else{
+      validateQuestionAnswer(
+        question,
+        selection.answers?.[key],
+        'answers.'+key,
+        'required_booking_question_missing',
+        'invalid_booking_question_answer',
+        missing,
+      );
     }
   }
 
@@ -901,7 +1038,7 @@ export function resolveBookingSelection(domain = {}, input = {}, { now = new Dat
       participants:participantCategories,
       pickup,
       extras,
-      bookingRequirements:bookingRequirements(domain),
+      bookingRequirements:bookingRequirements(domain,selection),
     },
     quote,
     errors,
