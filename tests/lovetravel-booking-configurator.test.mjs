@@ -91,3 +91,22 @@ test('Bókun-only checkout requirements have dedicated editable controls',()=>{
   assert.match(js,/required_extra_missing/);
   assert.match(js,/mainContactFields/);
 });
+
+test('contextual Bókun questions are routed to booking, passenger and extra controls',()=>{
+  assert.match(js,/function questionContext\(/);
+  assert.match(js,/data-lt-passenger-answer/);
+  assert.match(js,/data-lt-extra-answer/);
+  assert.match(js,/extraAnswers/);
+  assert.match(js,/selectFromOptions/);
+  assert.match(js,/dataType/);
+  assert.match(js,/selectMultiple/);
+  assert.match(js,/extra_booking_question/);
+});
+
+test('dynamic question controls support select, date and numeric provider types',()=>{
+  assert.match(js,/item\?\.selectFromOptions/);
+  assert.match(js,/typeName\.includes\('DATE'\)/);
+  assert.match(js,/typeName\.includes\('NUMBER'\)/);
+  assert.match(css,/\.lt-contact-field select/);
+  assert.match(css,/\.lt-extra-questions/);
+});
