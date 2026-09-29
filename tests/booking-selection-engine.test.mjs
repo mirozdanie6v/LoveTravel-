@@ -390,6 +390,127 @@ test('per-booking rates, separately priced pickup and per-unit extras produce a 
   assert.equal(result.readyToBook,true);
 });
 
+test('optional Bókun contact and passenger fields are exposed but do not block booking',()=>{
+  const d=domain();
+  d.bookingRequirements.requiredCustomerFields=['firstName','lastName','phoneNumber'];
+  d.bookingRequirements.mainContactFields=[{field:'EMAIL',required:false}];
+  d.bookingRequirements.passengerFields=[{field:'FIRST_NAME',required:false}];
+
+  const result=resolveBookingSelection(d,{
+    productId:'1287580',date:'2026-10-01',startTimeId:'301',rateId:'201',
+    participants:{101:1},
+    pickup:{mode:'MEET_ON_LOCATION'},
+    customer:{firstName:'A',lastName:'B',phoneNumber:'+84000000000'},
+  },{now});
+
+  assert.equal(result.readyToBook,true);
+  assert.equal(result.constraints.bookingRequirements.mainContactFields[0].required,false);
+  assert.equal(result.constraints.bookingRequirements.passengerFields[0].required,false);
+});
+
+test('triggered booking questions apply only to the selected rate and validate option answers',()=>{
+  const d=domain();
+  d.bookingRequirements.questions=[
+    {
+      id:'rate-q',title:'Choose meeting preference',required:true,context:'BOOKING',
+      rateTriggerSelection:'SELECTED_ONLY',rateTriggers:['201'],
+      selectFromOptions:true,selectMultiple:false,
+      options:[{value:'pier',label:'Pier'},{value:'hotel',label:'Hotel'}],
+    },
+    {
+      id:'other-rate-q',title:'Other option question',required:true,context:'BOOKING',
+      rateTriggerSelection:'SELECTED_ONLY',rateTriggers:['999'],
+    },
+  ];
+  const base={
+    productId:'1287580',date:'2026-10-01',startTimeId:'301',rateId:'201',
+    participants:{101:1},pickup:{mode:'MEET_ON_LOCATION'},
+    customer:{firstName:'A',lastName:'B',phoneNumber:'+84000000000'},
+  };
+
+  const missing=resolveBookingSelection(d,base,{now});
+  assert.ok(missing.bookingDataIssues.some(x=>x.code==='required_booking_question_missing'&&x.meta?.questionId==='rate-q'));
+  assert.equal(missing.bookingDataIssues.some(x=>x.meta?.questionId==='other-rate-q'),false);
+  assert.deepEqual(missing.constraints.bookingRequirements.questions.map(x=>x.id),['rate-q']);
+
+  const invalid=resolveBookingSelection(d,{...base,answers:{'rate-q':'invalid'}},{now});
+  assert.ok(invalid.bookingDataIssues.some(x=>x.code==='invalid_booking_question_answer'));
+
+  const complete=resolveBookingSelection(d,{...base,answers:{'rate-q':'pier'}},{now});
+  assert.equal(complete.readyToBook,true);
+});
+
+test('passenger-context questions apply only to matching pricing categories',()=>{
+  const d=domain();
+  d.bookingRequirements.questions=[{
+    id:'child-name',title:'Child nickname',required:true,context:'PASSENGER',
+    pricingCategoryTriggerSelection:'SELECTED_ONLY',pricingCategoryTriggers:['102'],
+  }];
+  const base={
+    productId:'1287580',date:'2026-10-01',startTimeId:'301',rateId:'201',
+    participants:{101:1,102:1},pickup:{mode:'MEET_ON_LOCATION'},
+    customer:{firstName:'A',lastName:'B',phoneNumber:'+84000000000'},
+    passengers:[
+      {categoryId:'101'},
+      {categoryId:'102'},
+    ],
+  };
+  const missing=resolveBookingSelection(d,base,{now});
+  const passengerQuestionIssues=missing.bookingDataIssues.filter(x=>x.code==='required_passenger_booking_question_missing');
+  assert.equal(passengerQuestionIssues.length,1);
+  assert.equal(passengerQuestionIssues[0].path,'passengers.1.answers.child-name');
+
+  const complete=resolveBookingSelection(d,{
+    ...base,
+    passengers:[
+      {categoryId:'101'},
+      {categoryId:'102',answers:{'child-name':'Mia'}},
+    ],
+  },{now});
+  assert.equal(complete.readyToBook,true);
+});
+
+test('extra-context questions appear only after their extra is selected',()=>{
+  const d=domain();
+  d.extras=[{id:701,title:'Private transfer',maxPerBooking:2,limitByPax:false}];
+  d.rates[0].extraConfigs=[{
+    extraId:701,selectionType:'OPTIONAL',pricingType:'INCLUDED_IN_PRICE',pricedPerPerson:false,
+  }];
+  d.bookingRequirements.questions=[{
+    id:'extra-q',title:'Transfer note',required:true,context:'EXTRA',
+    extraTriggerSelection:'SELECTED_ONLY',extraTriggers:['701'],
+  }];
+  const base={
+    productId:'1287580',date:'2026-10-01',startTimeId:'301',rateId:'201',
+    participants:{101:1},pickup:{mode:'MEET_ON_LOCATION'},
+    customer:{firstName:'A',lastName:'B',phoneNumber:'+84000000000'},
+  };
+
+  const without=resolveBookingSelection(d,base,{now});
+  assert.equal(without.constraints.bookingRequirements.questions.length,0);
+  assert.equal(without.readyToBook,true);
+
+  const selected=resolveBookingSelection(d,{...base,extras:{701:1}},{now});
+  assert.ok(selected.bookingDataIssues.some(x=>x.code==='required_extra_booking_question_missing'));
+
+  const complete=resolveBookingSelection(d,{
+    ...base,extras:{701:1},extraAnswers:{701:{'extra-q':'Lobby'}},
+  },{now});
+  assert.equal(complete.readyToBook,true);
+});
+
+test('missing numeric Bókun values stay null instead of becoming zero-capacity constraints',()=>{
+  const d=domain();
+  d.availabilitySlots[0].pickup.availabilityCount=null;
+  const result=resolveBookingSelection(d,{
+    productId:'1287580',date:'2026-10-01',startTimeId:'301',rateId:'201',
+    participants:{101:1},pickup:{mode:'PICKUP',placeId:'501'},
+    customer:{firstName:'A',lastName:'B',phoneNumber:'+84000000000'},
+  },{now});
+  assert.equal(result.constraints.pickup.availabilityCount,null);
+  assert.equal(result.errors.some(x=>x.code==='pickup_not_available'),false);
+});
+
 test('selectionForPatch clears stale slot/time when date changes',()=>{
   const next=selectionForPatch({
     productId:'1287580',date:'2026-10-01',startTimeId:'301',slotId:'301_20261001',rateId:'201',
