@@ -141,3 +141,24 @@ test('mobile configurator uses readable single-column steps and brand primary CT
   assert.match(css,/background:linear-gradient\(135deg,#ee4214,#ff7b2e\)/);
   assert.match(css,/-webkit-line-clamp:2/);
 });
+
+
+test('booking choices expose unmistakable selected state and accessible pressed state',()=>{
+  assert.match(js,/aria-current="date"/);
+  assert.match(js,/aria-pressed/);
+  assert.match(js,/classList\.toggle\('is-active',active\)/);
+  assert.match(css,/\.lt-date-chip\.is-active\{[\s\S]*#ee4214/);
+  assert.match(css,/\.lt-pickup-mode\.is-active/);
+});
+
+test('pickup semantics and mobile keyboard behavior are explicit in the booking sheet',()=>{
+  assert.match(js,/meetNote:/);
+  assert.match(js,/pickupModeNote:/);
+  assert.match(js,/pickupNote=/);
+  assert.match(js,/syncVisualViewport/);
+  assert.match(js,/window\.visualViewport/);
+  assert.match(js,/scrollIntoView/);
+  assert.match(js,/esc\(t\(\)\.yes\)/);
+  assert.match(css,/--lt-vv-height/);
+  assert.match(css,/--lt-keyboard-inset/);
+});
