@@ -251,8 +251,15 @@ test('pickup selection exposes provider places and blocks booking until a valid 
   assert.ok(unknown.bookingDataIssues.some(x=>x.code==='unknown_pickup_place'));
   assert.equal(unknown.readyToBook,false);
 
-  const complete=resolveBookingSelection(d,{
+  const roomMissing=resolveBookingSelection(d,{
     ...base,pickup:{mode:'PICKUP',placeId:'501'},
+  },{now});
+  assert.equal(roomMissing.readyToQuote,true);
+  assert.equal(roomMissing.readyToBook,false);
+  assert.ok(roomMissing.bookingDataIssues.some(x=>x.code==='pickup_room_number_required'));
+
+  const complete=resolveBookingSelection(d,{
+    ...base,pickup:{mode:'PICKUP',placeId:'501',roomNumber:'804'},
   },{now});
   assert.equal(complete.readyToQuote,true);
   assert.equal(complete.readyToBook,true);
