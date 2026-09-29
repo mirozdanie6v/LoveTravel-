@@ -287,12 +287,8 @@
     return arr(domain.availabilitySlots).find(slot=>String(slot.id)===String(state.slotId)) || null;
   }
   function pickupText(rate,domain){
-    const selection=String(rate?.pickup?.selectionType || '').toUpperCase();
-    const pricing=String(rate?.pickup?.pricingType || '').toUpperCase();
-    if(!domain?.experience?.pickup?.enabled && !selection) return '';
-    const mode=selection==='OPTIONAL' ? t().pickupOptional : selection==='REQUIRED' ? t().pickupRequired : selection==='UNAVAILABLE' ? t().pickupUnavailable : selection.toLowerCase();
-    const included=pricing==='INCLUDED_IN_PRICE' ? ' · '+t().includedInPrice : '';
-    return [mode,included].join('');
+    if(!domain?.experience?.pickup?.enabled) return '';
+    return t().pickupOptional;
   }
   function cancellationRows(policy){
     const rules=arr(policy?.penaltyRules).filter(rule=>Number.isFinite(Number(rule?.cutoffHours))&&Number.isFinite(Number(rule?.percentage ?? rule?.charge)));
@@ -310,8 +306,8 @@
     const hero=photos[0];
     const thumbs=photos.slice(1,7);
     return '<section class="lt-domain-gallery">'+
-      '<button class="lt-domain-gallery__hero" type="button"><img src="'+esc(hero.url)+'" alt="'+esc(domain.experience.title)+'"></button>'+
-      (thumbs.length?'<div class="lt-domain-gallery__strip">'+thumbs.map((p,i)=>'<button type="button" class="lt-domain-gallery__thumb"><img src="'+esc(p.url)+'" alt="'+esc(domain.experience.title)+' '+(i+2)+'"></button>').join('')+'</div>':'')+
+      '<div class="lt-domain-gallery__hero"><img src="'+esc(hero.url)+'" alt="'+esc(domain.experience.title)+'"></div>'+
+      (thumbs.length?'<div class="lt-domain-gallery__strip">'+thumbs.map((p,i)=>'<div class="lt-domain-gallery__thumb"><img src="'+esc(p.url)+'" alt="'+esc(domain.experience.title)+' '+(i+2)+'"></div>').join('')+'</div>':'')+
       '</section>';
   }
   function rateCards(domain,state){
@@ -455,10 +451,7 @@
             (slot?'<div><small>'+esc(t().chooseDate)+'</small><b>'+esc((slot.localizedDate||slot.date)+' · '+(slot.startTime||''))+'</b></div>':'')+
           '</div>'+
         '</section>'+
-        rateCards(domain,state)+
-        availabilityCards(domain,state)+
-        participantPrices(domain,state)+
-        meeting(domain,rate)+
+        meeting(domain,null)+
         itinerary(domain)+
         videoSection(domain)+
         listSection(t().included,included)+
@@ -468,7 +461,6 @@
         listSection(t().offers,domain?.offers)+
         listSection(t().currencies,domain?.experience?.paymentCurrencies)+
         (cancellation?'<section class="lt-domain-section"><div class="lt-domain-section__head"><span class="lt-domain-eyebrow">'+esc(t().conditions)+'</span></div><div class="lt-domain-policy"><b>'+esc(cancellation.title||'')+'</b>'+cancellationRows(cancellation)+'</div></section>':'')+
-        bookingDynamic(domain)+
         (firstPhoto?'<div class="lt-domain-source-note" aria-hidden="true"></div>':'')+
       '</div>';
 
