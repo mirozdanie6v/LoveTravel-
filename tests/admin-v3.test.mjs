@@ -63,17 +63,19 @@ test('admin prototype displays money only in rubles', () => {
   assert.doesNotMatch(admin, /\$\d/);
 });
 
-test('standalone LoveTravel customer build excludes admin/director and role-switch assets', () => {
-  for (const token of ['admin/index.html','director/index.html','role-switch.css','role-switch.js']) assert.equal(build.includes(token), false, token);
+test('standalone build publishes admin and director routes plus role switch assets', () => {
+  for (const token of ["mkdir(resolve(dist, 'admin')", "mkdir(resolve(dist, 'director')", "admin/index.html", "director/index.html", "role-switch.css", "role-switch.js"]) {
+    assert.match(build, new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  }
 });
 
-test('LoveTravel customer build does not publish the MAX TOUR logo asset', () => {
-  assert.doesNotMatch(build, /max-tour-logo\.svg/);
+test('all three cabinets publish the same approved Max Tour logo asset', () => {
+  assert.match(build, /max-tour-logo\.svg/);
   assert.match(admin, /max-tour-logo\.svg/);
   assert.match(director, /max-tour-logo\.svg/);
 });
 
-test('published LoveTravel customer shell contains no legacy admin renderer', () => {
-  assert.doesNotMatch(build, /replaceLegacyAdmin/);
-  assert.doesNotMatch(build, /window\.location\.assign\('\/admin\/'\)/);
+test('published Mini App replaces the legacy inline admin with protected v3', () => {
+  assert.match(build, /replaceLegacyAdmin/);
+  assert.match(build, /window\.location\.assign\('\/admin\/'\)/);
 });
