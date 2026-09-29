@@ -45,7 +45,7 @@
       customerFields:'Контактные данные',
       passengerFields:'Данные пассажиров',
       requirements:'Важно знать',
-      accessibility:'Доступность',
+      accessibility:'Доступность', difficulty:'Сложность', minAge:'Минимальный возраст', reviews:'Отзывы', passport:'Требуется паспорт', currencies:'Валюты оплаты', offers:'Предложения', pickupTiming:'Время подачи', minutesBefore:'мин до начала',
       priceFor:'Цена для выбранной даты',
       chooseDate:'Выберите дату',
       loading:'Загружаем актуальные данные…',
@@ -94,7 +94,7 @@
       customerFields:'Contact details',
       passengerFields:'Passenger details',
       requirements:'Important information',
-      accessibility:'Accessibility',
+      accessibility:'Accessibility', difficulty:'Difficulty', minAge:'Minimum age', reviews:'Reviews', passport:'Passport required', currencies:'Payment currencies', offers:'Offers', pickupTiming:'Pickup timing', minutesBefore:'min before start',
       priceFor:'Price for selected date',
       chooseDate:'Choose a date',
       loading:'Loading current availability…',
@@ -143,7 +143,7 @@
       customerFields:'Thông tin liên hệ',
       passengerFields:'Thông tin hành khách',
       requirements:'Thông tin quan trọng',
-      accessibility:'Khả năng tiếp cận',
+      accessibility:'Khả năng tiếp cận', difficulty:'Độ khó', minAge:'Tuổi tối thiểu', reviews:'Đánh giá', passport:'Cần hộ chiếu', currencies:'Tiền tệ thanh toán', offers:'Ưu đãi', pickupTiming:'Thời gian đón', minutesBefore:'phút trước giờ bắt đầu',
       priceFor:'Giá cho ngày đã chọn',
       chooseDate:'Chọn ngày',
       loading:'Đang tải dữ liệu mới nhất…',
@@ -192,7 +192,7 @@
       customerFields:'연락처 정보',
       passengerFields:'탑승객 정보',
       requirements:'중요 안내',
-      accessibility:'접근성',
+      accessibility:'접근성', difficulty:'난이도', minAge:'최소 연령', reviews:'리뷰', passport:'여권 필요', currencies:'결제 통화', offers:'제공 옵션', pickupTiming:'픽업 시간', minutesBefore:'분 전',
       priceFor:'선택 날짜 가격',
       chooseDate:'날짜 선택',
       loading:'최신 정보를 불러오는 중…',
@@ -321,10 +321,16 @@
       '<div class="lt-domain-rates">'+rates.map(rate=>{
         const active=String(rate.id)===String(state.rateId);
         const price=ratePrice(domain,rate);
+        const details=[
+          rate.description,
+          ...arr(rate.details).map(item=>item?.description||item?.title||''),
+          ...arr(rate.textItems).map(item=>item?.description||item?.title||''),
+        ].map(value=>String(value||'').trim()).filter(Boolean);
+        const detailText=[...new Set(details)].join(' · ');
         return '<button type="button" class="lt-domain-rate '+(active?'is-active':'')+'" data-lt-domain-rate="'+esc(rate.id)+'">'+
           '<span class="lt-domain-rate__check">'+(active?'✓':'')+'</span>'+
-          '<span class="lt-domain-rate__copy"><b>'+esc(rate.title || rate.code || rate.id)+'</b>'+(rate.description?'<small>'+esc(rate.description)+'</small>':'')+'</span>'+
-          '<span class="lt-domain-rate__price">'+(price?'<small>'+esc(t().from)+'</small><b>'+esc(money(price))+'</b>':'')+'</span>'+
+          '<span class="lt-domain-rate__copy"><b>'+esc(rate.title || rate.code || rate.id)+'</b>'+(detailText?'<small>'+esc(detailText)+'</small>':'')+'</span>'+
+          '<span class="lt-domain-rate__price">'+(price?'<small>'+esc(t().from)+'</small><strong>'+esc(money(price))+'</strong>':'')+'</span>'+
         '</button>';
       }).join('')+'</div></section>';
   }
@@ -360,10 +366,21 @@
   function meeting(domain,rate){
     const points=arr(domain?.experience?.meeting?.startPoints);
     const pickup=pickupText(rate,domain);
-    if(!points.length && !pickup) return '';
+    const pickupMinutes=Number(domain?.experience?.pickup?.minutesBefore);
+    const pickupWindow=Number(domain?.experience?.pickup?.timeWindowMinutes);
+    const pickupTiming=Number.isFinite(pickupMinutes)&&pickupMinutes>0
+      ? pickupMinutes+' '+t().minutesBefore+(Number.isFinite(pickupWindow)&&pickupWindow>0?' · ±'+pickupWindow+' min':'')
+      : '';
+    const meetingType=String(domain?.experience?.meeting?.type||'').replaceAll('_',' ').toLowerCase();
+    if(!points.length && !pickup && !meetingType) return '';
     return '<section class="lt-domain-section lt-domain-grid">'+
-      (points.length?'<div class="lt-domain-info"><span class="lt-domain-eyebrow">'+esc(t().meeting)+'</span>'+points.map(point=>'<div class="lt-domain-info__row"><b>'+esc(point.title || point.addressLine1 || '')+'</b><span>'+esc([point.addressLine1,point.city,point.state].filter(Boolean).join(', '))+'</span></div>').join('')+'</div>':'')+
-      (pickup?'<div class="lt-domain-info"><span class="lt-domain-eyebrow">'+esc(t().pickup)+'</span><div class="lt-domain-info__row"><b>'+esc(pickup)+'</b></div></div>':'')+
+      (points.length||meetingType?'<div class="lt-domain-info"><span class="lt-domain-eyebrow">'+esc(t().meeting)+'</span>'+
+        (meetingType?'<div class="lt-domain-info__row"><b>'+esc(meetingType)+'</b></div>':'')+
+        points.map(point=>'<div class="lt-domain-info__row"><b>'+esc(point.title || point.addressLine1 || '')+'</b><span>'+esc([point.addressLine1,point.city,point.state].filter(Boolean).join(', '))+'</span></div>').join('')+'</div>':'')+
+      (pickup?'<div class="lt-domain-info"><span class="lt-domain-eyebrow">'+esc(t().pickup)+'</span><div class="lt-domain-info__row"><b>'+esc(pickup)+'</b></div>'+
+        (pickupTiming?'<div class="lt-domain-info__row"><span>'+esc(t().pickupTiming)+'</span><b>'+esc(pickupTiming)+'</b></div>':'')+
+        (domain?.experience?.pickup?.noPickupMessage?'<div class="lt-domain-info__row"><span>'+esc(domain.experience.pickup.noPickupMessage)+'</span></div>':'')+
+      '</div>':'')+
       '</section>';
   }
   function itinerary(domain){
@@ -372,7 +389,7 @@
     return '<section class="lt-domain-section"><div class="lt-domain-section__head"><div><span class="lt-domain-eyebrow">'+esc(t().itinerary)+'</span>'+(arr(domain.rates).length>1?'<p>'+esc(t().itineraryHint)+'</p>':'')+'</div></div><div class="lt-domain-itinerary">'+items.map((item,index)=>'<div class="lt-domain-itinerary__item"><span>'+(index+1)+'</span><div>'+(item.title?'<b>'+esc(item.title)+'</b>':'')+(item.body?'<p>'+esc(textFromHtml(item.body))+'</p>':'')+'</div></div>').join('')+'</div></section>';
   }
   function listSection(title,items){
-    const clean=arr(items).map(v=>typeof v==='string'?v:(v?.title||v?.description||'')).map(textFromHtml).filter(Boolean);
+    const clean=arr(items).map(v=>typeof v==='string'?v:(v?.title||v?.description||v?.code||v?.currencyCode||v?.id||'')).map(textFromHtml).filter(Boolean);
     if(!clean.length) return '';
     return '<section class="lt-domain-section"><div class="lt-domain-section__head"><span class="lt-domain-eyebrow">'+esc(title)+'</span></div><ul class="lt-domain-list">'+clean.map(item=>'<li>'+esc(item)+'</li>').join('')+'</ul></section>';
   }
@@ -403,7 +420,9 @@
     const requirements=[
       ...listFromHtml(domain?.experience?.content?.requirements),
       ...listFromHtml(domain?.experience?.content?.attention),
-      ...arr(domain?.experience?.content?.knowBeforeYouGoItems).map(x=>x?.title||x?.text||x?.description||'').filter(Boolean)
+      ...listFromHtml(domain?.experience?.content?.dressCode),
+      ...arr(domain?.experience?.content?.knowBeforeYouGoItems).map(x=>x?.title||x?.text||x?.description||'').filter(Boolean),
+      ...(domain?.experience?.passportRequired?[t().passport]:[]),
     ];
     const cancellation=rate?.cancellationPolicy || domain?.cancellationPolicy;
     const firstPhoto=arr(domain?.experience?.media?.photos)[0]?.url || '';
@@ -421,6 +440,9 @@
           '<div class="lt-domain-facts">'+
             (domain.experience.duration?.text?'<div><small>'+esc(t().duration)+'</small><b>'+esc(domain.experience.duration.text)+'</b></div>':'')+
             (languages.length?'<div><small>'+esc(t().languages)+'</small><b>'+esc(languages.join(' · '))+'</b></div>':'')+
+            (domain.experience.difficulty?'<div><small>'+esc(t().difficulty)+'</small><b>'+esc(domain.experience.difficulty)+'</b></div>':'')+
+            (Number.isFinite(Number(domain.experience.minAge))?'<div><small>'+esc(t().minAge)+'</small><b>'+esc(domain.experience.minAge)+'+</b></div>':'')+
+            (Number.isFinite(Number(domain.experience.reviews?.rating))?'<div><small>'+esc(t().reviews)+'</small><b>'+esc(domain.experience.reviews.rating)+(Number.isFinite(Number(domain.experience.reviews?.count))?' · '+esc(domain.experience.reviews.count):'')+'</b></div>':'')+
             (slot?'<div><small>'+esc(t().chooseDate)+'</small><b>'+esc((slot.localizedDate||slot.date)+' · '+(slot.startTime||''))+'</b></div>':'')+
           '</div>'+
         '</section>'+
@@ -432,6 +454,9 @@
         listSection(t().included,included)+
         listSection(t().excluded,excluded)+
         listSection(t().requirements,requirements)+
+        listSection(t().accessibility,domain?.experience?.accessibility)+
+        listSection(t().offers,domain?.offers)+
+        listSection(t().currencies,domain?.experience?.paymentCurrencies)+
         (cancellation?'<section class="lt-domain-section"><div class="lt-domain-section__head"><span class="lt-domain-eyebrow">'+esc(t().conditions)+'</span></div><div class="lt-domain-policy"><b>'+esc(cancellation.title||'')+'</b>'+cancellationRows(cancellation)+'</div></section>':'')+
         bookingDynamic(domain)+
         (firstPhoto?'<div class="lt-domain-source-note" aria-hidden="true"></div>':'')+
