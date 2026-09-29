@@ -215,7 +215,7 @@ function parseJsonObject(value) {
   }
 }
 
-function chunks(fields, maxChars = 12000, maxItems = 24) {
+function chunks(fields, maxChars = 4200, maxItems = 7) {
   const result = [];
   let current = [];
   let chars = 0;
@@ -251,13 +251,19 @@ async function translateChunk(env, locale, fields) {
       {role:'system', content:system},
       {role:'user', content:JSON.stringify(payload)},
     ],
-    temperature:0,
   });
   const parsed = parseJsonObject(aiResponseText(result));
   const allowed = new Set(fields.map(field => field.key));
-  return Object.fromEntries(Object.entries(parsed)
+  const translated = Object.fromEntries(Object.entries(parsed)
     .filter(([key,value]) => allowed.has(key) && typeof value === 'string' && value.trim())
     .map(([key,value]) => [key,value.trim()]));
+
+  if (!Object.keys(translated).length && fields.length > 1) {
+    const recovered = {};
+    for (const field of fields) Object.assign(recovered, await translateChunk(env, locale, [field]));
+    return recovered;
+  }
+  return translated;
 }
 
 async function saveTranslations(env, productId, locale, fields, translated, provider = 'workers-ai') {
