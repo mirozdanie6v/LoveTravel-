@@ -34,13 +34,13 @@ test('LoveTravel catalog presentation removes irrelevant MAX TOUR filters and st
   assert.match(js,/catalogIntro/);
 });
 
-test('LoveTravel build publishes and loads branding after the runtime adapter', () => {
+test('LoveTravel build publishes and loads branding after the canonical runtime', () => {
   assert.match(build,/lovetravel-brand\.css/);
   assert.match(build,/lovetravel-brand\.js/);
-  assert.match(build,/copyFile\(resolve\(root, 'src\/lovetravel-brand\.css'/);
-  assert.match(build,/copyFile\(resolve\(root, 'src\/lovetravel-brand\.js'/);
-  const runtimeIndex=build.indexOf('<script src="/runtime-api.js" defer></script>');
-  const brandIndex=build.indexOf('<script src="/lovetravel-brand.js" defer></script>');
+  assert.match(build,/copyFile\(resolve\(root, 'src', file\), resolve\(dist, file\)\)/);
+  const runtimeIndex=build.indexOf('<script src="/lovetravel-runtime.js"></script>');
+  const brandIndex=build.indexOf('<script src="/lovetravel-brand.js"></script>');
   assert.ok(runtimeIndex >= 0 && brandIndex > runtimeIndex);
+  assert.doesNotMatch(build,/runtime-api\.js/);
   assert.match(build,/data-project="LoveTravel"/);
 });
