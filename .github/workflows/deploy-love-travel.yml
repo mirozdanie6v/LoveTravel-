@@ -88,7 +88,12 @@ jobs:
           status="${{ job.status }}"
           ok=false
           stage="$status"
-          if [ "$status" = "success" ]; then ok=true; stage="verified"; fi
+          if [ "$status" = "success" ]; then
+            ok=true
+            stage="verified"
+          elif [ -z "${CLOUDFLARE_API_TOKEN:-}" ] || [ -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]; then
+            stage="blocked_cloudflare_credentials"
+          fi
           cat > .deploy-status.json <<EOF
           {
             "ok": $ok,
