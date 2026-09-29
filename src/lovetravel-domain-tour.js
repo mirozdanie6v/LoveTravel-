@@ -287,8 +287,12 @@
     return arr(domain.availabilitySlots).find(slot=>String(slot.id)===String(state.slotId)) || null;
   }
   function pickupText(rate,domain){
-    if(!domain?.experience?.pickup?.enabled) return '';
-    return t().pickupOptional;
+    if(!rate || !domain?.experience?.pickup?.enabled) return '';
+    const selection=String(rate?.pickup?.selectionType || '').toUpperCase();
+    if(selection==='OPTIONAL') return t().pickupOptional;
+    if(selection==='REQUIRED') return t().pickupRequired;
+    if(selection==='UNAVAILABLE') return '';
+    return '';
   }
   function cancellationRows(policy){
     const rules=arr(policy?.penaltyRules).filter(rule=>Number.isFinite(Number(rule?.cutoffHours))&&Number.isFinite(Number(rule?.percentage ?? rule?.charge)));
@@ -368,11 +372,9 @@
     const pickupTiming=Number.isFinite(pickupMinutes)&&pickupMinutes>0
       ? pickupMinutes+' '+t().minutesBefore+(Number.isFinite(pickupWindow)&&pickupWindow>0?' · ±'+pickupWindow+' min':'')
       : '';
-    const meetingType=String(domain?.experience?.meeting?.type||'').replaceAll('_',' ').toLowerCase();
-    if(!points.length && !pickup && !meetingType) return '';
+    if(!points.length && !pickup) return '';
     return '<section class="lt-domain-section lt-domain-grid">'+
-      (points.length||meetingType?'<div class="lt-domain-info"><span class="lt-domain-eyebrow">'+esc(t().meeting)+'</span>'+
-        (meetingType?'<div class="lt-domain-info__row"><b>'+esc(meetingType)+'</b></div>':'')+
+      (points.length?'<div class="lt-domain-info"><span class="lt-domain-eyebrow">'+esc(t().meeting)+'</span>'+
         points.map(point=>'<div class="lt-domain-info__row"><b>'+esc(point.title || point.addressLine1 || '')+'</b><span>'+esc([point.addressLine1,point.city,point.state].filter(Boolean).join(', '))+'</span></div>').join('')+'</div>':'')+
       (pickup?'<div class="lt-domain-info"><span class="lt-domain-eyebrow">'+esc(t().pickup)+'</span><div class="lt-domain-info__row"><b>'+esc(pickup)+'</b></div>'+
         (pickupTiming?'<div class="lt-domain-info__row"><span>'+esc(t().pickupTiming)+'</span><b>'+esc(pickupTiming)+'</b></div>':'')+
