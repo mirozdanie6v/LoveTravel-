@@ -3,6 +3,7 @@
 
   const PRODUCT_IDS = new Set(['1287578','1287580']);
   let domainPromise = null;
+  let domainLocale = null;
   let currentProductId = null;
   const selectionByProduct = new Map();
 
@@ -224,9 +225,19 @@
   function t(){ return copy[locale()]; }
   function l10n(){ return globalThis.LoveTravelTourLocale || null; }
   function providerText(value){ return l10n()?.providerText?.(value) ?? String(value ?? ''); }
-  function localizedProductTitle(domain){ return l10n()?.productTitle?.(domain?.experience?.id,domain?.experience?.title||'') ?? String(domain?.experience?.title||''); }
-  function localizedProductDescription(domain){ return l10n()?.productDescription?.(domain?.experience?.id,domain?.experience?.description||'') ?? String(domain?.experience?.description||''); }
-  function localizedRateTitle(domain,rate){ return l10n()?.rateTitle?.(domain?.experience?.id,rate?.id,rate?.title||rate?.code||rate?.id||'') ?? String(rate?.title||rate?.code||rate?.id||''); }
+  function serverLocalized(domain){ return Boolean(l10n()?.serverLocalizationMatches?.(domain)); }
+  function localizedProductTitle(domain){
+    if(serverLocalized(domain)) return String(domain?.experience?.title||'');
+    return l10n()?.productTitle?.(domain?.experience?.id,domain?.experience?.title||'') ?? String(domain?.experience?.title||'');
+  }
+  function localizedProductDescription(domain){
+    if(serverLocalized(domain)) return String(domain?.experience?.description||'');
+    return l10n()?.productDescription?.(domain?.experience?.id,domain?.experience?.description||'') ?? String(domain?.experience?.description||'');
+  }
+  function localizedRateTitle(domain,rate){
+    if(serverLocalized(domain)) return String(rate?.title||rate?.code||rate?.id||'');
+    return l10n()?.rateTitle?.(domain?.experience?.id,rate?.id,rate?.title||rate?.code||rate?.id||'') ?? String(rate?.title||rate?.code||rate?.id||'');
+  }
   function localizedDate(iso,options){ return l10n()?.formatDate?.(iso,options) ?? String(iso||''); }
   function arr(value){ return Array.isArray(value) ? value : []; }
   function esc(value){
@@ -413,7 +424,9 @@
     if(!items.length) return '';
     return '<section class="lt-domain-section"><div class="lt-domain-section__head"><div><span class="lt-domain-eyebrow">'+esc(t().itinerary)+'</span>'+(arr(domain.rates).length>1?'<p>'+esc(t().itineraryHint)+'</p>':'')+'</div></div><div class="lt-domain-itinerary">'+items.map((item,index)=>{
       const title=providerText(item.title||'');
-      const body=l10n()?.itineraryBody?.(domain?.experience?.id,index,textFromHtml(item.body)) ?? textFromHtml(item.body);
+      const body=serverLocalized(domain)
+        ? textFromHtml(item.body)
+        : (l10n()?.itineraryBody?.(domain?.experience?.id,index,textFromHtml(item.body)) ?? textFromHtml(item.body));
       return '<div class="lt-domain-itinerary__item"><span>'+(index+1)+'</span><div>'+(title?'<b>'+esc(title)+'</b>':'')+(body?'<p>'+esc(body)+'</p>':'')+'</div></div>';
     }).join('')+'</div></section>';
   }
@@ -532,9 +545,13 @@
     }));
   }
   async function domains(force=false){
-    if(force) domainPromise=null;
+    const requestedLocale=locale();
+    if(force||domainLocale!==requestedLocale){
+      domainPromise=null;
+      domainLocale=requestedLocale;
+    }
     if(!domainPromise){
-      domainPromise=fetch('/api/bokun/domain',{cache:'no-store',credentials:'same-origin'})
+      domainPromise=fetch('/api/bokun/domain?locale='+encodeURIComponent(requestedLocale),{cache:'no-store',credentials:'same-origin'})
         .then(async response=>{
           if(!response.ok) throw new Error('domain HTTP '+response.status);
           const data=await response.json();
@@ -621,7 +638,7 @@
   }
   document.addEventListener('click',event=>{
     if(event.target.closest?.('.mt-language-switcher button')&&currentProductId&&document.querySelector('#tourScreen')?.classList.contains('active')){
-      setTimeout(()=>domains().then(list=>{
+      setTimeout(()=>domains(true).then(list=>{
         const domain=list.find(item=>String(item?.experience?.id)===currentProductId);
         if(domain) renderDomain(domain);
       }).catch(()=>{}),80);
