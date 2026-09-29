@@ -7,6 +7,7 @@ import {
   localizeDomainFromCache,
   normalizeContentLocale,
   syncDomainTranslations,
+  _localizationTest,
 } from '../src/bokun-content-localization.js';
 
 function sampleDomain() {
@@ -128,4 +129,20 @@ test('translates only cache misses and invalidates a field when its Bókun sourc
   assert.equal(stale.experience.title,'Updated English title');
   assert.ok(stale.localization.pendingFields>=1);
   assert.equal(stale.experience.description,'KO:English description');
+});
+
+
+test('background translation jobs are serialized to avoid Workers AI contention', async () => {
+  const order=[];
+  const first=_localizationTest.enqueueBackgroundSync(async()=>{
+    order.push('first:start');
+    await new Promise(resolve=>setTimeout(resolve,15));
+    order.push('first:end');
+  });
+  const second=_localizationTest.enqueueBackgroundSync(async()=>{
+    order.push('second:start');
+    order.push('second:end');
+  });
+  await Promise.all([first,second]);
+  assert.deepEqual(order,['first:start','first:end','second:start','second:end']);
 });
