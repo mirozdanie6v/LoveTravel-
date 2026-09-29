@@ -330,7 +330,10 @@ test('string main contact fields are preserved for the UI instead of being dropp
 
 test('required extras and custom pickup are represented explicitly in booking validation',()=>{
   const d=domain();
-  d.extras=[{id:701,title:'Private transfer',required:true}];
+  d.extras=[{id:701,title:'Private transfer',maxPerBooking:3,limitByPax:false}];
+  d.rates[0].extraConfigs=[{
+    extraId:701,selectionType:'PRESELECTED',pricingType:'PRICED_SEPARATELY',pricedPerPerson:false,
+  }];
   d.experience.pickup.customAllowed=true;
 
   const requiredExtra=resolveBookingSelection(d,{
@@ -350,6 +353,41 @@ test('required extras and custom pickup are represented explicitly in booking va
   },{now});
   assert.ok(badCustom.bookingDataIssues.some(x=>x.code==='custom_pickup_location_incomplete'));
   assert.ok(badCustom.warnings.some(x=>x.code==='extras_price_unresolved'));
+});
+
+test('per-booking rates, separately priced pickup and per-unit extras produce a complete Bókun quote',()=>{
+  const d=domain();
+  const rate=d.rates[0];
+  rate.pricedPerPerson=false;
+  rate.pickup={selectionType:'OPTIONAL',pricingType:'PRICED_SEPARATELY',pricedPerPerson:false};
+  rate.extraConfigs=[{
+    extraId:701,selectionType:'OPTIONAL',pricingType:'PRICED_SEPARATELY',pricedPerPerson:false,
+  }];
+  d.extras=[{id:701,title:'Private transfer',maxPerBooking:4,limitByPax:false}];
+  const slot=d.availabilitySlots[0];
+  const quote=slot.priceQuotesByRate[0];
+  quote.participantPrices=[];
+  quote.pricePerBooking={amount:100,currency:'USD'};
+  quote.pickupPrice={amount:20,currency:'USD'};
+  quote.pickupPricePerCategoryUnit=[];
+  quote.extraPricePerUnit=[{id:701,amount:{amount:10,currency:'USD'}}];
+  quote.extraPricePerCategoryUnit=[];
+
+  const result=resolveBookingSelection(d,{
+    productId:'1287580',date:'2026-10-01',startTimeId:'301',rateId:'201',
+    participants:{101:2},
+    pickup:{mode:'PICKUP',placeId:'501',roomNumber:'804'},
+    extras:{701:2},
+    customer:{firstName:'A',lastName:'B',phoneNumber:'+84000000000'},
+  },{now});
+
+  assert.equal(result.quote.available,true);
+  assert.equal(result.quote.participantSubtotal,100);
+  assert.equal(result.quote.pickupTotal,20);
+  assert.equal(result.quote.extrasTotal,20);
+  assert.equal(result.quote.total,140);
+  assert.equal(result.quote.extraLines[0].extraId,'701');
+  assert.equal(result.readyToBook,true);
 });
 
 test('selectionForPatch clears stale slot/time when date changes',()=>{
