@@ -67,8 +67,8 @@ test('standalone LoveTravel customer build excludes admin/director and role-swit
   for (const token of ['admin/index.html','director/index.html','role-switch.css','role-switch.js']) assert.equal(build.includes(token), false, token);
 });
 
-test('all three cabinets publish the same approved Max Tour logo asset', () => {
-  assert.match(build, /max-tour-logo\.svg/);
+test('LoveTravel customer build does not publish the MAX TOUR logo asset', () => {
+  assert.doesNotMatch(build, /max-tour-logo\.svg/);
   assert.match(admin, /max-tour-logo\.svg/);
   assert.match(director, /max-tour-logo\.svg/);
 });
