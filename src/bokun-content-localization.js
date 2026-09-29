@@ -8,6 +8,7 @@ const TARGET_NAMES = Object.freeze({
 
 let tableReadyPromise = null;
 const inFlightSync = new Map();
+let backgroundSyncQueue = Promise.resolve();
 
 function cleanLocale(value) {
   const raw = String(value ?? '').trim().toLowerCase().replace('_','-');
@@ -293,6 +294,14 @@ async function saveTranslations(env, productId, locale, fields, translated, prov
   return rows.length;
 }
 
+function enqueueBackgroundSync(task) {
+  const next = backgroundSyncQueue
+    .catch(() => undefined)
+    .then(task);
+  backgroundSyncQueue = next.catch(() => undefined);
+  return next;
+}
+
 export async function syncDomainTranslations(domain, env, requestedLocale) {
   const locale = normalizeContentLocale(requestedLocale);
   const productId = String(domain?.experience?.id || domain?.provider?.productId || '');
@@ -373,7 +382,7 @@ export async function localizeDomainFromCache(domain, env, requestedLocale, ctx 
   };
 
   if (pendingFields && env?.AI && env?.DB && ctx?.waitUntil) {
-    ctx.waitUntil(syncDomainTranslations(domain, env, locale).catch(error => {
+    ctx.waitUntil(enqueueBackgroundSync(() => syncDomainTranslations(domain, env, locale)).catch(error => {
       console.warn('Bókun localization background sync failed', error?.message || error);
     }));
   }
@@ -397,4 +406,5 @@ export const _localizationTest = {
   pathSet,
   parseJsonObject,
   chunks,
+  enqueueBackgroundSync,
 };
