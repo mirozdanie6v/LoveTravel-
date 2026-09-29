@@ -92,3 +92,65 @@ html.love-travel-branded #tourScreen.lt-domain-tour{padding:0 0 28px!important;b
 .lt-domain-video-list{display:grid;gap:8px}
 .lt-domain-video{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border:1px solid rgba(31,79,108,.09);border-radius:16px;background:#fff;color:#245f86;text-decoration:none;font-weight:800;font-size:11px}
 .lt-domain-video::after{content:'↗';font-size:14px;color:#6d91a8}
+
+
+/* 2026-09-29 conversion UX */
+.lt-domain-quickbook{
+  appearance:none;
+  width:100%;
+  min-height:54px;
+  margin-top:16px;
+  padding:10px 14px;
+  border:0;
+  border-radius:16px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  color:#fff;
+  background:linear-gradient(135deg,#ee4214,#ff7b2e);
+  box-shadow:0 12px 26px rgba(238,66,20,.24);
+  cursor:pointer;
+}
+.lt-domain-quickbook>span{
+  min-width:62px;
+  text-align:left;
+}
+.lt-domain-quickbook small{
+  display:block;
+  font-size:8px;
+  font-weight:900;
+  text-transform:uppercase;
+  letter-spacing:.07em;
+  opacity:.78;
+}
+.lt-domain-quickbook strong{
+  display:block;
+  margin-top:1px;
+  font-size:18px;
+  line-height:1;
+  letter-spacing:-.03em;
+}
+.lt-domain-quickbook>b{
+  font-size:13px;
+  font-weight:950;
+}
+@media(max-width:520px){
+  .lt-domain-gallery__hero{
+    height:260px;
+    border-radius:22px;
+  }
+  .lt-domain-hero{
+    padding:18px;
+  }
+  .lt-domain-hero h1{
+    font-size:26px!important;
+  }
+  .lt-domain-hero>p{
+    font-size:12.5px;
+    line-height:1.5;
+  }
+  .lt-domain-facts{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
