@@ -53,3 +53,12 @@ test('domain tour repairs legacy renderer overwrites while a Bókun product is a
   assert.match(js,/new MutationObserver\(repairLegacyOverwrite\)/);
   assert.ok(js.includes("!document.querySelector('#tourScreen .lt-domain-shell')"));
 });
+
+
+test('tour page exposes a high-position booking CTA and suppresses empty reviews',()=>{
+  assert.match(js,/data-lt-jump-booking/);
+  assert.match(js,/LoveTravelBookingConfigurator\.open\('date'\)/);
+  assert.match(js,/const hasReviews=/);
+  assert.match(css,/\.lt-domain-quickbook/);
+  assert.match(css,/background:linear-gradient\(135deg,#ee4214,#ff7b2e\)/);
+});
