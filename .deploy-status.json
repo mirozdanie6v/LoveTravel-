@@ -1,9 +1,14 @@
 {
-  "ok": false,
-  "stage": "blocked_cloudflare_credentials",
-  "release": "2026-09-29-bokun-complete-v1",
-  "commit": "b464cea9cf2c777f317e05f855457065393f5d9d",
-  "workflowRunId": "36567130183",
-  "verifiedDomain": "https://lovetravel.viiversion.com",
-  "verifiedBokunProducts": ["1287578", "1287580"]
+  "ok": true,
+  "stage": "verified",
+  "deploymentPath": "RIC shared Cloudflare runner",
+  "workflowRunId": "36569153838",
+  "worker": "love-travel-v28",
+  "cloudflareVersionId": "d7e2080f-3f91-4df3-9e5d-e53fe82e7a74",
+  "domain": "https://lovetravel.viiversion.com",
+  "verifiedBokunProducts": [
+    "1287578",
+    "1287580"
+  ],
+  "firstPaintLegacyMaxTour": false
 }
