@@ -447,7 +447,7 @@
             (domain.experience.duration?.text?'<div><small>'+esc(t().duration)+'</small><b>'+esc(domain.experience.duration.text)+'</b></div>':'')+
             (languages.length?'<div><small>'+esc(t().languages)+'</small><b>'+esc(languages.join(' · '))+'</b></div>':'')+
             (domain.experience.difficulty?'<div><small>'+esc(t().difficulty)+'</small><b>'+esc(domain.experience.difficulty)+'</b></div>':'')+
-            (Number.isFinite(Number(domain.experience.minAge))?'<div><small>'+esc(t().minAge)+'</small><b>'+esc(domain.experience.minAge)+'+</b></div>':'')+
+            (domain.experience.minAge!=null && domain.experience.minAge!=='' && Number.isFinite(Number(domain.experience.minAge))?'<div><small>'+esc(t().minAge)+'</small><b>'+esc(domain.experience.minAge)+'+</b></div>':'')+
             (Number.isFinite(Number(domain.experience.reviews?.rating))?'<div><small>'+esc(t().reviews)+'</small><b>'+esc(domain.experience.reviews.rating)+(Number.isFinite(Number(domain.experience.reviews?.count))?' · '+esc(domain.experience.reviews.count):'')+'</b></div>':'')+
             (String(domain.experience.booking?.capacityType||'').toUpperCase()==='ON_REQUEST'?'<div><small>'+esc(t().confirmation)+'</small><b>'+esc(t().onRequest)+'</b></div>':'')+
             (slot?'<div><small>'+esc(t().chooseDate)+'</small><b>'+esc((slot.localizedDate||slot.date)+' · '+(slot.startTime||''))+'</b></div>':'')+
