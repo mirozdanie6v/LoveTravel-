@@ -16,7 +16,7 @@
       ai:'Спросить AI',
       trust1:['Местная команда','только Нячанг'],
       trust2:['Живые даты','актуальная доступность'],
-      trust3:['RU · VI · EN','поддержка языков'],
+      trust3:['EN · VI','поддержка языков'],
       catalogTitle:'Островные экскурсии',
       catalogHint:'2 тура',
       catalogIntro:'Выберите одну из двух программ',
@@ -33,7 +33,7 @@
       ai:'Hỏi trợ lý AI',
       trust1:['Đội ngũ địa phương','chỉ chuyên Nha Trang'],
       trust2:['Lịch trực tiếp','cập nhật chỗ trống'],
-      trust3:['RU · VI · EN','hỗ trợ đa ngôn ngữ'],
+      trust3:['EN · VI','hỗ trợ đa ngôn ngữ'],
       catalogTitle:'Trải nghiệm biển đảo',
       catalogHint:'2 tour',
       catalogIntro:'Chọn một trong hai chương trình',
@@ -50,7 +50,7 @@
       ai:'Ask AI assistant',
       trust1:['Local team','Nha Trang specialists'],
       trust2:['Live dates','current availability'],
-      trust3:['RU · VI · EN','multilingual support'],
+      trust3:['EN · VI','multilingual support'],
       catalogTitle:'Island experiences',
       catalogHint:'2 tours',
       catalogIntro:'Choose your island experience',
@@ -67,7 +67,7 @@
       ai:'AI에게 묻기',
       trust1:['현지 팀','나트랑 전문'],
       trust2:['실시간 일정','예약 가능 정보'],
-      trust3:['RU · VI · EN','다국어 지원'],
+      trust3:['EN · VI','다국어 지원'],
       catalogTitle:'아일랜드 투어',
       catalogHint:'투어 2개',
       catalogIntro:'두 가지 섬 투어 중 선택하세요',
@@ -77,7 +77,7 @@
   };
 
   const locale = () => {
-    const value = String(document.documentElement.lang || localStorage.getItem('love-travel-locale-v1') || localStorage.getItem('max-tour-locale-v1') || 'ru').toLowerCase();
+    const value = String(document.documentElement.lang || localStorage.getItem('max-tour-locale-v1') || 'ru').toLowerCase();
     return copy[value] ? value : 'ru';
   };
   const t = () => copy[locale()];
@@ -144,6 +144,7 @@
           </div>
           <div class="lt-hero__actions">
             <button class="lt-hero__action lt-hero__action--primary" type="button" data-lt-action="catalog">${c.tours} →</button>
+            <button class="lt-hero__action lt-hero__action--secondary" type="button" data-lt-action="ai">${c.ai}</button>
           </div>
         </div>
       </div>`;
@@ -159,29 +160,34 @@
 
   function brandHome() {
     const screen=document.getElementById('homeScreen');
-    if (!screen) return;
+    const hero=screen?.querySelector('.hero');
+    if (!screen || !hero) return;
+
     const lang=locale();
     const image=currentImage();
-    const signature=lang+'|'+image+'|'+String(globalThis.LOVE_TRAVEL_CATALOG_SOURCE||'');
-    if (screen.dataset.ltHomeSignature===signature && screen.querySelector('.lt-hero')) return;
+    if (hero.dataset.ltBrandLocale !== lang || hero.dataset.ltBrandImage !== image || !hero.classList.contains('lt-hero')) {
+      hero.className='hero lt-hero';
+      hero.dataset.ltBrandLocale=lang;
+      hero.dataset.ltBrandImage=image;
+      hero.style.setProperty('--lt-hero-image', `url("${String(image).replace(/"/g,'%22')}")`);
+      hero.innerHTML=heroMarkup();
+    }
 
-    screen.dataset.ltHomeSignature=signature;
-    screen.innerHTML='<section class="hero lt-hero"></section><section class="lt-home-trust"></section>';
-    const hero=screen.querySelector('.lt-hero');
-    hero.dataset.ltBrandLocale=lang;
-    hero.dataset.ltBrandImage=image;
-    hero.style.setProperty('--lt-hero-image', `url("${String(image).replace(/"/g,'%22')}")`);
-    hero.innerHTML=heroMarkup();
-
-    const trust=screen.querySelector('.lt-home-trust');
-    trust.dataset.ltLocale=lang;
-    trust.innerHTML=trustMarkup();
+    let trust=screen.querySelector('.lt-home-trust');
+    if (!trust) {
+      trust=document.createElement('section');
+      trust.className='lt-home-trust';
+      hero.insertAdjacentElement('afterend',trust);
+    }
+    if (trust.dataset.ltLocale !== lang) {
+      trust.dataset.ltLocale=lang;
+      trust.innerHTML=trustMarkup();
+    }
   }
 
   function brandCatalog() {
     const screen=document.getElementById('catalogScreen');
     if (!screen) return;
-    if (globalThis.LOVE_TRAVEL_CATALOG_SOURCE === 'unavailable') return;
     screen.classList.add('lt-catalog');
     const c=t();
     const lang=locale();
