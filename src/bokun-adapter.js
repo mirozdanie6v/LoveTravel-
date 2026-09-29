@@ -204,6 +204,7 @@ export function projectBokunDomainToLegacyTour(domain = {}) {
     formatsLabel,
     priceFromUsd,
     liked:false,
+    localization:domain.localization || null,
     group:{
       from:moneyLabel(adultPrice),
       adult:moneyLabel(adultPrice),
@@ -277,9 +278,10 @@ async function fetchRawProductPair({
   start,
   end,
   currency,
+  lang,
   includePickupPlaces = false,
 }) {
-  const productUrl = buildUrl(baseUrl, '/api/bokun/product', { vendorId, productId });
+  const productUrl = buildUrl(baseUrl, '/api/bokun/product', { vendorId, productId, lang });
   const availabilityUrl = buildUrl(baseUrl, '/api/bokun/availability', {
     vendorId,
     productId,
@@ -306,6 +308,7 @@ export async function fetchLoveTravelBokunDomains({
   start,
   end,
   currency = 'USD',
+  lang = 'EN',
   includePickupPlaces = false,
 } = {}) {
   if (typeof fetchImpl !== 'function') throw new Error('fetch implementation is required');
@@ -317,6 +320,7 @@ export async function fetchLoveTravelBokunDomains({
     start,
     end,
     currency,
+    lang,
     includePickupPlaces,
   })));
   return pairs.map(({ product, availability, pickupPlaces }) => buildBokunDomain(product, availability, { vendorId, pickupPlaces }));
