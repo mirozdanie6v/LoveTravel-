@@ -1,9 +1,19 @@
 {
   "ok": false,
-  "stage": "failure",
+  "stage": "blocked_cloudflare_credentials",
   "release": "2026-09-29-bokun-complete-v1",
   "commit": "0de534b998546dbec7a6f1490e4b8161cd802237",
   "workflowRunId": "36541431845",
+  "checks": {
+    "tests": 247,
+    "passed": 247,
+    "failed": 0,
+    "build": "passed"
+  },
   "verifiedDomain": "https://lovetravel.viiversion.com",
-  "verifiedBokunProducts": ["1287578", "1287580"]
+  "verifiedBokunProducts": [
+    "1287578",
+    "1287580"
+  ],
+  "deployed": false
 }
