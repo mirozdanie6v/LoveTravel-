@@ -196,7 +196,12 @@ jobs:
             const pickupResults=page.locator('.lt-booking-sheet.is-open [data-lt-place]');
             if ((await pickupResults.count()) < 1) throw new Error('pickup search did not find a real Bókun place');
             await pickupResults.first().click();
-            await page.waitForSelector('.lt-booking-sheet', { state:'hidden', timeout:10000 });
+            await page.waitForSelector('.lt-booking-sheet.is-open [data-lt-room-number]', { state:'visible', timeout:10000 });
+            const pickupTitle=await page.locator('.lt-booking-sheet.is-open .lt-booking-sheet__header h3').innerText();
+            if (!/номер комнаты|room number|số phòng|객실 번호/i.test(pickupTitle)) throw new Error('room-number step title is not contextual: '+pickupTitle);
+            await page.locator('.lt-booking-sheet.is-open [data-lt-room-number]').fill('804');
+            await page.locator('.lt-booking-sheet.is-open [data-lt-room-save]').click();
+            await page.locator('.lt-booking-sheet').waitFor({ state:'hidden', timeout:10000 });
 
             const configured=await page.evaluate(() => ({
               selection:globalThis.LoveTravelBookingConfigurator?.selection?.(),
@@ -210,11 +215,25 @@ jobs:
             await page.waitForSelector('.lt-booking-sheet.is-open [data-lt-customer="firstName"]', { state:'visible', timeout:10000 });
             await page.locator('.lt-booking-sheet.is-open [data-lt-customer="firstName"]').fill('Test');
             await page.locator('.lt-booking-sheet.is-open [data-lt-customer="lastName"]').fill('Traveler');
+            await page.locator('.lt-booking-sheet.is-open [data-lt-customer="email"]').fill('test@example.com');
             await page.locator('.lt-booking-sheet.is-open [data-lt-customer="phoneNumber"]').fill('+84900000000');
             await page.locator('.lt-booking-sheet.is-open [data-lt-contact-check]').click();
-            await page.waitForTimeout(1200);
+            await page.locator('.lt-booking-sheet').waitFor({ state:'hidden', timeout:10000 });
+            await page.waitForTimeout(300);
             const checked=await page.evaluate(() => globalThis.LoveTravelBookingConfigurator?.resolution?.());
             if (!checked?.readyToBook) throw new Error('configurator did not validate complete current product selection: '+JSON.stringify(checked));
+            const publicFocus=await page.evaluate(() => ({
+              heroAi:Boolean(document.querySelector('[data-lt-action="ai"]')),
+              visibleNav:[...document.querySelectorAll('.bottom-nav .nav-btn')].filter(node=>getComputedStyle(node).display!=='none').map(node=>node.innerText.trim()),
+              quickBook:Boolean(document.querySelector('#tourScreen [data-lt-jump-booking]')),
+              configColumns:getComputedStyle(document.querySelector('#tourScreen .lt-booking-config__grid')).gridTemplateColumns,
+              reviewText:document.querySelector('#tourScreen .lt-domain-hero')?.innerText || '',
+            }));
+            if (publicFocus.heroAi) throw new Error('AI still competes with primary home CTA');
+            if (publicFocus.visibleNav.length !== 2) throw new Error('public nav is not focused on home/catalog: '+JSON.stringify(publicFocus));
+            if (!publicFocus.quickBook) throw new Error('tour quick booking CTA missing');
+            if (publicFocus.configColumns.split(' ').filter(Boolean).length !== 1) throw new Error('mobile configurator is not single-column: '+publicFocus.configColumns);
+            if (/Отзывы\s*0\s*[·.]\s*0/.test(publicFocus.reviewText)) throw new Error('empty review metric still visible');
 
             await page.evaluate(() => openTour('1287580'));
             await page.waitForFunction(() =>
