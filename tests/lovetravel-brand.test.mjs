@@ -20,7 +20,7 @@ test('LoveTravel public branding script is valid and uses the official Nha Trang
 test('LoveTravel branding replaces the old multi-destination hero with a two-product client experience', () => {
   assert.match(js,/className='hero lt-hero'/);
   assert.match(js,/data-lt-action="catalog"/);
-  assert.match(js,/data-lt-action="ai"/);
+  assert.doesNotMatch(js,/data-lt-action="ai"/);
   assert.doesNotMatch(js,/Дананг.*Фукуок.*Муйне/s);
   assert.match(css,/\.lt-hero/);
   assert.match(css,/--lt-hero-image/);
@@ -44,4 +44,12 @@ test('LoveTravel build publishes and loads branding after the runtime adapter', 
   const brandIndex=build.indexOf('<script src="/lovetravel-brand.js" defer></script>');
   assert.ok(runtimeIndex >= 0 && brandIndex > runtimeIndex);
   assert.match(build,/data-project="LoveTravel"/);
+});
+
+
+test('LoveTravel focuses public navigation on tours until booking and trip history are real',()=>{
+  assert.doesNotMatch(js,/data-lt-action="ai"/);
+  assert.match(css,/\.bottom-nav \.nav-btn:nth-child\(n\+3\)/);
+  assert.match(css,/display:none!important/);
+  assert.match(css,/\.lt-card-action[\s\S]*var\(--lt-orange-deep\)/);
 });
