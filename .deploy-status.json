@@ -2,13 +2,30 @@
   "ok": true,
   "stage": "verified",
   "deploymentPath": "RIC shared Cloudflare runner",
-  "workflowRunId": "36569153838",
+  "workflowRunId": "36597591279",
+  "cloudflareVersionId": "c4dad5e4-bc2b-4995-ae83-cdbcca1ed200",
+  "liveBrowserRunId": "36598094857",
+  "tests": {
+    "passed": 258,
+    "failed": 0
+  },
   "worker": "love-travel-v28",
-  "cloudflareVersionId": "d7e2080f-3f91-4df3-9e5d-e53fe82e7a74",
   "domain": "https://lovetravel.viiversion.com",
   "verifiedBokunProducts": [
     "1287578",
     "1287580"
   ],
-  "firstPaintLegacyMaxTour": false
+  "uxFixes": {
+    "checkoutContactFields": [
+      "firstName",
+      "lastName",
+      "email",
+      "phoneNumber"
+    ],
+    "pickupRoomNumber": true,
+    "mobileSingleColumn": true,
+    "focusedPublicNav": true,
+    "quickBookingCta": true
+  },
+  "realBookingCreated": false
 }
