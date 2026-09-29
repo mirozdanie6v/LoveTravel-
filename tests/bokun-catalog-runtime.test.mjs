@@ -32,10 +32,13 @@ test('local MAX TOUR demo tours and departures do not contaminate the live Bóku
   assert.match(catalogUi, /if \(globalThis\.LOVE_TRAVEL_BOKUN_ACTIVE\) return true/);
 });
 
-test('Bókun tours expose fields expected by the existing LoveTravel catalog renderer', () => {
-  assert.match(adapter,/popular\s*:\s*true/);
+test('Bókun tours expose compatibility fields without inventing operator metadata', () => {
+  assert.match(adapter,/const popular = productFlags\.some/);
+  assert.match(adapter,/const formatsLabel = product\.privateActivity === true/);
+  assert.doesNotMatch(adapter,/popular\s*:\s*true/);
+  assert.doesNotMatch(adapter,/location\?\.city \|\| 'Nha Trang'/);
+  assert.doesNotMatch(adapter,/state \|\| 'Khánh Hòa'/);
   assert.match(adapter,/searchText/);
-  assert.match(adapter,/formatsLabel/);
   assert.match(adapter,/priceFromUsd/);
   assert.match(adapter,/liked\s*:\s*false/);
   assert.match(adapter,/group\s*:\s*\{/);
