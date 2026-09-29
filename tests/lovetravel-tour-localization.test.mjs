@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import vm from 'node:vm';
 
 const root=resolve(import.meta.dirname,'..');
 const localeJs=await readFile(resolve(root,'src/lovetravel-tour-locale.js'),'utf8');
@@ -82,4 +83,55 @@ test('booking sheets localize rates dynamic questions extras and custom fields',
   assert.match(bookingJs,/providerText\(item\.description\)/);
   assert.match(bookingJs,/providerText\('required'\)/);
   assert.equal(bookingJs.includes(" · required"),false);
+});
+
+
+test('localization layer executes translations for RU VI EN KO and saved locale wins over html default',()=>{
+  const load=selected=>{
+    const context={
+      document:{documentElement:{lang:'ru'}},
+      localStorage:{getItem:key=>key==='max-tour-locale-v1'?selected:null},
+      Intl, Date, String, Number, Array, Object, RegExp, Math
+    };
+    vm.createContext(context);
+    vm.runInContext(localeJs,context);
+    return context.LoveTravelTourLocale;
+  };
+
+  const expected={
+    ru:{
+      title:'Островное приключение в Нячанге: пляж Робинзон',
+      rate:'Робинзон и морской парк Хон Мун',
+      duration:'7 часов',
+      difficulty:'Средняя'
+    },
+    vi:{
+      title:'Hành trình khám phá đảo Nha Trang tại bãi biển Robinson',
+      rate:'Robinson & Khu bảo tồn biển Hòn Mun',
+      duration:'7 giờ',
+      difficulty:'Trung bình'
+    },
+    en:{
+      title:'Nha Trang Island Hopping Adventure at Robinson Beach',
+      rate:'Robinson & Hon Mun Marine Park',
+      duration:'7 hours',
+      difficulty:'Moderate'
+    },
+    ko:{
+      title:'나트랑 아일랜드 호핑: 로빈슨 비치 어드벤처',
+      rate:'로빈슨 & 혼문 해양공원',
+      duration:'7시간',
+      difficulty:'보통'
+    }
+  };
+
+  for(const [selected,values] of Object.entries(expected)){
+    const api=load(selected);
+    assert.equal(api.locale(),selected);
+    assert.equal(api.productTitle('1287578','fallback'),values.title);
+    assert.equal(api.rateTitle('1287578','2623660','fallback'),values.rate);
+    assert.equal(api.duration({hours:7,text:'7 hours'}),values.duration);
+    assert.equal(api.difficulty('MODERATE'),values.difficulty);
+    assert.notEqual(api.formatDate('2026-09-29'),"Tue 29.Sep'26");
+  }
 });
