@@ -627,6 +627,7 @@
     const options=arr(item?.options);
     const normalizedValues=Array.isArray(value)?value.map(String):[String(value??'')];
     let control='';
+    const typeName=String(item?.dataType||'').toUpperCase();
     if((item?.selectFromOptions||options.length)&&options.length){
       control='<select'+attrs+(item?.selectMultiple?' multiple':'')+'>'+
         (item?.selectMultiple?'':'<option value=""></option>')+
@@ -636,8 +637,10 @@
           return '<option value="'+esc(optionValue)+'"'+selected+'>'+esc(option?.label||optionValue)+'</option>';
         }).join('')+
       '</select>';
+    }else if(typeName.includes('BOOLEAN')){
+      const current=String(Array.isArray(value)?value[0]??'':value??'').toLowerCase();
+      control='<select'+attrs+'><option value=""></option><option value="true"'+(current==='true'||current==='1'||current==='yes'?' selected':'')+'>Yes</option><option value="false"'+(current==='false'||current==='0'||current==='no'?' selected':'')+'>No</option></select>';
     }else{
-      const typeName=String(item?.dataType||'').toUpperCase();
       const type=typeName.includes('DATE')?'date':typeName.includes('NUMBER')||typeName.includes('INTEGER')||typeName.includes('DECIMAL')?'number':'text';
       control='<input type="'+type+'" value="'+esc(Array.isArray(value)?value[0]||'':value||'')+'"'+attrs+
         (item?.placeholder?' placeholder="'+esc(item.placeholder)+'"':'')+
