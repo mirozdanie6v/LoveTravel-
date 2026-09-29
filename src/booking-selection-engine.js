@@ -1121,7 +1121,9 @@ export function resolveBookingSelection(domain = {}, input = {}, { now = new Dat
     product:{
       id:str(domain?.experience?.id),
       title:str(domain?.experience?.title),
-      bookingType:str(domain?.bookingRequirements?.bookingType),
+      bookingType:str(domain?.experience?.booking?.type || domain?.bookingRequirements?.bookingType),
+      capacityType:str(domain?.experience?.booking?.capacityType),
+      confirmationMode:str(domain?.experience?.booking?.capacityType).toUpperCase()==='ON_REQUEST'?'ON_REQUEST':'INSTANT',
     },
     selection,
     resolved:{
