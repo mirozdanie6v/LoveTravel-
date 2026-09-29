@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   audit:
@@ -114,6 +114,9 @@ jobs:
           await browser.close();
           NODE
           node /tmp/ux-audit.mjs
+          cp /tmp/home.json .ux-audit-home.json
+          cp /tmp/catalog.json .ux-audit-catalog.json
+          cp /tmp/ai.json .ux-audit-ai.json
       - name: Upload UX audit screenshots
         uses: actions/upload-artifact@v4
         with:
@@ -125,3 +128,15 @@ jobs:
             /tmp/home.json
             /tmp/catalog.json
             /tmp/ai.json
+      - name: Commit UX audit result
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -f .ux-audit-home.json ] && [ -f .ux-audit-catalog.json ] && [ -f .ux-audit-ai.json ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add .ux-audit-home.json .ux-audit-catalog.json .ux-audit-ai.json
+            git commit -m "Record LoveTravel UX audit" || true
+            git push origin HEAD:main || true
+          fi
