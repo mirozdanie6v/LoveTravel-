@@ -216,7 +216,7 @@ function parseJsonObject(value) {
   }
 }
 
-function chunks(fields, maxChars = 4200, maxItems = 7) {
+function chunks(fields, maxChars = 12000, maxItems = 24) {
   const result = [];
   let current = [];
   let chars = 0;
@@ -247,7 +247,7 @@ async function translateChunk(env, locale, fields) {
     'Do not add, remove, summarize, reinterpret or invent facts.',
     'Keep booking conditions, prices, ages, pickup instructions and cancellation meaning exact.',
   ].join(' ');
-  const result = await env.AI.run(env.AI_MODEL || '@cf/google/gemma-4-26b-a4b-it', {
+  const result = await env.AI.run(env.BOKUN_TRANSLATION_MODEL || '@cf/zai-org/glm-4.7-flash', {
     messages:[
       {role:'system', content:system},
       {role:'user', content:JSON.stringify(payload)},
