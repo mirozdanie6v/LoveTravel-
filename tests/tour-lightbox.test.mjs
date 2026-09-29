@@ -58,7 +58,9 @@ test('customer UI prevents unsafe word splitting and centers action labels witho
   assert.doesNotMatch(css, /body\s+button[^\{]*\{[^\}]*display:\s*(?:flex|grid)\s*!important/s);
 });
 
-test('standalone LoveTravel build excludes the legacy lightbox assets', () => {
-  assert.doesNotMatch(build, /tour-lightbox\.css/);
-  assert.doesNotMatch(build, /tour-lightbox\.js/);
+test('standalone build publishes lightbox assets', () => {
+  assert.match(build, /tour-lightbox\.css/);
+  assert.match(build, /tour-lightbox\.js/);
+  assert.match(build, /copyFile\(resolve\(root, 'src\/tour-lightbox\.css'/);
+  assert.match(build, /copyFile\(resolve\(root, 'src\/tour-lightbox\.js'/);
 });
