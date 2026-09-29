@@ -192,7 +192,7 @@ html.love-travel-branded .lt-hero__chip{
 }
 html.love-travel-branded .lt-hero__actions{
   display:grid;
-  grid-template-columns:1fr 1fr;
+  grid-template-columns:1fr;
   gap:9px;
   margin-top:18px;
 }
