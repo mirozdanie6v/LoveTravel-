@@ -6,6 +6,76 @@
   let domainLocale = null;
   let currentProductId = null;
   const selectionByProduct = new Map();
+  const galleryIndexByProduct = new Map();
+
+  const RATE_PRESENTATION = Object.freeze({
+    '2581224':{
+      ru:'Рыбацкая деревня Bích Đầm и отдых на Robinson Beach в одном маршруте.',
+      en:'Bích Đầm fishing village and relaxed beach time at Robinson Beach in one route.',
+      vi:'Kết hợp làng chài Bích Đầm và thời gian thư giãn tại Robinson Beach.',
+      ko:'Bích Đầm 어촌 마을과 Robinson Beach 휴식을 한 코스로 즐기는 옵션입니다.'
+    },
+    '2623660':{
+      ru:'Robinson Beach плюс снорклинг в морском заповеднике Hòn Mun.',
+      en:'Robinson Beach paired with snorkeling in Hòn Mun Marine Park.',
+      vi:'Kết hợp Robinson Beach với lặn ống thở tại Khu bảo tồn biển Hòn Mun.',
+      ko:'Robinson Beach와 Hòn Mun 해양보호구역 스노클링을 함께 즐깁니다.'
+    },
+    '2623666':{
+      ru:'Robinson Beach плюс минеральные грязевые ванны на острове Hòn Tằm.',
+      en:'Robinson Beach combined with the mineral mud-bath experience on Hòn Tằm.',
+      vi:'Robinson Beach kết hợp trải nghiệm tắm bùn khoáng tại Hòn Tằm.',
+      ko:'Robinson Beach와 Hòn Tằm 미네랄 머드바스를 함께 즐깁니다.'
+    },
+    '2623667':{
+      ru:'Robinson Beach и дополнительный пляжный отдых на Bãi Tranh.',
+      en:'Robinson Beach with an additional beach stop at Bãi Tranh.',
+      vi:'Robinson Beach kết hợp thêm thời gian thư giãn tại Bãi Tranh.',
+      ko:'Robinson Beach와 Bãi Tranh 해변 휴식을 함께 즐기는 코스입니다.'
+    },
+    '2623668':{
+      ru:'Robinson Beach и камерный Mini Beach — вариант с акцентом на пляжный отдых.',
+      en:'Robinson Beach and intimate Mini Beach, focused on relaxed beach time.',
+      vi:'Robinson Beach và Mini Beach, phù hợp nếu bạn muốn ưu tiên thời gian thư giãn bên biển.',
+      ko:'Robinson Beach와 아담한 Mini Beach를 함께 즐기는 휴양 중심 옵션입니다.'
+    },
+    '2623669':{
+      ru:'Robinson Beach и Bãi Sỏi — ещё один спокойный пляжный маршрут.',
+      en:'Robinson Beach and Bãi Sỏi for another relaxed island-beach combination.',
+      vi:'Robinson Beach và Bãi Sỏi cho một hành trình đảo và biển thư giãn hơn.',
+      ko:'Robinson Beach와 Bãi Sỏi를 함께 둘러보는 여유로운 섬·해변 코스입니다.'
+    },
+    '2623670':{
+      ru:'Robinson Beach плюс посещение аквариума Trí Nguyên.',
+      en:'Robinson Beach paired with a visit to Trí Nguyên Aquarium.',
+      vi:'Robinson Beach kết hợp tham quan Thủy cung Trí Nguyên.',
+      ko:'Robinson Beach와 Trí Nguyên 수족관 방문을 함께 즐깁니다.'
+    },
+    '2581227':{
+      ru:'Снорклинг у Hòn Mun и отдых на пляже Bãi Tranh.',
+      en:'Snorkeling at Hòn Mun followed by beach time at Bãi Tranh.',
+      vi:'Lặn ống thở tại Hòn Mun và thư giãn ở Bãi Tranh.',
+      ko:'Hòn Mun 스노클링 후 Bãi Tranh 해변에서 휴식하는 옵션입니다.'
+    },
+    '2581226':{
+      ru:'Снорклинг у Hòn Mun и отдых на Bãi Sỏi.',
+      en:'Snorkeling at Hòn Mun combined with a stop at Bãi Sỏi.',
+      vi:'Lặn ống thở tại Hòn Mun kết hợp dừng chân ở Bãi Sỏi.',
+      ko:'Hòn Mun 스노클링과 Bãi Sỏi 휴식을 함께 즐깁니다.'
+    },
+    '2581229':{
+      ru:'Hòn Mun плюс минеральные грязевые ванны на Hòn Tằm.',
+      en:'Hòn Mun snorkeling combined with Hòn Tằm mineral mud baths.',
+      vi:'Lặn ống thở tại Hòn Mun kết hợp tắm bùn khoáng ở Hòn Tằm.',
+      ko:'Hòn Mun 스노클링과 Hòn Tằm 미네랄 머드바스를 결합한 옵션입니다.'
+    },
+    '2581228':{
+      ru:'Hòn Mun и Mini Beach — снорклинг и более спокойный пляжный отдых.',
+      en:'Hòn Mun and Mini Beach for snorkeling plus relaxed beach time.',
+      vi:'Hòn Mun và Mini Beach — kết hợp lặn ống thở và thư giãn bên biển.',
+      ko:'Hòn Mun 스노클링과 Mini Beach 휴식을 함께 즐기는 코스입니다.'
+    }
+  });
 
   const copy = {
     ru:{
@@ -57,7 +127,8 @@
       adult:'Взрослый',
       child:'Ребёнок',
       infant:'Младенец',
-      rateUnavailable:'Нет доступных дат для этого варианта'
+      rateUnavailable:'Нет доступных дат для этого варианта',
+      tourPhotos:'Фотографии тура', previousPhoto:'Предыдущее фото', nextPhoto:'Следующее фото', closePhoto:'Закрыть фото', photoOfTour:'Фото экскурсии'
     },
     en:{
       back:'Back to tours',
@@ -108,7 +179,8 @@
       adult:'Adult',
       child:'Child',
       infant:'Infant',
-      rateUnavailable:'No available dates for this option'
+      rateUnavailable:'No available dates for this option',
+      tourPhotos:'Tour photos', previousPhoto:'Previous photo', nextPhoto:'Next photo', closePhoto:'Close photo', photoOfTour:'Tour photo'
     },
     vi:{
       back:'Quay lại danh sách tour',
@@ -159,7 +231,8 @@
       adult:'Người lớn',
       child:'Trẻ em',
       infant:'Em bé',
-      rateUnavailable:'Không có ngày trống cho lựa chọn này'
+      rateUnavailable:'Không có ngày trống cho lựa chọn này',
+      tourPhotos:'Ảnh tour', previousPhoto:'Ảnh trước', nextPhoto:'Ảnh tiếp theo', closePhoto:'Đóng ảnh', photoOfTour:'Ảnh tour'
     },
     ko:{
       back:'투어 목록으로',
@@ -210,7 +283,8 @@
       adult:'성인',
       child:'아동',
       infant:'유아',
-      rateUnavailable:'이 옵션에 예약 가능한 날짜가 없습니다'
+      rateUnavailable:'이 옵션에 예약 가능한 날짜가 없습니다',
+      tourPhotos:'투어 사진', previousPhoto:'이전 사진', nextPhoto:'다음 사진', closePhoto:'사진 닫기', photoOfTour:'투어 사진'
     }
   };
 
@@ -337,33 +411,81 @@
       return '<div class="lt-domain-rule"><span>'+esc(t().within)+' '+esc(hours)+' '+esc(t().hours)+'</span><b>'+esc(pct)+'% '+esc(t().fee)+'</b></div>';
     }).join('');
   }
+  function galleryPhotos(domain){
+    return arr(domain?.experience?.media?.photos).filter(photo=>photo?.url);
+  }
+  function uniqueGalleryPhotos(domain){
+    const seen=new Set();
+    return galleryPhotos(domain).filter(photo=>{
+      const key=String(photo.url||'');
+      if(!key||seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+  function currentGalleryIndex(domain){
+    const productId=String(domain?.experience?.id||'');
+    const photos=galleryPhotos(domain);
+    const stored=Number(galleryIndexByProduct.get(productId)||0);
+    return photos.length ? Math.max(0,Math.min(photos.length-1,stored)) : 0;
+  }
   function photoGallery(domain){
-    const photos=arr(domain?.experience?.media?.photos).filter(p=>p?.url);
+    const photos=galleryPhotos(domain);
     if(!photos.length) return '';
-    const hero=photos[0];
-    const thumbs=photos.slice(1,7);
-    return '<section class="lt-domain-gallery">'+
-      '<button class="lt-domain-gallery__hero" type="button"><img src="'+esc(hero.url)+'" alt="'+esc(localizedProductTitle(domain))+'"></button>'+
-      (thumbs.length?'<div class="lt-domain-gallery__strip">'+thumbs.map((p,i)=>'<button type="button" class="lt-domain-gallery__thumb"><img src="'+esc(p.url)+'" alt="'+esc(localizedProductTitle(domain))+' '+(i+2)+'"></button>').join('')+'</div>':'')+
-      '</section>';
+    const index=currentGalleryIndex(domain);
+    const hero=photos[index];
+    const title=localizedProductTitle(domain);
+    return '<section class="lt-domain-gallery" data-lt-gallery>'+
+      '<div class="lt-domain-gallery__headline"><span>'+esc(t().tourPhotos)+'</span><b data-lt-gallery-count>'+(index+1)+' / '+photos.length+'</b></div>'+
+      '<div class="lt-domain-gallery__stage">'+
+        '<button class="lt-domain-gallery__hero" type="button" data-lt-gallery-open="'+index+'" aria-label="'+esc(t().photoOfTour)+' '+(index+1)+'">'+
+          '<img data-lt-gallery-hero src="'+esc(hero.url)+'" alt="'+esc(title)+' · '+esc(t().photoOfTour)+' '+(index+1)+'">'+
+        '</button>'+
+        (photos.length>1?'<button type="button" class="lt-domain-gallery__nav is-prev" data-lt-gallery-prev aria-label="'+esc(t().previousPhoto)+'">‹</button><button type="button" class="lt-domain-gallery__nav is-next" data-lt-gallery-next aria-label="'+esc(t().nextPhoto)+'">›</button>':'')+
+      '</div>'+
+      '<div class="lt-domain-gallery__strip" aria-label="'+esc(t().tourPhotos)+'">'+
+        photos.map((photo,photoIndex)=>'<button type="button" class="lt-domain-gallery__thumb '+(photoIndex===index?'is-active':'')+'" data-lt-gallery-thumb="'+photoIndex+'" aria-label="'+esc(t().photoOfTour)+' '+(photoIndex+1)+'"><img loading="lazy" src="'+esc(photo.url)+'" alt="'+esc(title)+' · '+esc(t().photoOfTour)+' '+(photoIndex+1)+'"></button>').join('')+
+      '</div>'+
+    '</section>';
+  }
+  function rateDescription(domain,rate){
+    const direct=[
+      rate?.description,
+      ...arr(rate?.details).map(item=>item?.description||item?.title||''),
+      ...arr(rate?.textItems).map(item=>item?.description||item?.title||''),
+    ].map(value=>providerText(String(value||'').trim())).filter(Boolean);
+    if(direct.length) return [...new Set(direct)].join(' · ');
+    const curated=RATE_PRESENTATION[String(rate?.id||'')];
+    return curated?.[locale()] || curated?.en || '';
+  }
+  function ratePhotos(domain,rateIndex){
+    const photos=uniqueGalleryPhotos(domain);
+    if(!photos.length) return [];
+    if(photos.length===1) return [photos[0]];
+    const start=(rateIndex*2+1)%photos.length;
+    const result=[];
+    for(let offset=0;offset<photos.length && result.length<2;offset+=1){
+      const photo=photos[(start+offset)%photos.length];
+      if(photo&&!result.some(item=>item.url===photo.url)) result.push(photo);
+    }
+    return result;
   }
   function rateCards(domain,state){
     const rates=arr(domain.rates);
     if(!rates.length) return '';
-    return '<section class="lt-domain-section"><div class="lt-domain-section__head"><div><span class="lt-domain-eyebrow">'+esc(t().option)+'</span><p>'+esc(t().optionHint)+'</p></div></div>'+
-      '<div class="lt-domain-rates">'+rates.map(rate=>{
+    return '<section class="lt-domain-section lt-domain-section--options"><div class="lt-domain-section__head"><div><span class="lt-domain-eyebrow">'+esc(t().option)+'</span><p>'+esc(t().optionHint)+'</p></div></div>'+
+      '<div class="lt-domain-rates">'+rates.map((rate,rateIndex)=>{
         const active=String(rate.id)===String(state.rateId);
         const price=ratePrice(domain,rate);
-        const details=[
-          rate.description,
-          ...arr(rate.details).map(item=>item?.description||item?.title||''),
-          ...arr(rate.textItems).map(item=>item?.description||item?.title||''),
-        ].map(value=>providerText(String(value||'').trim())).filter(Boolean);
-        const detailText=[...new Set(details)].join(' · ');
-        return '<button type="button" class="lt-domain-rate '+(active?'is-active':'')+'" data-lt-domain-rate="'+esc(rate.id)+'">'+
-          '<span class="lt-domain-rate__check">'+(active?'✓':'')+'</span>'+
-          '<span class="lt-domain-rate__copy"><b>'+esc(localizedRateTitle(domain,rate))+'</b>'+(detailText?'<small>'+esc(detailText)+'</small>':'')+'</span>'+
-          '<span class="lt-domain-rate__price">'+(price?'<small>'+esc(t().from)+'</small><strong>'+esc(money(price))+'</strong>':'')+'</span>'+
+        const description=rateDescription(domain,rate);
+        const photos=ratePhotos(domain,rateIndex);
+        return '<button type="button" class="lt-domain-rate '+(active?'is-active':'')+'" data-lt-domain-rate="'+esc(rate.id)+'" aria-pressed="'+(active?'true':'false')+'">'+
+          (photos.length?'<span class="lt-domain-rate__media">'+photos.map((photo,index)=>'<img loading="lazy" src="'+esc(photo.url)+'" alt="'+esc(localizedRateTitle(domain,rate))+' · '+esc(t().photoOfTour)+' '+(index+1)+'">').join('')+'</span>':'')+
+          '<span class="lt-domain-rate__body">'+
+            '<span class="lt-domain-rate__top"><span class="lt-domain-rate__check">'+(active?'✓':'')+'</span><span class="lt-domain-rate__title">'+esc(localizedRateTitle(domain,rate))+'</span><span class="lt-domain-rate__price">'+(price?'<small>'+esc(t().from)+'</small><strong>'+esc(money(price))+'</strong>':'')+'</span></span>'+
+            (description?'<span class="lt-domain-rate__description">'+esc(description)+'</span>':'')+
+            '<span class="lt-domain-rate__action">'+esc(active?t().selected:t().select)+' →</span>'+
+          '</span>'+
         '</button>';
       }).join('')+'</div></section>';
   }
@@ -457,7 +579,7 @@
     if(questions.length||custom.length) inner+='<div class="lt-domain-info"><span class="lt-domain-eyebrow">'+esc(t().questions)+'</span>'+[...questions,...custom].map(x=>'<div class="lt-domain-info__row"><b>'+esc(providerText(x.title||x.code||x.id))+'</b>'+(x.required?'<span>*</span>':'')+'</div>').join('')+'</div>';
     return '<section class="lt-domain-section"><div class="lt-domain-section__head"><span class="lt-domain-eyebrow">'+esc(t().bookingInfo)+'</span></div><div class="lt-domain-grid">'+inner+'</div></section>';
   }
-  function renderDomain(domain){
+  function renderDomain(domain,{preserveScroll=false}={}){
     const screen=document.querySelector('#tourScreen');
     if(!screen) return;
     const state=selectedState(domain);
@@ -522,8 +644,79 @@
       '</div>';
 
     wire(screen,domain);
-    screen.scrollTop=0;
-    try { window.scrollTo({top:0,behavior:'instant'}); } catch (_) { window.scrollTo(0,0); }
+    if(!preserveScroll){
+      screen.scrollTop=0;
+      try { window.scrollTo({top:0,behavior:'instant'}); } catch (_) { window.scrollTo(0,0); }
+    }
+  }
+  function setGalleryIndex(screen,domain,nextIndex){
+    const photos=galleryPhotos(domain);
+    if(!photos.length) return;
+    const normalized=((Number(nextIndex)||0)%photos.length+photos.length)%photos.length;
+    galleryIndexByProduct.set(String(domain.experience.id),normalized);
+    const hero=screen.querySelector('[data-lt-gallery-hero]');
+    const opener=screen.querySelector('[data-lt-gallery-open]');
+    const counter=screen.querySelector('[data-lt-gallery-count]');
+    if(hero){
+      hero.src=photos[normalized].url;
+      hero.alt=localizedProductTitle(domain)+' · '+t().photoOfTour+' '+(normalized+1);
+    }
+    if(opener) opener.dataset.ltGalleryOpen=String(normalized);
+    if(counter) counter.textContent=(normalized+1)+' / '+photos.length;
+    screen.querySelectorAll('[data-lt-gallery-thumb]').forEach(button=>{
+      const active=Number(button.dataset.ltGalleryThumb)===normalized;
+      button.classList.toggle('is-active',active);
+      if(active) button.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
+    });
+  }
+  function openGalleryLightbox(domain,startIndex=0){
+    const photos=galleryPhotos(domain);
+    if(!photos.length) return;
+    let index=((Number(startIndex)||0)%photos.length+photos.length)%photos.length;
+    const overlay=document.createElement('div');
+    overlay.className='lt-domain-lightbox';
+    overlay.innerHTML='<div class="lt-domain-lightbox__backdrop" data-lt-lightbox-close></div>'+
+      '<div class="lt-domain-lightbox__panel" role="dialog" aria-modal="true" aria-label="'+esc(t().tourPhotos)+'">'+
+        '<button type="button" class="lt-domain-lightbox__close" data-lt-lightbox-close aria-label="'+esc(t().closePhoto)+'">×</button>'+
+        '<button type="button" class="lt-domain-lightbox__nav is-prev" data-lt-lightbox-prev aria-label="'+esc(t().previousPhoto)+'">‹</button>'+
+        '<img data-lt-lightbox-image alt="">'+
+        '<button type="button" class="lt-domain-lightbox__nav is-next" data-lt-lightbox-next aria-label="'+esc(t().nextPhoto)+'">›</button>'+
+        '<div class="lt-domain-lightbox__count" data-lt-lightbox-count></div>'+
+      '</div>';
+    const image=overlay.querySelector('[data-lt-lightbox-image]');
+    const count=overlay.querySelector('[data-lt-lightbox-count]');
+    const paint=()=>{
+      image.src=photos[index].url;
+      image.alt=localizedProductTitle(domain)+' · '+t().photoOfTour+' '+(index+1);
+      count.textContent=(index+1)+' / '+photos.length;
+    };
+    const step=delta=>{ index=(index+delta+photos.length)%photos.length; paint(); };
+    const close=()=>{
+      document.removeEventListener('keydown',onKey);
+      overlay.remove();
+      document.documentElement.classList.remove('lt-lightbox-open');
+    };
+    const onKey=event=>{
+      if(event.key==='Escape') close();
+      if(event.key==='ArrowLeft') step(-1);
+      if(event.key==='ArrowRight') step(1);
+    };
+    let touchX=null;
+    overlay.addEventListener('touchstart',event=>{ touchX=event.changedTouches?.[0]?.clientX ?? null; },{passive:true});
+    overlay.addEventListener('touchend',event=>{
+      if(touchX===null) return;
+      const endX=event.changedTouches?.[0]?.clientX ?? touchX;
+      const delta=endX-touchX;
+      touchX=null;
+      if(Math.abs(delta)>42) step(delta>0?-1:1);
+    },{passive:true});
+    overlay.querySelectorAll('[data-lt-lightbox-close]').forEach(button=>button.addEventListener('click',close));
+    overlay.querySelector('[data-lt-lightbox-prev]')?.addEventListener('click',()=>step(-1));
+    overlay.querySelector('[data-lt-lightbox-next]')?.addEventListener('click',()=>step(1));
+    document.addEventListener('keydown',onKey);
+    document.documentElement.classList.add('lt-lightbox-open');
+    document.body.appendChild(overlay);
+    paint();
   }
   function wire(screen,domain){
     screen.querySelector('[data-lt-domain-back]')?.addEventListener('click',()=>typeof showScreen==='function'&&showScreen('catalog'));
@@ -531,17 +724,21 @@
       if(globalThis.LoveTravelBookingConfigurator?.open){ globalThis.LoveTravelBookingConfigurator.open('date'); return; }
       screen.querySelector('.lt-booking-config')?.scrollIntoView({behavior:'smooth',block:'center'});
     });
+    screen.querySelectorAll('[data-lt-gallery-thumb]').forEach(button=>button.addEventListener('click',()=>setGalleryIndex(screen,domain,button.dataset.ltGalleryThumb)));
+    screen.querySelector('[data-lt-gallery-prev]')?.addEventListener('click',()=>setGalleryIndex(screen,domain,currentGalleryIndex(domain)-1));
+    screen.querySelector('[data-lt-gallery-next]')?.addEventListener('click',()=>setGalleryIndex(screen,domain,currentGalleryIndex(domain)+1));
+    screen.querySelector('[data-lt-gallery-open]')?.addEventListener('click',buttonEvent=>openGalleryLightbox(domain,buttonEvent.currentTarget.dataset.ltGalleryOpen));
     screen.querySelectorAll('[data-lt-domain-rate]').forEach(button=>button.addEventListener('click',()=>{
       const state=selectedState(domain);
       state.rateId=button.dataset.ltDomainRate;
       const slot=arr(domain.availabilitySlots).find(s=>!s.soldOut&&!s.unavailable&&rateAvailable(s,state.rateId));
       state.slotId=slot?.id || null;
-      renderDomain(domain);
+      renderDomain(domain,{preserveScroll:true});
     }));
     screen.querySelectorAll('[data-lt-domain-slot]').forEach(button=>button.addEventListener('click',()=>{
       const state=selectedState(domain);
       state.slotId=button.dataset.ltDomainSlot;
-      renderDomain(domain);
+      renderDomain(domain,{preserveScroll:true});
     }));
   }
   async function domains(force=false){
