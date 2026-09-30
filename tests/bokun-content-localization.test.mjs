@@ -22,15 +22,21 @@ function sampleDomain() {
         included:'<p>Lunch included</p>',
         excluded:'',
         requirements:'',
-        attention:'',
+        attention:'<ul><li>Not wheelchair accessible</li></ul>',
         dressCode:'',
+        inclusions:[{title:'Hotel pickup'}],
+        exclusions:['Alcoholic drinks'],
+        knowBeforeYouGoItems:[{title:'Bring sunscreen'}],
       },
       ticket:{message:''},
       pickup:{noPickupMessage:''},
       itinerary:[{id:'a1',title:'First stop',body:'Visit the island'}],
+      accessibility:['Not wheelchair accessible'],
+      media:{videos:[{title:'Tour video',url:'https://example.com/video'}]},
     },
     rates:[{id:'r1',title:'Default rate',description:'Shared tour',details:[],textItems:[]}],
     extras:[],
+    offers:[{id:'o1',title:'Special offer',description:'Save today'}],
     bookingRequirements:{questions:[],customFields:[]},
     cancellationPolicy:{title:'Standard policy'},
   };
@@ -94,6 +100,13 @@ test('extracts stable semantic keys for customer-visible Bókun text', () => {
   assert.ok(keys.includes('experience.title'));
   assert.ok(keys.includes('experience.description'));
   assert.ok(keys.includes('experience.content.included'));
+  assert.ok(keys.includes('experience.content.attention'));
+  assert.ok(keys.includes('experience.content.inclusions.0.title'));
+  assert.ok(keys.includes('experience.content.exclusions.0'));
+  assert.ok(keys.includes('experience.content.knowBeforeYouGoItems.0.title'));
+  assert.ok(keys.includes('experience.accessibility.0'));
+  assert.ok(keys.includes('offers.0.title'));
+  assert.ok(keys.includes('experience.media.videos.0.title'));
   assert.ok(keys.includes('experience.itinerary.a1.body'));
   assert.ok(keys.includes('rates.r1.title'));
   assert.ok(keys.includes('cancellationPolicy.title'));
