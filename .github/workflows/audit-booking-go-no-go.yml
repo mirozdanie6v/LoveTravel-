@@ -1,0 +1,44 @@
+name: Audit Bókun booking go-no-go
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.audit-booking-go-no-go'
+  workflow_dispatch:
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - shell: bash
+        run: |
+          set -euo pipefail
+          echo '=== INTEGRATION STATUS ==='
+          curl -fsS 'https://integration.viiversion.com/api/bokun/status?vendorId=137689' | tee /tmp/status.json | jq .
+          echo '=== LOVE TRAVEL CATALOG ==='
+          curl -fsS 'https://lovetravel.viiversion.com/api/bokun/tours?locale=en' | jq '{ok,source,mode,vendorId,productIds:(.tours|map(.id))}'
+          echo '=== BOOKING RESOLVER MODE ==='
+          cat >/tmp/resolve.json <<'JSON'
+          {
+            "selection":{
+              "productId":"1287578",
+              "date":null,
+              "startTimeId":null,
+              "slotId":null,
+              "rateId":null,
+              "participants":{},
+              "pickup":{"mode":null,"placeId":null,"customLocation":null,"roomNumber":""},
+              "dropoff":{"mode":null,"placeId":null,"customLocation":null}
+            },
+            "locale":"en"
+          }
+          JSON
+          curl -fsS -X POST 'https://lovetravel.viiversion.com/api/bokun/booking-selection/resolve' -H 'content-type: application/json' --data-binary @/tmp/resolve.json | jq '{ok,source,mode,schemaVersion,readyToQuote,readyToBook,errors,bookingDataIssues,warnings}'
+          echo '=== WRITE ENDPOINT PROBES (no booking payload; method existence only) ==='
+          for url in             'https://integration.viiversion.com/api/bokun/checkout/options'             'https://integration.viiversion.com/api/bokun/checkout/submit'             'https://integration.viiversion.com/api/bokun/booking/reserve'             'https://lovetravel.viiversion.com/api/bokun/checkout/options'             'https://lovetravel.viiversion.com/api/bokun/booking/reserve'
+          do
+            code=$(curl -sS -o /tmp/probe -w '%{http_code}' -X POST "$url" -H 'content-type: application/json' --data '{}')
+            echo "$code $url $(cat /tmp/probe | head -c 300)"
+          done
