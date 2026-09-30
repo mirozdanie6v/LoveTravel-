@@ -565,3 +565,35 @@ test('selectionForPatch clears stale slot/time when date changes',()=>{
   assert.equal(next.slotId,null);
   assert.equal(next.rateId,'201');
 });
+
+
+test('dropoff selection preserves every Bókun place and adds separate dropoff pricing',()=>{
+  const d=domain();
+  d.experience.dropoff={
+    enabled:true,
+    placeGroups:[],
+    customAllowed:false,
+    useSameAsPickup:false,
+    places:[
+      {id:601,title:'Love Travel office',addressLine1:'2 Tran Phu',wholeAddress:'2 Tran Phu, Nha Trang',city:'Nha Trang'},
+      {id:602,title:'Airport',addressLine1:'Cam Ranh Airport',wholeAddress:'Cam Ranh Airport',city:'Cam Ranh'},
+    ],
+  };
+  d.rates[0].dropoff={selectionType:'OPTIONAL',pricingType:'PRICED_SEPARATELY',pricedPerPerson:false};
+  d.availabilitySlots[0].priceQuotesByRate[0].dropoffPrice={amount:12,currency:'USD'};
+
+  const result=resolveBookingSelection(d,{
+    productId:'1287580',date:'2026-10-01',startTimeId:'301',rateId:'201',
+    participants:{101:1},
+    pickup:{mode:'MEET_ON_LOCATION'},
+    dropoff:{mode:'DROPOFF',placeId:'602'},
+    customer:{firstName:'A',lastName:'B',phoneNumber:'+84000000000'},
+  },{now});
+
+  assert.equal(result.constraints.dropoff.optional,true);
+  assert.equal(result.constraints.dropoff.places.length,2);
+  assert.equal(result.resolved.dropoffPlace.id,'602');
+  assert.equal(result.quote.dropoffTotal,12);
+  assert.equal(result.quote.total,61);
+  assert.equal(result.readyToBook,true);
+});
