@@ -128,6 +128,7 @@
       child:'Ребёнок',
       infant:'Младенец',
       rateUnavailable:'Нет доступных дат для этого варианта',
+      bookNow:'Забронировать', selectedOption:'Выбранный вариант',
       tourPhotos:'Фотографии тура', previousPhoto:'Предыдущее фото', nextPhoto:'Следующее фото', closePhoto:'Закрыть фото', photoOfTour:'Фото экскурсии'
     },
     en:{
@@ -180,6 +181,7 @@
       child:'Child',
       infant:'Infant',
       rateUnavailable:'No available dates for this option',
+      bookNow:'Book now', selectedOption:'Selected option',
       tourPhotos:'Tour photos', previousPhoto:'Previous photo', nextPhoto:'Next photo', closePhoto:'Close photo', photoOfTour:'Tour photo'
     },
     vi:{
@@ -232,6 +234,7 @@
       child:'Trẻ em',
       infant:'Em bé',
       rateUnavailable:'Không có ngày trống cho lựa chọn này',
+      bookNow:'Đặt ngay', selectedOption:'Lựa chọn đã chọn',
       tourPhotos:'Ảnh tour', previousPhoto:'Ảnh trước', nextPhoto:'Ảnh tiếp theo', closePhoto:'Đóng ảnh', photoOfTour:'Ảnh tour'
     },
     ko:{
@@ -284,6 +287,7 @@
       child:'아동',
       infant:'유아',
       rateUnavailable:'이 옵션에 예약 가능한 날짜가 없습니다',
+      bookNow:'지금 예약', selectedOption:'선택한 옵션',
       tourPhotos:'투어 사진', previousPhoto:'이전 사진', nextPhoto:'다음 사진', closePhoto:'사진 닫기', photoOfTour:'투어 사진'
     }
   };
@@ -559,10 +563,11 @@
       videos.map((item,index)=>'<a class="lt-domain-video" href="'+esc(item.url)+'" target="_blank" rel="noopener noreferrer">'+esc(providerText(item.title||t().video+' '+(index+1)))+'</a>').join('')+
       '</div></section>';
   }
-  function listSection(title,items){
+  function listSection(title,items,variant=''){
     const clean=arr(items).map(v=>typeof v==='string'?v:(v?.title||v?.description||v?.code||v?.currencyCode||v?.id||'')).map(textFromHtml).map(providerText).filter(Boolean);
     if(!clean.length) return '';
-    return '<section class="lt-domain-section"><div class="lt-domain-section__head"><span class="lt-domain-eyebrow">'+esc(title)+'</span></div><ul class="lt-domain-list">'+clean.map(item=>'<li>'+esc(item)+'</li>').join('')+'</ul></section>';
+    const modifier=variant?' lt-domain-section--'+variant:'';
+    return '<section class="lt-domain-section'+modifier+'"><div class="lt-domain-section__head"><span class="lt-domain-eyebrow">'+esc(title)+'</span></div><ul class="lt-domain-list">'+clean.map(item=>'<li>'+esc(item)+'</li>').join('')+'</ul></section>';
   }
   function bookingDynamic(domain){
     const req=domain?.bookingRequirements || {};
@@ -609,6 +614,7 @@
         '<button type="button" class="lt-domain-back" data-lt-domain-back>← '+esc(t().back)+'</button>'+
         photoGallery(domain)+
         '<section class="lt-domain-hero">'+
+          '<div class="lt-domain-hero__accent" aria-hidden="true"><span></span><span></span><span></span></div>'+
           '<div class="lt-domain-live"><span></span>'+esc(t().live)+'</div>'+
           '<h1>'+esc(localizedProductTitle(domain))+'</h1>'+
           '<p>'+esc(localizedProductDescription(domain))+'</p>'+
@@ -632,15 +638,22 @@
         meeting(domain,rate)+
         itinerary(domain)+
         videoSection(domain)+
-        listSection(t().included,included)+
-        listSection(t().excluded,excluded)+
-        listSection(t().requirements,requirements)+
-        listSection(t().accessibility,domain?.experience?.accessibility)+
-        listSection(t().offers,domain?.offers)+
-        listSection(t().currencies,domain?.experience?.paymentCurrencies)+
+        '<div class="lt-domain-content-grid">'+
+          listSection(t().included,included,'included')+
+          listSection(t().excluded,excluded,'excluded')+
+          listSection(t().requirements,requirements,'requirements')+
+          listSection(t().accessibility,domain?.experience?.accessibility,'accessibility')+
+          listSection(t().offers,domain?.offers,'offers')+
+          listSection(t().currencies,domain?.experience?.paymentCurrencies,'currencies')+
+        '</div>'+
         (cancellation?'<section class="lt-domain-section"><div class="lt-domain-section__head"><span class="lt-domain-eyebrow">'+esc(t().conditions)+'</span></div><div class="lt-domain-policy"><b>'+esc(l10n()?.policyTitle?.(cancellation.title||'')??providerText(cancellation.title||''))+'</b>'+cancellationRows(cancellation)+'</div></section>':'')+
         bookingDynamic(domain)+
         (firstPhoto?'<div class="lt-domain-source-note" aria-hidden="true"></div>':'')+
+        '<div class="lt-domain-stickybook" data-lt-sticky-book>'+
+          '<div class="lt-domain-stickybook__copy"><small>'+esc(t().selectedOption)+'</small><b>'+esc(localizedRateTitle(domain,rate))+'</b></div>'+
+          '<div class="lt-domain-stickybook__price">'+(heroPrice?'<small>'+esc(t().from)+'</small><strong>'+esc(money(heroPrice))+'</strong>':'')+'</div>'+
+          '<button type="button" data-lt-jump-booking>'+esc(t().bookNow)+'</button>'+
+        '</div>'+
       '</div>';
 
     wire(screen,domain);
