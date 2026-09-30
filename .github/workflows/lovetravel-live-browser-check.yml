@@ -75,6 +75,21 @@ jobs:
             if (!brand.heroText.includes('Robinson Beach') || !brand.heroText.includes('Hòn Mun')) throw new Error('hero missing real products: '+JSON.stringify(brand));
             if (!brand.heroImage.includes('imgcdn.bokun.tools')) throw new Error('hero is not using Bókun photography: '+JSON.stringify(brand));
 
+            const palette = await page.evaluate(() => ({
+              pageBackground:getComputedStyle(document.querySelector('.phone')).backgroundImage,
+              primaryBackground:getComputedStyle(document.querySelector('.lt-hero__action--primary')).backgroundImage,
+              languageBackground:getComputedStyle(document.querySelector('.mt-language-switcher button.active')).backgroundImage,
+            }));
+            if (!palette.pageBackground.includes('rgb(255, 241, 217)') || !palette.pageBackground.includes('rgb(227, 238, 249)')) {
+              throw new Error('page gradient is not the refined warm-to-blue palette: '+JSON.stringify(palette));
+            }
+            if (!palette.primaryBackground.includes('rgb(239, 111, 26)') || !palette.primaryBackground.includes('rgb(243, 199, 90)')) {
+              throw new Error('warm gradient is not orange-to-gold: '+JSON.stringify(palette));
+            }
+            if (!palette.languageBackground.includes('rgb(123, 200, 246)') || !palette.languageBackground.includes('rgb(34, 104, 179)')) {
+              throw new Error('cool gradient is not light-blue-to-deep-blue: '+JSON.stringify(palette));
+            }
+
             await page.evaluate(() => showScreen('catalog'));
             await page.waitForTimeout(500);
 
