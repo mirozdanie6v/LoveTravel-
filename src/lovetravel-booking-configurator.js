@@ -2,7 +2,7 @@
   'use strict';
 
   const PRODUCT_IDS = new Set(['1287578','1287580']);
-  const RELEASE_ID = '2026-09-30-bokun-unbounded-coverage-v5';
+  const RELEASE_ID = '2026-09-30-full-tour-localization-v4-bokun-unbounded-coverage-v5';
   const CHECKOUT_REQUIRED_CUSTOMER_FIELDS = ['firstName','lastName','email','phoneNumber'];
   const stateByProduct = new Map();
   const resolutionByProduct = new Map();
