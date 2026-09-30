@@ -108,15 +108,15 @@ function stripSalesContinuityV24(source) {
 }
 
 const loveTravelPrepaint = `<style id="lovetravel-prepaint">
-html:not(.love-travel-branded) body{
+html:not(.love-travel-catalog-ready) body{
   margin:0;
   min-height:100vh;
   background:#f2f8fd;
 }
-html:not(.love-travel-branded) .phone{
+html:not(.love-travel-catalog-ready) .phone{
   visibility:hidden!important;
 }
-html:not(.love-travel-branded) body::before{
+html:not(.love-travel-catalog-ready) body::before{
   content:"Nha Trang Love Travel";
   position:fixed;
   inset:0;
@@ -133,8 +133,11 @@ html:not(.love-travel-branded) body::before{
   font:800 20px/1.2 Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
   letter-spacing:-.02em;
 }
-html.love-travel-branded body::before{
+html.love-travel-catalog-ready body::before{
   display:none;
+}
+html.love-travel-catalog-error body::before{
+  content:"Unable to load current tours. Please reload.";
 }
 </style>`;
 const telegramSdk = '<script src="https://telegram.org/js/telegram-web-app.js?63"></script>';
