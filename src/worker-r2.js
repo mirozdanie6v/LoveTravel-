@@ -211,8 +211,19 @@ export async function handleLoveTravelBookingSelection(request, env, url = new U
     });
   }
 
-  const start = date || today;
-  const end = date || addIsoDays(today, 30);
+  const calendarStart = String(body?.calendarRange?.start || '').trim();
+  const calendarEnd = String(body?.calendarRange?.end || '').trim();
+  if (!date && (calendarStart || calendarEnd)) {
+    if (!validIsoDate(calendarStart) || !validIsoDate(calendarEnd) || calendarEnd < calendarStart || calendarEnd > addIsoDays(calendarStart, 31)) {
+      return json({ ok:false, error:'invalid_calendar_range', maxDays:31 }, {
+        status:400,
+        headers:{ 'cache-control':'no-store' },
+      });
+    }
+  }
+
+  const start = date || calendarStart || today;
+  const end = date || calendarEnd || addIsoDays(today, 30);
   const includePickupPlaces =
     String(selection?.pickup?.mode || '').toUpperCase() === 'PICKUP' ||
     body?.includePickupPlaces === true;
