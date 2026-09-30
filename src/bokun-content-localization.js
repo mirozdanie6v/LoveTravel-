@@ -252,6 +252,7 @@ async function translateChunk(env, locale, fields) {
       {role:'system', content:system},
       {role:'user', content:JSON.stringify(payload)},
     ],
+    response_format:{type:'json_object'},
   });
   const parsed = parseJsonObject(aiResponseText(result));
   const allowed = new Set(fields.map(field => field.key));
