@@ -261,6 +261,7 @@
   document.addEventListener('click', event => {
     const image = event.target.closest?.('img');
     if (!isTourImage(image)) return;
+    if (image?.closest?.('#tourScreen.lt-domain-tour')) return;
     if (modal?.contains(image)) return;
     event.preventDefault();
     event.stopPropagation();
