@@ -5,6 +5,7 @@ const TARGET_NAMES = Object.freeze({
   en:'English',
   ko:'Korean',
 });
+const TRANSLATION_PROVIDER = 'workers-ai:gemma-4-26b-a4b-it:v2';
 
 let tableReadyPromise = null;
 const inFlightSync = new Map();
@@ -247,7 +248,7 @@ async function translateChunk(env, locale, fields) {
     'Do not add, remove, summarize, reinterpret or invent facts.',
     'Keep booking conditions, prices, ages, pickup instructions and cancellation meaning exact.',
   ].join(' ');
-  const result = await env.AI.run(env.BOKUN_TRANSLATION_MODEL || '@cf/zai-org/glm-4.7-flash', {
+  const result = await env.AI.run(env.BOKUN_TRANSLATION_MODEL || '@cf/google/gemma-4-26b-a4b-it', {
     messages:[
       {role:'system', content:system},
       {role:'user', content:JSON.stringify(payload)},
@@ -268,7 +269,7 @@ async function translateChunk(env, locale, fields) {
   return translated;
 }
 
-async function saveTranslations(env, productId, locale, fields, translated, provider = 'workers-ai') {
+async function saveTranslations(env, productId, locale, fields, translated, provider = TRANSLATION_PROVIDER) {
   if (!await ensureTable(env)) return 0;
   const rows = fields.filter(field => typeof translated[field.key] === 'string' && translated[field.key].trim());
   if (!rows.length) return 0;
@@ -319,7 +320,7 @@ export async function syncDomainTranslations(domain, env, requestedLocale) {
     const cache = new Map(rows.map(row => [String(row.field_key), row]));
     const missing = fields.filter(field => {
       const row = cache.get(field.key);
-      return !row || String(row.source_hash) !== field.sourceHash || !text(row.translated_text);
+      return !row || String(row.source_hash) !== field.sourceHash || !text(row.translated_text) || String(row.provider || '') !== TRANSLATION_PROVIDER;
     });
     if (!missing.length) return {ok:true, productId, locale, translated:0, skipped:false};
 
@@ -363,7 +364,7 @@ export async function localizeDomainFromCache(domain, env, requestedLocale, ctx 
 
   for (const field of fields) {
     const row = cache.get(field.key);
-    if (row && String(row.source_hash) === field.sourceHash && text(row.translated_text)) {
+    if (row && String(row.source_hash) === field.sourceHash && text(row.translated_text) && String(row.provider || '') === TRANSLATION_PROVIDER) {
       pathSet(clone, field.path, row.translated_text);
       translatedFields += 1;
     } else {
