@@ -33,7 +33,7 @@
       minGuests:'Минимум', maxGuests:'Максимум', noExtra:'Дополнительных услуг сейчас нет', extras:'Дополнительно', extrasEmpty:'Без дополнений', chooseExtras:'Дополнительные услуги', extrasRequired:'Выберите обязательную услугу', passengerDetails:'Данные участников', passenger:'Участник', questions:'Вопросы для бронирования', additionalInfo:'Дополнительные данные', roomNumber:'Номер комнаты', save:'Сохранить', customPickup:'Другой адрес', customPickupAddress:'Адрес для посадки',
       bookingNotSent:'Бронирование пока не отправляется в Bókun — на этом этапе проверяется конфигурация.',
       selectDateFirst:'Сначала выберите дату', selectOptionFirst:'Выберите вариант', selectGuestsFirst:'Добавьте участников',
-      pickupRequired:'Нужно выбрать способ трансфера или самостоятельный приезд', contactRequired:'Нужно заполнить контактные данные', yes:'Да', no:'Нет'
+      pickupRequired:'Нужно выбрать способ трансфера или самостоятельный приезд', dropoff:'Обратный трансфер', dropoffEmpty:'Выберите способ', dropoffMode:'Довезти после экскурсии', noDropoff:'Без обратного трансфера', chooseDropoff:'Нужен обратный трансфер?', chooseDropoffPlace:'Куда вас отвезти', dropoffPlace:'Место высадки', searchDropoff:'Введите отель или адрес', customDropoff:'Другой адрес высадки', customDropoffAddress:'Адрес высадки', dropoffRequired:'Нужно выбрать обратный трансфер или отказаться от него', contactRequired:'Нужно заполнить контактные данные', yes:'Да', no:'Нет'
     },
     en:{
       title:'Build your trip', live:'Live availability and pricing from the operator system',
@@ -55,7 +55,7 @@
       minGuests:'Minimum', maxGuests:'Maximum', noExtra:'No extras are currently configured', extras:'Extras', extrasEmpty:'No extras', chooseExtras:'Additional services', extrasRequired:'Choose the required extra', passengerDetails:'Guest details', passenger:'Guest', questions:'Booking questions', additionalInfo:'Additional details', roomNumber:'Room number', save:'Save', customPickup:'Other address', customPickupAddress:'Pickup address',
       bookingNotSent:'The booking is not sent to Bókun yet — this stage validates the configuration.',
       selectDateFirst:'Choose a date first', selectOptionFirst:'Choose an option', selectGuestsFirst:'Add guests',
-      pickupRequired:'Choose hotel pickup or independent arrival', contactRequired:'Complete the contact details', yes:'Yes', no:'No'
+      pickupRequired:'Choose hotel pickup or independent arrival', dropoff:'Return transfer', dropoffEmpty:'Choose a method', dropoffMode:'Drop me off after the tour', noDropoff:'No return transfer', chooseDropoff:'Do you need a return transfer?', chooseDropoffPlace:'Where should we drop you off?', dropoffPlace:'Drop-off place', searchDropoff:'Enter a hotel or address', customDropoff:'Other drop-off address', customDropoffAddress:'Drop-off address', dropoffRequired:'Choose return transfer or no return transfer', contactRequired:'Complete the contact details', yes:'Yes', no:'No'
     },
     vi:{
       title:'Tạo chuyến đi', live:'Giá và chỗ trống trực tiếp từ hệ thống điều hành',
@@ -77,7 +77,7 @@
       minGuests:'Tối thiểu', maxGuests:'Tối đa', noExtra:'Hiện không có dịch vụ bổ sung', extras:'Dịch vụ thêm', extrasEmpty:'Không chọn thêm', chooseExtras:'Dịch vụ bổ sung', extrasRequired:'Chọn dịch vụ bắt buộc', passengerDetails:'Thông tin hành khách', passenger:'Hành khách', questions:'Câu hỏi đặt chỗ', additionalInfo:'Thông tin bổ sung', roomNumber:'Số phòng', save:'Lưu', customPickup:'Địa chỉ khác', customPickupAddress:'Địa chỉ đón',
       bookingNotSent:'Đặt chỗ chưa được gửi tới Bókun — bước này chỉ xác thực cấu hình.',
       selectDateFirst:'Hãy chọn ngày trước', selectOptionFirst:'Chọn chương trình', selectGuestsFirst:'Thêm khách',
-      pickupRequired:'Chọn đón tại khách sạn hoặc tự đến', contactRequired:'Điền thông tin liên hệ', yes:'Có', no:'Không'
+      pickupRequired:'Chọn đón tại khách sạn hoặc tự đến', dropoff:'Đưa về sau tour', dropoffEmpty:'Chọn cách', dropoffMode:'Đưa tôi về sau tour', noDropoff:'Không cần đưa về', chooseDropoff:'Bạn có cần đưa về không?', chooseDropoffPlace:'Bạn muốn được đưa đến đâu?', dropoffPlace:'Điểm trả khách', searchDropoff:'Nhập khách sạn hoặc địa chỉ', customDropoff:'Địa chỉ trả khác', customDropoffAddress:'Địa chỉ trả khách', dropoffRequired:'Chọn đưa về hoặc không cần đưa về', contactRequired:'Điền thông tin liên hệ', yes:'Có', no:'Không'
     },
     ko:{
       title:'여행 구성하기', live:'운영사 시스템의 실시간 좌석 및 가격',
@@ -99,7 +99,7 @@
       minGuests:'최소', maxGuests:'최대', noExtra:'현재 추가 옵션이 없습니다', extras:'추가 옵션', extrasEmpty:'추가 옵션 없음', chooseExtras:'추가 서비스', extrasRequired:'필수 추가 서비스를 선택하세요', passengerDetails:'참가자 정보', passenger:'참가자', questions:'예약 질문', additionalInfo:'추가 정보', roomNumber:'객실 번호', save:'저장', customPickup:'다른 주소', customPickupAddress:'픽업 주소',
       bookingNotSent:'아직 Bókun에 예약을 전송하지 않습니다. 이 단계에서는 구성을 검증합니다.',
       selectDateFirst:'먼저 날짜를 선택하세요', selectOptionFirst:'옵션 선택', selectGuestsFirst:'인원 추가',
-      pickupRequired:'호텔 픽업 또는 직접 이동을 선택하세요', contactRequired:'연락처 정보를 입력하세요', yes:'예', no:'아니요'
+      pickupRequired:'호텔 픽업 또는 직접 이동을 선택하세요', dropoff:'귀환 이동', dropoffEmpty:'방법 선택', dropoffMode:'투어 후 내려주세요', noDropoff:'귀환 이동 없음', chooseDropoff:'귀환 이동이 필요하신가요?', chooseDropoffPlace:'어디에 내려드릴까요?', dropoffPlace:'하차 지점', searchDropoff:'호텔 또는 주소 입력', customDropoff:'다른 하차 주소', customDropoffAddress:'하차 주소', dropoffRequired:'귀환 이동 여부를 선택하세요', contactRequired:'연락처 정보를 입력하세요', yes:'예', no:'아니요'
     }
   };
 
@@ -131,7 +131,7 @@
     if(!stateByProduct.has(productId)){
       stateByProduct.set(productId,{
         productId,date:null,startTimeId:null,slotId:null,rateId:null,
-        participants:{},pickup:{mode:null,placeId:null,customLocation:null,roomNumber:''},extras:{},customer:{},answers:{},extraAnswers:{},passengers:[]
+        participants:{},pickup:{mode:null,placeId:null,customLocation:null,roomNumber:''},dropoff:{mode:null,placeId:null,customLocation:null},extras:{},customer:{},answers:{},extraAnswers:{},passengers:[]
       });
     }
     return stateByProduct.get(productId);
@@ -148,6 +148,7 @@
     }
     if(Object.prototype.hasOwnProperty.call(patch,'startTimeId') && !Object.prototype.hasOwnProperty.call(patch,'slotId')) next.slotId=null;
     if(patch.pickup) next.pickup={...current.pickup,...patch.pickup};
+    if(patch.dropoff) next.dropoff={...current.dropoff,...patch.dropoff};
     if(patch.participants) next.participants={...patch.participants};
     if(patch.customer) next.customer={...current.customer,...patch.customer};
     saveSelection(productId,next);
@@ -222,6 +223,7 @@
       startTimeId:null,
       slotId:null,
       pickup:{mode:null,placeId:null,customLocation:null,roomNumber:''},
+      dropoff:{mode:null,placeId:null,customLocation:null},
     };
     const calendarRange=append&&cached?.end
       ? {start:addIsoDays(cached.end,1),end:addIsoDays(addIsoDays(cached.end,1),30)}
@@ -308,6 +310,17 @@
     }
     return t().pickupEmpty;
   }
+  function dropoffSummary(r){
+    const mode=r?.selection?.dropoff?.mode;
+    if(mode==='NO_DROPOFF') return t().noDropoff;
+    if(mode==='DROPOFF'){
+      if(r?.resolved?.dropoffPlace?.title) return r.resolved.dropoffPlace.title;
+      const custom=r?.selection?.dropoff?.customLocation;
+      if(custom?.wholeAddress||custom?.addressLine1) return custom.wholeAddress||custom.addressLine1;
+      return t().dropoffMode;
+    }
+    return t().dropoffEmpty;
+  }
   function extrasSummary(r){
     const bookingCount=Object.values(r?.selection?.extras||{}).reduce((sum,value)=>sum+Math.max(0,Number(value)||0),0);
     const passengerCount=arr(r?.selection?.passengers).reduce((sum,passenger)=>
@@ -331,6 +344,7 @@
     if(step==='option') return t().chooseOption;
     if(step==='guests') return t().chooseGuests;
     if(step==='pickup') return t().choosePickup;
+    if(step==='dropoff') return t().chooseDropoff;
     if(step==='extras') return t().chooseExtras;
     return t().fillContact;
   }
@@ -356,6 +370,16 @@
       codes.has('pickup_room_number_required')||
       codes.has('custom_pickup_location_incomplete')
     ) return 'pickup';
+    if(
+      codes.has('dropoff_mode_required')||
+      codes.has('dropoff_location_required')||
+      codes.has('dropoff_places_unavailable')||
+      codes.has('custom_dropoff_location_incomplete')||
+      codes.has('dropoff_price_unresolved')||
+      codes.has('dropoff_required')||
+      codes.has('dropoff_not_available')||
+      codes.has('no_dropoff_not_allowed')
+    ) return 'dropoff';
     if([...codes].some(x=>x.includes('customer_field')||x.includes('booking_question')||x.includes('custom_field')||x.includes('passenger'))) return 'contact';
     return r?.readyToQuote ? 'contact' : 'date';
   }
@@ -416,6 +440,7 @@
         stepButton('option',t().option,optionSummary(r),Boolean(r?.resolved?.rate))+
         stepButton('guests',t().guests,guestSummary(r),Number(r?.resolved?.participantTotal)>0)+
         stepButton('pickup',pickupStepLabel(r),pickupSummary(r),Boolean(r?.selection?.pickup?.mode)&&!arr(r?.bookingDataIssues).some(item=>String(item.code).startsWith('pickup_')||item.code==='custom_pickup_location_incomplete'))+
+        (arr(r?.constraints?.dropoff?.modes).includes('DROPOFF')?stepButton('dropoff',t().dropoff,dropoffSummary(r),Boolean(r?.selection?.dropoff?.mode)&&!arr(r?.bookingDataIssues).some(item=>String(item.code).startsWith('dropoff_')||item.code==='custom_dropoff_location_incomplete')):'')+
         (extras.length?stepButton('extras',t().extras,extrasSummary(r),extrasComplete):'')+
         stepButton('contact',t().contact,contactSummary(r),detailsComplete)+
       '</div>'+
@@ -443,6 +468,7 @@
     if(step==='guests') return t().selectGuestsFirst;
     if(step==='extras') return t().extrasRequired;
     if(step==='pickup') return t().pickupRequired;
+    if(step==='dropoff') return t().dropoffRequired;
     if(step==='contact') return t().contactRequired;
     return t().unavailable;
   }
@@ -485,6 +511,7 @@
     if(step==='option') return openOptionSheet(productId);
     if(step==='guests') return openGuestsSheet(productId);
     if(step==='pickup') return openPickupSheet(productId);
+    if(step==='dropoff') return openDropoffSheet(productId);
     if(step==='extras') return openExtrasSheet(productId);
     if(step==='contact') return openContactSheet(productId);
   }
@@ -719,6 +746,79 @@
   }
   function pickupModeCard(mode,title,active,note){
     return '<button type="button" class="lt-pickup-mode '+(active?'is-active':'')+'" aria-pressed="'+(active?'true':'false')+'" data-lt-pickup-mode="'+esc(mode)+'"><span class="lt-radio"></span><span><b>'+esc(title)+'</b>'+(note?'<small>'+esc(note)+'</small>':'')+'</span></button>';
+  }
+  function dropoffPlaceRows(places,s){
+    if(!places.length) return '<div class="lt-empty">'+esc(t().noPlaces)+'</div>';
+    return places.map(place=>
+      '<button type="button" class="lt-pickup-place '+(String(place.id)===String(s.dropoff?.placeId)?'is-active':'')+'" data-lt-dropoff-place="'+esc(place.id)+'">'+
+        '<span><b>'+esc(place.title)+'</b><small>'+esc(place.wholeAddress||[place.addressLine1,place.city].filter(Boolean).join(', '))+'</small></span>'+
+      '</button>'
+    ).join('');
+  }
+  function dropoffModeCard(mode,title,active,note=''){
+    return '<button type="button" class="lt-pickup-mode '+(active?'is-active':'')+'" aria-pressed="'+(active?'true':'false')+'" data-lt-dropoff-mode="'+esc(mode)+'"><span class="lt-radio"></span><span><b>'+esc(title)+'</b>'+(note?'<small>'+esc(note)+'</small>':'')+'</span></button>';
+  }
+  function openDropoffSheet(productId,query='',resolutionOverride=null){
+    const r=resolutionOverride || resolutionByProduct.get(productId); if(!r) return;
+    const p=r.constraints?.dropoff||{};
+    const s=selection(productId);
+    const mode=s.dropoff?.mode;
+    const allPlaces=arr(p.places);
+    const resolvedPlace=r?.resolved?.dropoffPlace||null;
+    const selectedPlace=allPlaces.find(place=>String(place.id)===String(s.dropoff?.placeId))
+      || (String(resolvedPlace?.id||'')===String(s.dropoff?.placeId||'') ? resolvedPlace : null);
+    const filterPlaces=value=>{
+      const q=String(value||'').trim().toLocaleLowerCase();
+      if(!q) return selectedPlace ? [selectedPlace] : [];
+      return allPlaces.filter(x=>(x.title+' '+x.wholeAddress+' '+x.city).toLocaleLowerCase().includes(q));
+    };
+    const initialPlaces=filterPlaces(query);
+    const details=mode==='DROPOFF'
+      ? '<div class="lt-pickup-search"><label>'+esc(t().dropoffPlace)+'</label><input type="search" value="'+esc(query)+'" placeholder="'+esc(t().searchDropoff)+'" data-lt-dropoff-search autocomplete="off"></div>'+
+        '<div class="lt-pickup-results" data-lt-dropoff-results>'+(initialPlaces.length?dropoffPlaceRows(initialPlaces,s):'<div class="lt-empty lt-pickup-hint">'+esc(t().searchHint)+'</div>')+'</div>'+
+        (p.customAllowed
+          ? '<div class="lt-custom-pickup"><span class="lt-form-caption">'+esc(t().customDropoff)+'</span><label><span>'+esc(t().customDropoffAddress)+'</span><input type="text" value="'+esc(s.dropoff?.customLocation?.wholeAddress||s.dropoff?.customLocation?.addressLine1||'')+'" data-lt-custom-dropoff autocomplete="street-address"></label><button type="button" class="lt-sheet-secondary" data-lt-custom-dropoff-save>'+esc(t().save)+'</button></div>'
+          : '')
+      : '';
+    const dropoffNote=p.pricingType==='INCLUDED_IN_PRICE'?t().included:'';
+    const body='<div class="lt-sheet-scroll"><div class="lt-pickup-modes">'+
+      (arr(p.modes).includes('NO_DROPOFF')?dropoffModeCard('NO_DROPOFF',t().noDropoff,mode==='NO_DROPOFF'):'')+
+      (arr(p.modes).includes('DROPOFF')?dropoffModeCard('DROPOFF',t().dropoffMode,mode==='DROPOFF',dropoffNote):'')+
+      '</div>'+details+'</div>';
+    const root=showSheet(mode==='DROPOFF'?t().chooseDropoffPlace:t().chooseDropoff,body);
+    root.querySelectorAll('[data-lt-dropoff-mode]').forEach(btn=>btn.addEventListener('click',async()=>{
+      const selectedMode=btn.dataset.ltDropoffMode;
+      patchSelection(productId,{dropoff:{
+        mode:selectedMode,
+        placeId:selectedMode==='DROPOFF'?selection(productId).dropoff.placeId:null,
+        customLocation:selectedMode==='DROPOFF'?selection(productId).dropoff.customLocation:null,
+      }});
+      const next=await resolve(productId,{quiet:true});
+      if(selectedMode==='NO_DROPOFF') closeSheet(); else openDropoffSheet(productId,'',next);
+    }));
+    const search=root.querySelector('[data-lt-dropoff-search]');
+    const results=root.querySelector('[data-lt-dropoff-results]');
+    search?.addEventListener('input',e=>{
+      if(results) results.innerHTML=dropoffPlaceRows(filterPlaces(e.target.value),selection(productId));
+    });
+    results?.addEventListener('click',async e=>{
+      const btn=e.target.closest('[data-lt-dropoff-place]'); if(!btn) return;
+      patchSelection(productId,{dropoff:{mode:'DROPOFF',placeId:btn.dataset.ltDropoffPlace,customLocation:null}});
+      const next=await resolve(productId,{quiet:true});
+      if(arr(next.bookingDataIssues).some(item=>item.code==='dropoff_location_required'||item.code==='unknown_dropoff_place')) openDropoffSheet(productId,search?.value||'',next);
+      else closeSheet();
+    });
+    root.querySelector('[data-lt-custom-dropoff-save]')?.addEventListener('click',async()=>{
+      const address=root.querySelector('[data-lt-custom-dropoff]')?.value.trim()||'';
+      patchSelection(productId,{dropoff:{
+        mode:'DROPOFF',
+        placeId:null,
+        customLocation:address?{addressLine1:address,wholeAddress:address}: {},
+      }});
+      const next=await resolve(productId,{quiet:true});
+      if(arr(next.bookingDataIssues).some(item=>item.code==='custom_dropoff_location_incomplete')) openDropoffSheet(productId,query,next);
+      else closeSheet();
+    });
   }
   function questionContext(item){
     const value=String(item?.context||'').toUpperCase();
