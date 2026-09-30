@@ -226,6 +226,7 @@ export async function handleLoveTravelBookingSelection(request, env, url = new U
   const end = date || calendarEnd || addIsoDays(today, 30);
   const includePickupPlaces =
     String(selection?.pickup?.mode || '').toUpperCase() === 'PICKUP' ||
+    String(selection?.dropoff?.mode || '').toUpperCase() === 'DROPOFF' ||
     body?.includePickupPlaces === true;
 
   try {
