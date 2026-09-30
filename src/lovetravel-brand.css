@@ -2,8 +2,10 @@
 :root{
   --lt-blue:#3683e8;
   --lt-blue-deep:#0b5aa8;
-  --lt-orange:#ff5a1f;
-  --lt-orange-deep:#ee4214;
+  --lt-cyan:#65c9ff;
+  --lt-orange:#f56b25;
+  --lt-orange-deep:#e84e18;
+  --lt-gold:#f6bd39;
   --lt-ink:#102a3a;
   --lt-muted:#6d7f8c;
   --lt-sand:#fff8f2;
@@ -13,17 +15,23 @@
 }
 
 html.love-travel-branded{
-  background:#edf5fa;
+  background:#eef7ff;
   color-scheme:light;
 }
 html.love-travel-branded body{
   background:
-    radial-gradient(circle at 12% -10%,rgba(54,131,232,.12),transparent 28%),
-    linear-gradient(180deg,#f7fbfe 0%,#eef6fa 100%);
+    radial-gradient(circle at 10% 2%,rgba(246,189,57,.34),transparent 31%),
+    radial-gradient(circle at 92% 12%,rgba(101,201,255,.34),transparent 34%),
+    radial-gradient(circle at 86% 72%,rgba(54,131,232,.18),transparent 36%),
+    linear-gradient(155deg,#fff3d7 0%,#fffaf1 30%,#f3faff 58%,#e4f1ff 100%);
+  background-attachment:fixed;
   color:var(--lt-ink);
 }
 html.love-travel-branded .phone{
-  background:#f8fbfd;
+  background:
+    radial-gradient(circle at 8% 4%,rgba(246,189,57,.22),transparent 28%),
+    radial-gradient(circle at 94% 18%,rgba(101,201,255,.25),transparent 31%),
+    linear-gradient(160deg,rgba(255,247,227,.96) 0%,rgba(250,252,255,.97) 45%,rgba(232,244,255,.97) 100%);
   border-color:rgba(30,72,105,.10);
   box-shadow:0 26px 80px rgba(16,55,83,.14);
 }
@@ -66,7 +74,7 @@ html.love-travel-branded .mt-language-switcher button{
   color:#54748c!important;
 }
 html.love-travel-branded .mt-language-switcher button.active{
-  background:linear-gradient(135deg,var(--lt-blue-deep),var(--lt-blue))!important;
+  background:linear-gradient(135deg,var(--lt-cyan) 0%,var(--lt-blue) 52%,var(--lt-blue-deep) 100%)!important;
   color:#fff!important;
   box-shadow:0 5px 12px rgba(54,131,232,.25)!important;
 }
@@ -213,8 +221,8 @@ html.love-travel-branded .lt-hero__action{
 html.love-travel-branded .lt-hero__action:active{transform:scale(.985)}
 html.love-travel-branded .lt-hero__action--primary{
   color:#fff;
-  background:linear-gradient(135deg,var(--lt-orange-deep),#ff7b2e);
-  box-shadow:0 12px 28px rgba(238,66,20,.30),inset 0 1px 0 rgba(255,255,255,.30);
+  background:linear-gradient(135deg,var(--lt-orange-deep) 0%,var(--lt-orange) 48%,var(--lt-gold) 100%);
+  box-shadow:0 12px 28px rgba(232,78,24,.26),inset 0 1px 0 rgba(255,255,255,.30);
 }
 html.love-travel-branded .lt-hero__action--secondary{
   color:#123348;
@@ -418,7 +426,7 @@ html.love-travel-branded .lt-card-action{
   align-items:center;
   justify-content:center;
   color:#fff;
-  background:linear-gradient(135deg,var(--lt-blue-deep),var(--lt-blue));
+  background:linear-gradient(135deg,var(--lt-cyan) 0%,var(--lt-blue) 52%,var(--lt-blue-deep) 100%);
   box-shadow:0 8px 18px rgba(54,131,232,.22);
   font-size:11px;
   font-weight:900;
@@ -448,7 +456,7 @@ html.love-travel-branded #tourScreen button.primary,
 html.love-travel-branded #bookingScreen button.primary,
 html.love-travel-branded #aiScreen button.primary{
   border:0!important;
-  background:linear-gradient(135deg,var(--lt-orange-deep),#ff7a2d)!important;
+  background:linear-gradient(135deg,var(--lt-orange-deep) 0%,var(--lt-orange) 48%,var(--lt-gold) 100%)!important;
   box-shadow:0 10px 24px rgba(238,66,20,.24)!important;
 }
 html.love-travel-branded #tourScreen button.secondary,
@@ -543,7 +551,7 @@ html.love-travel-branded .lt-hero__actions{
   grid-template-columns:1fr!important;
 }
 html.love-travel-branded .lt-card-action{
-  background:linear-gradient(135deg,var(--lt-orange-deep),#ff7b2e)!important;
+  background:linear-gradient(135deg,var(--lt-orange-deep) 0%,var(--lt-orange) 48%,var(--lt-gold) 100%)!important;
   box-shadow:0 8px 18px rgba(238,66,20,.24)!important;
 }
 html.love-travel-branded #catalogScreen .wide-card .tag-row{
