@@ -74,6 +74,18 @@ export function collectTranslatableFields(domain = {}) {
       kind:/<[^>]+>/.test(source) ? 'html' : 'text',
     });
   };
+  const addEntityArray = (prefix, path, items) => {
+    asArray(items).forEach((item,index) => {
+      if (typeof item === 'string') {
+        add(prefix + '.' + index, [...path,index], item);
+        return;
+      }
+      if (!item || typeof item !== 'object') return;
+      for (const field of ['title','label','description','body','text','name']) {
+        add(prefix + '.' + index + '.' + field, [...path,index,field], item[field]);
+      }
+    });
+  };
 
   add('experience.title', ['experience','title'], domain?.experience?.title);
   add('experience.description', ['experience','description'], domain?.experience?.description);
@@ -82,6 +94,12 @@ export function collectTranslatableFields(domain = {}) {
   for (const name of ['included','excluded','requirements','attention','dressCode']) {
     add('experience.content.' + name, ['experience','content',name], content[name]);
   }
+  addEntityArray('experience.content.inclusions', ['experience','content','inclusions'], content.inclusions);
+  addEntityArray('experience.content.exclusions', ['experience','content','exclusions'], content.exclusions);
+  addEntityArray('experience.content.knowBeforeYouGoItems', ['experience','content','knowBeforeYouGoItems'], content.knowBeforeYouGoItems);
+  addEntityArray('experience.accessibility', ['experience','accessibility'], domain?.experience?.accessibility);
+  addEntityArray('offers', ['offers'], domain?.offers);
+  addEntityArray('experience.media.videos', ['experience','media','videos'], domain?.experience?.media?.videos);
 
   add('experience.ticket.message', ['experience','ticket','message'], domain?.experience?.ticket?.message);
   add('experience.pickup.noPickupMessage', ['experience','pickup','noPickupMessage'], domain?.experience?.pickup?.noPickupMessage);
@@ -364,9 +382,10 @@ export async function localizeDomainFromCache(domain, env, requestedLocale, ctx 
 
   for (const field of fields) {
     const row = cache.get(field.key);
-    if (row && String(row.source_hash) === field.sourceHash && text(row.translated_text) && String(row.provider || '') === TRANSLATION_PROVIDER) {
+    if (row && String(row.source_hash) === field.sourceHash && text(row.translated_text)) {
       pathSet(clone, field.path, row.translated_text);
       translatedFields += 1;
+      if (String(row.provider || '') !== TRANSLATION_PROVIDER) pendingFields += 1;
     } else {
       pendingFields += 1;
     }
