@@ -619,12 +619,12 @@ html.love-travel-branded #bookingScreen button.secondary{
 
 /* 2026-09-30 clean Love Travel palette correction */
 :root{
-  --lt-blue:#2f8cff;
-  --lt-blue-deep:#0a5fc7;
-  --lt-cyan:#69d2ff;
-  --lt-orange:#ff7422;
-  --lt-orange-deep:#f35316;
-  --lt-gold:#ffd14a;
+  --lt-blue:#438fd8;
+  --lt-blue-deep:#2268b3;
+  --lt-cyan:#7bc8f6;
+  --lt-orange:#f58a24;
+  --lt-orange-deep:#ef6f1a;
+  --lt-gold:#f3c75a;
 }
 html.love-travel-branded,
 html.love-travel-branded body{
@@ -639,11 +639,11 @@ html.love-travel-branded #bookingScreen{
   background:
     linear-gradient(
       145deg,
-      #fff0c8 0%,
-      #fff8e9 22%,
-      #ffffff 48%,
-      #f1f8ff 70%,
-      #dbeeff 100%
+      #fff1d9 0%,
+      #fff8eb 22%,
+      #fffdf9 46%,
+      #f3f8fd 70%,
+      #e3eef9 100%
     )!important;
   background-attachment:fixed!important;
 }
@@ -652,18 +652,18 @@ html.love-travel-branded .lt-card-action,
 html.love-travel-branded #tourScreen button.primary,
 html.love-travel-branded #bookingScreen button.primary,
 html.love-travel-branded #aiScreen button.primary{
-  background:linear-gradient(135deg,#f35316 0%,#ff7422 52%,#ffd14a 100%)!important;
+  background:linear-gradient(135deg,#ef6f1a 0%,#f58a24 52%,#f3c75a 100%)!important;
   box-shadow:0 10px 24px rgba(243,83,22,.23)!important;
 }
 html.love-travel-branded .mt-language-switcher button.active,
 html.love-travel-branded #tourScreen button.secondary,
 html.love-travel-branded #bookingScreen button.secondary{
-  background:linear-gradient(135deg,#69d2ff 0%,#2f8cff 54%,#0a5fc7 100%)!important;
+  background:linear-gradient(135deg,#7bc8f6 0%,#438fd8 54%,#2268b3 100%)!important;
   color:#fff!important;
   box-shadow:0 8px 20px rgba(47,140,255,.22)!important;
 }
 html.love-travel-branded .lt-catalog-intro{
-  background:linear-gradient(135deg,#fff8e5 0%,#ffffff 46%,#edf7ff 100%)!important;
+  background:linear-gradient(135deg,#fff5e7 0%,#fffdf9 46%,#edf5fc 100%)!important;
 }
 html.love-travel-branded #catalogScreen .wide-card,
 html.love-travel-branded #tourScreen .panel,
