@@ -2,10 +2,10 @@
   "ok": true,
   "stage": "verified",
   "deploymentPath": "RIC shared Cloudflare runner",
-  "workflowRunId": "36626310948",
-  "cloudflareVersionId": "1f045c1c-7dd0-44b2-8aa6-9767f7b3f98a",
+  "workflowRunId": 36698155424,
+  "cloudflareVersionId": "45c2f69c-149e-4332-9b3d-a7a7d1c5e8cf",
   "tests": {
-    "passed": 271,
+    "passed": 280,
     "failed": 0
   },
   "worker": "love-travel-v28",
@@ -76,5 +76,26 @@
       }
     },
     "integrationLangParameterEffective": false
+  },
+  "tourUx": {
+    "checkedAt": "2026-09-30",
+    "browserWorkflowRunId": 36698227976,
+    "products": {
+      "1287578": {
+        "galleryPhotos": 15,
+        "rateCards": 7,
+        "rateDescriptions": 7,
+        "rateMediaPerCard": 2,
+        "lightboxVerified": true
+      },
+      "1287580": {
+        "galleryPhotos": 7,
+        "rateCards": 4,
+        "rateDescriptions": 4,
+        "rateMediaPerCard": 2,
+        "lightboxVerified": true
+      }
+    },
+    "legacyLightboxIsolationVerified": true
   }
 }
