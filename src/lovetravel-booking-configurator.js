@@ -2,7 +2,7 @@
   'use strict';
 
   const PRODUCT_IDS = new Set(['1287578','1287580']);
-  const RELEASE_ID = '2026-09-30-full-tour-localization-v4';
+  const RELEASE_ID = '2026-09-30-bokun-unbounded-coverage-v5';
   const CHECKOUT_REQUIRED_CUSTOMER_FIELDS = ['firstName','lastName','email','phoneNumber'];
   const stateByProduct = new Map();
   const resolutionByProduct = new Map();
@@ -29,7 +29,7 @@
       contact:'Контактные данные', firstName:'Имя', lastName:'Фамилия', phoneNumber:'Телефон', email:'Email',
       verify:'Проверить', verified:'Данные проверены', noPlaces:'Ничего не найдено',
       select:'Выбрать', selected:'Выбрано', pricePerPerson:'за человека', liveQuote:'Цена проверена сейчас', onRequest:'Требуется подтверждение туроператора',
-      refreshError:'Не удалось обновить доступность. Попробуйте ещё раз.',
+      refreshError:'Не удалось обновить доступность. Попробуйте ещё раз.', moreDates:'Показать следующие даты',
       minGuests:'Минимум', maxGuests:'Максимум', noExtra:'Дополнительных услуг сейчас нет', extras:'Дополнительно', extrasEmpty:'Без дополнений', chooseExtras:'Дополнительные услуги', extrasRequired:'Выберите обязательную услугу', passengerDetails:'Данные участников', passenger:'Участник', questions:'Вопросы для бронирования', additionalInfo:'Дополнительные данные', roomNumber:'Номер комнаты', save:'Сохранить', customPickup:'Другой адрес', customPickupAddress:'Адрес для посадки',
       bookingNotSent:'Бронирование пока не отправляется в Bókun — на этом этапе проверяется конфигурация.',
       selectDateFirst:'Сначала выберите дату', selectOptionFirst:'Выберите вариант', selectGuestsFirst:'Добавьте участников',
@@ -51,7 +51,7 @@
       contact:'Contact details', firstName:'First name', lastName:'Last name', phoneNumber:'Phone', email:'Email',
       verify:'Check', verified:'Details checked', noPlaces:'No matches',
       select:'Select', selected:'Selected', pricePerPerson:'per person', liveQuote:'Price checked live', onRequest:'Operator confirmation required',
-      refreshError:'Could not refresh availability. Try again.',
+      refreshError:'Could not refresh availability. Try again.', moreDates:'Show later dates',
       minGuests:'Minimum', maxGuests:'Maximum', noExtra:'No extras are currently configured', extras:'Extras', extrasEmpty:'No extras', chooseExtras:'Additional services', extrasRequired:'Choose the required extra', passengerDetails:'Guest details', passenger:'Guest', questions:'Booking questions', additionalInfo:'Additional details', roomNumber:'Room number', save:'Save', customPickup:'Other address', customPickupAddress:'Pickup address',
       bookingNotSent:'The booking is not sent to Bókun yet — this stage validates the configuration.',
       selectDateFirst:'Choose a date first', selectOptionFirst:'Choose an option', selectGuestsFirst:'Add guests',
@@ -73,7 +73,7 @@
       contact:'Thông tin liên hệ', firstName:'Tên', lastName:'Họ', phoneNumber:'Điện thoại', email:'Email',
       verify:'Kiểm tra', verified:'Đã kiểm tra', noPlaces:'Không có kết quả',
       select:'Chọn', selected:'Đã chọn', pricePerPerson:'mỗi người', liveQuote:'Giá vừa được kiểm tra', onRequest:'Cần nhà điều hành xác nhận',
-      refreshError:'Không thể cập nhật chỗ trống. Vui lòng thử lại.',
+      refreshError:'Không thể cập nhật chỗ trống. Vui lòng thử lại.', moreDates:'Xem các ngày tiếp theo',
       minGuests:'Tối thiểu', maxGuests:'Tối đa', noExtra:'Hiện không có dịch vụ bổ sung', extras:'Dịch vụ thêm', extrasEmpty:'Không chọn thêm', chooseExtras:'Dịch vụ bổ sung', extrasRequired:'Chọn dịch vụ bắt buộc', passengerDetails:'Thông tin hành khách', passenger:'Hành khách', questions:'Câu hỏi đặt chỗ', additionalInfo:'Thông tin bổ sung', roomNumber:'Số phòng', save:'Lưu', customPickup:'Địa chỉ khác', customPickupAddress:'Địa chỉ đón',
       bookingNotSent:'Đặt chỗ chưa được gửi tới Bókun — bước này chỉ xác thực cấu hình.',
       selectDateFirst:'Hãy chọn ngày trước', selectOptionFirst:'Chọn chương trình', selectGuestsFirst:'Thêm khách',
@@ -95,7 +95,7 @@
       contact:'연락처 정보', firstName:'이름', lastName:'성', phoneNumber:'전화번호', email:'이메일',
       verify:'확인', verified:'확인 완료', noPlaces:'검색 결과 없음',
       select:'선택', selected:'선택됨', pricePerPerson:'1인당', liveQuote:'실시간 가격 확인됨', onRequest:'운영사 확인 필요',
-      refreshError:'예약 가능 여부를 업데이트하지 못했습니다. 다시 시도해 주세요.',
+      refreshError:'예약 가능 여부를 업데이트하지 못했습니다. 다시 시도해 주세요.', moreDates:'이후 날짜 보기',
       minGuests:'최소', maxGuests:'최대', noExtra:'현재 추가 옵션이 없습니다', extras:'추가 옵션', extrasEmpty:'추가 옵션 없음', chooseExtras:'추가 서비스', extrasRequired:'필수 추가 서비스를 선택하세요', passengerDetails:'참가자 정보', passenger:'참가자', questions:'예약 질문', additionalInfo:'추가 정보', roomNumber:'객실 번호', save:'저장', customPickup:'다른 주소', customPickupAddress:'픽업 주소',
       bookingNotSent:'아직 Bókun에 예약을 전송하지 않습니다. 이 단계에서는 구성을 검증합니다.',
       selectDateFirst:'먼저 날짜를 선택하세요', selectOptionFirst:'옵션 선택', selectGuestsFirst:'인원 추가',
@@ -156,21 +156,42 @@
   function calendarKey(productId,rateId=null){
     return String(productId)+':'+(rateId ? String(rateId) : '*');
   }
-  function storeCalendar(productId,data){
-    const dates=arr(data?.constraints?.dates);
-    const times=arr(data?.constraints?.times);
-    if(!dates.length) return null;
+  function addIsoDays(iso,days){
+    const date=new Date(String(iso||'')+'T00:00:00Z');
+    if(Number.isNaN(date.getTime())) return '';
+    date.setUTCDate(date.getUTCDate()+Number(days||0));
+    return date.toISOString().slice(0,10);
+  }
+  function mergeCalendarRows(previous,incoming,keyOf){
+    const merged=new Map();
+    for(const item of [...arr(previous),...arr(incoming)]){
+      const key=keyOf(item);
+      if(key) merged.set(key,item);
+    }
+    return [...merged.values()].sort((a,b)=>String(a?.date||'').localeCompare(String(b?.date||'')) || String(a?.startTime||'').localeCompare(String(b?.startTime||'')));
+  }
+  function storeCalendar(productId,data,{append=false}={}){
+    const incomingDates=arr(data?.constraints?.dates);
+    const incomingTimes=arr(data?.constraints?.times);
     const rateId=data?.selection?.rateId || null;
+    const key=calendarKey(productId,rateId);
+    const previous=calendarByKey.get(key);
+    const dates=append&&previous
+      ? mergeCalendarRows(previous.dates,incomingDates,item=>String(item?.date||''))
+      : incomingDates;
+    const times=append&&previous
+      ? mergeCalendarRows(previous.times,incomingTimes,item=>String(item?.id||'')+'|'+String(item?.date||'')+'|'+String(item?.startTimeId||''))
+      : incomingTimes;
     const value={
       productId:String(productId),
       rateId:rateId ? String(rateId) : null,
       dates,
       times,
       fetchedAt:Date.now(),
-      start:data?.start || null,
-      end:data?.end || null,
+      start:append&&previous ? (previous.start || data?.start || null) : (data?.start || null),
+      end:data?.end || previous?.end || null,
     };
-    calendarByKey.set(calendarKey(productId,value.rateId),value);
+    calendarByKey.set(key,value);
     return value;
   }
   function calendarFor(productId){
@@ -187,11 +208,11 @@
   function calendarTimesForDate(productId,date){
     return arr(calendarFor(productId)?.times).filter(item=>String(item?.date||'')===String(date||''));
   }
-  async function refreshCalendar(productId,{force=false}={}){
+  async function refreshCalendar(productId,{force=false,append=false}={}){
     const currentSelection=selection(productId);
     const rateId=currentSelection.rateId || null;
     const cached=calendarByKey.get(calendarKey(productId,rateId));
-    if(!force && cached && Date.now()-cached.fetchedAt < 60000) return cached;
+    if(!append && !force && cached && Date.now()-cached.fetchedAt < 60000) return cached;
 
     const seq=(calendarRequestSeqByProduct.get(productId)||0)+1;
     calendarRequestSeqByProduct.set(productId,seq);
@@ -202,18 +223,21 @@
       slotId:null,
       pickup:{mode:null,placeId:null,customLocation:null,roomNumber:''},
     };
+    const calendarRange=append&&cached?.end
+      ? {start:addIsoDays(cached.end,1),end:addIsoDays(addIsoDays(cached.end,1),30)}
+      : null;
     const response=await fetch('/api/bokun/booking-selection/resolve',{
       method:'POST',
       headers:{'content-type':'application/json'},
       cache:'no-store',
       credentials:'same-origin',
-      body:JSON.stringify({selection:calendarSelection,locale:locale()}),
+      body:JSON.stringify({selection:calendarSelection,locale:locale(),...(calendarRange?{calendarRange}:{})}),
     });
     if(!response.ok) throw new Error('calendar resolve HTTP '+response.status);
     const data=await response.json();
     if(!data?.ok || data?.schemaVersion!=='lovetravel.booking-selection-resolution.v1') throw new Error('invalid calendar resolution');
     if(calendarRequestSeqByProduct.get(productId)!==seq) return calendarFor(productId);
-    return storeCalendar(productId,data);
+    return storeCalendar(productId,data,{append});
   }
   async function resolve(productId,{quiet=false}={}){
     const seq=++requestSeq;
@@ -493,7 +517,21 @@
     const times=s.date?'<div class="lt-time-block"><h4>'+esc(t().chooseTime)+'</h4><div class="lt-time-grid">'+
       timeRows.map(item=>{ const active=String(item.id)===String(s.slotId); return '<button type="button" class="lt-time-chip '+(active?'is-active':'')+'" aria-pressed="'+(active?'true':'false')+'" data-lt-slot="'+esc(item.id)+'" data-lt-time="'+esc(item.startTimeId||'')+'"><b>'+esc(item.startTime||'')+'</b><small>'+esc(availabilityLabel(item))+'</small></button>'; }).join('')+
       '</div></div>':'';
-    const root=showSheet(t().chooseDate,'<div class="lt-sheet-scroll">'+calendars+times+'</div>');
+    const moreDates='<div class="lt-sheet-action"><button type="button" class="lt-sheet-secondary" data-lt-calendar-more>'+esc(t().moreDates)+'</button></div>';
+    const root=showSheet(t().chooseDate,'<div class="lt-sheet-scroll">'+(calendars||'<div class="lt-empty">'+esc(t().unavailable)+'</div>')+times+moreDates+'</div>');
+
+    root.querySelector('[data-lt-calendar-more]')?.addEventListener('click',async event=>{
+      const button=event.currentTarget;
+      button.disabled=true;
+      try{
+        await refreshCalendar(productId,{force:true,append:true});
+        openDateSheet(productId,{skipRefresh:true});
+      }catch(error){
+        console.error('[LoveTravel] later calendar refresh failed',error);
+        button.disabled=false;
+        button.textContent=t().refreshError;
+      }
+    });
 
     if(!skipRefresh){
       const matching=calendarByKey.get(calendarKey(productId,s.rateId||null));
@@ -612,7 +650,7 @@
     const filterPlaces=value=>{
       const q=String(value||'').trim().toLocaleLowerCase();
       if(!q) return selectedPlace ? [selectedPlace] : [];
-      return allPlaces.filter(x=>(x.title+' '+x.wholeAddress+' '+x.city).toLocaleLowerCase().includes(q)).slice(0,40);
+      return allPlaces.filter(x=>(x.title+' '+x.wholeAddress+' '+x.city).toLocaleLowerCase().includes(q));
     };
     const initialPlaces=filterPlaces(query);
     const pickupDetails=mode==='PICKUP'
