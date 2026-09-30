@@ -328,3 +328,50 @@ html.love-travel-branded #tourScreen.lt-domain-tour{
   .lt-domain-lightbox__panel{height:88vh}
   .lt-domain-lightbox__nav{width:40px;height:40px}
 }
+
+/* LoveTravel explicit orange-gold / blue gradient accents */
+.lt-domain-gallery__headline b,
+.lt-domain-live{
+  background:linear-gradient(135deg,#eaf7ff,#dcecff)!important;
+  color:#155f9a!important;
+}
+.lt-domain-gallery__thumb.is-active{
+  border-color:#f2a22e!important;
+  box-shadow:0 0 0 3px rgba(246,182,50,.16)!important;
+}
+.lt-domain-section{
+  background:rgba(255,255,255,.93)!important;
+  backdrop-filter:blur(10px);
+  -webkit-backdrop-filter:blur(10px);
+}
+.lt-domain-section--options{
+  background:
+    radial-gradient(circle at 100% 0%,rgba(246,182,50,.13),transparent 36%),
+    rgba(255,255,255,.95)!important;
+}
+.lt-domain-rate.is-active{
+  border-color:transparent!important;
+  background:
+    linear-gradient(#fff,#fff) padding-box,
+    linear-gradient(135deg,#e95c1f,#f6b632) border-box!important;
+  box-shadow:0 0 0 3px rgba(246,182,50,.10),0 12px 26px rgba(47,88,115,.09)!important;
+}
+.lt-domain-rate.is-active .lt-domain-rate__check,
+.lt-domain-rate.is-active .lt-domain-rate__action,
+.lt-domain-quickbook{
+  background:linear-gradient(135deg,#e95c1f 0%,#f6b632 100%)!important;
+}
+.lt-domain-date.is-active,
+.lt-domain-fieldchips span,
+.lt-domain-itinerary__item>span{
+  background:linear-gradient(135deg,#66c8f5 0%,#0b5aa8 100%)!important;
+  color:#fff!important;
+}
+.lt-domain-date.is-active{
+  border-color:#3683e8!important;
+}
+.lt-domain-rate__price strong,
+.lt-domain-participant strong,
+.lt-domain-date__price{
+  color:#e95c1f!important;
+}
