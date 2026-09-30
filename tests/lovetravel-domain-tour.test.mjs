@@ -60,7 +60,7 @@ test('tour page exposes a high-position booking CTA and suppresses empty reviews
   assert.match(js,/LoveTravelBookingConfigurator\.open\('date'\)/);
   assert.match(js,/const hasReviews=/);
   assert.match(css,/\.lt-domain-quickbook/);
-  assert.match(css,/background:linear-gradient\(135deg,#ee4214,#ff7b2e\)/);
+  assert.match(css,/background:linear-gradient\(135deg,#e84e18 0%,#f56b25 48%,#f6bd39 100%\)/);
 });
 
 
@@ -103,4 +103,11 @@ test('tour options are visual cards with curated descriptions and tour photos',(
 test('selecting a rate or date preserves the current scroll position',()=>{
   assert.match(js,/function renderDomain\(domain,\{preserveScroll=false\}=\{\}\)/);
   assert.match(js,/renderDomain\(domain,\{preserveScroll:true\}\)/);
+});
+
+
+test('tour page keeps the existing LoveTravel layout but exposes the requested page and control gradients',()=>{
+  assert.match(css,/radial-gradient\(circle at 8% 5%,rgba\(246,189,57,.22\),transparent 28%\)/);
+  assert.match(css,/linear-gradient\(160deg,rgba\(255,247,226,.88\) 0%,rgba\(252,252,250,.92\) 38%,rgba\(236,247,255,.94\) 100%\)/);
+  assert.match(css,/linear-gradient\(135deg,#65c9ff 0%,#3683e8 56%,#0b5aa8 100%\)/);
 });
