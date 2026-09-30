@@ -99,6 +99,16 @@ export function normalizeBookingSelection(input = {}, domain = {}) {
       roomNumber:input?.pickup?.roomNumber === null || input?.pickup?.roomNumber === undefined
         ? '' : str(input.pickup.roomNumber).trim(),
     },
+    dropoff:{
+      mode:['NO_DROPOFF','DROPOFF'].includes(str(input?.dropoff?.mode).toUpperCase())
+        ? str(input.dropoff.mode).toUpperCase()
+        : null,
+      placeId:input?.dropoff?.placeId === null || input?.dropoff?.placeId === undefined || input?.dropoff?.placeId === ''
+        ? null : str(input.dropoff.placeId),
+      customLocation:input?.dropoff?.customLocation && typeof input.dropoff.customLocation === 'object'
+        ? { ...input.dropoff.customLocation }
+        : null,
+    },
     extras:extraMap(input.extras),
     customer:input.customer && typeof input.customer === 'object' && !Array.isArray(input.customer) ? { ...input.customer } : {},
     answers:input.answers && typeof input.answers === 'object' && !Array.isArray(input.answers) ? { ...input.answers } : {},
@@ -380,6 +390,60 @@ function pickupConstraint(domain, rate, slot, participantTotal) {
     })),
     places,
     customAllowed,
+    locationChoiceAvailable:places.length > 0 || customAllowed,
+  };
+}
+
+function dropoffConstraint(domain, rate) {
+  const selectionType = str(rate?.dropoff?.selectionType).toUpperCase();
+  const pricingType = str(rate?.dropoff?.pricingType).toUpperCase();
+  const productEnabled = Boolean(domain?.experience?.dropoff?.enabled);
+  const dropoffAllowed = productEnabled && selectionType !== 'UNAVAILABLE';
+  const required = dropoffAllowed && ['REQUIRED','PRESELECTED'].includes(selectionType);
+  const optional = dropoffAllowed && selectionType === 'OPTIONAL';
+  const modes = [];
+  if (!required) modes.push('NO_DROPOFF');
+  if (dropoffAllowed) modes.push('DROPOFF');
+
+  let sourcePlaces=arr(domain?.experience?.dropoff?.places);
+  if (!sourcePlaces.length && domain?.experience?.dropoff?.useSameAsPickup) {
+    sourcePlaces=arr(domain?.experience?.pickup?.places);
+  }
+  const places = sourcePlaces.map(item => ({
+    id:item?.id === null || item?.id === undefined ? null : str(item.id),
+    title:str(item?.title),
+    description:str(item?.description),
+    placeType:str(item?.placeType),
+    externalId:str(item?.externalId),
+    addressLine1:str(item?.addressLine1),
+    addressLine2:str(item?.addressLine2),
+    wholeAddress:str(item?.wholeAddress),
+    city:str(item?.city),
+    state:str(item?.state),
+    countryCode:str(item?.countryCode),
+    postalCode:str(item?.postalCode),
+    latitude:num(item?.latitude),
+    longitude:num(item?.longitude),
+  })).filter(item => item.id);
+
+  const customAllowed = Boolean(domain?.experience?.dropoff?.customAllowed);
+  return {
+    selectionType:selectionType || (productEnabled ? 'OPTIONAL' : 'UNAVAILABLE'),
+    pricingType,
+    pricedPerPerson:rate?.dropoff?.pricedPerPerson ?? null,
+    required,
+    optional,
+    dropoffAllowed,
+    modes,
+    placeGroups:arr(domain?.experience?.dropoff?.placeGroups).map(item => ({
+      id:item?.id === null || item?.id === undefined ? null : str(item.id),
+      title:str(item?.title),
+      code:str(item?.code),
+      description:str(item?.description),
+    })),
+    places,
+    customAllowed,
+    useSameAsPickup:Boolean(domain?.experience?.dropoff?.useSameAsPickup),
     locationChoiceAvailable:places.length > 0 || customAllowed,
   };
 }
@@ -850,6 +914,7 @@ export function resolveBookingSelection(domain = {}, input = {}, { now = new Dat
   }
 
   const pickup = pickupConstraint(domain, selectedRate, selectedSlot, participantTotal);
+  const dropoff = dropoffConstraint(domain, selectedRate);
   if (pickup.required && selection.pickup.mode !== 'PICKUP') {
     errors.push(issue('pickup_required','pickup.mode','Pickup is required for the selected rate'));
   }
@@ -858,6 +923,15 @@ export function resolveBookingSelection(domain = {}, input = {}, { now = new Dat
   }
   if (selection.pickup.mode === 'MEET_ON_LOCATION' && pickup.required) {
     errors.push(issue('meet_on_location_not_allowed','pickup.mode','Meeting on location is not allowed for this rate'));
+  }
+  if (dropoff.required && selection.dropoff.mode !== 'DROPOFF') {
+    errors.push(issue('dropoff_required','dropoff.mode','Drop-off is required for the selected rate'));
+  }
+  if (selection.dropoff.mode === 'DROPOFF' && !dropoff.dropoffAllowed) {
+    errors.push(issue('dropoff_not_available','dropoff.mode','Drop-off is not available for this selection'));
+  }
+  if (selection.dropoff.mode === 'NO_DROPOFF' && dropoff.required) {
+    errors.push(issue('no_dropoff_not_allowed','dropoff.mode','Drop-off cannot be skipped for this rate'));
   }
 
   const extras = extraConstraints(domain,selectedRate,participantTotal,selection);
@@ -885,6 +959,7 @@ export function resolveBookingSelection(domain = {}, input = {}, { now = new Dat
     participantLines:[],
     participantSubtotal:null,
     pickupTotal:null,
+    dropoffTotal:null,
     extrasTotal:null,
     extraLines:[],
     total:null,
@@ -975,6 +1050,43 @@ export function resolveBookingSelection(domain = {}, input = {}, { now = new Dat
       }
     }
 
+    let dropoffTotal = 0;
+    let dropoffCurrency = null;
+    if (selection.dropoff.mode === 'DROPOFF') {
+      if (dropoff.pricingType === 'INCLUDED_IN_PRICE' || !dropoff.pricingType) {
+        dropoffTotal = 0;
+      } else if (dropoff.pricedPerPerson) {
+        const priceRows=arr(selectedRateQuote?.dropoffPricePerCategoryUnit);
+        let resolved=0;
+        for(const category of participantCategories.filter(item=>item.count>0)){
+          const row=priceRows.find(item=>str(item?.categoryId)===category.id);
+          const unit=num(row?.amount?.amount);
+          const currency=moneyCurrency(row?.amount);
+          if(unit===null||!currency){
+            quoteComplete=false;
+            warnings.push(issue('dropoff_price_unresolved','dropoff','Drop-off price is missing for a selected participant category',{categoryId:category.id}));
+            continue;
+          }
+          dropoffCurrency=dropoffCurrency||currency;
+          if(dropoffCurrency!==currency){
+            quoteComplete=false;
+            errors.push(issue('mixed_currencies','dropoff','Drop-off prices use multiple currencies'));
+          }
+          resolved+=unit*category.count;
+        }
+        dropoffTotal=Number(resolved.toFixed(2));
+      } else {
+        const direct=num(selectedRateQuote?.dropoffPrice?.amount ?? selectedSlot?.dropoff?.price?.amount);
+        dropoffCurrency=moneyCurrency(selectedRateQuote?.dropoffPrice ?? selectedSlot?.dropoff?.price);
+        if(direct!==null&&dropoffCurrency){
+          dropoffTotal=Number(direct.toFixed(2));
+        }else{
+          quoteComplete=false;
+          warnings.push(issue('dropoff_price_unresolved','dropoff','Drop-off pricing is configured separately but no resolved drop-off price is available'));
+        }
+      }
+    }
+
     let extrasTotal = 0;
     const extraLines=[];
     for(const extra of extras.filter(item=>Number(item.quantity)>0)){
@@ -1029,6 +1141,7 @@ export function resolveBookingSelection(domain = {}, input = {}, { now = new Dat
     const currencies=[
       baseCurrency==='MIXED'?null:baseCurrency,
       pickupTotal>0?pickupCurrency:null,
+      dropoffTotal>0?dropoffCurrency:null,
       ...extraLines.filter(line=>line.lineTotal>0).map(line=>line.currency),
     ].filter(Boolean);
     const distinct=[...new Set(currencies)];
@@ -1045,9 +1158,10 @@ export function resolveBookingSelection(domain = {}, input = {}, { now = new Dat
         participantLines:lines,
         participantSubtotal,
         pickupTotal,
+        dropoffTotal,
         extrasTotal,
         extraLines,
-        total:Number((participantSubtotal + pickupTotal + extrasTotal).toFixed(2)),
+        total:Number((participantSubtotal + pickupTotal + dropoffTotal + extrasTotal).toFixed(2)),
       };
     } else {
       quote = {
@@ -1056,6 +1170,7 @@ export function resolveBookingSelection(domain = {}, input = {}, { now = new Dat
         participantLines:lines,
         participantSubtotal,
         pickupTotal,
+        dropoffTotal,
         extrasTotal:extraLines.length?extrasTotal:null,
         extraLines,
         total:null,
@@ -1104,14 +1219,36 @@ export function resolveBookingSelection(domain = {}, input = {}, { now = new Dat
       ));
     }
   }
+  if (dropoff.optional && !selection.dropoff.mode) {
+    bookingDataIssues.push(issue('dropoff_mode_required','dropoff.mode','Choose drop-off or no drop-off before booking'));
+  }
+  if (selection.dropoff.mode === 'DROPOFF') {
+    const knownDropoffIds=new Set(arr(dropoff.places).map(item=>str(item.id)).filter(Boolean));
+    if (!dropoff.locationChoiceAvailable) {
+      bookingDataIssues.push(issue('dropoff_places_unavailable','dropoff','Drop-off is enabled for the selected rate, but no selectable drop-off places or custom option are available'));
+    } else if (selection.dropoff.placeId) {
+      if (!knownDropoffIds.has(str(selection.dropoff.placeId))) {
+        bookingDataIssues.push(issue('unknown_dropoff_place','dropoff.placeId','Selected drop-off place is not available for this product',{placeId:str(selection.dropoff.placeId)}));
+      }
+    } else if (selection.dropoff.customLocation) {
+      if (!dropoff.customAllowed) {
+        bookingDataIssues.push(issue('custom_dropoff_not_allowed','dropoff.customLocation','Custom drop-off location is not allowed for this product'));
+      } else if (!pickupLocationHasValue(selection.dropoff.customLocation)) {
+        bookingDataIssues.push(issue('custom_dropoff_location_incomplete','dropoff.customLocation','Custom drop-off location is incomplete'));
+      }
+    } else {
+      bookingDataIssues.push(issue('dropoff_location_required','dropoff','Choose a drop-off place before booking'));
+    }
+  }
   const blockingQuoteCodes = new Set([
     'product_mismatch','date_not_available','slot_not_available','time_not_available','unknown_rate',
     'rate_not_available_for_slot','participants_required','unknown_participant_category','below_rate_minimum',
     'above_rate_maximum','below_slot_minimum','insufficient_capacity','pickup_required','pickup_not_available',
-    'meet_on_location_not_allowed','participant_price_unavailable','mixed_currencies','date_required','slot_required','rate_required'
+    'meet_on_location_not_allowed','dropoff_required','dropoff_not_available','no_dropoff_not_allowed',
+    'participant_price_unavailable','mixed_currencies','date_required','slot_required','rate_required'
   ]);
   const readyToQuote = quote.available && !errors.some(item => blockingQuoteCodes.has(item.code));
-  const readyToBook = readyToQuote && bookingDataIssues.length === 0 && !warnings.some(item => ['pickup_price_unresolved','extras_price_unresolved'].includes(item.code));
+  const readyToBook = readyToQuote && bookingDataIssues.length === 0 && !warnings.some(item => ['pickup_price_unresolved','dropoff_price_unresolved','extras_price_unresolved'].includes(item.code));
 
   const currentSlot = selectedSlot ? publicSlot(selectedSlot, domain, selection.rateId, now) : null;
   const currentRate = selectedRate ? publicRate(selectedRate, domain, selectedSlot ? [selectedSlot] : rateScopeSlots) : null;
@@ -1135,6 +1272,10 @@ export function resolveBookingSelection(domain = {}, input = {}, { now = new Dat
       pickupPlace:selection.pickup.placeId
         ? arr(pickup.places).find(item => str(item.id) === str(selection.pickup.placeId)) || null
         : null,
+      dropoffMode:selection.dropoff.mode,
+      dropoffPlace:selection.dropoff.placeId
+        ? arr(dropoff.places).find(item => str(item.id) === str(selection.dropoff.placeId)) || null
+        : null,
     },
     constraints:{
       dates,
@@ -1142,6 +1283,7 @@ export function resolveBookingSelection(domain = {}, input = {}, { now = new Dat
       rates,
       participants:participantCategories,
       pickup,
+      dropoff,
       extras,
       bookingRequirements:bookingRequirements(domain,selection),
     },
