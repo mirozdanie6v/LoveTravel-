@@ -64,3 +64,8 @@ test('standalone build publishes lightbox assets', () => {
   assert.match(build, /copyFile\(resolve\(root, 'src\/tour-lightbox\.css'/);
   assert.match(build, /copyFile\(resolve\(root, 'src\/tour-lightbox\.js'/);
 });
+
+
+test('legacy lightbox does not intercept the new LoveTravel domain-tour media', () => {
+  assert.match(script, /image\?\.closest\?\.\('#tourScreen\.lt-domain-tour'\)/);
+});
