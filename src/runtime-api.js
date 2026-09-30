@@ -171,7 +171,6 @@
             data.tours.every(tour => LIVE_PRODUCT_IDS.has(String(tour?.id)))
           ) {
             applyCatalog(data.tours, 'bokun');
-            setCatalogGate('ready');
             return true;
           }
           lastError=new Error('invalid Bókun catalog payload');
@@ -204,6 +203,8 @@
     if (!catalogReady) return;
     if (state.screen === 'home') renderHome();
     else showScreen(state.screen);
+    try { globalThis.LoveTravelBrand?.apply?.(); } catch (_) {}
+    requestAnimationFrame(() => setCatalogGate('ready'));
   }
 
   document.addEventListener('click', event => {
