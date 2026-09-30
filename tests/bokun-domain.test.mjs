@@ -79,7 +79,22 @@ const pickupPlaces={
       },
     },
   ],
-  dropoffPlaces:[],
+  dropoffPlaces:[
+    {
+      id:25136970,
+      title:'Love Travel office',
+      type:'OTHER',
+      askForRoomNumber:false,
+      location:{
+        address:'2 Trần Phú',
+        city:'Nha Trang',
+        countryCode:'VN',
+        latitude:12.2501,
+        longitude:109.1965,
+        wholeAddress:'2 Trần Phú, Nha Trang',
+      },
+    },
+  ],
 };
 
 const availability=[
@@ -138,6 +153,9 @@ test('domain model preserves provider structures that do not exist in legacy MAX
   assert.equal(d.experience.pickup.places[0].postalCode,'650000');
   assert.equal(d.experience.pickup.places[0].askForRoomNumber,true);
   assert.equal(d.experience.pickup.places[0].latitude,12.2377);
+  assert.equal(d.experience.dropoff.places.length,1);
+  assert.equal(d.experience.dropoff.places[0].id,25136970);
+  assert.equal(d.experience.dropoff.places[0].title,'Love Travel office');
   assert.equal(d.availabilitySlots[0].pickup.availabilityCount,999);
   assert.equal(d.availabilitySlots[0].minParticipantsToBookNow,1);
 });
