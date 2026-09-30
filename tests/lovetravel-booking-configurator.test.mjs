@@ -63,6 +63,15 @@ test('interactive resolver loads a 31-day window and pickup places lazily',()=>{
 });
 
 
+test('calendar pages beyond the initial window and pickup search is not capped',()=>{
+  assert.match(js,/calendarRange=append&&cached\?\.end/);
+  assert.match(js,/data-lt-calendar-more/);
+  assert.match(js,/refreshCalendar\(productId,\{force:true,append:true\}\)/);
+  assert.match(worker,/body\?\.calendarRange\?\.start/);
+  assert.match(worker,/invalid_calendar_range/);
+  assert.doesNotMatch(js,/\.slice\(0,40\)/);
+});
+
 test('calendar availability is cached independently from exact selection resolution',()=>{
   assert.match(js,/const calendarByKey = new Map\(\)/);
   assert.match(js,/function refreshCalendar\(/);
