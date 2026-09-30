@@ -1,6 +1,8 @@
 (() => {
   'use strict';
 
+  const LEGACY_CATALOG_ALLOWED = globalThis.LOVE_TRAVEL_ALLOW_LEGACY_CATALOG === true;
+
   // Verified from the current MAX TOUR product pages on 2026-09-15.
   const VERIFIED_NHATRANG_ISLAND_TOURS = [
     {
@@ -66,7 +68,7 @@
 
   function injectVerifiedIslandTours() {
     try {
-      if (globalThis.LOVE_TRAVEL_BOKUN_ACTIVE) return 0;
+      if (!LEGACY_CATALOG_ALLOWED || globalThis.LOVE_TRAVEL_BOKUN_ACTIVE) return 0;
       if (!Array.isArray(TOURS)) return 0;
       const existing = new Set(TOURS.map(tour => String(tour?.id || '')));
       let added = 0;
@@ -84,7 +86,7 @@
 
   function verifiedIslandToursReady() {
     try {
-      if (globalThis.LOVE_TRAVEL_BOKUN_ACTIVE) return true;
+      if (!LEGACY_CATALOG_ALLOWED || globalThis.LOVE_TRAVEL_BOKUN_ACTIVE) return true;
       if (!Array.isArray(TOURS)) return false;
       const ids = new Set(TOURS.map(tour => String(tour?.id || '')));
       return VERIFIED_NHATRANG_ISLAND_TOURS.every(tour => ids.has(tour.id));
