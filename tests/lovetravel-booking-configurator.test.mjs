@@ -25,6 +25,16 @@ test('booking configurator exposes all current selection dimensions',()=>{
   }
 });
 
+test('dropoff is a first-class Bókun selection when the rate exposes it',()=>{
+  assert.match(js,/dropoff:\{mode:null,placeId:null,customLocation:null\}/);
+  assert.match(js,/openDropoffSheet/);
+  assert.match(js,/data-lt-dropoff-mode/);
+  assert.match(js,/data-lt-dropoff-place/);
+  assert.match(js,/data-lt-custom-dropoff/);
+  assert.match(js,/constraints\?\.dropoff\?\.modes/);
+  assert.match(worker,/selection\?\.dropoff\?\.mode/);
+});
+
 test('calendar, rate, guest and pickup sheets are interactive',()=>{
   assert.match(js,/data-lt-date/);
   assert.match(js,/data-lt-slot/);
