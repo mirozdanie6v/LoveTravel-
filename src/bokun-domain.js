@@ -95,13 +95,22 @@ function pickupPlace(item = {}) {
   };
 }
 
-function pickupPlaceArray(payload) {
+function providerPlaceArray(payload, preferredKey) {
   if (Array.isArray(payload)) return payload;
   if (!payload || typeof payload !== 'object') return [];
-  for (const key of ['pickupPlaces','places','items','results']) {
+  if (preferredKey && Array.isArray(payload[preferredKey])) return payload[preferredKey];
+  for (const key of ['places','items','results']) {
     if (Array.isArray(payload[key])) return payload[key];
   }
   return [];
+}
+
+function pickupPlaceArray(payload) {
+  return providerPlaceArray(payload, 'pickupPlaces');
+}
+
+function dropoffPlaceArray(payload) {
+  return providerPlaceArray(payload, 'dropoffPlaces');
 }
 
 function genericProviderEntity(item = {}) {
@@ -530,6 +539,7 @@ export function buildBokunDomain(product = {}, availability = [], { vendorId = n
       dropoff:{
         enabled:bool(product.dropoffService),
         placeGroups:asArray(product.dropoffPlaceGroups).map(genericProviderEntity),
+        places:dropoffPlaceArray(pickupPlaces).map(pickupPlace),
         flags:asArray(product.dropoffFlags),
         customAllowed:product.customDropoffAllowed === undefined ? null : bool(product.customDropoffAllowed),
         useSameAsPickup:product.useSameAsPickUpPlaces === undefined ? null : bool(product.useSameAsPickUpPlaces),
@@ -614,5 +624,6 @@ export const _domainTest = {
   availabilitySlot,
   coverage,
   pickupPlaceArray,
+  dropoffPlaceArray,
   pickupPlace,
 };
