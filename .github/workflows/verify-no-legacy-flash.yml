@@ -1,0 +1,122 @@
+name: Verify no legacy LoveTravel flash
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.verify-no-legacy-flash'
+  workflow_dispatch:
+
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Verify slow and failed Bókun boot never exposes MAX TOUR
+        shell: bash
+        run: |
+          node <<'NODE'
+          const { chromium } = require('playwright');
+
+          const LEGACY = [
+            'Далат «Премиум»',
+            'Остров Орхидей',
+            'Остров Хон Там',
+            'Муйне: дюны',
+            'MAX TOUR',
+          ];
+
+          async function visibleLegacy(page) {
+            return page.evaluate((terms) => {
+              const visible = el => {
+                const style=getComputedStyle(el);
+                const rect=el.getBoundingClientRect();
+                return style.display!=='none' && style.visibility!=='hidden' && Number(style.opacity||1)!==0 && rect.width>0 && rect.height>0;
+              };
+              const nodes=[...document.querySelectorAll('body *')].filter(visible);
+              return terms.filter(term => nodes.some(node => (node.innerText||'').includes(term)));
+            }, LEGACY);
+          }
+
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+
+            // Slow successful RU boot: shell must stay hidden until the canonical Bókun catalog is ready.
+            {
+              const page=await browser.newPage({viewport:{width:390,height:844}});
+              await page.addInitScript(() => localStorage.setItem('max-tour-locale-v1','ru'));
+              await page.route('**/api/bokun/tours?locale=ru*', async route => {
+                await new Promise(resolve => setTimeout(resolve,2200));
+                await route.continue();
+              });
+              await page.goto('https://lovetravel.viiversion.com/?noLegacyFlash=slow', {waitUntil:'domcontentloaded',timeout:60000});
+              await page.waitForTimeout(450);
+              const loading=await page.evaluate(()=>({
+                ready:document.documentElement.classList.contains('love-travel-catalog-ready'),
+                status:document.documentElement.dataset.ltCatalogStatus||'',
+                phoneVisibility:getComputedStyle(document.querySelector('.phone')).visibility,
+                source:globalThis.LOVE_TRAVEL_CATALOG_SOURCE||null,
+              }));
+              if(loading.ready) throw new Error('catalog became ready before delayed Bókun response: '+JSON.stringify(loading));
+              if(loading.phoneVisibility!=='hidden') throw new Error('legacy shell is visible while Bókun is loading: '+JSON.stringify(loading));
+              const during=await visibleLegacy(page);
+              if(during.length) throw new Error('visible legacy content during slow Bókun boot: '+JSON.stringify(during));
+
+              await page.waitForFunction(() =>
+                document.documentElement.classList.contains('love-travel-catalog-ready') &&
+                globalThis.LOVE_TRAVEL_CATALOG_SOURCE === 'bokun' &&
+                Array.isArray(TOURS) &&
+                TOURS.length === 2,
+                null,{timeout:60000}
+              );
+              const ready=await page.evaluate(()=>({
+                ids:TOURS.map(t=>String(t.id)),
+                source:globalThis.LOVE_TRAVEL_CATALOG_SOURCE,
+                phoneVisibility:getComputedStyle(document.querySelector('.phone')).visibility,
+                lang:document.documentElement.lang,
+              }));
+              if(JSON.stringify(ready.ids)!==JSON.stringify(['1287578','1287580'])) throw new Error('wrong live catalog after slow boot: '+JSON.stringify(ready));
+              if(ready.phoneVisibility==='hidden') throw new Error('LoveTravel shell did not reveal after Bókun ready');
+              const after=await visibleLegacy(page);
+              if(after.length) throw new Error('visible legacy content after Bókun ready: '+JSON.stringify(after));
+              await page.close();
+            }
+
+            // Failed Bókun boot: never fetch catalog.v28.json and never reveal the old shell.
+            {
+              const page=await browser.newPage({viewport:{width:390,height:844}});
+              await page.addInitScript(() => localStorage.setItem('max-tour-locale-v1','ru'));
+              let fallbackRequests=0;
+              page.on('request',req=>{ if(req.url().includes('/catalog.v28.json')) fallbackRequests+=1; });
+              await page.route('**/api/bokun/tours?locale=ru*', route => route.abort('failed'));
+              await page.goto('https://lovetravel.viiversion.com/?noLegacyFlash=failed', {waitUntil:'domcontentloaded',timeout:60000});
+              await page.waitForFunction(() => document.documentElement.classList.contains('love-travel-catalog-error'),null,{timeout:15000});
+              const failed=await page.evaluate(()=>({
+                ready:document.documentElement.classList.contains('love-travel-catalog-ready'),
+                error:document.documentElement.classList.contains('love-travel-catalog-error'),
+                status:document.documentElement.dataset.ltCatalogStatus||'',
+                phoneVisibility:getComputedStyle(document.querySelector('.phone')).visibility,
+                source:globalThis.LOVE_TRAVEL_CATALOG_SOURCE||null,
+                tourCount:Array.isArray(TOURS)?TOURS.length:null,
+              }));
+              if(fallbackRequests!==0) throw new Error('legacy catalog.v28 fallback was requested '+fallbackRequests+' times');
+              if(failed.ready || !failed.error || failed.phoneVisibility!=='hidden' || failed.tourCount!==0) {
+                throw new Error('failed Bókun boot did not fail closed: '+JSON.stringify(failed));
+              }
+              const visible=await visibleLegacy(page);
+              if(visible.length) throw new Error('visible legacy content after Bókun failure: '+JSON.stringify(visible));
+              await page.close();
+            }
+
+            await browser.close();
+            console.log(JSON.stringify({ok:true,slowBoot:'no legacy flash',failedBoot:'fail closed, no catalog.v28 fallback'}));
+          })().catch(error=>{ console.error(error); process.exit(1); });
+          NODE
