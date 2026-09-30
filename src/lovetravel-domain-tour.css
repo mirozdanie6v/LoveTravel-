@@ -382,85 +382,85 @@ html.love-travel-branded #tourScreen.lt-domain-tour{
   background:
     linear-gradient(
       145deg,
-      #fff0c8 0%,
-      #fff8e9 22%,
-      #ffffff 48%,
-      #f1f8ff 70%,
-      #dbeeff 100%
+      #fff1d9 0%,
+      #fff8eb 22%,
+      #fffdf9 46%,
+      #f3f8fd 70%,
+      #e3eef9 100%
     )!important;
 }
 .lt-domain-gallery{
-  background:linear-gradient(135deg,#fff4d7 0%,#fffaf0 42%,#edf7ff 100%);
+  background:linear-gradient(135deg,#fff0d8 0%,#fff8ec 42%,#edf5fc 100%);
   border-color:rgba(47,140,255,.10);
 }
 .lt-domain-gallery__headline b{
-  color:#0a5fc7;
+  color:#2268b3;
 }
 .lt-domain-gallery__thumb.is-active{
-  border-color:#ff7422;
+  border-color:#f58a24;
   box-shadow:0 0 0 3px rgba(255,116,34,.13),0 7px 18px rgba(18,73,88,.12);
 }
 .lt-domain-gallery__nav{
-  color:#0a5fc7;
+  color:#2268b3;
 }
 .lt-domain-hero{
   background:
     linear-gradient(#fff,#fff) padding-box,
-    linear-gradient(135deg,#ff7422 0%,#ffd14a 44%,#69d2ff 70%,#2f8cff 100%) border-box;
+    linear-gradient(135deg,#ef6f1a 0%,#f58a24 50%,#f3c75a 100%) border-box;
 }
 .lt-domain-hero::before{
-  background:radial-gradient(circle,rgba(255,209,74,.24),transparent 68%);
+  background:radial-gradient(circle,rgba(243,199,90,.22),transparent 68%);
 }
 .lt-domain-live{
   background:#edf7ff;
-  color:#0a5fc7;
+  color:#2268b3;
 }
 .lt-domain-live span{
-  background:#2f8cff;
+  background:#438fd8;
   box-shadow:0 0 0 4px rgba(47,140,255,.13);
 }
 .lt-domain-facts>div{
-  background:linear-gradient(135deg,#fff8e7 0%,#ffffff 50%,#eef7ff 100%);
+  background:linear-gradient(135deg,#fff4e3 0%,#fffdf9 50%,#eef5fb 100%);
   border-color:rgba(47,140,255,.10);
 }
 .lt-domain-section--options{
-  background:linear-gradient(135deg,#fff8e7 0%,#ffffff 48%,#eef7ff 100%);
+  background:linear-gradient(135deg,#fff4e3 0%,#fffdf9 48%,#eef5fb 100%);
   border-color:rgba(255,116,34,.14);
 }
 .lt-domain-rate__check{
   border-color:rgba(47,140,255,.22);
-  color:#0a5fc7;
+  color:#2268b3;
 }
 .lt-domain-rate.is-active .lt-domain-rate__check{
-  background:linear-gradient(135deg,#f35316 0%,#ff7422 52%,#ffd14a 100%);
+  background:linear-gradient(135deg,#ef6f1a 0%,#f58a24 52%,#f3c75a 100%);
 }
 .lt-domain-rate__action{
-  background:linear-gradient(135deg,#eef8ff 0%,#e3f2ff 100%);
-  color:#0a5fc7;
+  background:linear-gradient(135deg,#eef6fc 0%,#e3eff9 100%);
+  color:#2268b3;
 }
 .lt-domain-rate.is-active .lt-domain-rate__action{
-  background:linear-gradient(135deg,#f35316 0%,#ff7422 52%,#ffd14a 100%);
+  background:linear-gradient(135deg,#ef6f1a 0%,#f58a24 52%,#f3c75a 100%);
   color:#fff;
 }
 .lt-domain-rate.is-active{
-  border-color:#ff7422;
+  border-color:#f58a24;
   box-shadow:0 0 0 3px rgba(255,116,34,.10),0 16px 34px rgba(29,93,104,.12);
 }
 .lt-domain-date.is-active{
-  border-color:#2f8cff;
+  border-color:#438fd8;
   background:#eef7ff;
   box-shadow:0 0 0 2px rgba(47,140,255,.09);
 }
 .lt-domain-itinerary__item>span{
-  background:linear-gradient(135deg,#69d2ff 0%,#2f8cff 55%,#0a5fc7 100%);
+  background:linear-gradient(135deg,#7bc8f6 0%,#438fd8 55%,#2268b3 100%);
   box-shadow:0 6px 14px rgba(47,140,255,.20);
 }
 .lt-domain-list li::before{
-  color:#ff7422;
+  color:#f58a24;
 }
 .lt-domain-policy{
-  background:linear-gradient(135deg,#fff8e7 0%,#fff2e7 100%);
+  background:linear-gradient(135deg,#fff4e4 0%,#fff0e5 100%);
 }
 .lt-domain-info{
-  background:linear-gradient(135deg,#ffffff 0%,#f3f9ff 100%);
+  background:linear-gradient(135deg,#ffffff 0%,#f1f7fc 100%);
 }
