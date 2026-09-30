@@ -75,3 +75,32 @@ test('tour start point is separated from hotel pickup in every supported locale'
   assert.match(css,/\.lt-domain-transport-note/);
   assert.match(css,/\.lt-domain-selected-pickup/);
 });
+
+
+test('tour gallery renders every Bókun photo and supports full-screen navigation',()=>{
+  assert.equal(js.includes('photos.slice(1,7)'),false);
+  assert.match(js,/galleryPhotos\(domain\)/);
+  assert.match(js,/data-lt-gallery-thumb/);
+  assert.match(js,/data-lt-gallery-count/);
+  assert.match(js,/openGalleryLightbox/);
+  assert.match(js,/data-lt-lightbox-prev/);
+  assert.match(js,/data-lt-lightbox-next/);
+  assert.match(css,/\.lt-domain-lightbox/);
+  assert.match(css,/\.lt-domain-gallery__thumb\.is-active/);
+});
+
+test('tour options are visual cards with curated descriptions and tour photos',()=>{
+  assert.match(js,/RATE_PRESENTATION/);
+  assert.match(js,/function rateDescription/);
+  assert.match(js,/function ratePhotos/);
+  assert.match(js,/lt-domain-rate__media/);
+  assert.match(js,/lt-domain-rate__description/);
+  assert.match(css,/\.lt-domain-section--options/);
+  assert.match(css,/\.lt-domain-rate__media/);
+  assert.match(css,/\.lt-domain-rate__description/);
+});
+
+test('selecting a rate or date preserves the current scroll position',()=>{
+  assert.match(js,/function renderDomain\(domain,\{preserveScroll=false\}=\{\}\)/);
+  assert.match(js,/renderDomain\(domain,\{preserveScroll:true\}\)/);
+});
