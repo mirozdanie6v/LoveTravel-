@@ -155,3 +155,20 @@ test('reserve draft is blocked when current checkout options do not expose RESER
   assert.equal(draft.readyForReserve,false);
   assert.ok(draft.issues.some(item=>item.code==='reserve_for_external_payment_unavailable'));
 });
+
+
+test('maps Bókun dropoff place and custom dropoff into direct booking request',()=>{
+  const byPlace=buildBokunBookingDraft(resolution({
+    dropoff:{mode:'DROPOFF',placeId:'25136970',customLocation:null},
+  }),contract,{externalBookingReference:'LT-TEST-DROPOFF-1'});
+  const activityByPlace=byPlace.bookingRequest.activityBookings[0];
+  assert.equal(activityByPlace.dropoff,true);
+  assert.equal(activityByPlace.dropoffPlaceId,25136970);
+
+  const custom=buildBokunBookingDraft(resolution({
+    dropoff:{mode:'DROPOFF',placeId:null,customLocation:{wholeAddress:'2 Tran Phu, Nha Trang'}},
+  }),contract,{externalBookingReference:'LT-TEST-DROPOFF-2'});
+  const activityCustom=custom.bookingRequest.activityBookings[0];
+  assert.equal(activityCustom.dropoff,true);
+  assert.equal(activityCustom.dropoffDescription,'2 Tran Phu, Nha Trang');
+});
