@@ -509,7 +509,7 @@ html.love-travel-branded #aiScreen .ai-message.assistant{
 }
 html.love-travel-branded #aiScreen .ai-msg.user,
 html.love-travel-branded #aiScreen .ai-message.user{
-  background:linear-gradient(135deg,var(--lt-blue-deep),var(--lt-blue))!important;
+  background:linear-gradient(135deg,var(--lt-blue-bright),var(--lt-blue-deep))!important;
   color:#fff!important;
 }
 
@@ -590,4 +590,28 @@ html.love-travel-branded .bottom-nav .nav-btn.active::before{
     margin-top:12px!important;
     padding-top:12px!important;
   }
+}
+
+/* LoveTravel page-wide gradient restoration */
+html.love-travel-branded #homeScreen,
+html.love-travel-branded #catalogScreen,
+html.love-travel-branded #tourScreen,
+html.love-travel-branded #bookingScreen{
+  background:
+    radial-gradient(circle at 10% 3%,rgba(246,182,50,.20),transparent 30%),
+    radial-gradient(circle at 92% 12%,rgba(54,131,232,.17),transparent 32%),
+    linear-gradient(180deg,#fff9ec 0%,#f8fbff 44%,#edf5ff 100%)!important;
+}
+html.love-travel-branded #catalogScreen .wide-card,
+html.love-travel-branded #tourScreen .panel,
+html.love-travel-branded #bookingScreen .panel{
+  background:rgba(255,255,255,.93)!important;
+  backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);
+}
+html.love-travel-branded .lt-card-action,
+html.love-travel-branded #tourScreen button.secondary,
+html.love-travel-branded #bookingScreen button.secondary{
+  background:linear-gradient(135deg,#66c8f5,var(--lt-blue-deep))!important;
+  color:#fff!important;
 }
