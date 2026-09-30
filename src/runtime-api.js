@@ -3,6 +3,25 @@
 
   const FALLBACK_KEY = 'max-tour-v28-demo-state';
   const original = {};
+  const LIVE_PRODUCT_IDS = new Set(['1287578','1287580']);
+  const LEGACY_PUBLIC_CATALOG_ALLOWED = globalThis.LOVE_TRAVEL_ALLOW_LEGACY_CATALOG === true;
+
+  function resetPublicCatalog(source='loading') {
+    try { if (Array.isArray(TOURS)) TOURS.splice(0, TOURS.length); } catch (_) {}
+    try { if (typeof state !== 'undefined' && state) state.selectedTour = null; } catch (_) {}
+    globalThis.LOVE_TRAVEL_CATALOG_SOURCE = source;
+    globalThis.LOVE_TRAVEL_BOKUN_ACTIVE = false;
+  }
+
+  function setCatalogGate(status) {
+    const root=document.documentElement;
+    root.classList.toggle('love-travel-catalog-ready',status==='ready');
+    root.classList.toggle('love-travel-catalog-error',status==='error');
+    root.dataset.ltCatalogStatus=status;
+  }
+
+  resetPublicCatalog('loading');
+  setCatalogGate('loading');
   const LEGACY_DEMO_NAME_REPLACEMENTS = [
     ['Иван Петров','Nguyen Van An'],
     ['Анна Петрова','Tran Thi Mai'],
@@ -63,13 +82,13 @@
       liked.clear();
       data.favorites.forEach(id => liked.add(id));
     }
-    if (!globalThis.LOVE_TRAVEL_BOKUN_ACTIVE && Array.isArray(data.customTours)) {
+    if (LEGACY_PUBLIC_CATALOG_ALLOWED && !globalThis.LOVE_TRAVEL_BOKUN_ACTIVE && Array.isArray(data.customTours)) {
       data.customTours.forEach(tour => {
         const index = TOURS.findIndex(t => t.id === tour.id);
         if (index >= 0) TOURS[index] = tour; else TOURS.push(tour);
       });
     }
-    if (!globalThis.LOVE_TRAVEL_BOKUN_ACTIVE) applyGroupDepartures(data.groupDepartures);
+    if (LEGACY_PUBLIC_CATALOG_ALLOWED && !globalThis.LOVE_TRAVEL_BOKUN_ACTIVE) applyGroupDepartures(data.groupDepartures);
   }
 
   function departureLabel(iso) {
@@ -136,38 +155,43 @@
   }
 
   async function loadCanonicalCatalog() {
-    try {
-      const locale=currentCatalogLocale();
-      const response = await fetch('/api/bokun/tours?locale='+encodeURIComponent(locale), { cache:'no-store', credentials:'same-origin' });
-      if (response.ok) {
-        const data = await response.json();
-        if (
-          data?.ok === true &&
-          data?.source === 'bokun' &&
-          data?.vendorId === '137689' &&
-          Array.isArray(data?.tours) &&
-          data.tours.length === 2 &&
-          data.tours.every(tour => ['1287578','1287580'].includes(String(tour?.id)))
-        ) {
-          applyCatalog(data.tours, 'bokun');
-          return;
+    const locale=currentCatalogLocale();
+    let lastError=null;
+    for (let attempt=0; attempt<2; attempt+=1) {
+      try {
+        const response = await fetch('/api/bokun/tours?locale='+encodeURIComponent(locale), { cache:'no-store', credentials:'same-origin' });
+        if (response.ok) {
+          const data = await response.json();
+          if (
+            data?.ok === true &&
+            data?.source === 'bokun' &&
+            data?.vendorId === '137689' &&
+            Array.isArray(data?.tours) &&
+            data.tours.length === 2 &&
+            data.tours.every(tour => LIVE_PRODUCT_IDS.has(String(tour?.id)))
+          ) {
+            applyCatalog(data.tours, 'bokun');
+            setCatalogGate('ready');
+            return true;
+          }
+          lastError=new Error('invalid Bókun catalog payload');
+        } else {
+          lastError=new Error('Bókun catalog HTTP '+response.status);
         }
+      } catch (error) {
+        lastError=error;
       }
-    } catch (error) {
-      console.warn('[LoveTravel] Bókun catalog unavailable, using static fallback:', error);
+      if (attempt === 0) await new Promise(resolve => setTimeout(resolve,350));
     }
 
-    globalThis.LOVE_TRAVEL_BOKUN_ACTIVE = false;
-    try {
-      const response = await fetch('/catalog.v28.json', { cache:'no-store' });
-      if (!response.ok) return;
-      const catalog = await response.json();
-      applyCatalog(catalog, 'static-fallback');
-    } catch (_) {}
+    resetPublicCatalog('unavailable');
+    setCatalogGate('error');
+    console.warn('[LoveTravel] Bókun catalog unavailable; legacy MAX TOUR catalog is disabled:', lastError);
+    return false;
   }
 
   async function bootstrap() {
-    await loadCanonicalCatalog();
+    const catalogReady = await loadCanonicalCatalog();
     try {
       let data = await request('/api/bootstrap');
       if (!data.hasData) data = await request('/api/bootstrap', { method:'POST', body:JSON.stringify(snapshot()) });
@@ -177,6 +201,7 @@
       console.warn('[MAX TOUR v28] API bootstrap fallback:', error);
       restoreFallback();
     }
+    if (!catalogReady) return;
     if (state.screen === 'home') renderHome();
     else showScreen(state.screen);
   }
