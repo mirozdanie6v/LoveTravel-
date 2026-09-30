@@ -190,6 +190,7 @@ export function buildBokunBookingDraft(resolution = {}, contract = {}, options =
 
   const passengers=buildPassengers(selection,activityQuestions,issues);
   const pickup=selection?.pickup?.mode==='PICKUP';
+  const dropoff=selection?.dropoff?.mode==='DROPOFF';
   const selectedPlace=resolved?.pickupPlace || null;
   const pickupAnswers=pickup
     ? buildPickupAnswers(selection,activityQuestions?.pickupQuestions,issues,selectedPlace)
@@ -209,12 +210,16 @@ export function buildBokunBookingDraft(resolution = {}, contract = {}, options =
     startTimeId,
     date,
     pickup,
-    dropoff:false,
+    dropoff,
     checkedIn:false,
     customized:false,
     ...(pickup && selection?.pickup?.placeId ? {pickupPlaceId:num(selection.pickup.placeId)} : {}),
     ...(pickup && !selection?.pickup?.placeId && selection?.pickup?.customLocation
       ? {pickupDescription:str(selection.pickup.customLocation.wholeAddress || selection.pickup.customLocation.addressLine1)}
+      : {}),
+    ...(dropoff && selection?.dropoff?.placeId ? {dropoffPlaceId:num(selection.dropoff.placeId)} : {}),
+    ...(dropoff && !selection?.dropoff?.placeId && selection?.dropoff?.customLocation
+      ? {dropoffDescription:str(selection.dropoff.customLocation.wholeAddress || selection.dropoff.customLocation.addressLine1)}
       : {}),
     ...(answerMap(selection.answers).length?{answers:answerMap(selection.answers)}:{}),
     ...(pickupAnswers.length?{pickupAnswers}:{}),
