@@ -8,7 +8,7 @@
     "APP_URL": "https://lovetravel.viiversion.com",
     "PUBLIC_ADMIN_DEMO": "true",
     "AI_MODEL": "@cf/google/gemma-4-26b-a4b-it",
-    "BOKUN_TRANSLATION_MODEL": "@cf/zai-org/glm-4.7-flash",
+    "BOKUN_TRANSLATION_MODEL": "@cf/google/gemma-4-26b-a4b-it",
     "USD_RUB_RATE": "84.2569",
     "BOKUN_INTEGRATION_BASE_URL": "https://integration.viiversion.com"
   },
@@ -16,7 +16,7 @@
     "binding": "AI"
   },
   "triggers": {
-    "crons": ["* * * * *"]
+    "crons": ["0 * * * *"]
   },
   "assets": {
     "directory": "./dist",
