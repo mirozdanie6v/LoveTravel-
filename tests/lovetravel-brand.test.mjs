@@ -58,7 +58,7 @@ test('LoveTravel focuses public navigation on tours until booking and trip histo
 test('LoveTravel localizes legacy card labels after dynamic catalog rendering', () => {
   assert.match(js,/legacyCardCopy/);
   assert.match(js,/zh:\{departure:'出发',finish:'结束',group:'拼团',individual:'私人',from:'起'\}/);
-  assert.match(js,/replace\(\/ВЫЕЗД\/g,words\.departure\)/);
-  assert.match(js,/replace\(\/ФИНИШ\/g,words\.finish\)/);
+  assert.match(js,/replace\(\/выезд\/giu,words\.departure\)/);
+  assert.match(js,/replace\(\/финиш\/giu,words\.finish\)/);
   assert.match(js,/localizeLegacyCard\(card,lang\)/);
 });
