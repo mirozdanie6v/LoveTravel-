@@ -1140,6 +1140,27 @@
   }
   function autoComplete(field){ return ({firstName:'given-name',lastName:'family-name',phoneNumber:'tel',email:'email'})[field]||'off'; }
 
+  async function prefill(intent={}){
+    const productId=String(intent?.tourId||activeProductId||'');
+    if(!PRODUCT_IDS.has(productId)) return false;
+    activeProductId=productId;
+    selection(productId);
+    let r=await resolve(productId,{quiet:true});
+    const patch={};
+    if(/^\d{4}-\d{2}-\d{2}$/.test(String(intent?.date||''))) patch.date=String(intent.date);
+    const participants={...selection(productId).participants};
+    const byType=type=>arr(r?.constraints?.participants).find(item=>String(item?.ticketCategory||'').toUpperCase()===type);
+    const adult=byType('ADULT'), child=byType('CHILD'), infant=byType('INFANT');
+    if(adult) participants[String(adult.id)]=Math.max(0,Number(intent?.adults)||0);
+    if(child) participants[String(child.id)]=Math.max(0,Array.isArray(intent?.children)?intent.children.length:Number(intent?.children)||0);
+    if(infant) participants[String(infant.id)]=Math.max(0,Number(intent?.infants)||0);
+    if(Object.keys(participants).length) patch.participants=participants;
+    patchSelection(productId,patch);
+    r=await resolve(productId,{quiet:true});
+    render(productId);
+    return r;
+  }
+
   async function bootstrap(productId){
     activeProductId=productId;
     selection(productId);
@@ -1188,6 +1209,7 @@
     resolution:()=>activeProductId?resolutionByProduct.get(activeProductId)||null:null,
     calendar:()=>activeProductId?calendarFor(activeProductId):null,
     refreshCalendar:()=>activeProductId?refreshCalendar(activeProductId,{force:true}):Promise.resolve(null),
+    prefill,
     open:step=>activeProductId&&openSheet(activeProductId,step||firstBlockingStep(resolutionByProduct.get(activeProductId))),
   };
 })();
