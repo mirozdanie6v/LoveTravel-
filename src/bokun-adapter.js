@@ -147,11 +147,11 @@ export function projectBokunDomainToLegacyTour(domain = {}) {
     text(typeof value === 'string' ? value : (value?.code || value?.name || value?.title), 80).toUpperCase()
   ).filter(Boolean);
   const popular = productFlags.some(value => /POPULAR|FEATURED|HIGHLIGHT/.test(value));
-  const formatsLabel = product.privateActivity === true
-    ? 'индивидуальный'
+  const formatCode = product.privateActivity === true
+    ? 'PRIVATE'
     : product.privateActivity === false
-      ? 'групповой'
-      : '';
+      ? 'GROUP'
+      : 'UNKNOWN';
   const searchText = [
     domain.experience?.title,
     domain.experience?.description,
@@ -201,7 +201,7 @@ export function projectBokunDomainToLegacyTour(domain = {}) {
     } : null,
     meetingPoints,
     searchText,
-    formatsLabel,
+    formatCode,
     priceFromUsd,
     liked:false,
     localization:domain.localization || null,
