@@ -6,7 +6,7 @@ const TARGET_NAMES = Object.freeze({
   ko:'Korean',
   zh:'Simplified Chinese',
 });
-const TRANSLATION_PROVIDER = 'workers-ai:gemma-4-26b-a4b-it:v2';
+const TRANSLATION_PROVIDER = 'workers-ai:gemma-4-26b-a4b-it:v3';
 
 let tableReadyPromise = null;
 const inFlightSync = new Map();
@@ -268,7 +268,10 @@ async function translateChunk(env, locale, fields) {
     'Translate every JSON value into ' + target + '.',
     'Return one valid JSON object with exactly the same keys and no commentary or markdown.',
     'Preserve HTML tags, URLs, IDs, numbers, currencies and formatting.',
-    'Preserve proper names of hotels, islands, beaches, streets, brands and people; transliterate only when natural for the target language.',
+    'Write natural customer-facing travel language that a native speaker would expect in a professional tour-booking app; do not translate word-for-word when a natural equivalent exists.',
+    'For Korean, use standard contemporary South Korean travel and booking terminology. For Simplified Chinese, use fluent Mainland Simplified Chinese travel and booking terminology.',
+    'Translate generic English travel terms such as language names, accessibility notes, pickup instructions and booking labels. Keep only genuine proper names such as Hòn Mun, Hòn Tằm, Bích Đầm, Robinson Beach, hotel names, streets, brands and people; transliterate proper names only when natural for the target language.',
+    'Do not leave source-language fragments mixed into the target sentence unless they are genuine proper names.',
     'Do not add, remove, summarize, reinterpret or invent facts.',
     'Keep booking conditions, prices, ages, pickup instructions and cancellation meaning exact.',
   ].join(' ');
