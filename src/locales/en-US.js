@@ -263,6 +263,10 @@
   "catalog.city": "Nha Trang",
   "enum.format.GROUP": "group",
   "enum.format.PRIVATE": "private",
-  "enum.format.UNKNOWN": ""
+  "enum.format.UNKNOWN": "",
+  "booking.timeCount.one": "{count} time",
+  "booking.timeCount.few": "{count} times",
+  "booking.timeCount.many": "{count} times",
+  "booking.timeCount.other": "{count} times"
 });
 })();
