@@ -254,6 +254,12 @@
   "ai.date.past": "Эта дата уже прошла. Сегодня во Вьетнаме {today}. Выберите {minDate} или любую более позднюю дату.",
   "format.ageRange": "{min}–{max} лет",
   "format.minutes": "{value} мин",
-  "tour.stop": "Остановка {index}"
+  "tour.stop": "Остановка {index}",
+  "catalog.departure": "ВЫЕЗД",
+  "catalog.finish": "ФИНИШ",
+  "catalog.finishByProgram": "по программе",
+  "catalog.groupFrom": "групповой от",
+  "catalog.privateFrom": "индивидуальный от",
+  "catalog.city": "Nha Trang"
 });
 })();
