@@ -1,0 +1,30 @@
+name: LoveTravel release readiness branch
+
+on:
+  push:
+    branches:
+      - release-two-tours-multilang-ai
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - name: Install
+        run: npm install --no-fund --no-audit
+      - name: Tests and build
+        run: npm run check
+      - name: Wrangler dry run
+        run: npx wrangler deploy --dry-run --config wrangler.jsonc
+      - name: Verify current live Bókun source
+        shell: bash
+        run: |
+          set -euo pipefail
+          for locale in ru en vi ko; do
+            curl -fsS "https://lovetravel.viiversion.com/api/bokun/tours?locale=$locale"               | jq -e '.ok == true and .source == "bokun" and .vendorId == "137689" and ([.tours[].id]|sort) == ["1287578","1287580"]' >/dev/null
+          done
+          curl -fsS 'https://integration.viiversion.com/api/bokun/status?vendorId=137689'             | jq -e '.oauthConnected == true and .restCredentialsReady == true' >/dev/null

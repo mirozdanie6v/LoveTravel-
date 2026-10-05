@@ -2,8 +2,8 @@
   'use strict';
 
   const STORAGE_KEY='max-tour-locale-v1';
-  const SUPPORTED=['ru','vi','en','ko'];
-  const intlLocale={ru:'ru-RU',vi:'vi-VN',en:'en-US',ko:'ko-KR'};
+  const SUPPORTED=['ru','vi','en','ko','zh'];
+  const intlLocale={ru:'ru-RU',vi:'vi-VN',en:'en-US',ko:'ko-KR',zh:'zh-CN'};
 
   const products={
     '1287578':{
@@ -32,6 +32,15 @@
           'Ghé thăm Bích Đầm, một làng chài yên bình trong vịnh Nha Trang, và khám phá nhịp sống ven biển địa phương chân thực. Dạo quanh làng, ngắm những chiếc thuyền đánh cá truyền thống và nhà dân, tận hưởng không khí thanh bình tách biệt khỏi các khu du lịch đông đúc. Hướng dẫn viên sẽ giới thiệu về đời sống địa phương và lịch sử của cộng đồng đảo độc đáo này.',
           'Tùy chọn đi xe máy đến hải đăng Hòn Lớn. Khách chọn hoạt động này sẽ đi xe máy đến hải đăng để ngắm toàn cảnh bờ biển và vịnh Nha Trang. Đây là hoạt động tự chọn và không phù hợp để đi bộ. Thuê xe máy khoảng 6 USD/người và không bao gồm trong giá tour.',
           'Tự do thư giãn trên đảo Robinson, nổi tiếng với làn nước xanh ngọc trong veo, bãi biển đẹp và không khí đảo thư thái. Quý khách có thể bơi, nghỉ ngơi trên bãi biển, chụp ảnh và ngắm cảnh vịnh Nha Trang.'
+        ]
+      },
+      zh:{
+        title:'芽庄跳岛探险：Robinson 海滩',
+        description:'探索不同于常规跳岛游的真实芽庄：体验当地渔村、美丽的 Robinson 岛、浮潜、钓鱼、皮划艇和海边休闲，还可自选前往灯塔探险。',
+        itinerary:[
+          '参观芽庄湾宁静的 Bích Đầm 渔村，感受真实的当地海岸生活。漫步村庄，看看传统渔船和民居，在远离拥挤旅游区的安静氛围中了解这座岛屿社区的生活方式和历史。',
+          '可自选骑摩托车前往 Hòn Lớn 灯塔，欣赏海岸线和芽庄湾景色。灯塔项目为自选内容，不适合步行前往；摩托车租赁约每人 6 美元，不包含在行程价格中。',
+          '在 Robinson 岛自由活动。这里以清澈的碧蓝海水、美丽海滩和轻松的岛屿氛围而闻名，可游泳、海滩休息、拍照并欣赏芽庄湾风景。'
         ]
       },
       ko:{
@@ -81,6 +90,18 @@
           'Thư giãn và phục hồi với trải nghiệm tắm bùn khoáng truyền thống tại Hòn Tằm. Ngâm mình trong bùn khoáng tự nhiên giữa khung cảnh đảo đẹp, sau đó nghỉ ngơi và sử dụng các tiện ích trước khi tiếp tục hành trình.'
         ]
       },
+      zh:{
+        title:'Hòn Mun 海洋保护区浮潜与芽庄跳岛游',
+        description:'用一整天体验芽庄群岛：在 Hòn Mun 海洋保护区清澈海水中浮潜，在 Hòn Miễu 岛享用当地午餐，并在 Bãi Tranh 海滩放松。一次行程结合海洋生态、岛屿风景、当地美食和海滩休闲。',
+        itinerary:[
+          '在 Hòn Mun 海洋保护区清澈的海水中浮潜，这里是芽庄最知名的海洋区域之一。跟随向导探索色彩丰富的珊瑚礁并观察热带海洋生物。',
+          '在 Hòn Miễu 岛的餐厅享用越南当地午餐。品尝新鲜制作的海鲜和传统越南菜，在安静的岛屿氛围和海岸景色中休息补充体力。',
+          '在 Bãi Tranh 海滩放松，这里拥有清澈的碧蓝海水和优美海景。可自由游泳、在海滩休息并享受宁静的岛屿氛围。',
+          '在安静迷人的 Mini Beach 休息。这里被清澈海水和美丽岛景环绕，可游泳、晒太阳、拍照或在海边放松。',
+          '在 Bãi Sỏi 享受轻松时光。清澈蓝色海水和岛屿景观环绕，可游泳、海边休息并拍摄芽庄湾的美景。',
+          '在 Hòn Tằm 岛体验传统矿物泥浴。浸泡天然矿物泥，在美丽的岛屿环境中放松，随后可使用相关设施后继续行程。'
+        ]
+      },
       ko:{
         title:'혼문 해양공원 스노클링 & 나트랑 아일랜드 투어',
         description:'균형 잡힌 아일랜드 호핑 일정으로 나트랑의 섬들을 만나보세요. 혼문 해양공원의 맑은 바다에서 스노클링을 즐기고, 혼미에우 섬에서 현지식 점심을 맛본 뒤 바이짠 비치에서 휴식합니다. 해양 생태, 섬 풍경, 현지 음식과 해변 휴식을 하루에 경험할 수 있습니다.',
@@ -97,53 +118,54 @@
   };
 
   const rateTitles={
-    '2581224':{en:'Robinson & Bich Dam',ru:'Робинзон и Бич Дам',vi:'Robinson & Bích Đầm',ko:'로빈슨 & 빅담'},
-    '2623660':{en:'Robinson & Hon Mun Marine Park',ru:'Робинзон и морской парк Хон Мун',vi:'Robinson & Khu bảo tồn biển Hòn Mun',ko:'로빈슨 & 혼문 해양공원'},
-    '2623666':{en:'Robinson & Hon Tam Mud Bath',ru:'Робинзон и грязевые ванны Хон Там',vi:'Robinson & tắm bùn Hòn Tằm',ko:'로빈슨 & 혼땀 머드 배스'},
-    '2623667':{en:'Robinson & Tranh Beach',ru:'Робинзон и пляж Бай Чань',vi:'Robinson & Bãi Tranh',ko:'로빈슨 & 바이짠 비치'},
-    '2623668':{en:'Robinson & Mini Beach',ru:'Робинзон и Мини-Бич',vi:'Robinson & Mini Beach',ko:'로빈슨 & 미니 비치'},
-    '2623669':{en:'Robinson & Soi Beach',ru:'Робинзон и пляж Бай Сой',vi:'Robinson & Bãi Sỏi',ko:'로빈슨 & 바이소이 비치'},
-    '2623670':{en:'Robinson & Tri Nguyen Aquarium',ru:'Робинзон и океанариум Три Нгуен',vi:'Robinson & Thủy cung Trí Nguyên',ko:'로빈슨 & 찌응우옌 수족관'},
-    '2581227':{en:'Bai Tranh Beach',ru:'Пляж Бай Чань',vi:'Bãi Tranh',ko:'바이짠 비치'},
-    '2581226':{en:'Bai Soi Beach',ru:'Пляж Бай Сой',vi:'Bãi Sỏi',ko:'바이소이 비치'},
-    '2581229':{en:'Hon Tam Mud Bath',ru:'Грязевые ванны Хон Там',vi:'Tắm bùn Hòn Tằm',ko:'혼땀 머드 배스'},
-    '2581228':{en:'Mini Beach',ru:'Мини-Бич',vi:'Mini Beach',ko:'미니 비치'}
+    '2581224':{en:'Robinson & Bich Dam',ru:'Робинзон и Бич Дам',vi:'Robinson & Bích Đầm',zh:'Robinson & Bích Đầm',ko:'로빈슨 & 빅담'},
+    '2623660':{en:'Robinson & Hon Mun Marine Park',ru:'Робинзон и морской парк Хон Мун',vi:'Robinson & Khu bảo tồn biển Hòn Mun',zh:'Robinson & Hòn Mun 海洋保护区',ko:'로빈슨 & 혼문 해양공원'},
+    '2623666':{en:'Robinson & Hon Tam Mud Bath',ru:'Робинзон и грязевые ванны Хон Там',vi:'Robinson & tắm bùn Hòn Tằm',zh:'Robinson & Hòn Tằm 泥浴',ko:'로빈슨 & 혼땀 머드 배스'},
+    '2623667':{en:'Robinson & Tranh Beach',ru:'Робинзон и пляж Бай Чань',vi:'Robinson & Bãi Tranh',zh:'Robinson & Bãi Tranh 海滩',ko:'로빈슨 & 바이짠 비치'},
+    '2623668':{en:'Robinson & Mini Beach',ru:'Робинзон и Мини-Бич',vi:'Robinson & Mini Beach',zh:'Robinson & Mini Beach',ko:'로빈슨 & 미니 비치'},
+    '2623669':{en:'Robinson & Soi Beach',ru:'Робинзон и пляж Бай Сой',vi:'Robinson & Bãi Sỏi',zh:'Robinson & Bãi Sỏi',ko:'로빈슨 & 바이소이 비치'},
+    '2623670':{en:'Robinson & Tri Nguyen Aquarium',ru:'Робинзон и океанариум Три Нгуен',vi:'Robinson & Thủy cung Trí Nguyên',zh:'Robinson & Trí Nguyên 水族馆',ko:'로빈슨 & 찌응우옌 수족관'},
+    '2581227':{en:'Bai Tranh Beach',ru:'Пляж Бай Чань',vi:'Bãi Tranh',zh:'Bãi Tranh 海滩',ko:'바이짠 비치'},
+    '2581226':{en:'Bai Soi Beach',ru:'Пляж Бай Сой',vi:'Bãi Sỏi',zh:'Bãi Sỏi 海滩',ko:'바이소이 비치'},
+    '2581229':{en:'Hon Tam Mud Bath',ru:'Грязевые ванны Хон Там',vi:'Tắm bùn Hòn Tằm',zh:'Hòn Tằm 泥浴',ko:'혼땀 머드 배스'},
+    '2581228':{en:'Mini Beach',ru:'Мини-Бич',vi:'Mini Beach',zh:'Mini Beach',ko:'미니 비치'}
   };
 
   const exact={
     'Standard Viator policy':{
-      ru:'Условия отмены',vi:'Chính sách hủy',en:'Cancellation policy',ko:'취소 정책'
+      ru:'Условия отмены',vi:'Chính sách hủy',en:'Cancellation policy',ko:'취소 정책',zh:'取消政策'
     },
-    'English':{ru:'Английский',vi:'Tiếng Anh',en:'English',ko:'영어'},
+    'English':{ru:'Английский',vi:'Tiếng Anh',en:'English',ko:'영어',zh:'英语'},
     'Vietnamese':{ru:'Вьетнамский',vi:'Tiếng Việt',en:'Vietnamese',ko:'베트남어'},
-    'Russian':{ru:'Русский',vi:'Tiếng Nga',en:'Russian',ko:'러시아어'},
-    'Korean':{ru:'Корейский',vi:'Tiếng Hàn',en:'Korean',ko:'한국어'},
-    'Hotel name':{ru:'Название отеля',vi:'Tên khách sạn',en:'Hotel name',ko:'호텔 이름'},
-    'Room number':{ru:'Номер комнаты',vi:'Số phòng',en:'Room number',ko:'객실 번호'},
-    'Private transfer':{ru:'Индивидуальный трансфер',vi:'Xe đưa đón riêng',en:'Private transfer',ko:'프라이빗 픽업'},
-    'Bring sunscreen':{ru:'Возьмите солнцезащитный крем',vi:'Mang theo kem chống nắng',en:'Bring sunscreen',ko:'선크림을 준비하세요'},
-    'Nha Trang hotels':{ru:'Отели Нячанга',vi:'Khách sạn Nha Trang',en:'Nha Trang hotels',ko:'나트랑 호텔'},
-    'required':{ru:'обязательно',vi:'bắt buộc',en:'required',ko:'필수'},
-    'WALKING':{ru:'Пешая доступность',vi:'Có thể đi bộ',en:'Walking access',ko:'도보 접근'},
-    'индивидуальный':{ru:'индивидуальный',vi:'riêng',en:'private',ko:'프라이빗'},
-    'групповой':{ru:'групповой',vi:'nhóm',en:'group',ko:'그룹'},
-    'available':{ru:'доступно',vi:'còn chỗ',en:'available',ko:'예약 가능'},
-    'full':{ru:'нет мест',vi:'hết chỗ',en:'sold out',ko:'매진'}
+    'Russian':{ru:'Русский',vi:'Tiếng Nga',en:'Russian',ko:'러시아어',zh:'俄语'},
+    'Korean':{ru:'Корейский',vi:'Tiếng Hàn',en:'Korean',ko:'한국어',zh:'韩语'},
+    'Chinese':{ru:'Китайский',vi:'Tiếng Trung',en:'Chinese',ko:'중국어',zh:'中文'},
+    'Hotel name':{ru:'Название отеля',vi:'Tên khách sạn',en:'Hotel name',ko:'호텔 이름',zh:'酒店名称'},
+    'Room number':{ru:'Номер комнаты',vi:'Số phòng',en:'Room number',ko:'객실 번호',zh:'房间号'},
+    'Private transfer':{ru:'Индивидуальный трансфер',vi:'Xe đưa đón riêng',en:'Private transfer',ko:'프라이빗 픽업',zh:'私人接送'},
+    'Bring sunscreen':{ru:'Возьмите солнцезащитный крем',vi:'Mang theo kem chống nắng',en:'Bring sunscreen',ko:'선크림을 준비하세요',zh:'请携带防晒霜'},
+    'Nha Trang hotels':{ru:'Отели Нячанга',vi:'Khách sạn Nha Trang',en:'Nha Trang hotels',ko:'나트랑 호텔',zh:'芽庄酒店'},
+    'required':{ru:'обязательно',vi:'bắt buộc',en:'required',ko:'필수',zh:'必填'},
+    'WALKING':{ru:'Пешая доступность',vi:'Có thể đi bộ',en:'Walking access',ko:'도보 접근',zh:'步行可达'},
+    'индивидуальный':{ru:'индивидуальный',vi:'riêng',en:'private',ko:'프라이빗',zh:'私人'},
+    'групповой':{ru:'групповой',vi:'nhóm',en:'group',ko:'그룹',zh:'拼团'},
+    'available':{ru:'доступно',vi:'còn chỗ',en:'available',ko:'예약 가능',zh:'可预订'},
+    'full':{ru:'нет мест',vi:'hết chỗ',en:'sold out',ko:'매진',zh:'已满'}
   };
 
   const difficultyMap={
-    EASY:{ru:'Лёгкая',vi:'Dễ',en:'Easy',ko:'쉬움'},
-    MODERATE:{ru:'Средняя',vi:'Trung bình',en:'Moderate',ko:'보통'},
-    CHALLENGING:{ru:'Повышенная',vi:'Khó',en:'Challenging',ko:'어려움'},
-    DIFFICULT:{ru:'Сложная',vi:'Khó',en:'Difficult',ko:'어려움'},
-    HARD:{ru:'Сложная',vi:'Khó',en:'Hard',ko:'어려움'}
+    EASY:{ru:'Лёгкая',vi:'Dễ',en:'Easy',ko:'쉬움',zh:'简单'},
+    MODERATE:{ru:'Средняя',vi:'Trung bình',en:'Moderate',ko:'보통',zh:'中等'},
+    CHALLENGING:{ru:'Повышенная',vi:'Khó',en:'Challenging',ko:'어려움',zh:'较难'},
+    DIFFICULT:{ru:'Сложная',vi:'Khó',en:'Difficult',ko:'어려움',zh:'较难'},
+    HARD:{ru:'Сложная',vi:'Khó',en:'Hard',ko:'어려움',zh:'较难'}
   };
 
   const meetingMap={
-    MEET_ON_LOCATION:{ru:'Самостоятельно к месту начала',vi:'Tự đến điểm bắt đầu',en:'Arrive at the starting point',ko:'출발 지점으로 직접 이동'},
-    PICK_UP:{ru:'Трансфер из отеля',vi:'Đón tại khách sạn',en:'Hotel pickup',ko:'호텔 픽업'},
-    PICKUP:{ru:'Трансфер из отеля',vi:'Đón tại khách sạn',en:'Hotel pickup',ko:'호텔 픽업'},
-    MEET_ON_LOCATION_OR_PICK_UP:{ru:'Самостоятельно или трансфер из отеля',vi:'Tự đến hoặc đón tại khách sạn',en:'Independent arrival or hotel pickup',ko:'직접 이동 또는 호텔 픽업'}
+    MEET_ON_LOCATION:{ru:'Самостоятельно к месту начала',vi:'Tự đến điểm bắt đầu',en:'Arrive at the starting point',ko:'출발 지점으로 직접 이동',zh:'自行前往出发点'},
+    PICK_UP:{ru:'Трансфер из отеля',vi:'Đón tại khách sạn',en:'Hotel pickup',ko:'호텔 픽업',zh:'酒店接送'},
+    PICKUP:{ru:'Трансфер из отеля',vi:'Đón tại khách sạn',en:'Hotel pickup',ko:'호텔 픽업',zh:'酒店接送'},
+    MEET_ON_LOCATION_OR_PICK_UP:{ru:'Самостоятельно или трансфер из отеля',vi:'Tự đến hoặc đón tại khách sạn',en:'Independent arrival or hotel pickup',ko:'직접 이동 또는 호텔 픽업',zh:'自行前往或酒店接送'}
   };
 
   function locale(){
@@ -182,7 +204,8 @@
       en:'English','en-gb':'English','en-us':'English','english':'English',
       vi:'Vietnamese','vi-vn':'Vietnamese','vietnamese':'Vietnamese',
       ru:'Russian','ru-ru':'Russian','russian':'Russian',
-      ko:'Korean','ko-kr':'Korean','korean':'Korean'
+      ko:'Korean','ko-kr':'Korean','korean':'Korean',
+      zh:'Chinese','zh-cn':'Chinese','zh-hans':'Chinese','chinese':'Chinese'
     }[normalized];
     return providerText(canonical||raw);
   }
@@ -203,7 +226,8 @@
       ru:{day:['день','дня','дней'],hour:['час','часа','часов'],minute:['минута','минуты','минут']},
       vi:{day:'ngày',hour:'giờ',minute:'phút'},
       en:{day:['day','days'],hour:['hour','hours'],minute:['minute','minutes']},
-      ko:{day:'일',hour:'시간',minute:'분'}
+      ko:{day:'일',hour:'시간',minute:'분'},
+      zh:{day:'天',hour:'小时',minute:'分钟'}
     };
     const pluralRu=(n,forms)=>{
       const n10=n%10,n100=n%100;
@@ -216,7 +240,8 @@
       if(lang==='ru') parts.push(n+' '+pluralRu(n,units.ru[unit]));
       else if(lang==='en') parts.push(n+' '+units.en[unit][n===1?0:1]);
       else if(lang==='vi') parts.push(n+' '+units.vi[unit]);
-      else parts.push(n+units.ko[unit]);
+      else if(lang==='ko') parts.push(n+units.ko[unit]);
+      else parts.push(n+units.zh[unit]);
     }
     if(parts.length) return parts.join(' ');
     const raw=String(value.text||'').trim();
@@ -237,6 +262,7 @@
     if(lang==='ru') return a+'–'+b+' лет';
     if(lang==='vi') return a+'–'+b+' tuổi';
     if(lang==='ko') return a+'–'+b+'세';
+    if(lang==='zh') return a+'–'+b+' 岁';
     return a+'–'+b+' years';
   }
   function minutes(value){
@@ -246,6 +272,7 @@
     if(lang==='ru') return n+' мин';
     if(lang==='vi') return n+' phút';
     if(lang==='ko') return n+'분';
+    if(lang==='zh') return n+' 分钟';
     return n+' min';
   }
   function serverLocalizationMatches(value){
@@ -269,7 +296,7 @@
     };
     if('shortDescription' in next) next.shortDescription=dynamic?next.shortDescription:productDescription(id,next.shortDescription);
     if(Array.isArray(tour.route)){
-      const stopWord={ru:'Остановка',vi:'Điểm',en:'Stop',ko:'코스'}[locale()];
+      const stopWord={ru:'Остановка',vi:'Điểm',en:'Stop',ko:'코스',zh:'第'}[locale()];
       next.route=tour.route.map((row,index)=>{
         const title=Array.isArray(row)?String(row[0]||''):String(row?.title||'');
         const fallbackBody=Array.isArray(row)?String(row[1]||''):String(row?.body||row?.description||'');
@@ -301,11 +328,11 @@
         next.bokun.pricingCategories=tour.bokun.pricingCategories.map(item=>{
           const type=String(item?.ticketCategory||'').toUpperCase();
           const title=type==='ADULT'
-            ? {ru:'Взрослый',vi:'Người lớn',en:'Adult',ko:'성인'}[locale()]
+            ? {ru:'Взрослый',vi:'Người lớn',en:'Adult',ko:'성인',zh:'成人'}[locale()]
             : type==='CHILD'
-              ? {ru:'Ребёнок',vi:'Trẻ em',en:'Child',ko:'아동'}[locale()]
+              ? {ru:'Ребёнок',vi:'Trẻ em',en:'Child',ko:'아동',zh:'儿童'}[locale()]
               : type==='INFANT'
-                ? {ru:'Младенец',vi:'Em bé',en:'Infant',ko:'유아'}[locale()]
+                ? {ru:'Младенец',vi:'Em bé',en:'Infant',ko:'유아',zh:'婴儿'}[locale()]
                 : providerText(item?.title||type);
           return {...item,title};
         });

@@ -145,7 +145,7 @@ const analyticsTracker = '<script defer src="https://dashboard.viiversion.com/tr
 const productionEmbedCss = '<link rel="stylesheet" href="/production-embed-polish.css">';
 const i18nCss = '<link rel="stylesheet" href="/i18n-v1.css">';
 const productionEmbedJs = '<script defer src="/production-embed-polish.js"></script>';
-const i18nJs = '<script defer src="/i18n-en-v1.js"></script>\n<script defer src="/i18n-ko-v1.js"></script>\n<script defer src="/i18n-v1.js"></script>';
+const i18nJs = '<script defer src="/i18n-en-v1.js"></script>\n<script defer src="/i18n-ko-v1.js"></script>\n<script defer src="/i18n-zh-v1.js"></script>\n<script defer src="/i18n-v1.js"></script>';
 
 function withViiversionAnalytics(html) {
   let result = html;
@@ -237,6 +237,7 @@ await copyFile(resolve(root, 'src/i18n-v1.css'), resolve(dist, 'i18n-v1.css'));
 await copyFile(resolve(root, 'src/i18n-v1.js'), resolve(dist, 'i18n-v1.js'));
 await copyFile(resolve(root, 'src/i18n-en-v1.js'), resolve(dist, 'i18n-en-v1.js'));
 await copyFile(resolve(root, 'src/i18n-ko-v1.js'), resolve(dist, 'i18n-ko-v1.js'));
+await copyFile(resolve(root, 'src/i18n-zh-v1.js'), resolve(dist, 'i18n-zh-v1.js'));
 await copyFile(resolve(root, 'src/max-tour-logo.svg'), resolve(dist, 'max-tour-logo.svg'));
 const adminBuilt = withViiversionAnalytics(replaceBrandLogos(adminPrototype)
   .replace('</head>', '<link rel="stylesheet" href="/admin-app.css">\n</head>')

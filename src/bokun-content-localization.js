@@ -1,9 +1,10 @@
-const SUPPORTED_LOCALES = Object.freeze(['ru', 'vi', 'en', 'ko']);
+const SUPPORTED_LOCALES = Object.freeze(['ru', 'vi', 'en', 'ko', 'zh']);
 const TARGET_NAMES = Object.freeze({
   ru:'Russian',
   vi:'Vietnamese',
   en:'English',
   ko:'Korean',
+  zh:'Simplified Chinese',
 });
 const TRANSLATION_PROVIDER = 'workers-ai:gemma-4-26b-a4b-it:v2';
 
@@ -16,6 +17,7 @@ function cleanLocale(value) {
   if (raw.startsWith('ru')) return 'ru';
   if (raw.startsWith('vi')) return 'vi';
   if (raw.startsWith('ko')) return 'ko';
+  if (raw.startsWith('zh')) return 'zh';
   if (raw.startsWith('en')) return 'en';
   return '';
 }
@@ -26,7 +28,10 @@ export function normalizeContentLocale(value) {
 }
 
 export function bokunLanguage(locale) {
-  return normalizeContentLocale(locale).toUpperCase();
+  const normalized = normalizeContentLocale(locale);
+  // Use English as the stable Bókun source for Simplified Chinese and translate
+  // the customer-facing fields through the verified localization cache.
+  return normalized === 'zh' ? 'EN' : normalized.toUpperCase();
 }
 
 function text(value) {
@@ -415,7 +420,7 @@ export async function syncAllDomainLocales(domains, env) {
   const results = [];
   for (const domain of asArray(domains)) {
     const productId = String(domain?.experience?.id || domain?.provider?.productId || '');
-    for (const locale of ['ru','vi','ko']) {
+    for (const locale of ['ru','vi','ko','zh']) {
       try {
         results.push(await syncDomainTranslations(domain, env, locale));
       } catch (error) {

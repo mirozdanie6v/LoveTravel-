@@ -2,16 +2,16 @@
   'use strict';
 
   const storedLocale = String(globalThis.localStorage?.getItem?.('max-tour-locale-v1') || '').toLowerCase();
-  const ACTIVE_LOCALE = ['vi','en','ko'].includes(storedLocale) ? storedLocale : 'ru';
+  const ACTIVE_LOCALE = ['vi','en','ko','zh'].includes(storedLocale) ? storedLocale : 'ru';
   const STORAGE_KEY = 'max-tour-ai-consultant-v5-' + ACTIVE_LOCALE;
   const BOOKING_INTENT_KEY = 'max-tour-ai-booking-intent-v1';
   const LOCATION_KEY = 'max-tour-ai-location-v6';
   const TIME_ZONE = 'Asia/Ho_Chi_Minh';
   const MAX_MESSAGES = 100;
   const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[char]));
-  const lower = value => String(value || '').toLocaleLowerCase(ACTIVE_LOCALE === 'vi' ? 'vi-VN' : ACTIVE_LOCALE === 'en' ? 'en-US' : ACTIVE_LOCALE === 'ko' ? 'ko-KR' : 'ru-RU');
+  const lower = value => String(value || '').toLocaleLowerCase(ACTIVE_LOCALE === 'vi' ? 'vi-VN' : ACTIVE_LOCALE === 'en' ? 'en-US' : ACTIVE_LOCALE === 'ko' ? 'ko-KR' : ACTIVE_LOCALE === 'zh' ? 'zh-CN' : 'ru-RU');
   const clean = (value, max = 900) => String(value ?? '').trim().slice(0, max);
-  const localeText = (ru, vi, en, ko) => ACTIVE_LOCALE === 'vi' ? vi : ACTIVE_LOCALE === 'en' ? en : ACTIVE_LOCALE === 'ko' ? ko : ru;
+  const localeText = (ru, vi, en, ko, zh = ru) => ACTIVE_LOCALE === 'vi' ? vi : ACTIVE_LOCALE === 'en' ? en : ACTIVE_LOCALE === 'ko' ? ko : ACTIVE_LOCALE === 'zh' ? zh : ru;
   const catalog = () => { try { return Array.isArray(TOURS) ? TOURS : []; } catch (_) { return []; } };
 
   function vietnamTodayIso() {
@@ -30,7 +30,7 @@
 
   function dateLabel(iso, options = {}) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(String(iso || ''))) return String(iso || '');
-    return new Intl.DateTimeFormat(ACTIVE_LOCALE === 'vi' ? 'vi-VN' : ACTIVE_LOCALE === 'en' ? 'en-US' : ACTIVE_LOCALE === 'ko' ? 'ko-KR' : 'ru-RU', {
+    return new Intl.DateTimeFormat(ACTIVE_LOCALE === 'vi' ? 'vi-VN' : ACTIVE_LOCALE === 'en' ? 'en-US' : ACTIVE_LOCALE === 'ko' ? 'ko-KR' : ACTIVE_LOCALE === 'zh' ? 'zh-CN' : 'ru-RU', {
       day: 'numeric', month: options.short ? 'short' : 'long', year: options.year === false ? undefined : 'numeric', timeZone: 'UTC',
     }).format(new Date(`${iso}T00:00:00Z`));
   }
@@ -54,11 +54,11 @@
   function parseDate(text) {
     const q = lower(text);
     const today = vietnamTodayIso();
-    if (/(?:^|\s)(?:сегодня|hôm\s*nay|hom\s*nay)(?:\s|$|[,.!?])/.test(q)) return { value:today, flexible:false };
-    if (/завтра|ngày\s*mai|ngay\s*mai/.test(q)) return { value:addIsoDays(today, 1), flexible:false };
-    if (/выходн|cuối\s*tuần|cuoi\s*tuan/.test(q)) return { value:'Ближайшие выходные', flexible:true };
+    if (/(?:^|\s)(?:сегодня|hôm\s*nay|hom\s*nay|今天|今日)(?:\s|$|[,.!?，。！？])/.test(q)) return { value:today, flexible:false };
+    if (/завтра|ngày\s*mai|ngay\s*mai|明天/.test(q)) return { value:addIsoDays(today, 1), flexible:false };
+    if (/выходн|cuối\s*tuần|cuoi\s*tuan|周末/.test(q)) return { value:'Ближайшие выходные', flexible:true };
     if (/в течение (?:ближайшей )?недел|через неделю|на неделе|trong\s*tuần\s*tới|tuan\s*toi|tuần\s*tới/.test(q)) return { value:'В течение ближайшей недели', flexible:true };
-    if (/дата гибк|неважно когда|дат[ау].*нет|по датам гибк|ngày\s*linh\s*hoạt|ngay\s*linh\s*hoat|không\s*quan\s*trọng\s*ngày|linh\s*hoạt\s*ngày/.test(q)) return { value:'Дата гибкая', flexible:true };
+    if (/дата гибк|неважно когда|дат[ау].*нет|по датам гибк|ngày\s*linh\s*hoạt|ngay\s*linh\s*hoat|không\s*quan\s*trọng\s*ngày|linh\s*hoạt\s*ngày|日期灵活|时间灵活|哪天都可以/.test(q)) return { value:'Дата гибкая', flexible:true };
 
     const numeric = q.match(/(?:^|[^\d])(\d{1,2})[./-](\d{1,2})(?:[./-](\d{2,4}))?(?:[^\d]|$)/);
     if (numeric) return { ...buildIso(numeric[1], numeric[2], numeric[3]), flexible:false };
@@ -109,15 +109,19 @@
     const viAdults = Number((q.match(/(\d+)\s*(?:người\s*lớn|nguoi\s*lon|người\s*trưởng\s*thành)/) || [])[1] || 0);
     const viChildren = Number((q.match(/(\d+)\s*(?:trẻ\s*em|tre\s*em|trẻ|bé|be)(?!\s*sơ\s*sinh)/) || [])[1] || 0);
     const viInfants = Number((q.match(/(\d+)\s*(?:em\s*bé|em\s*be|trẻ\s*sơ\s*sinh|tre\s*so\s*sinh|bé\s*nhỏ|be\s*nho)/) || [])[1] || 0);
-    const explicitAdults = countBefore(q, 'взросл|совершеннолет|родител') || viAdults;
-    const explicitChildren = countBefore(q, 'дет(?:ей|и)?|ребен(?:ок|ка)?') || viChildren;
-    const explicitInfants = countBefore(q, 'малыш|младен|груднич') || viInfants;
+    const zhAdults = Number((q.match(/(\d+)\s*(?:位|个)?\s*成人/) || [])[1] || 0);
+    const zhChildren = Number((q.match(/(\d+)\s*(?:位|个)?\s*(?:儿童|孩子|小孩)/) || [])[1] || 0);
+    const zhInfants = Number((q.match(/(\d+)\s*(?:位|个)?\s*(?:婴儿|宝宝)/) || [])[1] || 0);
+    const explicitAdults = countBefore(q, 'взросл|совершеннолет|родител') || viAdults || zhAdults;
+    const explicitChildren = countBefore(q, 'дет(?:ей|и)?|ребен(?:ок|ка)?') || viChildren || zhChildren;
+    const explicitInfants = countBefore(q, 'малыш|младен|груднич') || viInfants || zhInfants;
     const totalMatch = q.match(new RegExp(`(?:нас|едем|поедем|всего|семья(?: из)?|группа(?: из)?|на|для)\\s*(\\d+|${Object.keys(PARTY_WORDS).join('|')})`, 'i'));
     const viTotalMatch = q.match(/(?:chúng\s*tôi|chung\s*toi|gia\s*đình|gia\s*dinh|tổng\s*cộng|tong\s*cong|nhóm|nhom)\s*(?:có\s*)?(\d+)\s*(?:người|nguoi)?/);
-    const total = totalMatch ? numberWord(totalMatch[1]) : Number(viTotalMatch?.[1] || 0);
-    const ages = [...q.matchAll(/(\d{1,2})\s*(?:лет|года|год|tuổi|tuoi)/g)].map(item => Number(item[1])).filter(age => age >= 3 && age <= 17).slice(0, 12);
-    const hasChild = /дет|ребен|trẻ\s*em|tre\s*em|\bbé\b|\bbe\b/.test(q);
-    const hasNoChildren = /без\s+дет|дет(?:ей|и)?\s+нет|không\s*có\s*trẻ|khong\s*co\s*tre/.test(q);
+    const zhTotalMatch = q.match(/(?:我们|一共|总共|共)\s*(\d+)\s*(?:人|位)?/);
+    const total = totalMatch ? numberWord(totalMatch[1]) : Number(viTotalMatch?.[1] || zhTotalMatch?.[1] || 0);
+    const ages = [...q.matchAll(/(\d{1,2})\s*(?:лет|года|год|tuổi|tuoi|岁)/g)].map(item => Number(item[1])).filter(age => age >= 3 && age <= 17).slice(0, 12);
+    const hasChild = /дет|ребен|trẻ\s*em|tre\s*em|\bbé\b|\bbe\b|儿童|孩子|小孩/.test(q);
+    const hasNoChildren = /без\s+дет|дет(?:ей|и)?\s+нет|không\s*có\s*trẻ|khong\s*co\s*tre|没有孩子|无儿童/.test(q);
     let children = hasNoChildren ? [] : (hasChild ? (ages.length ? ages : Array.from({ length:explicitChildren || 1 }, () => 8)) : current.children);
     let infants = explicitInfants || current.infants;
     let adults = explicitAdults || current.adults;
@@ -195,9 +199,9 @@
   }
 
   function isDiscoveryIntent(text) {
-    return /подбер|подобра|покаж|посовет|вариант|экскурс|тур\b|куда.*съезд|куда.*поех|хочу.*(?:остров|море|природ|экскурс)|gợi\s*ý|goi\s*y|đề\s*xuất|de\s*xuat|chọn|chon|tour\b|tham\s*quan|đi\s*đâu|di\s*dau|muốn.*(?:biển|đảo|thiên\s*nhiên)/i.test(String(text || ''));
+    return /подбер|подобра|покаж|посовет|вариант|экскурс|тур\b|куда.*съезд|куда.*поех|хочу.*(?:остров|море|природ|экскурс)|gợi\s*ý|goi\s*y|đề\s*xuất|de\s*xuat|chọn|chon|tour\b|tham\s*quan|đi\s*đâu|di\s*dau|muốn.*(?:biển|đảo|thiên\s*nhiên)|推荐|行程|旅游|有什么.*(?:海|岛)|想去.*(?:海|岛|浮潜)/i.test(String(text || ''));
   }
-  function isBookingIntent(text) { return /хочу.*заброни|заброниру|оформ|бер[еу]м|выбираю|этот вариант|поехали|muốn\s*đặt|muon\s*dat|đặt\s*tour|dat\s*tour|đặt\s*chỗ|dat\s*cho|chọn\s*tour\s*này|chon\s*tour\s*nay|lấy\s*tour\s*này|lay\s*tour\s*nay/i.test(String(text || '')); }
+  function isBookingIntent(text) { return /хочу.*заброни|заброниру|оформ|бер[еу]м|выбираю|этот вариант|поехали|muốn\s*đặt|muon\s*dat|đặt\s*tour|dat\s*tour|đặt\s*chỗ|dat\s*cho|chọn\s*tour\s*này|chon\s*tour\s*nay|lấy\s*tour\s*này|lay\s*tour\s*nay|我要预订|我想预订|预订这个|订这个|就这个|我要这个/i.test(String(text || '')); }
 
   function money(value) {
     const match = String(value || '').match(/\$\s*([\d,.]+)/);
@@ -320,6 +324,10 @@
   }
 
   function recommendationPrice(item) {
+    if (ACTIVE_LOCALE === 'zh') {
+      if (item.format === 'compare') return [item.groupPrice && `拼团 ${moneyLabel(item.groupPrice)} 起`, item.individualPrice && `私人 ${moneyLabel(item.individualPrice)} 起`].filter(Boolean).join(' · ');
+      return item.format === 'group' ? `${moneyLabel(item.groupPrice)} / 成人起` : `${moneyLabel(item.individualPrice)} / 行程起`;
+    }
     if (item.format === 'compare') return [item.groupPrice && `группа от ${moneyLabel(item.groupPrice)}`, item.individualPrice && `индивидуально от ${moneyLabel(item.individualPrice)}`].filter(Boolean).join(' · ');
     return item.format === 'group' ? `от ${moneyLabel(item.groupPrice)} / взрослый` : `от ${moneyLabel(item.individualPrice)} за поездку`;
   }
@@ -331,6 +339,7 @@
     if (state.slots.preferences.includes('природа')) bits.push('красивые виды');
     if (state.slots.children.length && item.tour.childrenOk !== false) bits.push('подходит с детьми');
     if (item.availability) bits.push(item.availability);
+    if (ACTIVE_LOCALE === 'zh') return '符合您的需求';
     return bits.slice(0,3).join(' · ') || 'подходит под ваш запрос';
   }
 
@@ -412,7 +421,7 @@
       format:s.tripType === 'group' ? 'group' : s.tripType === 'individual' ? 'individual' : item.format,
       date:/^\d{4}-\d{2}-\d{2}$/.test(s.date) ? s.date : (item.exactDeparture?.iso || ''),
       adults:Math.max(1, Number(s.adults) || 0), children:s.children.slice(), infants:Number(s.infants || 0),
-      createdAt:new Date().toISOString(), source:localeText('AI-консультант','Trợ lý AI','AI Assistant','AI 도우미'),
+      createdAt:new Date().toISOString(), source:localeText('AI-консультант','Trợ lý AI','AI Assistant','AI 도우미','AI 顾问'),
     };
   }
 
