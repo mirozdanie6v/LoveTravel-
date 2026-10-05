@@ -1,0 +1,127 @@
+name: Audit Cloudflare capabilities
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/cloudflare-capabilities-audit.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      CF_TOKEN_1: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CF_TOKEN_2: ${{ secrets.CF_API_TOKEN }}
+      CF_TOKEN_3: ${{ secrets.CLOUDFLARE_TOKEN }}
+      CF_TOKEN_4: ${{ secrets.VIIVERSION_CLOUDFLARE_API_TOKEN }}
+      CF_TOKEN_5: ${{ secrets.CLOUDFLARE_PROD_API_TOKEN }}
+      CF_TOKEN_6: ${{ secrets.CLOUDFLARE_WORKERS_API_TOKEN }}
+      CF_ACCOUNT_1: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CF_ACCOUNT_2: ${{ secrets.CF_ACCOUNT_ID }}
+      CF_ACCOUNT_3: ${{ secrets.VIIVERSION_CLOUDFLARE_ACCOUNT_ID }}
+      CF_ACCOUNT_4: ${{ secrets.CLOUDFLARE_PROD_ACCOUNT_ID }}
+    steps:
+      - name: Check active credentials and account capabilities
+        shell: python
+        run: |
+          import json, os, urllib.error, urllib.request
+
+          base = "https://api.cloudflare.com/client/v4"
+          tokens = [(i, os.environ.get(f"CF_TOKEN_{i}", "")) for i in range(1, 7)]
+          accounts = [os.environ.get(f"CF_ACCOUNT_{i}", "") for i in range(1, 5)]
+          accounts = list(dict.fromkeys(x for x in accounts if x))
+
+          def request(token, path, payload=None):
+              headers = {"Authorization": "Bearer " + token, "Content-Type": "application/json"}
+              data = None if payload is None else json.dumps(payload).encode()
+              req = urllib.request.Request(base + path, data=data, headers=headers,
+                                           method="POST" if data is not None else "GET")
+              try:
+                  with urllib.request.urlopen(req, timeout=30) as response:
+                      body = json.load(response)
+                  return response.status, body
+              except urllib.error.HTTPError as exc:
+                  try:
+                      body = json.load(exc)
+                  except Exception:
+                      body = {}
+                  return exc.code, body
+              except Exception as exc:
+                  return 0, {"error_type": type(exc).__name__}
+
+          found = False
+          for slot, token in tokens:
+              if not token:
+                  continue
+              print(f"::add-mask::{token}")
+              verify_code, verify = request(token, "/user/tokens/verify")
+              active = verify_code == 200 and verify.get("result", {}).get("status") == "active"
+              if not active:
+                  print(json.dumps({"token_slot": slot, "active": False, "verify_http": verify_code}))
+                  continue
+
+              candidate_accounts = list(accounts)
+              zone_code, zone = request(token, "/zones?name=viiversion.com")
+              if zone_code == 200:
+                  for item in zone.get("result", []):
+                      aid = item.get("account", {}).get("id")
+                      if aid and aid not in candidate_accounts:
+                          candidate_accounts.append(aid)
+
+              if not candidate_accounts:
+                  print(json.dumps({"token_slot": slot, "active": True, "account_resolved": False}))
+                  continue
+
+              for account in candidate_accounts:
+                  print(f"::add-mask::{account}")
+                  workers_code, _ = request(token, f"/accounts/{account}/workers/scripts")
+                  if workers_code not in (200,):
+                      continue
+                  containers_code, _ = request(token, f"/accounts/{account}/containers/applications")
+                  legacy_code, _ = request(token, f"/accounts/{account}/cloudchamber/applications")
+                  subscriptions_code, subscriptions = request(token, f"/accounts/{account}/subscriptions")
+                  paid = None
+                  if subscriptions_code == 200:
+                      entries = subscriptions.get("result", [])
+                      paid = any(
+                          "worker" in str(x.get("rate_plan", {})).lower()
+                          and "free" not in str(x.get("rate_plan", {})).lower()
+                          for x in entries
+                      )
+
+                  ai_payload = {
+                      "model": "@cf/qwen/qwen3.8-27b",
+                      "messages": [{"role": "user", "content": "Return only JSON: {\\\"ok\\\":true}"}],
+                      "stream": False,
+                      "max_completion_tokens": 32,
+                      "response_format": {"type": "json_object"}
+                  }
+                  ai_code, ai_body = request(token, f"/accounts/{account}/ai/v1/chat/completions", ai_payload)
+                  errors = ai_body.get("errors", []) if isinstance(ai_body, dict) else []
+                  error_codes = [x.get("code") for x in errors if isinstance(x, dict)]
+                  text = json.dumps(ai_body).lower()[:500] if ai_code != 200 else ""
+                  quota_hint = any(word in text for word in ("quota", "daily", "neuron", "paid", "payment", "limit"))
+
+                  print(json.dumps({
+                      "token_slot": slot,
+                      "active": True,
+                      "account_resolved": True,
+                      "workers_http": workers_code,
+                      "containers_http": containers_code,
+                      "legacy_containers_http": legacy_code,
+                      "subscriptions_http": subscriptions_code,
+                      "workers_paid_detected": paid,
+                      "workers_ai_http": ai_code,
+                      "workers_ai_error_codes": error_codes,
+                      "workers_ai_quota_or_plan_hint": quota_hint,
+                  }))
+                  found = True
+                  break
+
+          if not found:
+              raise SystemExit("No active LoveTravel credential had Workers access to a configured account")
