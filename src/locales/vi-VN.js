@@ -254,6 +254,12 @@
   "ai.date.past": "Ngày này đã qua. Hôm nay ở Việt Nam là {today}. Hãy chọn {minDate} hoặc một ngày muộn hơn.",
   "format.ageRange": "{min}–{max} tuổi",
   "format.minutes": "{value} phút",
-  "tour.stop": "Điểm {index}"
+  "tour.stop": "Điểm {index}",
+  "catalog.departure": "KHỞI HÀNH",
+  "catalog.finish": "KẾT THÚC",
+  "catalog.finishByProgram": "theo chương trình",
+  "catalog.groupFrom": "tour ghép từ",
+  "catalog.privateFrom": "tour riêng từ",
+  "catalog.city": "Nha Trang"
 });
 })();
