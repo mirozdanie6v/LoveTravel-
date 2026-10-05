@@ -422,7 +422,7 @@ function coverage(rawProduct, rawAvailability) {
   };
 }
 
-export function buildBokunDomain(product = {}, availability = [], { vendorId = null, pickupPlaces = [] } = {}) {
+export function buildBokunDomain(product = {}, availability = [], { vendorId = null, pickupPlaces = [], contentLocale = 'en' } = {}) {
   const productId = id(product.id);
   if (productId === null) throw new Error('Bókun product is missing id');
 
@@ -449,6 +449,7 @@ export function buildBokunDomain(product = {}, availability = [], { vendorId = n
       vendorId:id(vendorId ?? product.vendor?.id ?? product.actualVendor?.id),
       productId,
       externalId:text(product.externalId, 160),
+      contentLocale:text(contentLocale, 20).toLowerCase() || 'en',
     },
     experience:{
       id:String(productId),

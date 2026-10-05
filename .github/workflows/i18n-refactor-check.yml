@@ -1,0 +1,20 @@
+name: LoveTravel i18n refactor gate
+on:
+  push:
+    branches: [refactor/lovetravel-i18n-core]
+permissions:
+  contents: read
+concurrency:
+  group: lovetravel-i18n-refactor
+  cancel-in-progress: true
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: npm run check

@@ -6,6 +6,8 @@ import { resolve } from 'node:path';
 const root=resolve(import.meta.dirname,'..');
 const js=await readFile(resolve(root,'src/lovetravel-booking-configurator.js'),'utf8');
 const css=await readFile(resolve(root,'src/lovetravel-booking-configurator.css'),'utf8');
+const ruLocale=await readFile(resolve(root,'src/locales/ru-RU.js'),'utf8');
+const zhLocale=await readFile(resolve(root,'src/locales/zh-CN.js'),'utf8');
 const build=await readFile(resolve(root,'build.mjs'),'utf8');
 const worker=await readFile(resolve(root,'src/worker-r2.js'),'utf8');
 
@@ -171,9 +173,12 @@ test('booking choices expose unmistakable selected state and accessible pressed 
 });
 
 test('pickup semantics and mobile keyboard behavior are explicit in the booking sheet',()=>{
-  assert.match(js,/meetNote:/);
-  assert.match(js,/pickupModeNote:/);
+  assert.match(js,/bookingCopy=new Proxy/);
+  assert.match(js,/t\(\)\.meetNote/);
+  assert.match(js,/t\(\)\.pickupModeNote/);
   assert.match(js,/pickupNote=/);
+  assert.match(ruLocale,/"booking\.meetNote":/);
+  assert.match(zhLocale,/"booking\.meetNote":/);
   assert.match(js,/syncVisualViewport/);
   assert.match(js,/window\.visualViewport/);
   assert.match(js,/scrollIntoView/);

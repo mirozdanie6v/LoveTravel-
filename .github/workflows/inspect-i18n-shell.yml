@@ -1,0 +1,42 @@
+name: Inspect LoveTravel legacy shell DOM
+on:
+  push:
+    branches: [refactor/lovetravel-i18n-core]
+    paths:
+      - '.github/workflows/inspect-i18n-shell.yml'
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/setup-node@v5
+        with: { node-version: '22' }
+      - run: |
+          npm init -y >/dev/null
+          npm install --no-fund --no-audit playwright@1.55.0
+          npx playwright install --with-deps chromium >/dev/null
+      - run: |
+          cat > inspect.mjs <<'NODE'
+          import { chromium } from 'playwright';
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage({viewport:{width:390,height:844}});
+          await page.goto('https://lovetravel.viiversion.com',{waitUntil:'domcontentloaded',timeout:45000});
+          await page.waitForFunction(()=>document.documentElement.classList.contains('love-travel-catalog-ready'),null,{timeout:45000});
+          await page.waitForTimeout(800);
+          const result=await page.evaluate(()=>{
+            const visible=el=>{
+              const s=getComputedStyle(el),r=el.getBoundingClientRect();
+              return s.display!=='none'&&s.visibility!=='hidden'&&r.width>0&&r.height>0;
+            };
+            const rows=[...document.querySelectorAll('header,nav,footer,.brandrow,[class*="nav"],[class*="tabs"],[class*="bottom"],button,a')]
+              .filter(visible)
+              .map(el=>({tag:el.tagName,cls:el.className||'',id:el.id||'',text:(el.innerText||el.textContent||'').replace(/\s+/g,' ').trim().slice(0,240)}))
+              .filter(x=>x.text);
+            return rows;
+          });
+          console.log(JSON.stringify(result,null,2));
+          await browser.close();
+          NODE
+          node inspect.mjs

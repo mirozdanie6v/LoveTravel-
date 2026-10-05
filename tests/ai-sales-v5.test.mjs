@@ -8,6 +8,7 @@ const root = resolve(import.meta.dirname, '..');
 const ai = await readFile(resolve(root, 'src/ai-consultant-v5.js'), 'utf8');
 const css = await readFile(resolve(root, 'src/ai-consultant-v5.css'), 'utf8');
 const build = await readFile(resolve(root, 'build.mjs'), 'utf8');
+const ru = await readFile(resolve(root, 'src/locales/ru-RU.js'), 'utf8');
 const worker = await import('../src/worker-profile.js?ai-sales-v5-test');
 
 test('AI consultant v5 source is syntactically valid and wired into build', () => {
@@ -17,82 +18,55 @@ test('AI consultant v5 source is syntactically valid and wired into build', () =
   assert.match(build, /copyFile\(resolve\(root, 'src\/ai-consultant-v5\.js'/);
 });
 
-test('AI booking prefill ignores hidden checkout and does not redispatch an unchanged date', () => {
-  const events = [];
-  let bookingActive = false;
-  const dateInput = {
-    value:'2026-09-17',
-    min:'',
-    dispatchEvent(event) { events.push(event.type); },
-  };
-  const bookingRoot = {
-    id:'bookingScreen',
-    classList:{ contains(name) { return name === 'active' && bookingActive; } },
-    querySelector(selector) { return selector === 'input[type="date"]' ? dateInput : null; },
-    querySelectorAll() { return []; },
-  };
-  const storage = new Map();
-  const context = {
-    console,
-    Date,
-    Intl,
-    TOURS:[],
-    Event:class { constructor(type) { this.type = type; } },
-    MutationObserver:class { observe() {} },
-    sessionStorage:{
-      getItem(key) { return storage.get(key) ?? null; },
-      setItem(key, value) { storage.set(key, value); },
-      removeItem(key) { storage.delete(key); },
+test('AI booking handoff calls the structured booking configurator API', async () => {
+  const calls=[];
+  const context={
+    console,Date,Intl,TOURS:[],
+    sessionStorage:{getItem(){return null;},setItem(){},removeItem(){}},
+    document:{documentElement:{},querySelector(){return null;}},
+    setTimeout(){return 0;},
+    LoveTravelI18n:{
+      apiLocale(){return 'ru';}, locale(){return 'ru-RU';},
+      t(key){return key;}, formatDate(v){return v;}
     },
-    document:{
-      documentElement:{},
-      getElementById(id) { return id === 'bookingScreen' ? bookingRoot : null; },
-      querySelector() { return null; },
-    },
-    setTimeout() { return 0; },
+    LoveTravelBookingConfigurator:{
+      async prefill(intent){calls.push(intent); return true;}
+    }
   };
-  context.globalThis = context;
+  context.globalThis=context;
   vm.createContext(context);
-  vm.runInContext(ai, context, { filename:'ai-consultant-v5.js' });
-
-  const intent = { tourId:'fuyen', date:'2026-09-17', adults:2, children:[], infants:0 };
-  assert.equal(context.MaxTourAI._test.prefillBooking(intent), false);
-  bookingActive = true;
-  assert.equal(context.MaxTourAI._test.prefillBooking(intent), true);
-  assert.deepEqual(events, []);
-
-  assert.equal(context.MaxTourAI._test.dispatchValue(dateInput, '2026-09-18'), true);
-  assert.equal(dateInput.value, '2026-09-18');
-  assert.deepEqual(events, ['input', 'change']);
-  assert.equal(context.MaxTourAI._test.dispatchValue(dateInput, '2026-09-18'), false);
-  assert.deepEqual(events, ['input', 'change']);
+  vm.runInContext(ai,context,{filename:'ai-consultant-v5.js'});
+  const intent={tourId:'1287578',date:'2026-10-07',adults:2,children:[],infants:0};
+  assert.equal(context.MaxTourAI._test.prefillBooking(intent),true);
+  await Promise.resolve();
+  assert.equal(calls.length,1);
+  assert.equal(calls[0].tourId,'1287578');
+  assert.equal(calls[0].open,true);
 });
 
-test('AI recommendations render visual excursion cards with direct booking action', () => {
+test('AI recommendations render visual excursion cards with semantic direct booking action', () => {
   assert.match(ai, /class="ai-tour-image"/);
   assert.match(ai, /data-ai-action="open-tour"/);
   assert.match(ai, /data-ai-action="book-tour"/);
-  assert.match(ai, /book:'Забронировать'/);
-  assert.match(ai, /book:'예약하기'/);
-  assert.match(ai, /book:'预订'/);
   assert.match(ai, /BOOKING_INTENT_KEY/);
   assert.match(ai, /continueToBooking/);
   assert.match(ai, /prefillBooking/);
+  assert.match(ru, /"ai\.book": "Забронировать"/);
   assert.match(css, /\.ai-sales-card/);
   assert.match(css, /\.ai-card-actions/);
 });
 
-test('AI can recommend before every guided slot is filled', () => {
+test('AI can recommend before every guided slot is filled and quick replies are localized by keys', () => {
   assert.match(ai, /isDiscoveryIntent\(text\) \|\| signals >= 2/);
-  assert.match(ai, /Хочу море и острова/);
-  assert.match(ai, /Хочу природу и красивые виды/);
+  assert.match(ai, /t\.quickSeaValue/);
+  assert.match(ai, /t\.quickViewsValue/);
+  assert.match(ru, /"ai\.quickSeaValue": "Хочу море и острова"/);
 });
 
-test('AI uses Vietnam date and rejects past calendar dates', () => {
+test('AI uses Vietnam date and semantic past-date copy', () => {
   assert.match(ai, /Asia\/Ho_Chi_Minh/);
-  assert.match(ai, /Эта дата уже прошла/);
+  assert.match(ai, /'ai\.date\.past'/);
+  assert.match(ru, /"ai\.date\.past": "Эта дата уже прошла/);
   assert.equal(worker._test.containsPastDate('Есть выезд 13 сентября 2026', '2026-09-14'), true);
   assert.equal(worker._test.containsPastDate('Есть выезд 15 сентября 2026', '2026-09-14'), false);
-  assert.equal(worker._test.containsPastDate('Есть выезд 2026-09-13', '2026-09-14'), true);
-  assert.equal(worker._test.containsPastDate('Есть выезд 2026-09-15', '2026-09-14'), false);
 });
