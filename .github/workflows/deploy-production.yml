@@ -1,10 +1,7 @@
 name: Deploy LoveTravel production
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/deploy-production.yml'
+  workflow_dispatch:
 
 permissions:
   contents: read
