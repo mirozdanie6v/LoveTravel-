@@ -7,6 +7,7 @@ import pathlib
 import struct
 import subprocess
 import tarfile
+import time
 import urllib.error
 import urllib.request
 import zlib
@@ -151,8 +152,22 @@ request = urllib.request.Request(
     },
 )
 try:
-    with urllib.request.urlopen(request, timeout=240) as response:
-        result = json.load(response)
+    result = None
+    last_error = None
+    for attempt in range(6):
+        try:
+            with urllib.request.urlopen(request, timeout=240) as response:
+                result = json.load(response)
+            break
+        except urllib.error.HTTPError as error:
+            last_error = error
+            # Worker secret updates create a new version and can take a few seconds
+            # to reach workers.dev. Retry only the expected propagation response.
+            if error.code != 401 or attempt == 5:
+                raise
+            time.sleep(3)
+    if result is None:
+        raise last_error or RuntimeError("AI relay returned no response")
     if not isinstance(result, dict):
         raise RuntimeError("AI relay returned a non-object response")
     print("WORKERS_AI_BINDING=ok", flush=True)
@@ -166,7 +181,10 @@ except Exception as error:
 finally:
     secret_path.unlink(missing_ok=True)
 
-health_req = urllib.request.Request(processor_url + "/health")
+health_req = urllib.request.Request(
+    processor_url + "/health",
+    headers={"Authorization": "Bearer " + runtime["PROCESSOR_ADMIN_KEY"]},
+)
 try:
     with urllib.request.urlopen(health_req, timeout=120) as response:
         health = json.load(response)
