@@ -1,0 +1,105 @@
+name: Probe Cloudflare Workers AI binding
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/cloudflare-ai-binding-probe.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Deploy isolated AI-binding probe
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CLOUDFLARE_API_TOKEN:-}"
+          test -n "${CLOUDFLARE_ACCOUNT_ID:-}"
+          mkdir -p /tmp/cf-ai-probe
+          cd /tmp/cf-ai-probe
+          cat > worker.mjs <<'JS'
+          export default {
+            async fetch(request, env) {
+              try {
+                const result = await env.AI.run("@cf/qwen/qwen3.8-27b", {
+                  messages: [{role: "user", content: "Return only JSON with ok=true."}],
+                  stream: false,
+                  temperature: 0.1,
+                  max_tokens: 32,
+                  response_format: {type: "json_object"},
+                  chat_template_kwargs: {enable_thinking: false}
+                });
+                return Response.json({ok: true, provider: "workers-ai", result});
+              } catch (error) {
+                const message = String(error?.message || error);
+                return Response.json({
+                  ok: false,
+                  provider: "workers-ai",
+                  category: /quota|daily|neurons|payment|paid plan/i.test(message) ? "quota-or-plan"
+                    : /rate|429|too many/i.test(message) ? "rate-limit"
+                    : /auth|permission|unauthorized|forbidden/i.test(message) ? "permission"
+                    : "provider-error",
+                  evidence: {
+                    daily: /daily/i.test(message),
+                    neurons: /neurons/i.test(message),
+                    paid: /paid|payment/i.test(message),
+                    quota: /quota/i.test(message),
+                    limit: /limit/i.test(message)
+                  }
+                }, {status: 503});
+              }
+            }
+          };
+          JS
+          cat > wrangler.json <<'JSON'
+          {
+            "name": "viiversion-showreel-ai-probe",
+            "main": "worker.mjs",
+            "compatibility_date": "2026-10-04",
+            "ai": {"binding": "AI"}
+          }
+          JSON
+          npx --yes wrangler@4.92.0 deploy --config wrangler.json >/tmp/cf-ai-deploy.txt
+          code="$(curl -sS -o /tmp/cloudflare-ai-binding.json -w '%{http_code}'             'https://viiversion-showreel-ai-probe.mirozdanie6v.workers.dev/')"
+          python - "$code" <<'PY'
+          import json, sys
+          code=int(sys.argv[1])
+          try:
+              body=json.load(open("/tmp/cloudflare-ai-binding.json"))
+          except Exception:
+              body={"ok":False,"category":"invalid-response"}
+          report={"http":code, **body}
+          if "result" in report:
+              report["result_present"]=True
+              del report["result"]
+          json.dump(report, open("cloudflare-ai-binding-report.json","w"), indent=2)
+          print(json.dumps(report))
+          PY
+
+      - name: Remove isolated probe Worker
+        if: always()
+        shell: bash
+        run: |
+          curl -sS -X DELETE             "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/scripts/viiversion-showreel-ai-probe"             -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}"             -H "Content-Type: application/json" >/dev/null || true
+
+      - name: Upload AI binding report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cloudflare-ai-binding-report
+          path: /tmp/cf-ai-probe/cloudflare-ai-binding-report.json
+          if-no-files-found: warn
+          retention-days: 1
