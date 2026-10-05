@@ -271,6 +271,16 @@
   "nav.home": "Home",
   "nav.catalog": "Tours",
   "nav.trips": "My trips",
-  "nav.ai": "AI assistant"
+  "nav.ai": "AI assistant",
+  "provider.policy.standard": "Cancellation policy",
+  "provider.field.hotelName": "Hotel name",
+  "provider.field.roomNumber": "Room number",
+  "provider.transfer.private": "Private transfer",
+  "provider.notice.bringSunscreen": "Bring sunscreen",
+  "provider.area.nhaTrangHotels": "Nha Trang hotels",
+  "provider.required": "required",
+  "provider.accessibility.walking": "Walking access",
+  "enum.availability.available": "available",
+  "enum.availability.full": "sold out"
 });
 })();
