@@ -371,44 +371,51 @@
         'Что вам интереснее: море и острова, природа, город или что-то премиальное?',
         'Bạn thích điều gì hơn: biển và đảo, thiên nhiên, thành phố hay trải nghiệm cao cấp?',
         'What interests you most: sea and islands, nature, city sightseeing, or something premium?',
-        '바다와 섬, 자연, 시티투어, 프리미엄 중 어떤 여행이 가장 관심 있으신가요?'
+        '바다와 섬, 자연, 시티투어, 프리미엄 중 어떤 여행이 가장 관심 있으신가요?',
+        '您更喜欢海岛、自然风光、城市观光还是高端体验？'
       );
       if (!peopleCount()) return localeText(
         'Сколько человек едет?',
         'Có bao nhiêu người đi?',
         'How many people are travelling?',
-        '몇 분이 여행하시나요?'
+        '몇 분이 여행하시나요?',
+        '一共有几位出行？'
       );
       if (!s.date) return localeText(
         'На какую дату планируете поездку?',
         'Bạn dự định đi vào ngày nào?',
         'What date are you planning to travel?',
-        '언제 여행하실 예정인가요?'
+        '언제 여행하실 예정인가요?',
+        '您计划哪天出行？'
       );
       return localeText(
         'Покажу подходящие варианты.',
         'Tôi sẽ hiển thị các phương án phù hợp.',
         'I will show you suitable options.',
-        '알맞은 옵션을 보여드릴게요.'
+        '알맞은 옵션을 보여드릴게요.',
+        '我会为您展示合适的选择。'
       );
     }
     if (!peopleCount()) return localeText(
       'Я уже подобрал варианты. Сколько человек едет?',
       'Tôi đã chọn được một số phương án. Có bao nhiêu người đi?',
       'I have already found some options. How many people are travelling?',
-      '적합한 옵션을 찾았습니다. 몇 분이 여행하시나요?'
+      '적합한 옵션을 찾았습니다. 몇 분이 여행하시나요?',
+      '我已经找到合适的选择。一共有几位出行？'
     );
     if (!s.date) return localeText(
       'Варианты уже подобраны. На какую дату хотите поехать?',
       'Các phương án đã sẵn sàng. Bạn muốn đi vào ngày nào?',
       'The options are ready. What date would you like to travel?',
-      '옵션을 찾았습니다. 언제 여행하고 싶으신가요?'
+      '옵션을 찾았습니다. 언제 여행하고 싶으신가요?',
+      '合适的行程已经找到了。您想哪天出行？'
     );
     return localeText(
       'Выберите вариант ниже — я сразу помогу перейти к бронированию.',
       'Chọn một phương án bên dưới — tôi sẽ giúp bạn chuyển ngay sang bước đặt tour.',
       'Choose an option below and I will take you straight to booking.',
-      '아래 옵션을 선택하면 바로 예약 단계로 도와드릴게요.'
+      '아래 옵션을 선택하면 바로 예약 단계로 도와드릴게요.',
+      '请选择下面的行程，我会直接带您进入预订。'
     );
   }
 
@@ -526,7 +533,13 @@
     const intent = bookingIntent(item);
     try { sessionStorage.setItem(BOOKING_INTENT_KEY, JSON.stringify(intent)); } catch (_) {}
     persist();
-    add('bot', `Открываю бронирование «${item.tour.title}». Дату и состав группы, которые вы уже назвали, перенесу в оформление.`);
+    add('bot', localeText(
+      `Открываю бронирование «${item.tour.title}». Дату и состав группы, которые вы уже назвали, перенесу в оформление.`,
+      `Đang mở đặt tour “${item.tour.title}”. Tôi sẽ chuyển ngày và số khách bạn đã cung cấp sang bước đặt tour.`,
+      `Opening booking for “${item.tour.title}”. I will carry the date and party details you already provided into the booking form.`,
+      `“${item.tour.title}” 예약을 열고 있습니다. 말씀해 주신 날짜와 인원 정보를 예약 단계로 이어서 입력하겠습니다.`,
+      `正在打开“${item.tour.title}”的预订。您已经提供的日期和出行人数会自动带入预订流程。`
+    ));
     render(root, { scrollToEnd:true });
     try {
       if (typeof openTour === 'function') openTour(item.tour.id);
@@ -536,24 +549,26 @@
 
   function renderRecommendations() {
     if (!state.recommendations.length) return '';
-    return `<div class="ai-chat-results ai-sales-results"><div class="ai-msg-author">AI-консультант</div><div class="ai-chat-results-label">Подходящие экскурсии</div><div class="ai-recommendations">${state.recommendations.map(item => {
+    const t=ui();
+    return `<div class="ai-chat-results ai-sales-results"><div class="ai-msg-author">${esc(t.assistant)}</div><div class="ai-chat-results-label">${esc(t.results)}</div><div class="ai-recommendations">${state.recommendations.map(item => {
       const image = imageFor(item.tour);
-      return `<article class="ai-recommendation ai-sales-card" data-tour-id="${esc(item.tour.id)}">${image ? `<img class="ai-tour-image" src="${esc(image)}" alt="${esc(item.tour.title)}" loading="lazy">` : ''}<div class="ai-tour-card-copy"><span class="ai-tour-meta">${esc([item.tour.city, item.tour.duration].filter(Boolean).join(' · '))}</span><h4>${esc(item.tour.title)}</h4><p>${esc(reasonFor(item))}</p><span class="ai-price">${esc(recommendationPrice(item))}</span>${peopleCount() ? `<span class="ai-party">Для: ${esc(peopleLabel())}</span>` : ''}</div><div class="ai-card-actions"><button type="button" class="secondary" data-ai-action="open-tour" data-id="${esc(item.tour.id)}">Подробнее</button><button type="button" class="primary" data-ai-action="book-tour" data-id="${esc(item.tour.id)}">Забронировать</button></div></article>`;
+      return `<article class="ai-recommendation ai-sales-card" data-tour-id="${esc(item.tour.id)}">${image ? `<img class="ai-tour-image" src="${esc(image)}" alt="${esc(item.tour.title)}" loading="lazy">` : ''}<div class="ai-tour-card-copy"><span class="ai-tour-meta">${esc([item.tour.city, item.tour.duration].filter(Boolean).join(' · '))}</span><h4>${esc(item.tour.title)}</h4><p>${esc(reasonFor(item))}</p><span class="ai-price">${esc(recommendationPrice(item))}</span>${peopleCount() ? `<span class="ai-party">${esc(t.forLabel)}: ${esc(peopleLabel())}</span>` : ''}</div><div class="ai-card-actions"><button type="button" class="secondary" data-ai-action="open-tour" data-id="${esc(item.tour.id)}">${esc(t.details)}</button><button type="button" class="primary" data-ai-action="book-tour" data-id="${esc(item.tour.id)}">${esc(t.book)}</button></div></article>`;
     }).join('')}</div></div>`;
   }
 
   function quickReplies() {
-    const s = state.slots;
-    if (!s.preferences.length && !s.destination) return [['Море и острова','Хочу море и острова'],['Красивые виды','Хочу природу и красивые виды'],['Обзор города','Хочу обзорную экскурсию']];
-    if (!peopleCount()) return [['2 взрослых','Нас 2 взрослых'],['С ребёнком','2 взрослых и ребёнок 7 лет']];
-    if (!s.date) return [['Сегодня','Сегодня'],['Завтра','Завтра'],['Дата гибкая','Дата гибкая']];
+    const s = state.slots, t=ui();
+    if (!s.preferences.length && !s.destination) return [[t.quickSea,t.quickSeaValue],[t.quickViews,t.quickViewsValue],[t.quickCity,t.quickCityValue]];
+    if (!peopleCount()) return [[t.quickTwoAdults,t.quickTwoAdultsValue],[t.quickChild,t.quickChildValue]];
+    if (!s.date) return [[t.today,t.today],[t.tomorrow,t.tomorrow],[t.flexible,t.flexible]];
     return [];
   }
 
   function render(root, options = {}) {
-    const messages = state.messages.map(item => `<div class="ai-msg ${item.role === 'user' ? 'user' : 'bot'}"><span class="ai-msg-author">${item.role === 'user' ? 'Вы' : 'AI-консультант'}</span><span class="ai-msg-text">${esc(item.text)}</span></div>`).join('');
+    const t=ui();
+    const messages = state.messages.map(item => `<div class="ai-msg ${item.role === 'user' ? 'user' : 'bot'}"><span class="ai-msg-author">${esc(item.role === 'user' ? t.user : t.assistant)}</span><span class="ai-msg-text">${esc(item.text)}</span></div>`).join('');
     const quick = quickReplies();
-    root.innerHTML = `<div class="section-title ai-section-head"><div><h2>AI-консультант</h2><p class="ai-chat-subtitle">Расскажите, куда и как хотите поехать. Я подберу варианты и доведу до бронирования.</p></div><button class="secondary ai-clear" type="button" data-ai-action="clear">Очистить</button></div><section class="ai-consultant-shell"><div class="ai-consultant-main ai-chat-panel"><div class="ai-messages" role="log" aria-live="polite">${messages}</div><form class="ai-consultant-input" data-ai-form="chat"><textarea name="message" rows="1" placeholder="Напишите сообщение..." ${pending ? 'disabled' : ''}></textarea><button class="primary" type="submit" ${pending ? 'disabled' : ''}>→</button></form></div><div class="ai-chat-below">${quick.length ? `<div class="ai-quick-replies">${quick.map(([label,value]) => `<button type="button" data-ai-action="quick" data-value="${esc(value)}">${esc(label)}</button>`).join('')}</div>` : ''}${renderRecommendations()}</div></section>`;
+    root.innerHTML = `<div class="section-title ai-section-head"><div><h2>${esc(t.assistant)}</h2><p class="ai-chat-subtitle">${esc(t.subtitle)}</p></div><button class="secondary ai-clear" type="button" data-ai-action="clear">${esc(t.clear)}</button></div><section class="ai-consultant-shell"><div class="ai-consultant-main ai-chat-panel"><div class="ai-messages" role="log" aria-live="polite">${messages}</div><form class="ai-consultant-input" data-ai-form="chat"><textarea name="message" rows="1" placeholder="${esc(t.placeholder)}" ${pending ? 'disabled' : ''}></textarea><button class="primary" type="submit" ${pending ? 'disabled' : ''}>→</button></form></div><div class="ai-chat-below">${quick.length ? `<div class="ai-quick-replies">${quick.map(([label,value]) => `<button type="button" data-ai-action="quick" data-value="${esc(value)}">${esc(label)}</button>`).join('')}</div>` : ''}${renderRecommendations()}</div></section>`;
     const messagesBox = root.querySelector('.ai-messages'); if (options.scrollToEnd && messagesBox) messagesBox.scrollTop = messagesBox.scrollHeight;
     if (options.focus) { const textarea = root.querySelector('textarea[name="message"]'); try { textarea?.focus({preventScroll:true}); } catch (_) { textarea?.focus(); } }
     persist();
@@ -564,7 +579,13 @@
     add('user', text); parseMessage(text);
     if (state.slots.dateError) {
       const today = vietnamTodayIso();
-      add('bot', `Эта дата уже прошла. Сегодня во Вьетнаме ${dateLabel(today)}. Выберите ${dateLabel(today, { year:false })} или любую более позднюю дату.`);
+      add('bot', localeText(
+        `Эта дата уже прошла. Сегодня во Вьетнаме ${dateLabel(today)}. Выберите ${dateLabel(today, { year:false })} или любую более позднюю дату.`,
+        `Ngày này đã qua. Hôm nay ở Việt Nam là ${dateLabel(today)}. Hãy chọn ${dateLabel(today, { year:false })} hoặc một ngày muộn hơn.`,
+        `That date has already passed. Today in Vietnam is ${dateLabel(today)}. Choose ${dateLabel(today, { year:false })} or any later date.`,
+        `이미 지난 날짜입니다. 베트남 기준 오늘은 ${dateLabel(today)}입니다. ${dateLabel(today, { year:false })} 또는 그 이후 날짜를 선택해 주세요.`,
+        `该日期已经过去。越南今天是 ${dateLabel(today)}。请选择 ${dateLabel(today, { year:false })} 或之后的日期。`
+      ));
       updateRecommendations(text); render(root, { scrollToEnd:true, focus:true }); return;
     }
     updateRecommendations(text);
@@ -572,14 +593,14 @@
       const item = state.recommendations.find(row => row.tour.id === state.selectedTourId) || state.recommendations[0];
       startBooking(item, root); return;
     }
-    pending = true; add('bot', 'Подбираю…'); render(root, { scrollToEnd:true });
+    pending = true; add('bot', ui().pending); render(root, { scrollToEnd:true });
     try {
       const result = await requestAiReply(text);
-      if (state.messages.at(-1)?.text === 'Подбираю…') state.messages.pop();
+      if (state.messages.at(-1)?.text === ui().pending) state.messages.pop();
       applyServerTour(result);
       add('bot', result.reply || nextQuestion());
     } catch (_) {
-      if (state.messages.at(-1)?.text === 'Подбираю…') state.messages.pop();
+      if (state.messages.at(-1)?.text === ui().pending) state.messages.pop();
       add('bot', nextQuestion());
     } finally { pending = false; render(root, { scrollToEnd:true, focus:true }); }
   }
