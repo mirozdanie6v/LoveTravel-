@@ -1158,6 +1158,7 @@
     patchSelection(productId,patch);
     r=await resolve(productId,{quiet:true});
     render(productId);
+    if(intent?.open!==false) openSheet(productId,firstBlockingStep(r));
     return r;
   }
 
