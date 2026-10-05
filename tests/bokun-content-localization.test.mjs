@@ -144,9 +144,10 @@ test('translates only cache misses and invalidates a field when its Bókun sourc
   assert.ok(stale.localization.pendingFields>=1);
   assert.equal(stale.localization.source,'viiversion-cache-partial');
   assert.equal(stale.experience.description,'KO:English description');
-  assert.equal(background.length,1);
+  assert.equal(background.length,0,'request path must never start AI translation');
 
-  await Promise.all(background);
+  const refresh=await syncDomainTranslations(changed,env,'ko');
+  assert.ok(refresh.translated>=1);
   const refreshed=await localizeDomainFromCache(changed,env,'ko');
   assert.equal(refreshed.experience.title,'KO:Updated English title');
   assert.equal(refreshed.localization.pendingFields,0);
