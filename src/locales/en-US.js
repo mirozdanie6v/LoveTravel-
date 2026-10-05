@@ -267,6 +267,10 @@
   "booking.timeCount.one": "{count} time",
   "booking.timeCount.few": "{count} times",
   "booking.timeCount.many": "{count} times",
-  "booking.timeCount.other": "{count} times"
+  "booking.timeCount.other": "{count} times",
+  "nav.home": "Home",
+  "nav.catalog": "Tours",
+  "nav.trips": "My trips",
+  "nav.ai": "AI assistant"
 });
 })();
