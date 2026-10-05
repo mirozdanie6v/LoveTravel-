@@ -267,6 +267,10 @@
   "booking.timeCount.one": "{count} giờ",
   "booking.timeCount.few": "{count} giờ",
   "booking.timeCount.many": "{count} giờ",
-  "booking.timeCount.other": "{count} giờ"
+  "booking.timeCount.other": "{count} giờ",
+  "nav.home": "Trang chủ",
+  "nav.catalog": "Tour",
+  "nav.trips": "Chuyến đi",
+  "nav.ai": "Trợ lý AI"
 });
 })();
