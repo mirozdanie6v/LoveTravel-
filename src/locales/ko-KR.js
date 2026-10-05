@@ -271,6 +271,16 @@
   "nav.home": "홈",
   "nav.catalog": "투어",
   "nav.trips": "내 여행",
-  "nav.ai": "AI 도우미"
+  "nav.ai": "AI 도우미",
+  "provider.policy.standard": "취소 정책",
+  "provider.field.hotelName": "호텔 이름",
+  "provider.field.roomNumber": "객실 번호",
+  "provider.transfer.private": "프라이빗 픽업",
+  "provider.notice.bringSunscreen": "선크림을 준비하세요",
+  "provider.area.nhaTrangHotels": "나트랑 호텔",
+  "provider.required": "필수",
+  "provider.accessibility.walking": "도보 접근",
+  "enum.availability.available": "예약 가능",
+  "enum.availability.full": "매진"
 });
 })();
