@@ -12,7 +12,7 @@ import {
 
 function sampleDomain() {
   return {
-    provider:{productId:'1287578'},
+    provider:{productId:'1287578',contentLocale:'en'},
     experience:{
       id:'1287578',
       title:'English title',
@@ -84,15 +84,17 @@ class FakeDB {
   }
 }
 
-test('normalizes UI locales into Bókun language parameters without inventing a native locale', () => {
+test('uses one explicit English Bókun content source for every customer locale', () => {
   assert.equal(normalizeContentLocale('ko-KR'),'ko');
-  assert.equal(bokunLanguage('vi'),'VI');
+  assert.equal(bokunLanguage('vi'),'EN');
+  assert.equal(bokunLanguage('zh-CN'),'EN');
   assert.equal(hasNativeBokunLocale(sampleDomain(),'ru'),false);
   assert.equal(hasNativeBokunLocale(sampleDomain(),'ko'),false);
+  assert.equal(hasNativeBokunLocale(sampleDomain(),'en'),true);
 
-  const native=sampleDomain();
-  native.experience.languages.raw.push('KO_KR');
-  assert.equal(hasNativeBokunLocale(native,'ko'),true);
+  const spokenLanguageOnly=sampleDomain();
+  spokenLanguageOnly.experience.languages.raw.push('KO_KR');
+  assert.equal(hasNativeBokunLocale(spokenLanguageOnly,'ko'),false,'guide language is not content locale');
 });
 
 test('extracts stable semantic keys for customer-visible Bókun text', () => {
