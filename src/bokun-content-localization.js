@@ -27,12 +27,10 @@ export function normalizeContentLocale(value) {
   return SUPPORTED_LOCALES.includes(locale) ? locale : 'ru';
 }
 
-export function bokunLanguage(locale) {
-  const normalized = normalizeContentLocale(locale);
-  // Chinese and Korean are normalized from one stable English Bókun source.
-  // The customer-facing copy is then translated through our own verified cache
-  // so a partially localized Bókun payload can never leak mixed languages.
-  return normalized === 'zh' || normalized === 'ko' ? 'EN' : normalized.toUpperCase();
+export function bokunLanguage(_locale) {
+  // One canonical provider source prevents mixed-language payloads and makes
+  // source hashes deterministic across every customer locale.
+  return 'EN';
 }
 
 function text(value) {
@@ -43,15 +41,10 @@ function asArray(value) {
   return Array.isArray(value) ? value : [];
 }
 
-function nativeLanguageTokens(domain = {}) {
-  return [
-    domain?.experience?.languages?.base,
-    ...asArray(domain?.experience?.languages?.raw),
-  ].map(value => cleanLocale(value)).filter(Boolean);
-}
-
 export function hasNativeBokunLocale(domain, locale) {
-  return nativeLanguageTokens(domain).includes(normalizeContentLocale(locale));
+  const requested=normalizeContentLocale(locale);
+  const source=cleanLocale(domain?.provider?.contentLocale || 'en');
+  return requested === 'en' && source === 'en';
 }
 
 function pathSet(target, path, value) {
@@ -376,8 +369,7 @@ function enqueueBackgroundSync(task) {
 export async function syncDomainTranslations(domain, env, requestedLocale) {
   const locale = normalizeContentLocale(requestedLocale);
   const productId = String(domain?.experience?.id || domain?.provider?.productId || '');
-  const strictLocale = locale === 'zh' || locale === 'ko';
-  if (!productId || locale === 'en' || (!strictLocale && hasNativeBokunLocale(domain, locale)) || !env?.DB || !env?.AI) {
+  if (!productId || hasNativeBokunLocale(domain, locale) || !env?.DB || !env?.AI) {
     return {ok:true, productId, locale, translated:0, skipped:true};
   }
 
@@ -411,8 +403,7 @@ export async function localizeDomainFromCache(domain, env, requestedLocale, _ctx
   const clone = structuredClone(domain);
   const productId = String(clone?.experience?.id || clone?.provider?.productId || '');
 
-  const strictLocale = locale === 'zh' || locale === 'ko';
-  if (locale === 'en' || (!strictLocale && hasNativeBokunLocale(clone, locale))) {
+  if (hasNativeBokunLocale(clone, locale)) {
     clone.localization = {
       locale,
       source:'bokun-native',
@@ -485,7 +476,6 @@ export async function syncAllDomainLocales(domains, env) {
 
 export const _localizationTest = {
   cleanLocale,
-  nativeLanguageTokens,
   pathSet,
   parseJsonObject,
   chunks,
