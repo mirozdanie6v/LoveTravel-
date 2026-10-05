@@ -19,11 +19,12 @@ async function restore(entry) {
 
 const prototypeHtml = await restore(manifest.html);
 
-test('catalog card parity layer is syntactically valid and loaded after geo routing', () => {
+test('catalog card parity layer is syntactically valid and loaded after the LoveTravel AI', () => {
   assert.doesNotThrow(() => new vm.Script(v7));
-  const geoIndex = build.indexOf('/ai-location-guard-v6.js');
+  const aiIndex = build.indexOf('/ai-consultant-v5.js');
   const parityIndex = build.indexOf('/ai-catalog-card-v7.js');
-  assert.ok(geoIndex >= 0 && parityIndex > geoIndex);
+  assert.ok(aiIndex >= 0 && parityIndex > aiIndex);
+  assert.equal(build.indexOf('/ai-location-guard-v6.js'), -1);
   assert.match(build, /copyFile\(resolve\(root, 'src\/ai-catalog-card-v7\.js'/);
 });
 
