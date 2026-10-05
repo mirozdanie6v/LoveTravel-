@@ -39,11 +39,16 @@ test('all five public locales are first-class semantic bundles',()=>{
   assert.match(worker,/Simplified Chinese/);
 });
 
-test('legacy DOM translation scripts are not loaded by the customer build',()=>{
+test('legacy DOM translation and MAX TOUR post-render patches are not loaded by the customer build',()=>{
   assert.match(build,/lovetravel-i18n-core\.js/);
   assert.match(build,/locales\/zh-CN\.js/);
   assert.doesNotMatch(build,/\$\{i18nJs\}/);
-  assert.doesNotMatch(build,/<script defer src="\/i18n-v1\.js"><\/script>/);
+  for(const file of [
+    'i18n-v1.js','i18n-en-v1.js','i18n-ko-v1.js','i18n-zh-v1.js',
+    'ai-network-guard-v8.js','ai-consultant.js','ai-catalog-card-v7.js',
+    'ai-selection-polish-v15.js','ai-explicit-tour-v16.js','ai-booking-bridge-v25.js',
+    'tour-departure-live-v3.js','catalog-show-press.js','tour-lightbox.js'
+  ]) assert.equal(build.includes('<script src="/'+file),false,file);
 });
 
 test('booking path remains resolver-backed and covers pickup customer and questions',()=>{
