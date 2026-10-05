@@ -180,9 +180,9 @@
   function parseMessage(text) {
     const q = lower(text), s = state.slots;
     const destination = destinationAlias(q); if (destination) s.destination = destination;
-    if (/индив|своей компанией|без группы|частн|tour\s*riêng|riêng\s*tư|riêng|cá\s*nhân|ca\s*nhan|private/.test(q)) s.tripType = 'individual';
-    if (/групп|присоедин|сборн|tour\s*ghép|tour\s*ghep|ghép|ghep|đoàn|doan/.test(q)) s.tripType = 'group';
-    if (/сравн|не знаю.*формат|любой формат|so\s*sánh|so\s*sanh|chưa\s*biết.*(?:hình\s*thức|loại)|bất\s*kỳ|bat\s*ky/.test(q)) s.tripType = 'compare';
+    if (/индив|своей компанией|без группы|частн|tour\s*riêng|riêng\s*tư|riêng|cá\s*nhân|ca\s*nhan|private|프라이빗|개인\s*투어|우리끼리|私人|包车/.test(q)) s.tripType = 'individual';
+    if (/групп|присоедин|сборн|tour\s*ghép|tour\s*ghep|ghép|ghep|đoàn|doan|그룹|조인\s*투어|단체|拼团|跟团/.test(q)) s.tripType = 'group';
+    if (/сравн|не знаю.*формат|любой формат|so\s*sánh|so\s*sanh|chưa\s*biết.*(?:hình\s*thức|loại)|bất\s*kỳ|bat\s*ky|비교|아무\s*거나|둘\s*다|比较|都可以/.test(q)) s.tripType = 'compare';
     const party = parseParty(text, s); Object.assign(s, party);
     const parsedDate = parseDate(text);
     if (parsedDate) {
@@ -190,11 +190,11 @@
       else { s.dateError = ''; s.date = parsedDate.value; s.dateFlexible = Boolean(parsedDate.flexible); }
     }
     const prefs = new Set(s.preferences || []);
-    if (/море|пляж|остров|сноркл|купани|biển|bien|bãi\s*biển|bai\s*bien|đảo|dao|lặn|lan|tắm\s*biển/.test(q)) prefs.add('море');
-    if (/красив|природ|горы|водопад|фото|вид|thiên\s*nhiên|thien\s*nhien|núi|nui|thác|thac|chụp\s*ảnh|chup\s*anh|cảnh\s*đẹp|canh\s*dep/.test(q)) prefs.add('природа');
-    if (/город|храм|культур|истори|музе|thành\s*phố|thanh\s*pho|chùa|chua|văn\s*hóa|van\s*hoa|lịch\s*sử|lich\s*su|bảo\s*tàng|bao\s*tang/.test(q)) prefs.add('город и культура');
-    if (/легк|лёгк|спокойн|без долг|nhẹ|nhe|thoải\s*mái|thoai\s*mai|không\s*đi\s*nhiều|khong\s*di\s*nhieu/.test(q)) prefs.add('лёгкая программа');
-    if (/подешев|дешев|бюджет|эконом|не\s+переплач|минимальн.{0,16}цен|цен[ау].{0,16}важн|rẻ|re|tiết\s*kiệm|tiet\s*kiem|ngân\s*sách|ngan\s*sach|giá\s*tốt|gia\s*tot/.test(q)) {
+    if (/море|пляж|остров|сноркл|купани|biển|bien|bãi\s*biển|bai\s*bien|đảo|dao|lặn|lan|tắm\s*biển|바다|해변|섬|스노클|수영|海|海滩|岛|浮潜|游泳/.test(q)) prefs.add('море');
+    if (/красив|природ|горы|водопад|фото|вид|thiên\s*nhiên|thien\s*nhien|núi|nui|thác|thac|chụp\s*ảnh|chup\s*anh|cảnh\s*đẹp|canh\s*dep|자연|산|폭포|사진|풍경|自然|山|瀑布|拍照|风景/.test(q)) prefs.add('природа');
+    if (/город|храм|культур|истори|музе|thành\s*phố|thanh\s*pho|chùa|chua|văn\s*hóa|van\s*hoa|lịch\s*sử|lich\s*su|bảo\s*tàng|bao\s*tang|도시|사원|문화|역사|박물관|城市|寺庙|文化|历史|博物馆/.test(q)) prefs.add('город и культура');
+    if (/легк|лёгк|спокойн|без долг|nhẹ|nhe|thoải\s*mái|thoai\s*mai|không\s*đi\s*nhiều|khong\s*di\s*nhieu|편안|가볍|여유|많이\s*걷지|轻松|悠闲|少走路/.test(q)) prefs.add('лёгкая программа');
+    if (/подешев|дешев|бюджет|эконом|не\s+переплач|минимальн.{0,16}цен|цен[ау].{0,16}важн|rẻ|re|tiết\s*kiệm|tiet\s*kiem|ngân\s*sách|ngan\s*sach|giá\s*tốt|gia\s*tot|저렴|가성비|예산|싼|便宜|预算|性价比/.test(q)) {
       prefs.delete('комфорт / премиум');
       prefs.delete('насыщенная программа');
       prefs.add('выгодная цена');
@@ -203,7 +203,7 @@
       prefs.delete('выгодная цена');
       prefs.add('насыщенная программа');
     }
-    if (/vip|вип|премиум|комфорт|cao\s*cấp|cao\s*cap|sang\s*trọng|sang\s*trong/.test(q)) {
+    if (/vip|вип|премиум|комфорт|cao\s*cấp|cao\s*cap|sang\s*trọng|sang\s*trong|프리미엄|고급|편안|豪华|高端|舒适/.test(q)) {
       prefs.delete('выгодная цена');
       prefs.add('комфорт / премиум');
     }
@@ -212,9 +212,9 @@
   }
 
   function isDiscoveryIntent(text) {
-    return /подбер|подобра|покаж|посовет|вариант|экскурс|тур\b|куда.*съезд|куда.*поех|хочу.*(?:остров|море|природ|экскурс)|gợi\s*ý|goi\s*y|đề\s*xuất|de\s*xuat|chọn|chon|tour\b|tham\s*quan|đi\s*đâu|di\s*dau|muốn.*(?:biển|đảo|thiên\s*nhiên)|推荐|行程|旅游|有什么.*(?:海|岛)|想去.*(?:海|岛|浮潜)/i.test(String(text || ''));
+    return /подбер|подобра|покаж|посовет|вариант|экскурс|тур\b|куда.*съезд|куда.*поех|хочу.*(?:остров|море|природ|экскурс)|gợi\s*ý|goi\s*y|đề\s*xuất|de\s*xuat|chọn|chon|tour\b|tham\s*quan|đi\s*đâu|di\s*dau|muốn.*(?:biển|đảo|thiên\s*nhiên)|추천|투어|여행|뭐.*(?:바다|섬)|가고.*(?:바다|섬)|推荐|行程|旅游|有什么.*(?:海|岛)|想去.*(?:海|岛|浮潜)/i.test(String(text || ''));
   }
-  function isBookingIntent(text) { return /хочу.*заброни|заброниру|оформ|бер[еу]м|выбираю|этот вариант|поехали|muốn\s*đặt|muon\s*dat|đặt\s*tour|dat\s*tour|đặt\s*chỗ|dat\s*cho|chọn\s*tour\s*này|chon\s*tour\s*nay|lấy\s*tour\s*này|lay\s*tour\s*nay|我要预订|我想预订|预订这个|订这个|就这个|我要这个/i.test(String(text || '')); }
+  function isBookingIntent(text) { return /хочу.*заброни|заброниру|оформ|бер[еу]м|выбираю|этот вариант|поехали|muốn\s*đặt|muon\s*dat|đặt\s*tour|dat\s*tour|đặt\s*chỗ|dat\s*cho|chọn\s*tour\s*này|chon\s*tour\s*nay|lấy\s*tour\s*này|lay\s*tour\s*nay|예약|이\s*투어|이걸로|선택할게|예약하고|我要预订|我想预订|预订这个|订这个|就这个|我要这个/i.test(String(text || '')); }
 
   function money(value) {
     const match = String(value || '').match(/\$\s*([\d,.]+)/);
