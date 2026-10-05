@@ -41,10 +41,10 @@ const ORIGIN_CUE = /(?:^|\s)(?:я|мы|сейчас|нахожусь|наход�
 async function requestedLocale(request, url) {
   if (url.pathname !== '/api/ai/chat' || request.method !== 'POST') return 'ru';
   const header = String(request.headers.get('x-max-tour-locale') || '').toLowerCase();
-  if (header === 'vi' || header === 'en' || header === 'ko') return header;
+  if (header === 'vi' || header === 'en' || header === 'ko' || header === 'zh') return header;
   const body = await request.clone().json().catch(() => null);
   const raw = String(body?.locale || body?.context?.locale || '').toLowerCase();
-  return raw === 'vi' || raw === 'en' || raw === 'ko' ? raw : 'ru';
+  return raw === 'vi' || raw === 'en' || raw === 'ko' || raw === 'zh' ? raw : 'ru';
 }
 
 const MONTHS = [
@@ -522,9 +522,11 @@ export default {
     if (bookingSelectionResponse) return bookingSelectionResponse;
     const bokunToursResponse = await handleLoveTravelBokunTours(request, env, url, ctx);
     if (bokunToursResponse) return bokunToursResponse;
-    // VI/EN use the locale-aware AI core directly. All fast-path/orchestrator
-    // layers below were written for Russian and may emit Russian fallback copy.
-    if (url.pathname === '/api/ai/chat' && request.method === 'POST' && locale !== 'ru') {
+    // LoveTravel AI must use exactly the same two live Bókun products as the
+    // public catalogue in every language. Bypass the legacy MAX TOUR
+    // fast-path/orchestrator stack so no static demo catalogue can leak into
+    // customer recommendations.
+    if (url.pathname === '/api/ai/chat' && request.method === 'POST') {
       return baseWorker.fetch(request, env, ctx);
     }
     const orchestrated = await orchestrateAiRequest(request, env, url);
