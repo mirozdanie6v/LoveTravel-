@@ -38,7 +38,8 @@ test('local MAX TOUR demo tours and departures cannot contaminate LoveTravel bef
 
 test('Bókun tours expose compatibility fields without inventing operator metadata', () => {
   assert.match(adapter,/const popular = productFlags\.some/);
-  assert.match(adapter,/const formatsLabel = product\.privateActivity === true/);
+  assert.match(adapter,/const formatCode = product\.privateActivity === true/);
+  assert.match(adapter,/formatCode,/);
   assert.doesNotMatch(adapter,/popular\s*:\s*true/);
   assert.doesNotMatch(adapter,/location\?\.city \|\| 'Nha Trang'/);
   assert.doesNotMatch(adapter,/state \|\| 'Khánh Hòa'/);
