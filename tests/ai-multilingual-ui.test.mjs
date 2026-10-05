@@ -46,3 +46,11 @@ test('booking handoff uses structured LoveTravel booking API instead of localize
   assert.doesNotMatch(js,/bookingPattern/);
   assert.doesNotMatch(js,/smallestCounterRow/);
 });
+
+
+test('semantic AI client mounts independently of legacy AI patches',()=>{
+  assert.match(js,/function installAiScreenHook\(\)/);
+  assert.match(js,/globalThis\.renderAI=wrapped/);
+  assert.match(js,/globalThis\.showScreen=wrapped/);
+  assert.match(js,/queueMicrotask\(mountCurrentAi\)/);
+});
