@@ -1,0 +1,42 @@
+name: Diagnose live LoveTravel release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.diagnose-live-client-release'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Diagnose live endpoints
+        shell: bash
+        run: |
+          set -u
+          echo '=== integration demo endpoint ==='
+          code="$(curl -sS -o /tmp/int.json -w '%{http_code}' -X POST             'https://integration.viiversion.com/internal/lovetravel/bokun/demo-submit?vendorId=137689&currency=USD'             -H 'content-type: application/json' --data '{}' || true)"
+          echo "HTTP=$code"; cat /tmp/int.json 2>/dev/null || true; echo
+
+          echo '=== LoveTravel demo endpoint ==='
+          code="$(curl -sS -o /tmp/app.json -w '%{http_code}' -X POST             'https://lovetravel.viiversion.com/api/bokun/client-demo/submit'             -H 'content-type: application/json' --data '{}' || true)"
+          echo "HTTP=$code"; cat /tmp/app.json 2>/dev/null || true; echo
+
+          for locale in ru en vi zh ko; do
+            echo "=== tours locale=$locale ==="
+            code="$(curl -sS -o "/tmp/tours-$locale.json" -w '%{http_code}'               "https://lovetravel.viiversion.com/api/bokun/tours?locale=$locale" || true)"
+            echo "HTTP=$code"
+            jq '{ok,source,vendorId,productIds,titles:[.tours[]?.title]}' "/tmp/tours-$locale.json" 2>/dev/null || cat "/tmp/tours-$locale.json" || true
+          done
+
+          for locale in ru en vi zh ko; do
+            echo "=== AI locale=$locale ==="
+            code="$(curl -sS -o "/tmp/ai-$locale.json" -w '%{http_code}' -X POST               'https://lovetravel.viiversion.com/api/ai/chat'               -H 'content-type: application/json'               -H "x-max-tour-locale: $locale"               --data "{"locale":"$locale","message":"Tell me about the available tours"}" || true)"
+            echo "HTTP=$code"
+            jq '{ok,source,tourId,reply}' "/tmp/ai-$locale.json" 2>/dev/null || cat "/tmp/ai-$locale.json" || true
+          done
