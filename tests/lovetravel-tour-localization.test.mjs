@@ -104,6 +104,9 @@ test('localization adapter behaves consistently for all five canonical locales',
     assert.equal(api.productTitle('1287578','fallback'),values.title);
     assert.equal(api.rateTitle('1287578','2623660','fallback'),values.rate);
     assert.equal(api.difficulty('MODERATE'),values.difficulty);
-    assert.notEqual(api.duration({hours:7,text:'7 hours'}),'7 hours'||selected==='en-US');
+    const duration=api.duration({hours:7,text:'7 hours'});
+    assert.ok(duration);
+    if(selected==='en-US') assert.equal(duration,'7 hours');
+    else assert.notEqual(duration,'7 hours');
   }
 });
