@@ -72,22 +72,51 @@ jobs:
             "ai": {"binding": "AI"}
           }
           JSON
-          npx --yes wrangler@4.92.0 deploy --config wrangler.json >/tmp/cf-ai-deploy.txt
-          code="$(curl -sS -o /tmp/cloudflare-ai-binding.json -w '%{http_code}'             'https://viiversion-showreel-ai-probe.mirozdanie6v.workers.dev/')"
-          python - "$code" <<'PY'
+          set +e
+          npx --yes wrangler@4.92.0 deploy --config wrangler.json >/tmp/cf-ai-deploy.txt 2>&1
+          deploy_exit=$?
+          set -e
+          if [ "$deploy_exit" -ne 0 ]; then
+            python - "$deploy_exit" <<'PY'
+          import json, sys
+          text=open("/tmp/cf-ai-deploy.txt", errors="replace").read().lower()
+          report={
+              "deploy_exit": int(sys.argv[1]),
+              "deployed": False,
+              "category": "permission" if any(x in text for x in ("unauthorized","forbidden","permission","code: 10000"))
+                          else "binding-or-config" if any(x in text for x in ("binding","workers ai","ai binding"))
+                          else "deploy-error",
+              "evidence": {
+                  "unauthorized": "unauthorized" in text,
+                  "forbidden": "forbidden" in text,
+                  "permission": "permission" in text,
+                  "workers_ai": "workers ai" in text,
+                  "binding": "binding" in text,
+                  "code_10000": "10000" in text,
+                  "paid": "paid" in text,
+                  "quota": "quota" in text
+              }
+          }
+          json.dump(report, open("cloudflare-ai-binding-report.json","w"), indent=2)
+          print(json.dumps(report))
+          PY
+          else
+            code="$(curl -sS -o /tmp/cloudflare-ai-binding.json -w '%{http_code}' 'https://viiversion-showreel-ai-probe.mirozdanie6v.workers.dev/')"
+            python - "$code" <<'PY'
           import json, sys
           code=int(sys.argv[1])
           try:
               body=json.load(open("/tmp/cloudflare-ai-binding.json"))
           except Exception:
               body={"ok":False,"category":"invalid-response"}
-          report={"http":code, **body}
+          report={"deploy_exit":0,"deployed":True,"http":code, **body}
           if "result" in report:
               report["result_present"]=True
               del report["result"]
           json.dump(report, open("cloudflare-ai-binding-report.json","w"), indent=2)
           print(json.dumps(report))
           PY
+          fi
 
       - name: Remove isolated probe Worker
         if: always()
