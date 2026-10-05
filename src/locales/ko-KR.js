@@ -281,6 +281,17 @@
   "provider.required": "필수",
   "provider.accessibility.walking": "도보 접근",
   "enum.availability.available": "예약 가능",
-  "enum.availability.full": "매진"
+  "enum.availability.full": "매진",
+  "content.rate.2581224.description": "Bích Đầm 어촌 마을과 Robinson Beach 휴식을 한 코스로 즐기는 옵션입니다.",
+  "content.rate.2581226.description": "Hòn Mun 스노클링과 Bãi Sỏi 휴식을 함께 즐깁니다.",
+  "content.rate.2581227.description": "Hòn Mun 스노클링 후 Bãi Tranh 해변에서 휴식하는 옵션입니다.",
+  "content.rate.2581228.description": "Hòn Mun 스노클링과 Mini Beach 휴식을 함께 즐기는 코스입니다.",
+  "content.rate.2581229.description": "Hòn Mun 스노클링과 Hòn Tằm 미네랄 머드바스를 결합한 옵션입니다.",
+  "content.rate.2623660.description": "Robinson Beach와 Hòn Mun 해양보호구역 스노클링을 함께 즐깁니다.",
+  "content.rate.2623666.description": "Robinson Beach와 Hòn Tằm 미네랄 머드바스를 함께 즐깁니다.",
+  "content.rate.2623667.description": "Robinson Beach와 Bãi Tranh 해변 휴식을 함께 즐기는 코스입니다.",
+  "content.rate.2623668.description": "Robinson Beach와 아담한 Mini Beach를 함께 즐기는 휴양 중심 옵션입니다.",
+  "content.rate.2623669.description": "Robinson Beach와 Bãi Sỏi를 함께 둘러보는 여유로운 섬·해변 코스입니다.",
+  "content.rate.2623670.description": "Robinson Beach와 Trí Nguyên 수족관 방문을 함께 즐깁니다."
 });
 })();
