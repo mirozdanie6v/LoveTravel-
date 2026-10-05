@@ -263,6 +263,10 @@
   "catalog.city": "Nha Trang",
   "enum.format.GROUP": "tour ghép",
   "enum.format.PRIVATE": "tour riêng",
-  "enum.format.UNKNOWN": ""
+  "enum.format.UNKNOWN": "",
+  "booking.timeCount.one": "{count} giờ",
+  "booking.timeCount.few": "{count} giờ",
+  "booking.timeCount.many": "{count} giờ",
+  "booking.timeCount.other": "{count} giờ"
 });
 })();
