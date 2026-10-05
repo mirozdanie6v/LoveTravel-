@@ -1,4 +1,5 @@
 name: Audit LoveTravel ZH KO visible copy
+# rerun after nonblocking localization deploy 2026-10-05T15:57Z
 # run after verified multilingual deploy 2026-10-05T15:50Z
 
 on:
