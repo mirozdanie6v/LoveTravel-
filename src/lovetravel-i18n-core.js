@@ -194,14 +194,17 @@
   function ensureSwitcher(){
     const doc=globalThis.document;
     if(!doc) return null;
-    let wrap=doc.querySelector('.lt-language-switcher');
+    let wrap=doc.querySelector('.lt-language-switcher,.mt-language-switcher');
     if(!wrap){
       const target=doc.querySelector('.top-actions')||doc.querySelector('.brandrow');
       if(!target) return null;
       wrap=doc.createElement('div');
-      wrap.className='mt-language-switcher lt-language-switcher';
-      wrap.setAttribute('role','group');
       target.prepend(wrap);
+    }
+    wrap.classList.add('mt-language-switcher','lt-language-switcher');
+    wrap.setAttribute('role','group');
+    if(wrap.dataset.ltLocaleWired!=='1'){
+      wrap.dataset.ltLocaleWired='1';
       wrap.addEventListener('click',event=>{
         const button=event.target.closest?.('button[data-locale]');
         if(button) setLocale(button.dataset.locale);
