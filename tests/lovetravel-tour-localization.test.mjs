@@ -13,8 +13,8 @@ const build=await readFile(resolve(root,'build.mjs'),'utf8');
 
 test('tour localization layer is syntactically valid and covers every public locale',()=>{
   assert.doesNotThrow(()=>new Function(localeJs));
-  assert.match(localeJs,/const SUPPORTED=\['ru','vi','en','ko'\]/);
-  for(const locale of ['ru','vi','en','ko']) assert.match(localeJs,new RegExp(locale+":\\{"));
+  assert.match(localeJs,/const SUPPORTED=\['ru','vi','en','ko','zh'\]/);
+  for(const locale of ['ru','vi','en','ko','zh']) assert.match(localeJs,new RegExp(locale+":\\{"));
 });
 
 test('both production Bókun products have localized titles descriptions and itinerary',()=>{
