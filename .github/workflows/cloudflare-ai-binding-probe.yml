@@ -27,7 +27,15 @@ jobs:
         run: |
           set -euo pipefail
           test -n "${CLOUDFLARE_API_TOKEN:-}"
-          test -n "${CLOUDFLARE_ACCOUNT_ID:-}"
+          if [ -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]; then
+            zone="$(curl -fsS 'https://api.cloudflare.com/client/v4/zones?name=viiversion.com' \
+              -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+              -H 'Content-Type: application/json')"
+            CLOUDFLARE_ACCOUNT_ID="$(echo "$zone" | jq -r '.result[]? | select(.name=="viiversion.com") | .account.id' | head -n1)"
+            test -n "$CLOUDFLARE_ACCOUNT_ID"
+            echo "::add-mask::$CLOUDFLARE_ACCOUNT_ID"
+            echo "CLOUDFLARE_ACCOUNT_ID=$CLOUDFLARE_ACCOUNT_ID" >> "$GITHUB_ENV"
+          fi
           mkdir -p /tmp/cf-ai-probe
           cd /tmp/cf-ai-probe
           cat > worker.mjs <<'JS'
