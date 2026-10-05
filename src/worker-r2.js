@@ -17,6 +17,7 @@ import {
   syncAllDomainLocales,
 } from './bokun-content-localization.js';
 import { resolveBookingSelection } from './booking-selection-engine.js';
+import { buildBokunBookingDraft } from './bokun-booking-draft.js';
 
 const CONTENT_TYPES = {
   jpg: 'image/jpeg',
@@ -276,6 +277,271 @@ export async function handleLoveTravelBookingSelection(request, env, url = new U
   }
 }
 
+
+function bookingAnswerMap(source = {}) {
+  return Object.entries(source && typeof source === 'object' ? source : {})
+    .filter(([,value]) => value !== null && value !== undefined && String(value).trim() !== '')
+    .map(([questionId,value]) => ({
+      questionId:String(questionId),
+      values:Array.isArray(value) ? value.map(String) : [String(value)],
+    }));
+}
+
+function provisionalDemoBookingRequest(resolution, externalBookingReference) {
+  const selection = resolution?.selection || {};
+  const resolved = resolution?.resolved || {};
+  const mainContactDetails = bookingAnswerMap(selection.customer || {});
+  const explicitPassengers = Array.isArray(selection.passengers) ? selection.passengers : [];
+  const passengers = [];
+  for (const [categoryId,countRaw] of Object.entries(selection.participants || {})) {
+    const count = Math.max(0, Math.floor(Number(countRaw) || 0));
+    const matching = explicitPassengers.filter(item => String(item?.categoryId || '') === String(categoryId));
+    for (let index=0; index<count; index+=1) {
+      const person = matching[index] || {};
+      const passengerDetails = bookingAnswerMap(Object.fromEntries(
+        Object.entries(person).filter(([key]) => !['categoryId','answers','extras'].includes(key))
+      ));
+      const answers = bookingAnswerMap(person.answers || {});
+      const extras = Object.entries(person.extras || {}).flatMap(([extraId,entry]) => {
+        const item = typeof entry === 'number' ? {quantity:entry} : (entry || {});
+        const quantity = Math.max(0, Math.floor(Number(item.quantity) || 0));
+        if (!quantity) return [];
+        return [{
+          extraId:Number(extraId),
+          quantity,
+          ...(bookingAnswerMap(item.answers || {}).length ? {answers:bookingAnswerMap(item.answers || {})} : {}),
+        }];
+      });
+      passengers.push({
+        pricingCategoryId:Number(categoryId),
+        ...(passengerDetails.length ? {passengerDetails} : {}),
+        ...(answers.length ? {answers} : {}),
+        ...(extras.length ? {extras} : {}),
+      });
+    }
+  }
+
+  const pickup = String(selection?.pickup?.mode || '').toUpperCase() === 'PICKUP';
+  const dropoff = String(selection?.dropoff?.mode || '').toUpperCase() === 'DROPOFF';
+  const pickupAnswers = bookingAnswerMap({
+    ...(selection?.pickup?.answers || {}),
+    ...(selection?.pickup?.roomNumber ? {roomNumber:selection.pickup.roomNumber} : {}),
+  });
+
+  const activityBooking = {
+    activityId:Number(selection.productId),
+    rateId:Number(selection.rateId || resolved?.rate?.id),
+    startTimeId:Number(selection.startTimeId || resolved?.slot?.startTimeId),
+    date:String(selection.date || resolved?.slot?.date || ''),
+    pickup,
+    dropoff,
+    checkedIn:false,
+    customized:false,
+    ...(pickup && selection?.pickup?.placeId ? {pickupPlaceId:Number(selection.pickup.placeId)} : {}),
+    ...(pickup && !selection?.pickup?.placeId && selection?.pickup?.customLocation
+      ? {pickupDescription:String(selection.pickup.customLocation.wholeAddress || selection.pickup.customLocation.addressLine1 || '')}
+      : {}),
+    ...(dropoff && selection?.dropoff?.placeId ? {dropoffPlaceId:Number(selection.dropoff.placeId)} : {}),
+    ...(dropoff && !selection?.dropoff?.placeId && selection?.dropoff?.customLocation
+      ? {dropoffDescription:String(selection.dropoff.customLocation.wholeAddress || selection.dropoff.customLocation.addressLine1 || '')}
+      : {}),
+    ...(bookingAnswerMap(selection.answers || {}).length ? {answers:bookingAnswerMap(selection.answers || {})} : {}),
+    ...(pickupAnswers.length ? {pickupAnswers} : {}),
+    passengers,
+  };
+
+  return {
+    mainContactDetails,
+    activityBookings:[activityBooking],
+    sendCustomerNotification:false,
+    externalBookingReference,
+    externalBookingEntityName:'VIIVERSION',
+    externalBookingEntityCode:'LOVE_TRAVEL',
+  };
+}
+
+async function demoTokenHash(token) {
+  const bytes = new TextEncoder().encode(String(token || ''));
+  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
+  return [...digest].map(value => value.toString(16).padStart(2,'0')).join('');
+}
+
+async function ensureDemoGuardTable(env) {
+  if (!env.DB) throw new Error('LoveTravel demo booking database is unavailable');
+  await env.DB.prepare(`
+    CREATE TABLE IF NOT EXISTS lovetravel_demo_booking_guards (
+      token_hash TEXT NOT NULL,
+      product_id TEXT NOT NULL,
+      status TEXT NOT NULL,
+      confirmation_code TEXT,
+      booking_status TEXT,
+      external_reference TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (token_hash, product_id)
+    )
+  `).run();
+}
+
+export async function handleLoveTravelClientDemoBooking(request, env, url = new URL(request.url)) {
+  if (url.pathname !== '/api/bokun/client-demo/submit') return null;
+  if (request.method !== 'POST') {
+    return json({ok:false,error:'method_not_allowed'},{status:405,headers:{allow:'POST','cache-control':'no-store'}});
+  }
+
+  const declaredLength = Number(request.headers.get('content-length') || 0);
+  if (Number.isFinite(declaredLength) && declaredLength > 65536) {
+    return json({ok:false,error:'payload_too_large'},{status:413,headers:{'cache-control':'no-store'}});
+  }
+
+  const body = await request.clone().json().catch(() => null);
+  const demoToken = String(body?.demoToken || '').trim();
+  const expectedToken = String(env.LOVE_TRAVEL_CLIENT_DEMO_ACCESS_TOKEN || '').trim();
+  const integrationToken = String(env.LOVE_TRAVEL_INTEGRATION_TOKEN || '').trim();
+  if (!demoToken || !expectedToken || demoToken !== expectedToken || !integrationToken) {
+    return json({ok:false,error:'demo_access_denied'},{status:403,headers:{'cache-control':'no-store'}});
+  }
+
+  const selection = body?.selection && typeof body.selection === 'object' && !Array.isArray(body.selection)
+    ? body.selection
+    : null;
+  const productId = String(selection?.productId || '').trim();
+  if (!selection || !LOVE_TRAVEL_BOKUN_PRODUCT_IDS.includes(productId)) {
+    return json({ok:false,error:'unsupported_product'},{status:400,headers:{'cache-control':'no-store'}});
+  }
+  const date = String(selection?.date || '').trim();
+  if (!validIsoDate(date)) {
+    return json({ok:false,error:'invalid_date'},{status:400,headers:{'cache-control':'no-store'}});
+  }
+
+  const locale = normalizeContentLocale(body?.locale || 'ru');
+  const includePickupPlaces =
+    String(selection?.pickup?.mode || '').toUpperCase() === 'PICKUP' ||
+    String(selection?.dropoff?.mode || '').toUpperCase() === 'DROPOFF';
+  const integrationBase = String(env.BOKUN_INTEGRATION_BASE_URL || 'https://integration.viiversion.com').replace(/\/+$/,'');
+  const externalBookingReference = 'LT-TEST-CLIENT-' + crypto.randomUUID().replace(/-/g,'').slice(0,16).toUpperCase();
+
+  try {
+    const domains = await fetchLoveTravelBokunDomains({
+      fetchImpl:fetch,
+      baseUrl:integrationBase,
+      vendorId:LOVE_TRAVEL_BOKUN_VENDOR_ID,
+      productIds:[productId],
+      start:date,
+      end:date,
+      currency:'USD',
+      lang:bokunLanguage(locale),
+      includePickupPlaces,
+    });
+    const domain = domains[0];
+    if (!domain) return json({ok:false,error:'product_domain_unavailable'},{status:502,headers:{'cache-control':'no-store'}});
+
+    const resolution = resolveBookingSelection(domain, selection, {now:new Date()});
+    if (!resolution.readyToBook) {
+      return json({
+        ok:false,
+        error:'selection_not_ready',
+        errors:resolution.errors,
+        bookingDataIssues:resolution.bookingDataIssues,
+        warnings:resolution.warnings,
+      },{status:409,headers:{'cache-control':'no-store'}});
+    }
+
+    const provisional = provisionalDemoBookingRequest(resolution, externalBookingReference);
+    const optionsResponse = await fetch(
+      integrationBase + '/api/bokun/checkout/options?vendorId=' + encodeURIComponent(LOVE_TRAVEL_BOKUN_VENDOR_ID) + '&currency=USD',
+      {
+        method:'POST',
+        headers:{'content-type':'application/json','accept':'application/json'},
+        body:JSON.stringify(provisional),
+      },
+    );
+    const contract = await optionsResponse.json().catch(() => null);
+    if (!optionsResponse.ok || !contract) {
+      return json({ok:false,error:'checkout_options_unavailable'},{status:502,headers:{'cache-control':'no-store'}});
+    }
+
+    const draft = buildBokunBookingDraft(resolution, contract, {
+      externalBookingReference,
+      externalBookingEntityName:'VIIVERSION',
+      externalBookingEntityCode:'LOVE_TRAVEL',
+    });
+    if (!draft.readyForReserve) {
+      return json({ok:false,error:'checkout_not_ready',issues:draft.issues},{status:409,headers:{'cache-control':'no-store'}});
+    }
+
+    await ensureDemoGuardTable(env);
+    const tokenHash = await demoTokenHash(demoToken);
+    const claimed = await env.DB.prepare(`
+      INSERT INTO lovetravel_demo_booking_guards(token_hash,product_id,status,external_reference)
+      VALUES(?,?,?,?)
+      ON CONFLICT(token_hash,product_id) DO NOTHING
+      RETURNING token_hash
+    `).bind(tokenHash,productId,'PENDING',externalBookingReference).first();
+
+    if (!claimed) {
+      const existing = await env.DB.prepare(`
+        SELECT status,confirmation_code,booking_status,external_reference
+        FROM lovetravel_demo_booking_guards WHERE token_hash=? AND product_id=?
+      `).bind(tokenHash,productId).first();
+      return json({
+        ok:existing?.status === 'CONFIRMED',
+        reused:true,
+        error:existing?.status === 'CONFIRMED' ? null : 'demo_booking_already_used',
+        confirmationCode:existing?.confirmation_code || null,
+        status:existing?.booking_status || existing?.status || null,
+        externalBookingReference:existing?.external_reference || null,
+      },{status:existing?.status === 'CONFIRMED' ? 200 : 409,headers:{'cache-control':'no-store'}});
+    }
+
+    const submitResponse = await fetch(
+      integrationBase + '/internal/lovetravel/bokun/demo-submit?vendorId='
+        + encodeURIComponent(LOVE_TRAVEL_BOKUN_VENDOR_ID) + '&currency=USD',
+      {
+        method:'POST',
+        headers:{
+          'content-type':'application/json',
+          'accept':'application/json',
+          'authorization':'Bearer ' + integrationToken,
+          'x-viiversion-booking-intent':'SUBMIT_LOVE_TRAVEL_CLIENT_DEMO_BOOKING',
+        },
+        body:JSON.stringify(draft.checkoutRequestTemplate),
+      },
+    );
+    const submitted = await submitResponse.json().catch(() => null);
+    const booking = submitted?.booking || null;
+    const confirmationCode = String(booking?.confirmationCode || '').trim();
+    const bookingStatus = String(booking?.status || '').trim().toUpperCase();
+    if (!submitResponse.ok || !submitted?.ok || !/^NHA-[0-9]+$/.test(confirmationCode)) {
+      await env.DB.prepare(`
+        UPDATE lovetravel_demo_booking_guards
+        SET status='ERROR',updated_at=CURRENT_TIMESTAMP
+        WHERE token_hash=? AND product_id=?
+      `).bind(tokenHash,productId).run();
+      return json({ok:false,error:'demo_booking_submit_failed'},{status:502,headers:{'cache-control':'no-store'}});
+    }
+
+    await env.DB.prepare(`
+      UPDATE lovetravel_demo_booking_guards
+      SET status='CONFIRMED',confirmation_code=?,booking_status=?,updated_at=CURRENT_TIMESTAMP
+      WHERE token_hash=? AND product_id=?
+    `).bind(confirmationCode,bookingStatus || 'CONFIRMED',tokenHash,productId).run();
+
+    return json({
+      ok:true,
+      mode:'LOVE_TRAVEL_CLIENT_DEMO',
+      confirmationCode,
+      status:bookingStatus || 'CONFIRMED',
+      paymentType:String(booking?.paymentType || 'NOT_PAID'),
+      totalPaid:Number(booking?.totalPaid || 0),
+      externalBookingReference,
+    },{headers:{'cache-control':'no-store','x-content-type-options':'nosniff'}});
+  } catch (error) {
+    console.error('LoveTravel client demo booking failed', error?.message || error);
+    return json({ok:false,error:'demo_booking_unavailable'},{status:502,headers:{'cache-control':'no-store'}});
+  }
+}
+
 function normalizeRussian(value) {
   return String(value || '').trim().toLocaleLowerCase('ru-RU').replace(/ё/g, 'е');
 }
@@ -518,6 +784,8 @@ export default {
     if (url.pathname.startsWith('/tour-media/')) {
       return serveTourMedia(request, env, url.pathname);
     }
+    const demoBookingResponse = await handleLoveTravelClientDemoBooking(request, env, url);
+    if (demoBookingResponse) return demoBookingResponse;
     const bookingSelectionResponse = await handleLoveTravelBookingSelection(request, env, url, ctx);
     if (bookingSelectionResponse) return bookingSelectionResponse;
     const bokunToursResponse = await handleLoveTravelBokunTours(request, env, url, ctx);
