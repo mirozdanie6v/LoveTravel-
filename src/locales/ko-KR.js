@@ -254,6 +254,12 @@
   "ai.date.past": "이미 지난 날짜입니다. 베트남 기준 오늘은 {today}입니다. {minDate} 또는 그 이후 날짜를 선택해 주세요.",
   "format.ageRange": "{min}–{max}세",
   "format.minutes": "{value}분",
-  "tour.stop": "코스 {index}"
+  "tour.stop": "코스 {index}",
+  "catalog.departure": "출발",
+  "catalog.finish": "종료",
+  "catalog.finishByProgram": "일정에 따라",
+  "catalog.groupFrom": "그룹 최저",
+  "catalog.privateFrom": "프라이빗 최저",
+  "catalog.city": "나트랑"
 });
 })();
