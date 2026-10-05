@@ -281,6 +281,17 @@
   "provider.required": "必填",
   "provider.accessibility.walking": "步行可达",
   "enum.availability.available": "可预订",
-  "enum.availability.full": "已满"
+  "enum.availability.full": "已满",
+  "content.rate.2581224.description": "Bích Đầm 渔村与 Robinson Beach 海滩休闲组合行程。",
+  "content.rate.2581226.description": "Hòn Mun 浮潜与 Bãi Sỏi 海滩停留组合行程。",
+  "content.rate.2581227.description": "Hòn Mun 浮潜后前往 Bãi Tranh 海滩休闲。",
+  "content.rate.2581228.description": "Hòn Mun 与 Mini Beach：浮潜加轻松海滩休闲。",
+  "content.rate.2581229.description": "Hòn Mun 浮潜与 Hòn Tằm 岛矿物泥浴组合行程。",
+  "content.rate.2623660.description": "Robinson Beach 海滩与 Hòn Mun 海洋保护区浮潜组合行程。",
+  "content.rate.2623666.description": "Robinson Beach 海滩与 Hòn Tằm 岛矿物泥浴组合行程。",
+  "content.rate.2623667.description": "Robinson Beach 海滩加 Bãi Tranh 海滩休闲行程。",
+  "content.rate.2623668.description": "Robinson Beach 与安静的 Mini Beach，主打轻松海滩体验。",
+  "content.rate.2623669.description": "Robinson Beach 与 Bãi Sỏi，适合轻松的海岛海滩体验。",
+  "content.rate.2623670.description": "Robinson Beach 海滩与 Trí Nguyên 水族馆参观组合行程。"
 });
 })();
