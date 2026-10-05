@@ -138,11 +138,19 @@ test('translates only cache misses and invalidates a field when its Bókun sourc
 
   const changed=sampleDomain();
   changed.experience.title='Updated English title';
-  const stale=await localizeDomainFromCache(changed,env,'ko');
-  assert.equal(stale.experience.title,'KO:Updated English title');
-  assert.equal(stale.localization.pendingFields,0);
-  assert.equal(stale.localization.source,'viiversion-cache');
+  const background=[];
+  const stale=await localizeDomainFromCache(changed,env,'ko',{waitUntil(promise){background.push(promise);}});
+  assert.equal(stale.experience.title,'Updated English title');
+  assert.ok(stale.localization.pendingFields>=1);
+  assert.equal(stale.localization.source,'viiversion-cache-partial');
   assert.equal(stale.experience.description,'KO:English description');
+  assert.equal(background.length,1);
+
+  await Promise.all(background);
+  const refreshed=await localizeDomainFromCache(changed,env,'ko');
+  assert.equal(refreshed.experience.title,'KO:Updated English title');
+  assert.equal(refreshed.localization.pendingFields,0);
+  assert.equal(refreshed.localization.source,'viiversion-cache');
 });
 
 
