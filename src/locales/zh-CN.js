@@ -263,6 +263,10 @@
   "catalog.city": "芽庄",
   "enum.format.GROUP": "拼团",
   "enum.format.PRIVATE": "私人",
-  "enum.format.UNKNOWN": ""
+  "enum.format.UNKNOWN": "",
+  "booking.timeCount.one": "{count} 个时间",
+  "booking.timeCount.few": "{count} 个时间",
+  "booking.timeCount.many": "{count} 个时间",
+  "booking.timeCount.other": "{count} 个时间"
 });
 })();
