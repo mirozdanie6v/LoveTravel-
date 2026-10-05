@@ -281,6 +281,17 @@
   "provider.required": "обязательно",
   "provider.accessibility.walking": "Пешая доступность",
   "enum.availability.available": "доступно",
-  "enum.availability.full": "нет мест"
+  "enum.availability.full": "нет мест",
+  "content.rate.2581224.description": "Рыбацкая деревня Bích Đầm и отдых на Robinson Beach в одном маршруте.",
+  "content.rate.2581226.description": "Снорклинг у Hòn Mun и отдых на Bãi Sỏi.",
+  "content.rate.2581227.description": "Снорклинг у Hòn Mun и отдых на пляже Bãi Tranh.",
+  "content.rate.2581228.description": "Hòn Mun и Mini Beach — снорклинг и более спокойный пляжный отдых.",
+  "content.rate.2581229.description": "Hòn Mun плюс минеральные грязевые ванны на Hòn Tằm.",
+  "content.rate.2623660.description": "Robinson Beach плюс снорклинг в морском заповеднике Hòn Mun.",
+  "content.rate.2623666.description": "Robinson Beach плюс минеральные грязевые ванны на острове Hòn Tằm.",
+  "content.rate.2623667.description": "Robinson Beach и дополнительный пляжный отдых на Bãi Tranh.",
+  "content.rate.2623668.description": "Robinson Beach и камерный Mini Beach — вариант с акцентом на пляжный отдых.",
+  "content.rate.2623669.description": "Robinson Beach и Bãi Sỏi — ещё один спокойный пляжный маршрут.",
+  "content.rate.2623670.description": "Robinson Beach плюс посещение аквариума Trí Nguyên."
 });
 })();
