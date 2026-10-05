@@ -109,7 +109,12 @@ jobs:
           print(json.dumps(report))
           PY
           else
-            code="$(curl -sS -o /tmp/cloudflare-ai-binding.json -w '%{http_code}' 'https://viiversion-showreel-ai-probe.mirozdanie6v.workers.dev/')"
+            subdomain="$(curl -fsS "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/subdomain" \
+              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+              -H 'Content-Type: application/json' | jq -r '.result.subdomain // empty')"
+            test -n "$subdomain"
+            probe_url="https://viiversion-showreel-ai-probe.$subdomain.workers.dev/"
+            code="$(curl -sS -o /tmp/cloudflare-ai-binding.json -w '%{http_code}' "$probe_url")"
             python - "$code" <<'PY'
           import json, sys
           code=int(sys.argv[1])
