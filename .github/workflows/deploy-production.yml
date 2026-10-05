@@ -1,0 +1,80 @@
+name: Deploy LoveTravel production
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/deploy-production.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Checkout LoveTravel
+        uses: actions/checkout@v5
+        with:
+          path: lovetravel
+
+      - name: Checkout integration service
+        uses: actions/checkout@v5
+        with:
+          repository: mirozdanie6v/viiversion
+          ref: main
+          path: viiversion
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Require Cloudflare credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CLOUDFLARE_API_TOKEN:-}"
+          test -n "${CLOUDFLARE_ACCOUNT_ID:-}"
+
+      - name: Deploy integration service first
+        working-directory: viiversion/integration-service
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --no-fund --no-audit
+          npm run typecheck
+          npm test
+          npx wrangler deploy --config wrangler.jsonc
+
+      - name: Verify integration
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS 'https://integration.viiversion.com/api/bokun/status?vendorId=137689' > /tmp/status.json
+          jq -e '.ok == true and .oauthConnected == true and .restCredentialsReady == true and .vendorId == "137689"' /tmp/status.json >/dev/null
+          code="$(curl -sS -o /tmp/no-token.txt -w '%{http_code}' -X POST             'https://integration.viiversion.com/internal/lovetravel/bokun/demo-submit?vendorId=137689&currency=USD'             -H 'content-type: application/json' --data '{}')"
+          test "$code" = 401
+
+      - name: Deploy LoveTravel
+        working-directory: lovetravel
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --no-fund --no-audit
+          npm run check
+          npx wrangler deploy --config wrangler.jsonc
+
+      - name: Verify live client release
+        shell: bash
+        run: |
+          set -euo pipefail
+          for locale in ru en vi zh ko; do
+            curl -fsS "https://lovetravel.viiversion.com/api/bokun/tours?locale=$locale" > "/tmp/tours-$locale.json"
+            jq -e '.ok == true and .source == "bokun" and .vendorId == "137689" and ([.tours[].id]|sort) == ["1287578","1287580"]' "/tmp/tours-$locale.json" >/dev/null
+          done
+          code="$(curl -sS -o /tmp/app-no-token.json -w '%{http_code}' -X POST             'https://lovetravel.viiversion.com/api/bokun/client-demo/submit'             -H 'content-type: application/json' --data '{}')"
+          test "$code" = 403
