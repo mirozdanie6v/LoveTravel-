@@ -29,9 +29,10 @@ export function normalizeContentLocale(value) {
 
 export function bokunLanguage(locale) {
   const normalized = normalizeContentLocale(locale);
-  // Use English as the stable Bókun source for Simplified Chinese and translate
-  // the customer-facing fields through the verified localization cache.
-  return normalized === 'zh' ? 'EN' : normalized.toUpperCase();
+  // Chinese and Korean are normalized from one stable English Bókun source.
+  // The customer-facing copy is then translated through our own verified cache
+  // so a partially localized Bókun payload can never leak mixed languages.
+  return normalized === 'zh' || normalized === 'ko' ? 'EN' : normalized.toUpperCase();
 }
 
 function text(value) {
@@ -330,7 +331,8 @@ function enqueueBackgroundSync(task) {
 export async function syncDomainTranslations(domain, env, requestedLocale) {
   const locale = normalizeContentLocale(requestedLocale);
   const productId = String(domain?.experience?.id || domain?.provider?.productId || '');
-  if (!productId || locale === 'en' || hasNativeBokunLocale(domain, locale) || !env?.DB || !env?.AI) {
+  const strictLocale = locale === 'zh' || locale === 'ko';
+  if (!productId || locale === 'en' || (!strictLocale && hasNativeBokunLocale(domain, locale)) || !env?.DB || !env?.AI) {
     return {ok:true, productId, locale, translated:0, skipped:true};
   }
 
@@ -364,7 +366,8 @@ export async function localizeDomainFromCache(domain, env, requestedLocale, ctx 
   const clone = structuredClone(domain);
   const productId = String(clone?.experience?.id || clone?.provider?.productId || '');
 
-  if (locale === 'en' || hasNativeBokunLocale(clone, locale)) {
+  const strictLocale = locale === 'zh' || locale === 'ko';
+  if (locale === 'en' || (!strictLocale && hasNativeBokunLocale(clone, locale))) {
     clone.localization = {
       locale,
       source:'bokun-native',
@@ -378,6 +381,20 @@ export async function localizeDomainFromCache(domain, env, requestedLocale, ctx 
   let rows = [];
   try {
     rows = await cachedRows(env, productId, locale);
+    if (strictLocale) {
+      const cache = new Map(rows.map(row => [String(row.field_key), row]));
+      const missing = fields.some(field => {
+        const row = cache.get(field.key);
+        return !row ||
+          String(row.source_hash) !== field.sourceHash ||
+          !text(row.translated_text) ||
+          String(row.provider || '') !== TRANSLATION_PROVIDER;
+      });
+      if (missing && env?.AI && env?.DB) {
+        await syncDomainTranslations(domain, env, locale);
+        rows = await cachedRows(env, productId, locale);
+      }
+    }
   } catch (error) {
     console.warn('Bókun localization cache unavailable', error?.message || error);
   }
