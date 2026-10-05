@@ -68,6 +68,7 @@ test('tour start point is separated from hotel pickup in every supported locale'
   assert.match(js,/meeting:'Место начала экскурсии'/);
   assert.match(js,/meeting:'Tour starting point'/);
   assert.match(js,/meeting:'Điểm bắt đầu tour'/);
+  assert.match(js,/meeting:'行程集合地点'/);
   assert.match(js,/meeting:'투어 출발 지점'/);
   assert.match(js,/data-lt-start-point-card/);
   assert.match(js,/data-lt-pickup-card/);
