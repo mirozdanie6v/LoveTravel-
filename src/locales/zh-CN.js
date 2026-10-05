@@ -260,6 +260,9 @@
   "catalog.finishByProgram": "按行程安排",
   "catalog.groupFrom": "拼团价起",
   "catalog.privateFrom": "私人行程价起",
-  "catalog.city": "芽庄"
+  "catalog.city": "芽庄",
+  "enum.format.GROUP": "拼团",
+  "enum.format.PRIVATE": "私人",
+  "enum.format.UNKNOWN": ""
 });
 })();
