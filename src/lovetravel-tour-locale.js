@@ -130,42 +130,20 @@
     '2581228':{en:'Mini Beach',ru:'Мини-Бич',vi:'Mini Beach',zh:'Mini Beach',ko:'미니 비치'}
   };
 
-  const exact={
-    'Standard Viator policy':{
-      ru:'Условия отмены',vi:'Chính sách hủy',en:'Cancellation policy',ko:'취소 정책',zh:'取消政策'
-    },
-    'English':{ru:'Английский',vi:'Tiếng Anh',en:'English',ko:'영어',zh:'英语'},
-    'Vietnamese':{ru:'Вьетнамский',vi:'Tiếng Việt',en:'Vietnamese',ko:'베트남어',zh:'越南语'},
-    'Russian':{ru:'Русский',vi:'Tiếng Nga',en:'Russian',ko:'러시아어',zh:'俄语'},
-    'Korean':{ru:'Корейский',vi:'Tiếng Hàn',en:'Korean',ko:'한국어',zh:'韩语'},
-    'Chinese':{ru:'Китайский',vi:'Tiếng Trung',en:'Chinese',ko:'중국어',zh:'中文'},
-    'Hotel name':{ru:'Название отеля',vi:'Tên khách sạn',en:'Hotel name',ko:'호텔 이름',zh:'酒店名称'},
-    'Room number':{ru:'Номер комнаты',vi:'Số phòng',en:'Room number',ko:'객실 번호',zh:'房间号'},
-    'Private transfer':{ru:'Индивидуальный трансфер',vi:'Xe đưa đón riêng',en:'Private transfer',ko:'프라이빗 픽업',zh:'私人接送'},
-    'Bring sunscreen':{ru:'Возьмите солнцезащитный крем',vi:'Mang theo kem chống nắng',en:'Bring sunscreen',ko:'선크림을 준비하세요',zh:'请携带防晒霜'},
-    'Nha Trang hotels':{ru:'Отели Нячанга',vi:'Khách sạn Nha Trang',en:'Nha Trang hotels',ko:'나트랑 호텔',zh:'芽庄酒店'},
-    'required':{ru:'обязательно',vi:'bắt buộc',en:'required',ko:'필수',zh:'必填'},
-    'WALKING':{ru:'Пешая доступность',vi:'Có thể đi bộ',en:'Walking access',ko:'도보 접근',zh:'步行可达'},
-    'индивидуальный':{ru:'индивидуальный',vi:'riêng',en:'private',ko:'프라이빗',zh:'私人'},
-    'групповой':{ru:'групповой',vi:'nhóm',en:'group',ko:'그룹',zh:'拼团'},
-    'available':{ru:'доступно',vi:'còn chỗ',en:'available',ko:'예약 가능',zh:'可预订'},
-    'full':{ru:'нет мест',vi:'hết chỗ',en:'sold out',ko:'매진',zh:'已满'}
-  };
-
-  const difficultyMap={
-    EASY:{ru:'Лёгкая',vi:'Dễ',en:'Easy',ko:'쉬움',zh:'简单'},
-    MODERATE:{ru:'Средняя',vi:'Trung bình',en:'Moderate',ko:'보통',zh:'中等'},
-    CHALLENGING:{ru:'Повышенная',vi:'Khó',en:'Challenging',ko:'어려움',zh:'较难'},
-    DIFFICULT:{ru:'Сложная',vi:'Khó',en:'Difficult',ko:'어려움',zh:'较难'},
-    HARD:{ru:'Сложная',vi:'Khó',en:'Hard',ko:'어려움',zh:'较难'}
-  };
-
-  const meetingMap={
-    MEET_ON_LOCATION:{ru:'Самостоятельно к месту начала',vi:'Tự đến điểm bắt đầu',en:'Arrive at the starting point',ko:'출발 지점으로 직접 이동',zh:'自行前往出发点'},
-    PICK_UP:{ru:'Трансфер из отеля',vi:'Đón tại khách sạn',en:'Hotel pickup',ko:'호텔 픽업',zh:'酒店接送'},
-    PICKUP:{ru:'Трансфер из отеля',vi:'Đón tại khách sạn',en:'Hotel pickup',ko:'호텔 픽업',zh:'酒店接送'},
-    MEET_ON_LOCATION_OR_PICK_UP:{ru:'Самостоятельно или трансфер из отеля',vi:'Tự đến hoặc đón tại khách sạn',en:'Independent arrival or hotel pickup',ko:'직접 이동 또는 호텔 픽업',zh:'自行前往或酒店接送'}
-  };
+  const providerKeys=Object.freeze({
+    'Standard Viator policy':'provider.policy.standard',
+    'Hotel name':'provider.field.hotelName',
+    'Room number':'provider.field.roomNumber',
+    'Private transfer':'provider.transfer.private',
+    'Bring sunscreen':'provider.notice.bringSunscreen',
+    'Nha Trang hotels':'provider.area.nhaTrangHotels',
+    'required':'provider.required',
+    'WALKING':'provider.accessibility.walking',
+    'available':'enum.availability.available',
+    'full':'enum.availability.full',
+    'индивидуальный':'enum.format.PRIVATE',
+    'групповой':'enum.format.GROUP'
+  });
 
   function locale(){
     const value=i18n()?.apiLocale?.();
@@ -192,7 +170,8 @@
   function providerText(value){
     const raw=String(value??'').trim();
     if(!raw) return raw;
-    return pick(exact[raw],raw);
+    const key=providerKeys[raw];
+    return key ? (i18n()?.t?.(key,{},{fallback:raw}) ?? raw) : raw;
   }
   function languageName(value){
     const raw=String(value??'').trim();
@@ -266,12 +245,13 @@
     };
     if('shortDescription' in next) next.shortDescription=dynamic?next.shortDescription:productDescription(id,next.shortDescription);
     if(Array.isArray(tour.route)){
-      const stopWord={ru:'Остановка',vi:'Điểm',en:'Stop',ko:'코스',zh:'第'}[locale()];
       next.route=tour.route.map((row,index)=>{
         const title=Array.isArray(row)?String(row[0]||''):String(row?.title||'');
         const fallbackBody=Array.isArray(row)?String(row[1]||''):String(row?.body||row?.description||'');
         const localizedBody=dynamic?fallbackBody:itineraryBody(id,index,fallbackBody);
-        const localizedTitle=/^Stop\s+\d+$/i.test(title)?stopWord+' '+(index+1):providerText(title);
+        const localizedTitle=/^Stop\s+\d+$/i.test(title)
+          ? (i18n()?.t?.('tour.stop',{index:index+1},{fallback:title}) ?? title)
+          : providerText(title);
         return Array.isArray(row)?[localizedTitle,localizedBody]:{...row,title:localizedTitle,body:localizedBody};
       });
     }
