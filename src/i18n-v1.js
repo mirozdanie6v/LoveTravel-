@@ -841,13 +841,23 @@
     translateNode(document.body);
     const observer = new MutationObserver(records => {
       patchTours();
-      records.forEach(record => record.addedNodes.forEach(node => {
-        if (node.nodeType === Node.ELEMENT_NODE) translateNode(node);
-        else if (node.nodeType === Node.TEXT_NODE && /[А-Яа-яЁё]/.test(node.nodeValue || '')) node.nodeValue = tr(node.nodeValue);
-      }));
+      records.forEach(record => {
+        if (record.type === 'characterData') {
+          const node = record.target;
+          if (node?.nodeType === Node.TEXT_NODE && /[А-Яа-яЁё]/.test(node.nodeValue || '')) {
+            const next = tr(node.nodeValue);
+            if (next !== node.nodeValue) node.nodeValue = next;
+          }
+          return;
+        }
+        record.addedNodes.forEach(node => {
+          if (node.nodeType === Node.ELEMENT_NODE) translateNode(node);
+          else if (node.nodeType === Node.TEXT_NODE && /[А-Яа-яЁё]/.test(node.nodeValue || '')) node.nodeValue = tr(node.nodeValue);
+        });
+      });
       renderSwitcher();
     });
-    observer.observe(document.body,{childList:true,subtree:true});
+    observer.observe(document.body,{childList:true,subtree:true,characterData:true});
     [80,250,700,1500].forEach(ms => setTimeout(refreshCurrentScreen, ms));
   }
 
