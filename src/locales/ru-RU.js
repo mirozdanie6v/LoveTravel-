@@ -263,6 +263,10 @@
   "catalog.city": "Nha Trang",
   "enum.format.GROUP": "групповой",
   "enum.format.PRIVATE": "индивидуальный",
-  "enum.format.UNKNOWN": ""
+  "enum.format.UNKNOWN": "",
+  "booking.timeCount.one": "{count} время",
+  "booking.timeCount.few": "{count} времени",
+  "booking.timeCount.many": "{count} времён",
+  "booking.timeCount.other": "{count} времени"
 });
 })();
