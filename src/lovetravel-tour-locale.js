@@ -277,7 +277,9 @@
   }
   function serverLocalizationMatches(value){
     const meta=value?.localization;
-    return Boolean(meta && meta.locale===locale() && meta.source==='bokun-native');
+    if(!meta || meta.locale!==locale()) return false;
+    if(meta.source==='bokun-native') return true;
+    return meta.source==='viiversion-cache' && Number(meta.pendingFields||0)===0;
   }
   function localizeCatalogTour(tour){
     if(!tour||typeof tour!=='object') return tour;
