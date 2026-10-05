@@ -18,6 +18,9 @@ jobs:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
+      - name: Checkout LoveTravel deployment scripts
+        uses: actions/checkout@v5
+
       - name: Checkout showreel deployment bridge
         uses: actions/checkout@v5
         with:
@@ -45,9 +48,8 @@ jobs:
           fi
 
       - name: Deploy encrypted showreel release
-        working-directory: bridge
         shell: bash
         run: |
           set -euo pipefail
           python -m pip install --quiet cryptography==46.0.5
-          python .github/scripts/deploy-showreel.py
+          python .github/scripts/deploy-showreel-v2.py
