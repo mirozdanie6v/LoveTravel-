@@ -263,6 +263,10 @@
   "catalog.city": "나트랑",
   "enum.format.GROUP": "그룹",
   "enum.format.PRIVATE": "프라이빗",
-  "enum.format.UNKNOWN": ""
+  "enum.format.UNKNOWN": "",
+  "booking.timeCount.one": "{count}개 시간",
+  "booking.timeCount.few": "{count}개 시간",
+  "booking.timeCount.many": "{count}개 시간",
+  "booking.timeCount.other": "{count}개 시간"
 });
 })();
