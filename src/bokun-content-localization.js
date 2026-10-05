@@ -188,14 +188,27 @@ async function ensureTable(env) {
           source_text TEXT NOT NULL,
           translated_text TEXT NOT NULL,
           provider TEXT NOT NULL DEFAULT 'workers-ai',
+          status TEXT NOT NULL DEFAULT 'current',
           created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
           updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
           PRIMARY KEY (product_id, locale, field_key)
         )
       `).run();
+      try {
+        await env.DB.prepare(`
+          ALTER TABLE bokun_content_localizations
+          ADD COLUMN status TEXT NOT NULL DEFAULT 'current'
+        `).run();
+      } catch (error) {
+        if (!/duplicate column|already exists/i.test(String(error?.message || error))) throw error;
+      }
       await env.DB.prepare(`
         CREATE INDEX IF NOT EXISTS idx_bokun_content_localizations_hash
         ON bokun_content_localizations(product_id, locale, source_hash)
+      `).run();
+      await env.DB.prepare(`
+        CREATE INDEX IF NOT EXISTS idx_bokun_content_localizations_status
+        ON bokun_content_localizations(product_id, locale, status)
       `).run();
       return true;
     })().catch(error => {
@@ -209,9 +222,9 @@ async function ensureTable(env) {
 async function cachedRows(env, productId, locale) {
   if (!await ensureTable(env)) return [];
   const result = await env.DB.prepare(`
-    SELECT field_key, source_hash, translated_text, provider
+    SELECT field_key, source_hash, translated_text, provider, status
     FROM bokun_content_localizations
-    WHERE product_id = ? AND locale = ?
+    WHERE product_id = ? AND locale = ? AND status = 'current'
   `).bind(String(productId), locale).all();
   return asArray(result?.results);
 }
@@ -296,19 +309,48 @@ async function translateChunk(env, locale, fields) {
   return translated;
 }
 
+function extractUrls(value) {
+  return [...String(value ?? '').matchAll(/https?:\/\/[^\s"'<>]+/gi)].map(match => match[0]).sort();
+}
+
+function extractNumbers(value) {
+  return [...String(value ?? '').matchAll(/\d+(?:[.,]\d+)?/g)].map(match => match[0].replace(',','.')).sort();
+}
+
+function extractTags(value) {
+  return [...String(value ?? '').matchAll(/<\/?[a-zA-Z0-9]+(?:\s[^>]*)?>/g)].map(match => match[0].replace(/\s+/g,' '));
+}
+
+function translationQuality(locale, field, candidate) {
+  const source=String(field?.source ?? '');
+  const value=String(candidate ?? '').trim();
+  if(!value) return {ok:false,reason:'empty'};
+  if(JSON.stringify(extractUrls(source))!==JSON.stringify(extractUrls(value))) return {ok:false,reason:'url_mismatch'};
+  if(JSON.stringify(extractNumbers(source))!==JSON.stringify(extractNumbers(value))) return {ok:false,reason:'number_mismatch'};
+  if(field?.kind==='html' && JSON.stringify(extractTags(source))!==JSON.stringify(extractTags(value))) return {ok:false,reason:'html_mismatch'};
+  if(locale==='zh' && (/[А-Яа-яЁё]/u.test(value)||/[가-힣]/u.test(value))) return {ok:false,reason:'wrong_script'};
+  if(locale==='ko' && /[А-Яа-яЁё]/u.test(value)) return {ok:false,reason:'wrong_script'};
+  if(locale==='ru' && /[가-힣\u3400-\u9FFF]/u.test(value)) return {ok:false,reason:'wrong_script'};
+  return {ok:true,reason:'approved'};
+}
+
 async function saveTranslations(env, productId, locale, fields, translated, provider = TRANSLATION_PROVIDER) {
   if (!await ensureTable(env)) return 0;
-  const rows = fields.filter(field => typeof translated[field.key] === 'string' && translated[field.key].trim());
+  const rows = fields.filter(field => {
+    const candidate=translated[field.key];
+    return typeof candidate === 'string' && translationQuality(locale,field,candidate).ok;
+  });
   if (!rows.length) return 0;
   const statements = rows.map(field => env.DB.prepare(`
     INSERT INTO bokun_content_localizations
-      (product_id, locale, field_key, source_hash, source_text, translated_text, provider, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      (product_id, locale, field_key, source_hash, source_text, translated_text, provider, status, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, 'current', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
     ON CONFLICT(product_id, locale, field_key) DO UPDATE SET
       source_hash=excluded.source_hash,
       source_text=excluded.source_text,
       translated_text=excluded.translated_text,
       provider=excluded.provider,
+      status='current',
       updated_at=CURRENT_TIMESTAMP
   `).bind(
     String(productId),
@@ -364,7 +406,7 @@ export async function syncDomainTranslations(domain, env, requestedLocale) {
   return promise;
 }
 
-export async function localizeDomainFromCache(domain, env, requestedLocale, ctx = null) {
+export async function localizeDomainFromCache(domain, env, requestedLocale, _ctx = null) {
   const locale = normalizeContentLocale(requestedLocale);
   const clone = structuredClone(domain);
   const productId = String(clone?.experience?.id || clone?.provider?.productId || '');
@@ -401,7 +443,6 @@ export async function localizeDomainFromCache(domain, env, requestedLocale, ctx 
     if (row && String(row.source_hash) === field.sourceHash && text(row.translated_text)) {
       pathSet(clone, field.path, row.translated_text);
       translatedFields += 1;
-      if (String(row.provider || '') !== TRANSLATION_PROVIDER) pendingFields += 1;
     } else {
       pendingFields += 1;
     }
@@ -417,12 +458,6 @@ export async function localizeDomainFromCache(domain, env, requestedLocale, ctx 
     translatedFields,
     pendingFields,
   };
-
-  if (pendingFields && env?.AI && env?.DB && ctx?.waitUntil) {
-    ctx.waitUntil(enqueueBackgroundSync(() => syncDomainTranslations(domain, env, locale)).catch(error => {
-      console.warn('Bókun localization background sync failed', error?.message || error);
-    }));
-  }
 
   return clone;
 }
@@ -455,4 +490,8 @@ export const _localizationTest = {
   parseJsonObject,
   chunks,
   enqueueBackgroundSync,
+  translationQuality,
+  extractUrls,
+  extractNumbers,
+  extractTags,
 };
