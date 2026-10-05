@@ -1,4 +1,5 @@
 name: Deploy LoveTravel production
+# multilingual production release 2026-10-05T15:20Z
 # localization quality release v2
 
 on:
