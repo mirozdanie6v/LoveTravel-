@@ -79,6 +79,28 @@
       selectDateFirst:'Hãy chọn ngày trước', selectOptionFirst:'Chọn chương trình', selectGuestsFirst:'Thêm khách',
       pickupRequired:'Chọn đón tại khách sạn hoặc tự đến', dropoff:'Đưa về sau tour', dropoffEmpty:'Chọn cách', dropoffMode:'Đưa tôi về sau tour', noDropoff:'Không cần đưa về', chooseDropoff:'Bạn có cần đưa về không?', chooseDropoffPlace:'Bạn muốn được đưa đến đâu?', dropoffPlace:'Điểm trả khách', searchDropoff:'Nhập khách sạn hoặc địa chỉ', customDropoff:'Địa chỉ trả khác', customDropoffAddress:'Địa chỉ trả khách', dropoffRequired:'Chọn đưa về hoặc không cần đưa về', contactRequired:'Điền thông tin liên hệ', yes:'Có', no:'Không'
     },
+    zh:{
+      title:'规划您的行程', live:'实时名额与价格来自运营商系统',
+      date:'日期和时间', dateEmpty:'选择日期', option:'方案', optionEmpty:'选择方案',
+      guests:'出行人', guestsEmpty:'添加出行人', pickup:'接送 / 自行前往', pickupEmpty:'选择方式', pickupHotelLabel:'酒店接送', startPointLabel:'自行前往',
+      meet:'自行前往出发点', pickupMode:'酒店接送', included:'已包含在价格中',
+      meetNote:'您需要自行前往指定的行程出发点，无需酒店接送。', pickupModeNote:'车辆会到您选择的酒店或上车点接您，无需自行前往出发点。',
+      total:'合计', from:'起', continue:'继续', check:'核对信息', ready:'配置已核对',
+      unavailable:'该组合不可用', updating:'正在检查实时数据…',
+      chooseDate:'选择日期', chooseTime:'选择时间', chooseOption:'选择行程方案',
+      chooseGuests:'添加出行人', choosePickup:'您希望如何前往？',
+      available:'个名额可用', spots:'个名额', adult:'成人', child:'儿童', infant:'婴儿',
+      years:'岁', close:'关闭', searchHotel:'输入酒店名称', searchHint:'开始输入酒店名称，我们会显示可用的接送点。',
+      pickupPlace:'酒店或接送点', chooseHotel:'请选择接送地点', enterRoom:'输入房间号', roomNeeded:'Bókun 在预订此接送点时要求填写房间号。', fillContact:'填写联系信息',
+      contact:'联系信息', firstName:'名字', lastName:'姓氏', phoneNumber:'电话', email:'Email',
+      verify:'核对', verified:'信息已核对', noPlaces:'未找到结果',
+      select:'选择', selected:'已选择', pricePerPerson:'每人', liveQuote:'价格已实时核对', onRequest:'需要运营商确认',
+      refreshError:'无法更新可用情况，请重试。', moreDates:'显示更多日期',
+      minGuests:'最少', maxGuests:'最多', noExtra:'目前没有附加服务', extras:'附加服务', extrasEmpty:'不添加', chooseExtras:'附加服务', extrasRequired:'请选择必选服务', passengerDetails:'出行人信息', passenger:'出行人', questions:'预订问题', additionalInfo:'补充信息', roomNumber:'房间号', save:'保存', customPickup:'其他地址', customPickupAddress:'接送地址',
+      bookingNotSent:'目前尚未向 Bókun 提交预订，此步骤用于核对配置。',
+      selectDateFirst:'请先选择日期', selectOptionFirst:'请选择方案', selectGuestsFirst:'请添加出行人',
+      pickupRequired:'请选择酒店接送或自行前往', dropoff:'返程接送', dropoffEmpty:'选择方式', dropoffMode:'行程结束后送我回去', noDropoff:'无需返程接送', chooseDropoff:'需要返程接送吗？', chooseDropoffPlace:'请选择送达地点', dropoffPlace:'下车地点', searchDropoff:'输入酒店或地址', customDropoff:'其他下车地址', customDropoffAddress:'下车地址', dropoffRequired:'请选择返程接送或无需接送', contactRequired:'请填写联系信息', yes:'是', no:'否'
+    },
     ko:{
       title:'여행 구성하기', live:'운영사 시스템의 실시간 좌석 및 가격',
       date:'날짜 및 시간', dateEmpty:'날짜 선택', option:'옵션', optionEmpty:'옵션 선택',
@@ -273,7 +295,7 @@
   function formatDate(iso,options={}){
     if(!iso) return '';
     const d=new Date(iso+'T12:00:00Z');
-    return new Intl.DateTimeFormat(locale()==='ru'?'ru-RU':locale()==='vi'?'vi-VN':locale()==='ko'?'ko-KR':'en-US',options).format(d);
+    return new Intl.DateTimeFormat(locale()==='ru'?'ru-RU':locale()==='vi'?'vi-VN':locale()==='ko'?'ko-KR':locale()==='zh'?'zh-CN':'en-US',options).format(d);
   }
   function guestLabel(item){
     const type=String(item?.ticketCategory||'').toUpperCase();
@@ -538,7 +560,7 @@
       return '<div class="lt-date-group"><h4>'+esc(formatDate(first,{month:'long',year:'numeric'}))+'</h4><div class="lt-date-grid">'+
         items.map(item=>{
           const active=item.date===s.date;
-          return '<button type="button" class="lt-date-chip '+(active?'is-active':'')+'" aria-pressed="'+(active?'true':'false')+'" '+(active?'aria-current="date" ':'')+'data-lt-date="'+esc(item.date)+'"><small>'+esc(formatDate(item.date,{weekday:'short'}))+'</small><b>'+esc(formatDate(item.date,{day:'numeric'}))+'</b><span>'+esc(Number(item.slots)===1 ? (locale()==='ru'?'1 время':locale()==='vi'?'1 giờ':locale()==='ko'?'시간 1개':'1 time') : String(item.slots)+' '+(locale()==='ru'?'времени':locale()==='vi'?'giờ':locale()==='ko'?'시간':'times'))+'</span></button>';
+          return '<button type="button" class="lt-date-chip '+(active?'is-active':'')+'" aria-pressed="'+(active?'true':'false')+'" '+(active?'aria-current="date" ':'')+'data-lt-date="'+esc(item.date)+'"><small>'+esc(formatDate(item.date,{weekday:'short'}))+'</small><b>'+esc(formatDate(item.date,{day:'numeric'}))+'</b><span>'+esc(Number(item.slots)===1 ? (locale()==='ru'?'1 время':locale()==='vi'?'1 giờ':locale()==='ko'?'시간 1개':locale()==='zh'?'1 个时间':'1 time') : String(item.slots)+' '+(locale()==='ru'?'времени':locale()==='vi'?'giờ':locale()==='ko'?'시간':locale()==='zh'?'个时间':'times'))+'</span></button>';
         }).join('')+'</div></div>';
     }).join('');
     const times=s.date?'<div class="lt-time-block"><h4>'+esc(t().chooseTime)+'</h4><div class="lt-time-grid">'+
