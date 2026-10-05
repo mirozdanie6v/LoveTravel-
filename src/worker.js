@@ -713,6 +713,12 @@ async function api(request, env, url) {
   if (url.pathname === '/api/health') return json({ ok:true, app:'max-tour-v28-standalone', database:'D1', env:env.APP_ENV || 'demo' });
   const adminResponse = await handleAdminApi(request, env, url);
   if (adminResponse) return adminResponse;
+  // LoveTravel AI is a read-only consultation path over the live Bókun catalogue.
+  // It must not depend on creating a D1 tourist session before it can answer.
+  if (url.pathname === '/api/ai/chat' && request.method === 'POST') {
+    const result = await generateAiReply(request, env, await bodyJson(request) || {});
+    return json({ ok:true, ...result });
+  }
   const session = await ensureSession(request, env);
   let response;
 
@@ -742,9 +748,6 @@ async function api(request, env, url) {
     response = result.error
       ? json({ ok:false, error:result.error }, { status: result.error === 'consultation_unavailable' ? 503 : 400 })
       : json({ ok:true, ...result }, { status: 201 });
-  } else if (url.pathname === '/api/ai/chat' && request.method === 'POST') {
-    const result = await generateAiReply(request, env, await bodyJson(request) || {});
-    response = json({ ok:true, ...result });
   } else if (url.pathname.startsWith('/api/bookings/') && request.method === 'PATCH') {
     const id = decodeURIComponent(url.pathname.slice('/api/bookings/'.length));
     const payload = await bodyJson(request) || {};
