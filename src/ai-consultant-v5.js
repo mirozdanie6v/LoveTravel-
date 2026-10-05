@@ -62,11 +62,11 @@
   function parseDate(text) {
     const q = lower(text);
     const today = vietnamTodayIso();
-    if (/(?:^|\s)(?:сегодня|hôm\s*nay|hom\s*nay|今天|今日)(?:\s|$|[,.!?，。！？])/.test(q)) return { value:today, flexible:false };
-    if (/завтра|ngày\s*mai|ngay\s*mai|明天/.test(q)) return { value:addIsoDays(today, 1), flexible:false };
-    if (/выходн|cuối\s*tuần|cuoi\s*tuan|周末/.test(q)) return { value:'Ближайшие выходные', flexible:true };
-    if (/в течение (?:ближайшей )?недел|через неделю|на неделе|trong\s*tuần\s*tới|tuan\s*toi|tuần\s*tới/.test(q)) return { value:'В течение ближайшей недели', flexible:true };
-    if (/дата гибк|неважно когда|дат[ау].*нет|по датам гибк|ngày\s*linh\s*hoạt|ngay\s*linh\s*hoat|không\s*quan\s*trọng\s*ngày|linh\s*hoạt\s*ngày|日期灵活|时间灵活|哪天都可以/.test(q)) return { value:'Дата гибкая', flexible:true };
+    if (/(?:^|\s)(?:сегодня|hôm\s*nay|hom\s*nay|今天|今日|오늘)(?:\s|$|[,.!?，。！？])/.test(q)) return { value:today, flexible:false };
+    if (/завтра|ngày\s*mai|ngay\s*mai|明天|내일/.test(q)) return { value:addIsoDays(today, 1), flexible:false };
+    if (/выходн|cuối\s*tuần|cuoi\s*tuan|周末|주말/.test(q)) return { value:ui().flexible, flexible:true };
+    if (/в течение (?:ближайшей )?недел|через неделю|на неделе|trong\s*tuần\s*tới|tuan\s*toi|tuần\s*tới|다음\s*주|이번\s*주|일주일\s*안|未来一周|这周|下周/.test(q)) return { value:ui().flexible, flexible:true };
+    if (/дата гибк|неважно когда|дат[ау].*нет|по датам гибк|ngày\s*linh\s*hoạt|ngay\s*linh\s*hoat|không\s*quan\s*trọng\s*ngày|linh\s*hoạt\s*ngày|日期灵活|时间灵活|哪天都可以|날짜.*유동|언제든|아무\s*날/.test(q)) return { value:ui().flexible, flexible:true };
 
     const numeric = q.match(/(?:^|[^\d])(\d{1,2})[./-](\d{1,2})(?:[./-](\d{2,4}))?(?:[^\d]|$)/);
     if (numeric) return { ...buildIso(numeric[1], numeric[2], numeric[3]), flexible:false };
@@ -81,7 +81,7 @@
 
   function destinationAlias(text) {
     const q = lower(text);
-    if (/нячанг|на-?чанг|nha\s*trang/.test(q)) return 'Нячанг';
+    if (/нячанг|на-?чанг|nha\s*trang|芽庄|나트랑/.test(q)) return 'Нячанг';
     if (/дананг|да-?нанг|đà\s*nẵng|da\s*nang/.test(q)) return 'Дананг';
     if (/фукуок|фу-?куок|phú\s*quốc|phu\s*quoc/.test(q)) return 'Фукуок';
     if (/ханой|hà\s*nội|ha\s*noi/.test(q)) return 'Ханой';
@@ -120,16 +120,20 @@
     const zhAdults = Number((q.match(/(\d+)\s*(?:位|个)?\s*成人/) || [])[1] || 0);
     const zhChildren = Number((q.match(/(\d+)\s*(?:位|个)?\s*(?:儿童|孩子|小孩)/) || [])[1] || 0);
     const zhInfants = Number((q.match(/(\d+)\s*(?:位|个)?\s*(?:婴儿|宝宝)/) || [])[1] || 0);
-    const explicitAdults = countBefore(q, 'взросл|совершеннолет|родител') || viAdults || zhAdults;
-    const explicitChildren = countBefore(q, 'дет(?:ей|и)?|ребен(?:ок|ка)?') || viChildren || zhChildren;
-    const explicitInfants = countBefore(q, 'малыш|младен|груднич') || viInfants || zhInfants;
+    const koAdults = Number((q.match(/(\d+)\s*(?:명|분)?\s*(?:성인|어른)/) || [])[1] || 0);
+    const koChildren = Number((q.match(/(\d+)\s*(?:명)?\s*(?:아동|어린이|아이)/) || [])[1] || 0);
+    const koInfants = Number((q.match(/(\d+)\s*(?:명)?\s*(?:유아|영아|아기)/) || [])[1] || 0);
+    const explicitAdults = countBefore(q, 'взросл|совершеннолет|родител') || viAdults || zhAdults || koAdults;
+    const explicitChildren = countBefore(q, 'дет(?:ей|и)?|ребен(?:ок|ка)?') || viChildren || zhChildren || koChildren;
+    const explicitInfants = countBefore(q, 'малыш|младен|груднич') || viInfants || zhInfants || koInfants;
     const totalMatch = q.match(new RegExp(`(?:нас|едем|поедем|всего|семья(?: из)?|группа(?: из)?|на|для)\\s*(\\d+|${Object.keys(PARTY_WORDS).join('|')})`, 'i'));
     const viTotalMatch = q.match(/(?:chúng\s*tôi|chung\s*toi|gia\s*đình|gia\s*dinh|tổng\s*cộng|tong\s*cong|nhóm|nhom)\s*(?:có\s*)?(\d+)\s*(?:người|nguoi)?/);
     const zhTotalMatch = q.match(/(?:我们|一共|总共|共)\s*(\d+)\s*(?:人|位)?/);
-    const total = totalMatch ? numberWord(totalMatch[1]) : Number(viTotalMatch?.[1] || zhTotalMatch?.[1] || 0);
-    const ages = [...q.matchAll(/(\d{1,2})\s*(?:лет|года|год|tuổi|tuoi|岁)/g)].map(item => Number(item[1])).filter(age => age >= 3 && age <= 17).slice(0, 12);
-    const hasChild = /дет|ребен|trẻ\s*em|tre\s*em|\bbé\b|\bbe\b|儿童|孩子|小孩/.test(q);
-    const hasNoChildren = /без\s+дет|дет(?:ей|и)?\s+нет|không\s*có\s*trẻ|khong\s*co\s*tre|没有孩子|无儿童/.test(q);
+    const koTotalMatch = q.match(/(?:저희|우리|총|모두)\s*(?:는|가)?\s*(\d+)\s*(?:명|분)?/);
+    const total = totalMatch ? numberWord(totalMatch[1]) : Number(viTotalMatch?.[1] || zhTotalMatch?.[1] || koTotalMatch?.[1] || 0);
+    const ages = [...q.matchAll(/(\d{1,2})\s*(?:лет|года|год|tuổi|tuoi|岁|세)/g)].map(item => Number(item[1])).filter(age => age >= 3 && age <= 17).slice(0, 12);
+    const hasChild = /дет|ребен|trẻ\s*em|tre\s*em|\bbé\b|\bbe\b|儿童|孩子|小孩|아동|어린이|아이/.test(q);
+    const hasNoChildren = /без\s+дет|дет(?:ей|и)?\s+нет|không\s*có\s*trẻ|khong\s*co\s*tre|没有孩子|无儿童|아이\s*없|어린이\s*없|아동\s*없/.test(q);
     let children = hasNoChildren ? [] : (hasChild ? (ages.length ? ages : Array.from({ length:explicitChildren || 1 }, () => 8)) : current.children);
     let infants = explicitInfants || current.infants;
     let adults = explicitAdults || current.adults;
