@@ -271,6 +271,16 @@
   "nav.home": "首页",
   "nav.catalog": "行程",
   "nav.trips": "我的行程",
-  "nav.ai": "AI 顾问"
+  "nav.ai": "AI 顾问",
+  "provider.policy.standard": "取消政策",
+  "provider.field.hotelName": "酒店名称",
+  "provider.field.roomNumber": "房间号",
+  "provider.transfer.private": "私人接送",
+  "provider.notice.bringSunscreen": "请携带防晒霜",
+  "provider.area.nhaTrangHotels": "芽庄酒店",
+  "provider.required": "必填",
+  "provider.accessibility.walking": "步行可达",
+  "enum.availability.available": "可预订",
+  "enum.availability.full": "已满"
 });
 })();
