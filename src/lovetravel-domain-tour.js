@@ -88,283 +88,18 @@
     }
   });
 
-  const copy = {
-    ru:{
-      back:'Назад к экскурсиям',
-      live:'Данные из системы туроператора',
-      duration:'Длительность',
-      languages:'Языки',
-      description:'Об экскурсии',
-      option:'Вариант экскурсии',
-      optionHint:'Цена и доступность зависят от выбранного варианта.',
-      from:'от',
-      availableDates:'Доступные даты',
-      available:'мест доступно',
-      unlimited:'места доступны',
-      soldOut:'Нет мест',
-      select:'Выбрать',
-      selected:'Выбрано',
-      participants:'Цены по участникам',
-      meeting:'Место начала экскурсии',
-      meetingNote:'Только если вы добираетесь самостоятельно. При трансфере из отеля сюда ехать не нужно.',
-      pickup:'Трансфер из отеля',
-      selectedPickup:'Вас заберут отсюда',
-      pickupOptional:'по выбору',
-      pickupRequired:'обязательный',
-      pickupUnavailable:'не предусмотрен',
-      includedInPrice:'включён в цену',
-      itinerary:'Информация о программе',
-      itineraryHint:'Пункты ниже переданы в описании продукта. Вариант экскурсии выбирается отдельно выше.',
-      included:'Включено',
-      excluded:'Не включено',
-      conditions:'Условия отмены',
-      within:'Менее чем за',
-      hours:'ч',
-      fee:'удержание',
-      earlier:'При более ранней отмене',
-      noFee:'без удержания',
-      extras:'Дополнительные услуги',
-      bookingInfo:'Данные для бронирования',
-      questions:'Дополнительные вопросы',
-      customerFields:'Контактные данные',
-      passengerFields:'Данные пассажиров',
-      requirements:'Важно знать',
-      accessibility:'Доступность', confirmation:'Подтверждение', onRequest:'После подтверждения туроператором', video:'Видео', difficulty:'Сложность', minAge:'Минимальный возраст', reviews:'Отзывы', passport:'Требуется паспорт', currencies:'Валюты оплаты', offers:'Предложения', pickupTiming:'Время подачи', minutesBefore:'мин до начала',
-      priceFor:'Цена для выбранной даты',
-      chooseDate:'Выберите дату',
-      loading:'Загружаем актуальные данные…',
-      loadError:'Не удалось загрузить данные экскурсии. Попробуйте ещё раз.',
-      retry:'Повторить',
-      adult:'Взрослый',
-      child:'Ребёнок',
-      infant:'Младенец',
-      rateUnavailable:'Нет доступных дат для этого варианта',
-      bookNow:'Забронировать', selectedOption:'Выбранный вариант',
-      tourPhotos:'Фотографии тура', previousPhoto:'Предыдущее фото', nextPhoto:'Следующее фото', closePhoto:'Закрыть фото', photoOfTour:'Фото экскурсии'
-    },
-    en:{
-      back:'Back to tours',
-      live:'Live operator data',
-      duration:'Duration',
-      languages:'Languages',
-      description:'About this tour',
-      option:'Tour option',
-      optionHint:'Price and availability depend on the selected option.',
-      from:'from',
-      availableDates:'Available dates',
-      available:'spots available',
-      unlimited:'availability open',
-      soldOut:'Sold out',
-      select:'Select',
-      selected:'Selected',
-      participants:'Participant prices',
-      meeting:'Tour starting point',
-      meetingNote:'Only for guests arriving independently. If you choose hotel pickup, you do not need to travel here.',
-      pickup:'Hotel pickup',
-      selectedPickup:'You will be picked up here',
-      pickupOptional:'optional',
-      pickupRequired:'required',
-      pickupUnavailable:'not available',
-      includedInPrice:'included in price',
-      itinerary:'Program information',
-      itineraryHint:'These items come from the product description. Choose the tour option separately above.',
-      included:'Included',
-      excluded:'Excluded',
-      conditions:'Cancellation policy',
-      within:'Less than',
-      hours:'h',
-      fee:'charge',
-      earlier:'Earlier cancellation',
-      noFee:'no charge',
-      extras:'Extras',
-      bookingInfo:'Booking information',
-      questions:'Additional questions',
-      customerFields:'Contact details',
-      passengerFields:'Passenger details',
-      requirements:'Important information',
-      accessibility:'Accessibility', confirmation:'Confirmation', onRequest:'After operator confirmation', video:'Video', difficulty:'Difficulty', minAge:'Minimum age', reviews:'Reviews', passport:'Passport required', currencies:'Payment currencies', offers:'Offers', pickupTiming:'Pickup timing', minutesBefore:'min before start',
-      priceFor:'Price for selected date',
-      chooseDate:'Choose a date',
-      loading:'Loading current availability…',
-      loadError:'Could not load the tour data. Please try again.',
-      retry:'Retry',
-      adult:'Adult',
-      child:'Child',
-      infant:'Infant',
-      rateUnavailable:'No available dates for this option',
-      bookNow:'Book now', selectedOption:'Selected option',
-      tourPhotos:'Tour photos', previousPhoto:'Previous photo', nextPhoto:'Next photo', closePhoto:'Close photo', photoOfTour:'Tour photo'
-    },
-    vi:{
-      back:'Quay lại danh sách tour',
-      live:'Dữ liệu trực tiếp từ hệ thống',
-      duration:'Thời lượng',
-      languages:'Ngôn ngữ',
-      description:'Giới thiệu tour',
-      option:'Lựa chọn tour',
-      optionHint:'Giá và chỗ trống phụ thuộc vào lựa chọn.',
-      from:'từ',
-      availableDates:'Ngày còn chỗ',
-      available:'chỗ còn trống',
-      unlimited:'còn chỗ',
-      soldOut:'Hết chỗ',
-      select:'Chọn',
-      selected:'Đã chọn',
-      participants:'Giá theo khách',
-      meeting:'Điểm bắt đầu tour',
-      meetingNote:'Chỉ dành cho khách tự đến. Nếu chọn đón tại khách sạn, bạn không cần tự đến điểm này.',
-      pickup:'Đón tại khách sạn',
-      selectedPickup:'Xe sẽ đón bạn tại đây',
-      pickupOptional:'tùy chọn',
-      pickupRequired:'bắt buộc',
-      pickupUnavailable:'không áp dụng',
-      includedInPrice:'đã gồm trong giá',
-      itinerary:'Thông tin chương trình',
-      itineraryHint:'Các nội dung dưới đây đến từ mô tả sản phẩm. Lựa chọn tour được chọn riêng ở trên.',
-      included:'Bao gồm',
-      excluded:'Không bao gồm',
-      conditions:'Chính sách hủy',
-      within:'Dưới',
-      hours:'giờ',
-      fee:'phí',
-      earlier:'Hủy sớm hơn',
-      noFee:'không tính phí',
-      extras:'Dịch vụ thêm',
-      bookingInfo:'Thông tin đặt tour',
-      questions:'Câu hỏi bổ sung',
-      customerFields:'Thông tin liên hệ',
-      passengerFields:'Thông tin hành khách',
-      requirements:'Thông tin quan trọng',
-      accessibility:'Khả năng tiếp cận', confirmation:'Xác nhận', onRequest:'Sau khi nhà điều hành xác nhận', video:'Video', difficulty:'Độ khó', minAge:'Tuổi tối thiểu', reviews:'Đánh giá', passport:'Cần hộ chiếu', currencies:'Tiền tệ thanh toán', offers:'Ưu đãi', pickupTiming:'Thời gian đón', minutesBefore:'phút trước giờ bắt đầu',
-      priceFor:'Giá cho ngày đã chọn',
-      chooseDate:'Chọn ngày',
-      loading:'Đang tải dữ liệu mới nhất…',
-      loadError:'Không thể tải dữ liệu tour. Vui lòng thử lại.',
-      retry:'Thử lại',
-      adult:'Người lớn',
-      child:'Trẻ em',
-      infant:'Em bé',
-      rateUnavailable:'Không có ngày trống cho lựa chọn này',
-      bookNow:'Đặt ngay', selectedOption:'Lựa chọn đã chọn',
-      tourPhotos:'Ảnh tour', previousPhoto:'Ảnh trước', nextPhoto:'Ảnh tiếp theo', closePhoto:'Đóng ảnh', photoOfTour:'Ảnh tour'
-    },
-    zh:{
-      back:'返回行程列表',
-      live:'旅行社实时数据',
-      duration:'时长',
-      languages:'语言',
-      description:'行程介绍',
-      option:'行程方案',
-      optionHint:'价格和可订情况取决于所选方案。',
-      from:'起',
-      availableDates:'可订日期',
-      available:'个名额可订',
-      unlimited:'可预订',
-      soldOut:'已售罄',
-      select:'选择',
-      selected:'已选择',
-      participants:'按出行人计价',
-      meeting:'行程集合地点',
-      meetingNote:'仅适用于自行前往的客人。若选择酒店接送，无需自行前往此处。',
-      pickup:'酒店接送',
-      selectedPickup:'将在此处接您',
-      pickupOptional:'可选',
-      pickupRequired:'必选',
-      pickupUnavailable:'不提供',
-      includedInPrice:'已含在价格内',
-      itinerary:'行程安排',
-      itineraryHint:'以下内容来自产品说明；具体行程方案请在上方单独选择。',
-      included:'费用包含',
-      excluded:'费用不含',
-      conditions:'取消政策',
-      within:'少于',
-      hours:'小时',
-      fee:'手续费',
-      earlier:'更早取消',
-      noFee:'免手续费',
-      extras:'附加服务',
-      bookingInfo:'预订信息',
-      questions:'附加问题',
-      customerFields:'联系信息',
-      passengerFields:'出行人信息',
-      requirements:'重要须知',
-      accessibility:'无障碍信息', confirmation:'确认方式', onRequest:'旅行社确认后', video:'视频', difficulty:'难度', minAge:'最低年龄', reviews:'评价', passport:'需要护照', currencies:'支付币种', offers:'可选项目', pickupTiming:'接送时间', minutesBefore:'分钟前',
-      priceFor:'所选日期价格',
-      chooseDate:'选择日期',
-      loading:'正在加载最新可订信息…',
-      loadError:'无法加载行程数据，请重试。',
-      retry:'重试',
-      adult:'成人',
-      child:'儿童',
-      infant:'婴儿',
-      rateUnavailable:'此方案暂无可订日期',
-      bookNow:'立即预订', selectedOption:'已选方案',
-      tourPhotos:'行程照片', previousPhoto:'上一张', nextPhoto:'下一张', closePhoto:'关闭照片', photoOfTour:'行程照片'
-    },
-    ko:{
-      back:'투어 목록으로',
-      live:'운영사 실시간 데이터',
-      duration:'소요 시간',
-      languages:'언어',
-      description:'투어 소개',
-      option:'투어 옵션',
-      optionHint:'선택한 옵션에 따라 가격과 예약 가능 여부가 달라집니다.',
-      from:'최저',
-      availableDates:'예약 가능 날짜',
-      available:'자리 남음',
-      unlimited:'예약 가능',
-      soldOut:'매진',
-      select:'선택',
-      selected:'선택됨',
-      participants:'인원별 가격',
-      meeting:'투어 출발 지점',
-      meetingNote:'직접 이동하는 경우에만 해당합니다. 호텔 픽업을 선택하면 이곳으로 직접 갈 필요가 없습니다.',
-      pickup:'호텔 픽업',
-      selectedPickup:'여기에서 픽업합니다',
-      pickupOptional:'선택 가능',
-      pickupRequired:'필수',
-      pickupUnavailable:'제공되지 않음',
-      includedInPrice:'가격에 포함',
-      itinerary:'프로그램 정보',
-      itineraryHint:'아래 내용은 상품 설명에 포함된 정보입니다. 투어 옵션은 위에서 별도로 선택합니다.',
-      included:'포함 사항',
-      excluded:'불포함 사항',
-      conditions:'취소 정책',
-      within:'이내',
-      hours:'시간',
-      fee:'수수료',
-      earlier:'그보다 일찍 취소',
-      noFee:'수수료 없음',
-      extras:'추가 옵션',
-      bookingInfo:'예약 정보',
-      questions:'추가 질문',
-      customerFields:'연락처 정보',
-      passengerFields:'탑승객 정보',
-      requirements:'중요 안내',
-      accessibility:'접근성', confirmation:'확인', onRequest:'운영사 확인 후', video:'동영상', difficulty:'난이도', minAge:'최소 연령', reviews:'리뷰', passport:'여권 필요', currencies:'결제 통화', offers:'제공 옵션', pickupTiming:'픽업 시간', minutesBefore:'분 전',
-      priceFor:'선택 날짜 가격',
-      chooseDate:'날짜 선택',
-      loading:'최신 정보를 불러오는 중…',
-      loadError:'투어 정보를 불러오지 못했습니다. 다시 시도해 주세요.',
-      retry:'다시 시도',
-      adult:'성인',
-      child:'아동',
-      infant:'유아',
-      rateUnavailable:'이 옵션에 예약 가능한 날짜가 없습니다',
-      bookNow:'지금 예약', selectedOption:'선택한 옵션',
-      tourPhotos:'투어 사진', previousPhoto:'이전 사진', nextPhoto:'다음 사진', closePhoto:'사진 닫기', photoOfTour:'투어 사진'
+  const i18n=()=>globalThis.LoveTravelI18n || null;
+  const tourCopy=new Proxy(Object.create(null),{
+    get(_target,key){
+      if(typeof key!=='string') return undefined;
+      return i18n()?.t?.('tour.'+key) ?? '⟦tour.'+key+'⟧';
     }
-  };
+  });
 
   function locale() {
-    const localized=globalThis.LoveTravelTourLocale?.locale?.();
-    if(localized&&copy[localized]) return localized;
-    const stored=String(localStorage.getItem('max-tour-locale-v1')||'').toLowerCase();
-    if(copy[stored]) return stored;
-    const html=String(document.documentElement.lang||'').toLowerCase();
-    return copy[html]?html:'ru';
+    return i18n()?.apiLocale?.() || globalThis.LoveTravelTourLocale?.locale?.() || 'ru';
   }
-  function t(){ return copy[locale()]; }
+  function t(){ return tourCopy; }
   function l10n(){ return globalThis.LoveTravelTourLocale || null; }
   function providerText(value){ return l10n()?.providerText?.(value) ?? String(value ?? ''); }
   function serverLocalized(domain){ return Boolean(l10n()?.serverLocalizationMatches?.(domain)); }
@@ -405,8 +140,530 @@
   function money(value){
     if(!value || !Number.isFinite(Number(value.amount))) return '';
     const amount=Number(value.amount);
-    const rounded=Number.isInteger(amount) ? String(amount) : String(Number(amount.toFixed(2)));
-    return value.currency === 'USD' ? '$'+rounded : rounded+' '+String(value.currency || '');
+    const currency=String(value.currency||'USD');
+    return i18n()?.formatCurrency?.(amount,currency) ?? (currency==='USD'?'
+  function categoryLabel(item){
+    const type=String(item?.ticketCategory || '').toUpperCase();
+    if(type==='ADULT') return t().adult;
+    if(type==='CHILD') return t().child;
+    if(type==='INFANT') return t().infant;
+    return providerText(item?.title || type || '—');
+  }
+  function ageLabel(item){
+    const min=Number(item?.minAge), max=Number(item?.maxAge);
+    return Number.isFinite(min)&&Number.isFinite(max)
+      ? (l10n()?.ageRange?.(min,max) ?? (min+'–'+max))
+      : '';
+  }
+  function fieldLabel(value){
+    const labels={
+      FIRSTNAME:{ru:'Имя',en:'First name',vi:'Tên',ko:'이름',zh:'名字'},
+      LASTNAME:{ru:'Фамилия',en:'Last name',vi:'Họ',ko:'성',zh:'姓氏'},
+      PHONE:{ru:'Телефон',en:'Phone',vi:'Điện thoại',ko:'전화번호',zh:'电话'},
+      PHONENUMBER:{ru:'Телефон',en:'Phone',vi:'Điện thoại',ko:'전화번호',zh:'电话'},
+      EMAIL:{ru:'Email',en:'Email',vi:'Email',ko:'이메일',zh:'电子邮箱'}
+    };
+    const key=String(value||'').replace(/[^a-z0-9]/gi,'').toUpperCase();
+    return labels[key]?.[locale()] || providerText(String(value || '').replaceAll('_',' ').toLowerCase());
+  }
+  function quoteFor(slot,rateId){
+    return arr(slot?.priceQuotesByRate).find(item=>String(item?.rateId)===String(rateId)) || null;
+  }
+  function priceFor(slot,rateId,categoryId){
+    const quote=quoteFor(slot,rateId);
+    return arr(quote?.participantPrices).find(item=>String(item?.categoryId)===String(categoryId))?.amount || null;
+  }
+  function rateAvailable(slot,rateId){
+    return Boolean(quoteFor(slot,rateId)) || arr(slot?.rates).some(rate=>String(rate?.id)===String(rateId));
+  }
+  function firstAdult(domain){
+    return arr(domain?.participants).find(item=>String(item?.ticketCategory).toUpperCase()==='ADULT') || arr(domain?.participants)[0] || null;
+  }
+  function ratePrice(domain,rate){
+    const adult=firstAdult(domain);
+    const slot=arr(domain?.availabilitySlots).find(s=>!s.soldOut&&!s.unavailable&&rateAvailable(s,rate.id));
+    return slot && adult ? priceFor(slot,rate.id,adult.id) : null;
+  }
+  function selectedState(domain){
+    let state=selectionByProduct.get(String(domain.experience.id));
+    if(!state){
+      const firstSlot=arr(domain.availabilitySlots).find(s=>!s.soldOut&&!s.unavailable) || arr(domain.availabilitySlots)[0] || null;
+      const rateId=firstSlot?.defaultRateId ?? arr(domain.rates)[0]?.id ?? null;
+      const slot=arr(domain.availabilitySlots).find(s=>!s.soldOut&&!s.unavailable&&rateAvailable(s,rateId)) || firstSlot;
+      state={rateId,slotId:slot?.id || null};
+      selectionByProduct.set(String(domain.experience.id),state);
+    }
+    return state;
+  }
+  function selectedRate(domain,state){
+    return arr(domain.rates).find(rate=>String(rate.id)===String(state.rateId)) || arr(domain.rates)[0] || null;
+  }
+  function selectedSlot(domain,state){
+    return arr(domain.availabilitySlots).find(slot=>String(slot.id)===String(state.slotId)) || null;
+  }
+  function pickupText(rate,domain){
+    const selection=String(rate?.pickup?.selectionType || '').toUpperCase();
+    const pricing=String(rate?.pickup?.pricingType || '').toUpperCase();
+    if(!domain?.experience?.pickup?.enabled && !selection) return '';
+    const mode=selection==='OPTIONAL' ? t().pickupOptional : selection==='REQUIRED' ? t().pickupRequired : selection==='UNAVAILABLE' ? t().pickupUnavailable : selection.toLowerCase();
+    const included=pricing==='INCLUDED_IN_PRICE' ? ' · '+t().includedInPrice : '';
+    return [mode,included].join('');
+  }
+  function cancellationRows(policy){
+    const rules=arr(policy?.penaltyRules).filter(rule=>Number.isFinite(Number(rule?.cutoffHours))&&Number.isFinite(Number(rule?.percentage ?? rule?.charge)));
+    if(!rules.length) return '';
+    return rules.map(rule=>{
+      const pct=Number.isFinite(Number(rule.percentage)) ? Number(rule.percentage) : Number(rule.charge);
+      const hours=Number(rule.cutoffHours);
+      if(pct===0) return '<div class="lt-domain-rule"><span>'+esc(t().earlier)+'</span><b>'+esc(t().noFee)+'</b></div>';
+      return '<div class="lt-domain-rule"><span>'+esc(t().within)+' '+esc(hours)+' '+esc(t().hours)+'</span><b>'+esc(pct)+'% '+esc(t().fee)+'</b></div>';
+    }).join('');
+  }
+  function galleryPhotos(domain){
+    return arr(domain?.experience?.media?.photos).filter(photo=>photo?.url);
+  }
+  function uniqueGalleryPhotos(domain){
+    const seen=new Set();
+    return galleryPhotos(domain).filter(photo=>{
+      const key=String(photo.url||'');
+      if(!key||seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+  function currentGalleryIndex(domain){
+    const productId=String(domain?.experience?.id||'');
+    const photos=galleryPhotos(domain);
+    const stored=Number(galleryIndexByProduct.get(productId)||0);
+    return photos.length ? Math.max(0,Math.min(photos.length-1,stored)) : 0;
+  }
+  function photoGallery(domain){
+    const photos=galleryPhotos(domain);
+    if(!photos.length) return '';
+    const index=currentGalleryIndex(domain);
+    const hero=photos[index];
+    const title=localizedProductTitle(domain);
+    return '<section class="lt-domain-gallery" data-lt-gallery>'+
+      '<div class="lt-domain-gallery__headline"><span>'+esc(t().tourPhotos)+'</span><b data-lt-gallery-count>'+(index+1)+' / '+photos.length+'</b></div>'+
+      '<div class="lt-domain-gallery__stage">'+
+        '<button class="lt-domain-gallery__hero" type="button" data-lt-gallery-open="'+index+'" aria-label="'+esc(t().photoOfTour)+' '+(index+1)+'">'+
+          '<img data-lt-gallery-hero src="'+esc(hero.url)+'" alt="'+esc(title)+' · '+esc(t().photoOfTour)+' '+(index+1)+'">'+
+        '</button>'+
+        (photos.length>1?'<button type="button" class="lt-domain-gallery__nav is-prev" data-lt-gallery-prev aria-label="'+esc(t().previousPhoto)+'">‹</button><button type="button" class="lt-domain-gallery__nav is-next" data-lt-gallery-next aria-label="'+esc(t().nextPhoto)+'">›</button>':'')+
+      '</div>'+
+      '<div class="lt-domain-gallery__strip" aria-label="'+esc(t().tourPhotos)+'">'+
+        photos.map((photo,photoIndex)=>'<button type="button" class="lt-domain-gallery__thumb '+(photoIndex===index?'is-active':'')+'" data-lt-gallery-thumb="'+photoIndex+'" aria-label="'+esc(t().photoOfTour)+' '+(photoIndex+1)+'"><img loading="lazy" src="'+esc(photo.url)+'" alt="'+esc(title)+' · '+esc(t().photoOfTour)+' '+(photoIndex+1)+'"></button>').join('')+
+      '</div>'+
+    '</section>';
+  }
+  function rateDescription(domain,rate){
+    const direct=[
+      rate?.description,
+      ...arr(rate?.details).map(item=>item?.description||item?.title||''),
+      ...arr(rate?.textItems).map(item=>item?.description||item?.title||''),
+    ].map(value=>providerText(String(value||'').trim())).filter(Boolean);
+    if(direct.length) return [...new Set(direct)].join(' · ');
+    const curated=RATE_PRESENTATION[String(rate?.id||'')];
+    return curated?.[locale()] || curated?.en || '';
+  }
+  function ratePhotos(domain,rateIndex){
+    const photos=uniqueGalleryPhotos(domain);
+    if(!photos.length) return [];
+    if(photos.length===1) return [photos[0]];
+    const start=(rateIndex*2+1)%photos.length;
+    const result=[];
+    for(let offset=0;offset<photos.length && result.length<2;offset+=1){
+      const photo=photos[(start+offset)%photos.length];
+      if(photo&&!result.some(item=>item.url===photo.url)) result.push(photo);
+    }
+    return result;
+  }
+  function rateCards(domain,state){
+    const rates=arr(domain.rates);
+    if(!rates.length) return '';
+    return '<section class="lt-domain-section lt-domain-section--options"><div class="lt-domain-section__head"><div><span class="lt-domain-eyebrow">'+esc(t().option)+'</span><p>'+esc(t().optionHint)+'</p></div></div>'+
+      '<div class="lt-domain-rates">'+rates.map((rate,rateIndex)=>{
+        const active=String(rate.id)===String(state.rateId);
+        const price=ratePrice(domain,rate);
+        const description=rateDescription(domain,rate);
+        const photos=ratePhotos(domain,rateIndex);
+        return '<button type="button" class="lt-domain-rate '+(active?'is-active':'')+'" data-lt-domain-rate="'+esc(rate.id)+'" aria-pressed="'+(active?'true':'false')+'">'+
+          (photos.length?'<span class="lt-domain-rate__media">'+photos.map((photo,index)=>'<img loading="lazy" src="'+esc(photo.url)+'" alt="'+esc(localizedRateTitle(domain,rate))+' · '+esc(t().photoOfTour)+' '+(index+1)+'">').join('')+'</span>':'')+
+          '<span class="lt-domain-rate__body">'+
+            '<span class="lt-domain-rate__top"><span class="lt-domain-rate__check">'+(active?'✓':'')+'</span><span class="lt-domain-rate__title">'+esc(localizedRateTitle(domain,rate))+'</span><span class="lt-domain-rate__price">'+(price?'<small>'+esc(t().from)+'</small><strong>'+esc(money(price))+'</strong>':'')+'</span></span>'+
+            (description?'<span class="lt-domain-rate__description">'+esc(description)+'</span>':'')+
+            '<span class="lt-domain-rate__action">'+esc(active?t().selected:t().select)+' →</span>'+
+          '</span>'+
+        '</button>';
+      }).join('')+'</div></section>';
+  }
+  function availabilityCards(domain,state){
+    const slots=arr(domain.availabilitySlots).filter(slot=>rateAvailable(slot,state.rateId));
+    if(!slots.length) return '<section class="lt-domain-section"><div class="lt-domain-empty">'+esc(t().rateUnavailable)+'</div></section>';
+    return '<section class="lt-domain-section"><div class="lt-domain-section__head"><span class="lt-domain-eyebrow">'+esc(t().availableDates)+'</span></div>'+
+      '<div class="lt-domain-dates">'+slots.map(slot=>{
+        const active=String(slot.id)===String(state.slotId);
+        const unavailable=slot.soldOut||slot.unavailable||(!slot.unlimitedAvailability&&Number(slot.availabilityCount)<=0);
+        const adult=firstAdult(domain);
+        const price=adult ? priceFor(slot,state.rateId,adult.id) : null;
+        const count=Number(slot.availabilityCount);
+        const availability=slot.unlimitedAvailability ? t().unlimited : unavailable ? t().soldOut : Number.isFinite(count) ? Math.max(0,count)+' '+t().available : t().unlimited;
+        return '<button type="button" class="lt-domain-date '+(active?'is-active ':'')+(unavailable?'is-disabled':'')+'" data-lt-domain-slot="'+esc(slot.id)+'" '+(unavailable?'disabled':'')+'>'+
+          '<span><b>'+esc(localizedDate(slot.date,{weekday:'short',day:'numeric',month:'short'}))+'</b><small>'+esc(slot.startTime || '')+'</small></span>'+
+          '<span class="lt-domain-date__availability">'+esc(availability)+'</span>'+
+          '<span class="lt-domain-date__price">'+(price?esc(money(price)):'')+'</span>'+
+          '<span class="lt-domain-date__action">'+esc(active?t().selected:t().select)+'</span>'+
+        '</button>';
+      }).join('')+'</div></section>';
+  }
+  function participantPrices(domain,state){
+    const slot=selectedSlot(domain,state);
+    if(!slot) return '';
+    const rows=arr(domain.participants).map(category=>{
+      const price=priceFor(slot,state.rateId,category.id);
+      if(!price) return '';
+      return '<div class="lt-domain-participant"><div><b>'+esc(categoryLabel(category))+'</b>'+(ageLabel(category)?'<span>'+esc(ageLabel(category))+'</span>':'')+'</div><strong>'+esc(money(price))+'</strong></div>';
+    }).filter(Boolean);
+    if(!rows.length) return '';
+    return '<section class="lt-domain-section"><div class="lt-domain-section__head"><div><span class="lt-domain-eyebrow">'+esc(t().participants)+'</span><p>'+esc(t().priceFor)+' · '+esc(localizedDate(slot.date,{day:'numeric',month:'short'}))+' · '+esc(slot.startTime || '')+'</p></div></div><div class="lt-domain-participants">'+rows.join('')+'</div></section>';
+  }
+  function meeting(domain,rate){
+    const points=arr(domain?.experience?.meeting?.startPoints);
+    const pickup=pickupText(rate,domain);
+    const pickupMinutes=Number(domain?.experience?.pickup?.minutesBefore);
+    const pickupWindow=Number(domain?.experience?.pickup?.timeWindowMinutes);
+    const pickupTiming=Number.isFinite(pickupMinutes)&&pickupMinutes>0
+      ? pickupMinutes+' '+t().minutesBefore+(Number.isFinite(pickupWindow)&&pickupWindow>0?' · ±'+(l10n()?.minutes?.(pickupWindow)??(pickupWindow+' min')):'')
+      : '';
+    const meetingType=l10n()?.meetingType?.(domain?.experience?.meeting?.type||'') || '';
+    if(!points.length && !pickup && !meetingType) return '';
+    return '<section class="lt-domain-section lt-domain-grid" data-lt-transport-info>'+
+      (points.length||meetingType?'<div class="lt-domain-info" data-lt-start-point-card><span class="lt-domain-eyebrow">'+esc(t().meeting)+'</span>'+
+        '<p class="lt-domain-transport-note">'+esc(t().meetingNote)+'</p>'+
+        (!points.length&&meetingType?'<div class="lt-domain-info__row"><b>'+esc(meetingType)+'</b></div>':'')+
+        points.map(point=>'<div class="lt-domain-info__row"><b>'+esc(point.title || point.addressLine1 || '')+'</b><span>'+esc([point.addressLine1,point.city,point.state].filter(Boolean).join(', '))+'</span></div>').join('')+'</div>':'')+
+      (pickup?'<div class="lt-domain-info" data-lt-pickup-card><span class="lt-domain-eyebrow">'+esc(t().pickup)+'</span><div class="lt-domain-info__row"><b>'+esc(pickup)+'</b></div>'+
+        '<div class="lt-domain-info__row lt-domain-selected-pickup" data-lt-selected-pickup hidden><span>'+esc(t().selectedPickup)+'</span><b data-lt-selected-pickup-value></b></div>'+
+        (pickupTiming?'<div class="lt-domain-info__row"><span>'+esc(t().pickupTiming)+'</span><b>'+esc(pickupTiming)+'</b></div>':'')+
+        (domain?.experience?.pickup?.noPickupMessage?'<div class="lt-domain-info__row"><span>'+esc(domain.experience.pickup.noPickupMessage)+'</span></div>':'')+
+      '</div>':'')+
+      '</section>';
+  }
+  function itinerary(domain){
+    const items=arr(domain?.experience?.itinerary).filter(item=>item?.title||item?.body);
+    if(!items.length) return '';
+    return '<section class="lt-domain-section"><div class="lt-domain-section__head"><div><span class="lt-domain-eyebrow">'+esc(t().itinerary)+'</span>'+(arr(domain.rates).length>1?'<p>'+esc(t().itineraryHint)+'</p>':'')+'</div></div><div class="lt-domain-itinerary">'+items.map((item,index)=>{
+      const title=providerText(item.title||'');
+      const body=preferCurated(domain)
+        ? (l10n()?.itineraryBody?.(domain?.experience?.id,index,textFromHtml(item.body)) ?? textFromHtml(item.body))
+        : serverLocalized(domain)
+          ? textFromHtml(item.body)
+          : (l10n()?.itineraryBody?.(domain?.experience?.id,index,textFromHtml(item.body)) ?? textFromHtml(item.body));
+      return '<div class="lt-domain-itinerary__item"><span>'+(index+1)+'</span><div>'+(title?'<b>'+esc(title)+'</b>':'')+(body?'<p>'+esc(body)+'</p>':'')+'</div></div>';
+    }).join('')+'</div></section>';
+  }
+  function videoSection(domain){
+    const videos=arr(domain?.experience?.media?.videos).filter(item=>item?.url);
+    if(!videos.length) return '';
+    return '<section class="lt-domain-section"><div class="lt-domain-section__head"><span class="lt-domain-eyebrow">'+esc(t().video)+'</span></div><div class="lt-domain-video-list">'+
+      videos.map((item,index)=>'<a class="lt-domain-video" href="'+esc(item.url)+'" target="_blank" rel="noopener noreferrer">'+esc(providerText(item.title||t().video+' '+(index+1)))+'</a>').join('')+
+      '</div></section>';
+  }
+  function listSection(title,items,variant=''){
+    const clean=arr(items).map(v=>typeof v==='string'?v:(v?.title||v?.description||v?.code||v?.currencyCode||v?.id||'')).map(textFromHtml).map(providerText).filter(Boolean);
+    if(!clean.length) return '';
+    const modifier=variant?' lt-domain-section--'+variant:'';
+    return '<section class="lt-domain-section'+modifier+'"><div class="lt-domain-section__head"><span class="lt-domain-eyebrow">'+esc(title)+'</span></div><ul class="lt-domain-list">'+clean.map(item=>'<li>'+esc(item)+'</li>').join('')+'</ul></section>';
+  }
+  function bookingDynamic(domain){
+    const req=domain?.bookingRequirements || {};
+    const extras=arr(domain?.extras);
+    const questions=arr(req.questions);
+    const customer=arr(req.requiredCustomerFields);
+    const passenger=arr(req.passengerFields);
+    const custom=arr(req.customFields);
+    if(!extras.length&&!questions.length&&!customer.length&&!passenger.length&&!custom.length) return '';
+    let inner='';
+    if(extras.length) inner+='<div class="lt-domain-info"><span class="lt-domain-eyebrow">'+esc(t().extras)+'</span>'+extras.map(x=>'<div class="lt-domain-info__row"><b>'+esc(providerText(x.title||x.code||x.id))+'</b>'+(x.description?'<span>'+esc(providerText(x.description))+'</span>':'')+'</div>').join('')+'</div>';
+    if(customer.length) inner+='<div class="lt-domain-info"><span class="lt-domain-eyebrow">'+esc(t().customerFields)+'</span><div class="lt-domain-fieldchips">'+customer.map(x=>'<span>'+esc(fieldLabel(x))+'</span>').join('')+'</div></div>';
+    if(passenger.length) inner+='<div class="lt-domain-info"><span class="lt-domain-eyebrow">'+esc(t().passengerFields)+'</span><div class="lt-domain-fieldchips">'+passenger.map(x=>'<span>'+esc(fieldLabel(x))+'</span>').join('')+'</div></div>';
+    if(questions.length||custom.length) inner+='<div class="lt-domain-info"><span class="lt-domain-eyebrow">'+esc(t().questions)+'</span>'+[...questions,...custom].map(x=>'<div class="lt-domain-info__row"><b>'+esc(providerText(x.title||x.code||x.id))+'</b>'+(x.required?'<span>*</span>':'')+'</div>').join('')+'</div>';
+    return '<section class="lt-domain-section"><div class="lt-domain-section__head"><span class="lt-domain-eyebrow">'+esc(t().bookingInfo)+'</span></div><div class="lt-domain-grid">'+inner+'</div></section>';
+  }
+  function renderDomain(domain,{preserveScroll=false}={}){
+    const screen=document.querySelector('#tourScreen');
+    if(!screen) return;
+    const state=selectedState(domain);
+    const rate=selectedRate(domain,state);
+    const slot=selectedSlot(domain,state);
+    const languages=arr(domain?.experience?.languages?.guidanceTypes).flatMap(x=>arr(x?.displayLanguages)).filter(Boolean).map(value=>l10n()?.languageName?.(value)??providerText(value));
+    const included=listFromHtml(domain?.experience?.content?.included);
+    const excluded=listFromHtml(domain?.experience?.content?.excluded);
+    const requirements=[
+      ...listFromHtml(domain?.experience?.content?.requirements),
+      ...listFromHtml(domain?.experience?.content?.attention),
+      ...listFromHtml(domain?.experience?.content?.dressCode),
+      ...arr(domain?.experience?.content?.knowBeforeYouGoItems).map(x=>x?.title||x?.text||x?.description||'').filter(Boolean),
+      ...(domain?.experience?.passportRequired?[t().passport]:[]),
+    ];
+    const cancellation=rate?.cancellationPolicy || domain?.cancellationPolicy;
+    const firstPhoto=arr(domain?.experience?.media?.photos)[0]?.url || '';
+    const heroPrice=rate ? ratePrice(domain,rate) : null;
+    const reviewRating=Number(domain.experience.reviews?.rating);
+    const reviewCount=Number(domain.experience.reviews?.count);
+    const hasReviews=Number.isFinite(reviewRating)&&reviewRating>0&&Number.isFinite(reviewCount)&&reviewCount>0;
+
+    screen.classList.add('lt-domain-tour');
+    screen.dataset.ltDomainProduct=String(domain.experience.id);
+    screen.innerHTML=
+      '<div class="lt-domain-shell">'+
+        '<button type="button" class="lt-domain-back" data-lt-domain-back>← '+esc(t().back)+'</button>'+
+        photoGallery(domain)+
+        '<section class="lt-domain-hero">'+
+          '<div class="lt-domain-hero__accent" aria-hidden="true"><span></span><span></span><span></span></div>'+
+          '<div class="lt-domain-live"><span></span>'+esc(t().live)+'</div>'+
+          '<h1>'+esc(localizedProductTitle(domain))+'</h1>'+
+          '<p>'+esc(localizedProductDescription(domain))+'</p>'+
+          '<div class="lt-domain-facts">'+
+            (domain.experience.duration?.text?'<div><small>'+esc(t().duration)+'</small><b>'+esc(l10n()?.duration?.(domain.experience.duration)??domain.experience.duration.text)+'</b></div>':'')+
+            (languages.length?'<div><small>'+esc(t().languages)+'</small><b>'+esc(languages.join(' · '))+'</b></div>':'')+
+            (domain.experience.difficulty?'<div><small>'+esc(t().difficulty)+'</small><b>'+esc(l10n()?.difficulty?.(domain.experience.difficulty)??providerText(domain.experience.difficulty))+'</b></div>':'')+
+            (Number.isFinite(Number(domain.experience.minAge))?'<div><small>'+esc(t().minAge)+'</small><b>'+esc(domain.experience.minAge)+'+</b></div>':'')+
+            (hasReviews?'<div><small>'+esc(t().reviews)+'</small><b>'+esc(reviewRating)+' · '+esc(reviewCount)+'</b></div>':'')+
+            (String(domain.experience.booking?.capacityType||'').toUpperCase()==='ON_REQUEST'?'<div><small>'+esc(t().confirmation)+'</small><b>'+esc(t().onRequest)+'</b></div>':'')+
+            (slot?'<div><small>'+esc(t().chooseDate)+'</small><b>'+esc(localizedDate(slot.date,{weekday:'short',day:'numeric',month:'short'})+' · '+(slot.startTime||''))+'</b></div>':'')+
+          '</div>'+
+          '<button type="button" class="lt-domain-quickbook" data-lt-jump-booking>'+
+            '<span>'+(heroPrice?'<small>'+esc(t().from)+'</small><strong>'+esc(money(heroPrice))+'</strong>':'')+'</span>'+
+            '<b>'+esc(t().chooseDate)+' →</b>'+
+          '</button>'+
+        '</section>'+
+        rateCards(domain,state)+
+        availabilityCards(domain,state)+
+        participantPrices(domain,state)+
+        meeting(domain,rate)+
+        itinerary(domain)+
+        videoSection(domain)+
+        '<div class="lt-domain-content-grid">'+
+          listSection(t().included,included,'included')+
+          listSection(t().excluded,excluded,'excluded')+
+          listSection(t().requirements,requirements,'requirements')+
+          listSection(t().accessibility,domain?.experience?.accessibility,'accessibility')+
+          listSection(t().offers,domain?.offers,'offers')+
+          listSection(t().currencies,domain?.experience?.paymentCurrencies,'currencies')+
+        '</div>'+
+        (cancellation?'<section class="lt-domain-section"><div class="lt-domain-section__head"><span class="lt-domain-eyebrow">'+esc(t().conditions)+'</span></div><div class="lt-domain-policy"><b>'+esc(l10n()?.policyTitle?.(cancellation.title||'')??providerText(cancellation.title||''))+'</b>'+cancellationRows(cancellation)+'</div></section>':'')+
+        bookingDynamic(domain)+
+        (firstPhoto?'<div class="lt-domain-source-note" aria-hidden="true"></div>':'')+
+        '<div class="lt-domain-stickybook" data-lt-sticky-book>'+
+          '<div class="lt-domain-stickybook__copy"><small>'+esc(t().selectedOption)+'</small><b>'+esc(localizedRateTitle(domain,rate))+'</b></div>'+
+          '<div class="lt-domain-stickybook__price">'+(heroPrice?'<small>'+esc(t().from)+'</small><strong>'+esc(money(heroPrice))+'</strong>':'')+'</div>'+
+          '<button type="button" data-lt-jump-booking>'+esc(t().bookNow)+'</button>'+
+        '</div>'+
+      '</div>';
+
+    wire(screen,domain);
+    if(!preserveScroll){
+      screen.scrollTop=0;
+      try { window.scrollTo({top:0,behavior:'instant'}); } catch (_) { window.scrollTo(0,0); }
+    }
+  }
+  function setGalleryIndex(screen,domain,nextIndex){
+    const photos=galleryPhotos(domain);
+    if(!photos.length) return;
+    const normalized=((Number(nextIndex)||0)%photos.length+photos.length)%photos.length;
+    galleryIndexByProduct.set(String(domain.experience.id),normalized);
+    const hero=screen.querySelector('[data-lt-gallery-hero]');
+    const opener=screen.querySelector('[data-lt-gallery-open]');
+    const counter=screen.querySelector('[data-lt-gallery-count]');
+    if(hero){
+      hero.src=photos[normalized].url;
+      hero.alt=localizedProductTitle(domain)+' · '+t().photoOfTour+' '+(normalized+1);
+    }
+    if(opener) opener.dataset.ltGalleryOpen=String(normalized);
+    if(counter) counter.textContent=(normalized+1)+' / '+photos.length;
+    screen.querySelectorAll('[data-lt-gallery-thumb]').forEach(button=>{
+      const active=Number(button.dataset.ltGalleryThumb)===normalized;
+      button.classList.toggle('is-active',active);
+      if(active) button.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
+    });
+  }
+  function openGalleryLightbox(domain,startIndex=0){
+    const photos=galleryPhotos(domain);
+    if(!photos.length) return;
+    let index=((Number(startIndex)||0)%photos.length+photos.length)%photos.length;
+    const overlay=document.createElement('div');
+    overlay.className='lt-domain-lightbox';
+    overlay.innerHTML='<div class="lt-domain-lightbox__backdrop" data-lt-lightbox-close></div>'+
+      '<div class="lt-domain-lightbox__panel" role="dialog" aria-modal="true" aria-label="'+esc(t().tourPhotos)+'">'+
+        '<button type="button" class="lt-domain-lightbox__close" data-lt-lightbox-close aria-label="'+esc(t().closePhoto)+'">×</button>'+
+        '<button type="button" class="lt-domain-lightbox__nav is-prev" data-lt-lightbox-prev aria-label="'+esc(t().previousPhoto)+'">‹</button>'+
+        '<img data-lt-lightbox-image alt="">'+
+        '<button type="button" class="lt-domain-lightbox__nav is-next" data-lt-lightbox-next aria-label="'+esc(t().nextPhoto)+'">›</button>'+
+        '<div class="lt-domain-lightbox__count" data-lt-lightbox-count></div>'+
+      '</div>';
+    const image=overlay.querySelector('[data-lt-lightbox-image]');
+    const count=overlay.querySelector('[data-lt-lightbox-count]');
+    const paint=()=>{
+      image.src=photos[index].url;
+      image.alt=localizedProductTitle(domain)+' · '+t().photoOfTour+' '+(index+1);
+      count.textContent=(index+1)+' / '+photos.length;
+    };
+    const step=delta=>{ index=(index+delta+photos.length)%photos.length; paint(); };
+    const close=()=>{
+      document.removeEventListener('keydown',onKey);
+      overlay.remove();
+      document.documentElement.classList.remove('lt-lightbox-open');
+    };
+    const onKey=event=>{
+      if(event.key==='Escape') close();
+      if(event.key==='ArrowLeft') step(-1);
+      if(event.key==='ArrowRight') step(1);
+    };
+    let touchX=null;
+    overlay.addEventListener('touchstart',event=>{ touchX=event.changedTouches?.[0]?.clientX ?? null; },{passive:true});
+    overlay.addEventListener('touchend',event=>{
+      if(touchX===null) return;
+      const endX=event.changedTouches?.[0]?.clientX ?? touchX;
+      const delta=endX-touchX;
+      touchX=null;
+      if(Math.abs(delta)>42) step(delta>0?-1:1);
+    },{passive:true});
+    overlay.querySelectorAll('[data-lt-lightbox-close]').forEach(button=>button.addEventListener('click',close));
+    overlay.querySelector('[data-lt-lightbox-prev]')?.addEventListener('click',()=>step(-1));
+    overlay.querySelector('[data-lt-lightbox-next]')?.addEventListener('click',()=>step(1));
+    document.addEventListener('keydown',onKey);
+    document.documentElement.classList.add('lt-lightbox-open');
+    document.body.appendChild(overlay);
+    paint();
+  }
+  function wire(screen,domain){
+    screen.querySelector('[data-lt-domain-back]')?.addEventListener('click',()=>typeof showScreen==='function'&&showScreen('catalog'));
+    screen.querySelector('[data-lt-jump-booking]')?.addEventListener('click',()=>{
+      if(globalThis.LoveTravelBookingConfigurator?.open){ globalThis.LoveTravelBookingConfigurator.open('date'); return; }
+      screen.querySelector('.lt-booking-config')?.scrollIntoView({behavior:'smooth',block:'center'});
+    });
+    screen.querySelectorAll('[data-lt-gallery-thumb]').forEach(button=>button.addEventListener('click',()=>setGalleryIndex(screen,domain,button.dataset.ltGalleryThumb)));
+    screen.querySelector('[data-lt-gallery-prev]')?.addEventListener('click',()=>setGalleryIndex(screen,domain,currentGalleryIndex(domain)-1));
+    screen.querySelector('[data-lt-gallery-next]')?.addEventListener('click',()=>setGalleryIndex(screen,domain,currentGalleryIndex(domain)+1));
+    screen.querySelector('[data-lt-gallery-open]')?.addEventListener('click',buttonEvent=>openGalleryLightbox(domain,buttonEvent.currentTarget.dataset.ltGalleryOpen));
+    screen.querySelectorAll('[data-lt-domain-rate]').forEach(button=>button.addEventListener('click',()=>{
+      const state=selectedState(domain);
+      state.rateId=button.dataset.ltDomainRate;
+      const slot=arr(domain.availabilitySlots).find(s=>!s.soldOut&&!s.unavailable&&rateAvailable(s,state.rateId));
+      state.slotId=slot?.id || null;
+      renderDomain(domain,{preserveScroll:true});
+    }));
+    screen.querySelectorAll('[data-lt-domain-slot]').forEach(button=>button.addEventListener('click',()=>{
+      const state=selectedState(domain);
+      state.slotId=button.dataset.ltDomainSlot;
+      renderDomain(domain,{preserveScroll:true});
+    }));
+  }
+  async function domains(force=false){
+    const requestedLocale=locale();
+    if(force||domainLocale!==requestedLocale){
+      domainPromise=null;
+      domainLocale=requestedLocale;
+    }
+    if(!domainPromise){
+      domainPromise=fetch('/api/bokun/domain?locale='+encodeURIComponent(requestedLocale),{cache:'no-store',credentials:'same-origin'})
+        .then(async response=>{
+          if(!response.ok) throw new Error('domain HTTP '+response.status);
+          const data=await response.json();
+          if(data?.schema!=='lovetravel.bokun-domain.v1'||!Array.isArray(data?.domains)) throw new Error('invalid domain payload');
+          return data.domains;
+        })
+        .catch(error=>{ domainPromise=null; throw error; });
+    }
+    return domainPromise;
+  }
+  function loading(){
+    const screen=document.querySelector('#tourScreen');
+    if(!screen) return;
+    screen.classList.add('lt-domain-tour');
+    screen.innerHTML='<div class="lt-domain-loading"><span class="lt-domain-spinner"></span><b>'+esc(t().loading)+'</b></div>';
+  }
+  function errorView(id){
+    const screen=document.querySelector('#tourScreen');
+    if(!screen) return;
+    screen.classList.add('lt-domain-tour');
+    screen.innerHTML='<div class="lt-domain-loading"><b>'+esc(t().loadError)+'</b><button type="button" data-lt-domain-retry>'+esc(t().retry)+'</button></div>';
+    screen.querySelector('[data-lt-domain-retry]')?.addEventListener('click',()=>renderProduct(id,true));
+  }
+  async function renderProduct(id,force=false){
+    const productId=String(id||'');
+    if(!PRODUCT_IDS.has(productId)) return false;
+    currentProductId=productId;
+    loading();
+    try{
+      const list=await domains(force);
+      if(currentProductId!==productId) return false;
+      const domain=list.find(item=>String(item?.experience?.id)===productId);
+      if(!domain) throw new Error('domain not found');
+      renderDomain(domain);
+      return true;
+    }catch(error){
+      console.error('[LoveTravel] Domain tour render failed',error);
+      if(currentProductId===productId) errorView(productId);
+      return false;
+    }
+  }
+  function installOpenTour(){
+    if(typeof globalThis.openTour!=='function') return false;
+    if(globalThis.openTour.__loveTravelDomain) return true;
+    const previous=globalThis.openTour;
+    const wrapped=function(id,...args){
+      const result=previous.call(this,id,...args);
+      const productId=String(id ?? '');
+      if(PRODUCT_IDS.has(productId)) queueMicrotask(()=>renderProduct(productId));
+      return result;
+    };
+    wrapped.__loveTravelDomain=true;
+    wrapped.__previous=previous;
+    globalThis.openTour=wrapped;
+    return true;
+  }
+  let repairQueued=false;
+  function repairLegacyOverwrite(){
+    const screen=document.querySelector('#tourScreen');
+    const productId=String(screen?.dataset?.ltDomainProduct||'');
+    if(!screen?.classList.contains('active') || !PRODUCT_IDS.has(productId) || screen.querySelector('.lt-domain-shell')) return;
+    if(repairQueued) return;
+    repairQueued=true;
+    queueMicrotask(async()=>{
+      repairQueued=false;
+      try{
+        const list=await domains();
+        const domain=list.find(item=>String(item?.experience?.id)===productId);
+        if(domain && !document.querySelector('#tourScreen .lt-domain-shell')) renderDomain(domain);
+      }catch(error){
+        console.error('[LoveTravel] failed to repair legacy tour overwrite',error);
+      }
+    });
+  }
+  function install(){
+    if(!installOpenTour()) setTimeout(install,50);
+    domains().catch(()=>{});
+    const screen=document.querySelector('#tourScreen');
+    if(screen){
+      new MutationObserver(repairLegacyOverwrite).observe(screen,{subtree:true,childList:true});
+    } else {
+      setTimeout(install,60);
+    }
+  }
+  document.addEventListener('click',event=>{
+    if(event.target.closest?.('.mt-language-switcher button')&&currentProductId&&document.querySelector('#tourScreen')?.classList.contains('active')){
+      setTimeout(()=>domains(true).then(list=>{
+        const domain=list.find(item=>String(item?.experience?.id)===currentProductId);
+        if(domain) renderDomain(domain);
+      }).catch(()=>{}),80);
+    }
+  },true);
+  install();
+  globalThis.LoveTravelDomainTour={renderProduct,refresh:()=>currentProductId?renderProduct(currentProductId,true):Promise.resolve(false)};
+})();
++amount:amount+' '+currency);
   }
   function categoryLabel(item){
     const type=String(item?.ticketCategory || '').toUpperCase();
