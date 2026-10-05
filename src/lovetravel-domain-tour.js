@@ -13,66 +13,77 @@
       ru:'Рыбацкая деревня Bích Đầm и отдых на Robinson Beach в одном маршруте.',
       en:'Bích Đầm fishing village and relaxed beach time at Robinson Beach in one route.',
       vi:'Kết hợp làng chài Bích Đầm và thời gian thư giãn tại Robinson Beach.',
+      zh:'Bích Đầm 渔村与 Robinson Beach 海滩休闲组合行程。',
       ko:'Bích Đầm 어촌 마을과 Robinson Beach 휴식을 한 코스로 즐기는 옵션입니다.'
     },
     '2623660':{
       ru:'Robinson Beach плюс снорклинг в морском заповеднике Hòn Mun.',
       en:'Robinson Beach paired with snorkeling in Hòn Mun Marine Park.',
       vi:'Kết hợp Robinson Beach với lặn ống thở tại Khu bảo tồn biển Hòn Mun.',
+      zh:'Robinson Beach 海滩与 Hòn Mun 海洋保护区浮潜组合行程。',
       ko:'Robinson Beach와 Hòn Mun 해양보호구역 스노클링을 함께 즐깁니다.'
     },
     '2623666':{
       ru:'Robinson Beach плюс минеральные грязевые ванны на острове Hòn Tằm.',
       en:'Robinson Beach combined with the mineral mud-bath experience on Hòn Tằm.',
       vi:'Robinson Beach kết hợp trải nghiệm tắm bùn khoáng tại Hòn Tằm.',
+      zh:'Robinson Beach 海滩与 Hòn Tằm 岛矿物泥浴组合行程。',
       ko:'Robinson Beach와 Hòn Tằm 미네랄 머드바스를 함께 즐깁니다.'
     },
     '2623667':{
       ru:'Robinson Beach и дополнительный пляжный отдых на Bãi Tranh.',
       en:'Robinson Beach with an additional beach stop at Bãi Tranh.',
       vi:'Robinson Beach kết hợp thêm thời gian thư giãn tại Bãi Tranh.',
+      zh:'Robinson Beach 海滩加 Bãi Tranh 海滩休闲行程。',
       ko:'Robinson Beach와 Bãi Tranh 해변 휴식을 함께 즐기는 코스입니다.'
     },
     '2623668':{
       ru:'Robinson Beach и камерный Mini Beach — вариант с акцентом на пляжный отдых.',
       en:'Robinson Beach and intimate Mini Beach, focused on relaxed beach time.',
       vi:'Robinson Beach và Mini Beach, phù hợp nếu bạn muốn ưu tiên thời gian thư giãn bên biển.',
+      zh:'Robinson Beach 与安静的 Mini Beach，主打轻松海滩体验。',
       ko:'Robinson Beach와 아담한 Mini Beach를 함께 즐기는 휴양 중심 옵션입니다.'
     },
     '2623669':{
       ru:'Robinson Beach и Bãi Sỏi — ещё один спокойный пляжный маршрут.',
       en:'Robinson Beach and Bãi Sỏi for another relaxed island-beach combination.',
       vi:'Robinson Beach và Bãi Sỏi cho một hành trình đảo và biển thư giãn hơn.',
+      zh:'Robinson Beach 与 Bãi Sỏi，适合轻松的海岛海滩体验。',
       ko:'Robinson Beach와 Bãi Sỏi를 함께 둘러보는 여유로운 섬·해변 코스입니다.'
     },
     '2623670':{
       ru:'Robinson Beach плюс посещение аквариума Trí Nguyên.',
       en:'Robinson Beach paired with a visit to Trí Nguyên Aquarium.',
       vi:'Robinson Beach kết hợp tham quan Thủy cung Trí Nguyên.',
+      zh:'Robinson Beach 海滩与 Trí Nguyên 水族馆参观组合行程。',
       ko:'Robinson Beach와 Trí Nguyên 수족관 방문을 함께 즐깁니다.'
     },
     '2581227':{
       ru:'Снорклинг у Hòn Mun и отдых на пляже Bãi Tranh.',
       en:'Snorkeling at Hòn Mun followed by beach time at Bãi Tranh.',
       vi:'Lặn ống thở tại Hòn Mun và thư giãn ở Bãi Tranh.',
+      zh:'Hòn Mun 浮潜后前往 Bãi Tranh 海滩休闲。',
       ko:'Hòn Mun 스노클링 후 Bãi Tranh 해변에서 휴식하는 옵션입니다.'
     },
     '2581226':{
       ru:'Снорклинг у Hòn Mun и отдых на Bãi Sỏi.',
       en:'Snorkeling at Hòn Mun combined with a stop at Bãi Sỏi.',
       vi:'Lặn ống thở tại Hòn Mun kết hợp dừng chân ở Bãi Sỏi.',
+      zh:'Hòn Mun 浮潜与 Bãi Sỏi 海滩停留组合行程。',
       ko:'Hòn Mun 스노클링과 Bãi Sỏi 휴식을 함께 즐깁니다.'
     },
     '2581229':{
       ru:'Hòn Mun плюс минеральные грязевые ванны на Hòn Tằm.',
       en:'Hòn Mun snorkeling combined with Hòn Tằm mineral mud baths.',
       vi:'Lặn ống thở tại Hòn Mun kết hợp tắm bùn khoáng ở Hòn Tằm.',
+      zh:'Hòn Mun 浮潜与 Hòn Tằm 岛矿物泥浴组合行程。',
       ko:'Hòn Mun 스노클링과 Hòn Tằm 미네랄 머드바스를 결합한 옵션입니다.'
     },
     '2581228':{
       ru:'Hòn Mun и Mini Beach — снорклинг и более спокойный пляжный отдых.',
       en:'Hòn Mun and Mini Beach for snorkeling plus relaxed beach time.',
       vi:'Hòn Mun và Mini Beach — kết hợp lặn ống thở và thư giãn bên biển.',
+      zh:'Hòn Mun 与 Mini Beach：浮潜加轻松海滩休闲。',
       ko:'Hòn Mun 스노클링과 Mini Beach 휴식을 함께 즐기는 코스입니다.'
     }
   });
@@ -236,6 +247,59 @@
       rateUnavailable:'Không có ngày trống cho lựa chọn này',
       bookNow:'Đặt ngay', selectedOption:'Lựa chọn đã chọn',
       tourPhotos:'Ảnh tour', previousPhoto:'Ảnh trước', nextPhoto:'Ảnh tiếp theo', closePhoto:'Đóng ảnh', photoOfTour:'Ảnh tour'
+    },
+    zh:{
+      back:'返回行程列表',
+      live:'旅行社实时数据',
+      duration:'时长',
+      languages:'语言',
+      description:'行程介绍',
+      option:'行程方案',
+      optionHint:'价格和可订情况取决于所选方案。',
+      from:'起',
+      availableDates:'可订日期',
+      available:'个名额可订',
+      unlimited:'可预订',
+      soldOut:'已售罄',
+      select:'选择',
+      selected:'已选择',
+      participants:'按出行人计价',
+      meeting:'行程集合地点',
+      meetingNote:'仅适用于自行前往的客人。若选择酒店接送，无需自行前往此处。',
+      pickup:'酒店接送',
+      selectedPickup:'将在此处接您',
+      pickupOptional:'可选',
+      pickupRequired:'必选',
+      pickupUnavailable:'不提供',
+      includedInPrice:'已含在价格内',
+      itinerary:'行程安排',
+      itineraryHint:'以下内容来自产品说明；具体行程方案请在上方单独选择。',
+      included:'费用包含',
+      excluded:'费用不含',
+      conditions:'取消政策',
+      within:'少于',
+      hours:'小时',
+      fee:'手续费',
+      earlier:'更早取消',
+      noFee:'免手续费',
+      extras:'附加服务',
+      bookingInfo:'预订信息',
+      questions:'附加问题',
+      customerFields:'联系信息',
+      passengerFields:'出行人信息',
+      requirements:'重要须知',
+      accessibility:'无障碍信息', confirmation:'确认方式', onRequest:'旅行社确认后', video:'视频', difficulty:'难度', minAge:'最低年龄', reviews:'评价', passport:'需要护照', currencies:'支付币种', offers:'可选项目', pickupTiming:'接送时间', minutesBefore:'分钟前',
+      priceFor:'所选日期价格',
+      chooseDate:'选择日期',
+      loading:'正在加载最新可订信息…',
+      loadError:'无法加载行程数据，请重试。',
+      retry:'重试',
+      adult:'成人',
+      child:'儿童',
+      infant:'婴儿',
+      rateUnavailable:'此方案暂无可订日期',
+      bookNow:'立即预订', selectedOption:'已选方案',
+      tourPhotos:'行程照片', previousPhoto:'上一张', nextPhoto:'下一张', closePhoto:'关闭照片', photoOfTour:'行程照片'
     },
     ko:{
       back:'투어 목록으로',
