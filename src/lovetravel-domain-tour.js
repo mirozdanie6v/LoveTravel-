@@ -141,7 +141,8 @@
     if(!value || !Number.isFinite(Number(value.amount))) return '';
     const amount=Number(value.amount);
     const currency=String(value.currency||'USD');
-    return i18n()?.formatCurrency?.(amount,currency) ?? (currency==='USD'?'
+    return i18n()?.formatCurrency?.(amount,currency) ?? (currency==='USD'?'$'+amount:amount+' '+currency);
+  }
   function categoryLabel(item){
     const type=String(item?.ticketCategory || '').toUpperCase();
     if(type==='ADULT') return t().adult;
@@ -156,15 +157,15 @@
       : '';
   }
   function fieldLabel(value){
-    const labels={
-      FIRSTNAME:{ru:'Имя',en:'First name',vi:'Tên',ko:'이름',zh:'名字'},
-      LASTNAME:{ru:'Фамилия',en:'Last name',vi:'Họ',ko:'성',zh:'姓氏'},
-      PHONE:{ru:'Телефон',en:'Phone',vi:'Điện thoại',ko:'전화번호',zh:'电话'},
-      PHONENUMBER:{ru:'Телефон',en:'Phone',vi:'Điện thoại',ko:'전화번호',zh:'电话'},
-      EMAIL:{ru:'Email',en:'Email',vi:'Email',ko:'이메일',zh:'电子邮箱'}
-    };
     const key=String(value||'').replace(/[^a-z0-9]/gi,'').toUpperCase();
-    return labels[key]?.[locale()] || providerText(String(value || '').replaceAll('_',' ').toLowerCase());
+    const semantic={
+      FIRSTNAME:'booking.firstName',
+      LASTNAME:'booking.lastName',
+      PHONE:'booking.phoneNumber',
+      PHONENUMBER:'booking.phoneNumber',
+      EMAIL:'booking.email'
+    }[key];
+    return semantic ? i18n()?.t?.(semantic) ?? semantic : providerText(String(value||'').replaceAll('_',' ').toLowerCase());
   }
   function quoteFor(slot,rateId){
     return arr(slot?.priceQuotesByRate).find(item=>String(item?.rateId)===String(rateId)) || null;
