@@ -8,6 +8,7 @@
   const resolutionByProduct = new Map();
   const calendarByKey = new Map();
   const calendarRequestSeqByProduct = new Map();
+  const demoBookingByProduct = new Map();
   let activeProductId = null;
   let requestSeq = 0;
   let sheet = null;
@@ -31,7 +32,7 @@
       select:'Выбрать', selected:'Выбрано', pricePerPerson:'за человека', liveQuote:'Цена проверена сейчас', onRequest:'Требуется подтверждение туроператора',
       refreshError:'Не удалось обновить доступность. Попробуйте ещё раз.', moreDates:'Показать следующие даты',
       minGuests:'Минимум', maxGuests:'Максимум', noExtra:'Дополнительных услуг сейчас нет', extras:'Дополнительно', extrasEmpty:'Без дополнений', chooseExtras:'Дополнительные услуги', extrasRequired:'Выберите обязательную услугу', passengerDetails:'Данные участников', passenger:'Участник', questions:'Вопросы для бронирования', additionalInfo:'Дополнительные данные', roomNumber:'Номер комнаты', save:'Сохранить', customPickup:'Другой адрес', customPickupAddress:'Адрес для посадки',
-      bookingNotSent:'Бронирование пока не отправляется в Bókun — на этом этапе проверяется конфигурация.',
+      bookingNotSent:'Бронирование пока не отправляется в Bókun — на этом этапе проверяется конфигурация.', demoCreate:'Создать тестовую бронь', demoCreating:'Создаём тестовую бронь…', demoNote:'Клиентский тест: будет создана реальная тестовая бронь в Bókun без оплаты и без уведомления туристу.', demoSuccessTitle:'Тестовая бронь создана', demoSuccess:'Бронь появилась в Bókun. Код', demoFailure:'Не удалось создать тестовую бронь. Данные не отправлены повторно.',
       selectDateFirst:'Сначала выберите дату', selectOptionFirst:'Выберите вариант', selectGuestsFirst:'Добавьте участников',
       pickupRequired:'Нужно выбрать способ трансфера или самостоятельный приезд', dropoff:'Обратный трансфер', dropoffEmpty:'Выберите способ', dropoffMode:'Довезти после экскурсии', noDropoff:'Без обратного трансфера', chooseDropoff:'Нужен обратный трансфер?', chooseDropoffPlace:'Куда вас отвезти', dropoffPlace:'Место высадки', searchDropoff:'Введите отель или адрес', customDropoff:'Другой адрес высадки', customDropoffAddress:'Адрес высадки', dropoffRequired:'Нужно выбрать обратный трансфер или отказаться от него', contactRequired:'Нужно заполнить контактные данные', yes:'Да', no:'Нет'
     },
@@ -53,7 +54,7 @@
       select:'Select', selected:'Selected', pricePerPerson:'per person', liveQuote:'Price checked live', onRequest:'Operator confirmation required',
       refreshError:'Could not refresh availability. Try again.', moreDates:'Show later dates',
       minGuests:'Minimum', maxGuests:'Maximum', noExtra:'No extras are currently configured', extras:'Extras', extrasEmpty:'No extras', chooseExtras:'Additional services', extrasRequired:'Choose the required extra', passengerDetails:'Guest details', passenger:'Guest', questions:'Booking questions', additionalInfo:'Additional details', roomNumber:'Room number', save:'Save', customPickup:'Other address', customPickupAddress:'Pickup address',
-      bookingNotSent:'The booking is not sent to Bókun yet — this stage validates the configuration.',
+      bookingNotSent:'The booking is not sent to Bókun yet — this stage validates the configuration.', demoCreate:'Create test booking', demoCreating:'Creating test booking…', demoNote:'Client test: this creates a real test booking in Bókun with no payment and no customer notification.', demoSuccessTitle:'Test booking created', demoSuccess:'The booking is now visible in Bókun. Code', demoFailure:'The test booking could not be created. It was not submitted again.',
       selectDateFirst:'Choose a date first', selectOptionFirst:'Choose an option', selectGuestsFirst:'Add guests',
       pickupRequired:'Choose hotel pickup or independent arrival', dropoff:'Return transfer', dropoffEmpty:'Choose a method', dropoffMode:'Drop me off after the tour', noDropoff:'No return transfer', chooseDropoff:'Do you need a return transfer?', chooseDropoffPlace:'Where should we drop you off?', dropoffPlace:'Drop-off place', searchDropoff:'Enter a hotel or address', customDropoff:'Other drop-off address', customDropoffAddress:'Drop-off address', dropoffRequired:'Choose return transfer or no return transfer', contactRequired:'Complete the contact details', yes:'Yes', no:'No'
     },
@@ -75,7 +76,7 @@
       select:'Chọn', selected:'Đã chọn', pricePerPerson:'mỗi người', liveQuote:'Giá vừa được kiểm tra', onRequest:'Cần nhà điều hành xác nhận',
       refreshError:'Không thể cập nhật chỗ trống. Vui lòng thử lại.', moreDates:'Xem các ngày tiếp theo',
       minGuests:'Tối thiểu', maxGuests:'Tối đa', noExtra:'Hiện không có dịch vụ bổ sung', extras:'Dịch vụ thêm', extrasEmpty:'Không chọn thêm', chooseExtras:'Dịch vụ bổ sung', extrasRequired:'Chọn dịch vụ bắt buộc', passengerDetails:'Thông tin hành khách', passenger:'Hành khách', questions:'Câu hỏi đặt chỗ', additionalInfo:'Thông tin bổ sung', roomNumber:'Số phòng', save:'Lưu', customPickup:'Địa chỉ khác', customPickupAddress:'Địa chỉ đón',
-      bookingNotSent:'Đặt chỗ chưa được gửi tới Bókun — bước này chỉ xác thực cấu hình.',
+      bookingNotSent:'Đặt chỗ chưa được gửi tới Bókun — bước này chỉ xác thực cấu hình.', demoCreate:'Tạo đặt chỗ thử', demoCreating:'Đang tạo đặt chỗ thử…', demoNote:'Bản thử cho khách hàng: hệ thống sẽ tạo một đặt chỗ thử thật trong Bókun, không thanh toán và không gửi thông báo cho khách du lịch.', demoSuccessTitle:'Đã tạo đặt chỗ thử', demoSuccess:'Đặt chỗ đã xuất hiện trong Bókun. Mã', demoFailure:'Không thể tạo đặt chỗ thử. Hệ thống không gửi lại lần nữa.',
       selectDateFirst:'Hãy chọn ngày trước', selectOptionFirst:'Chọn chương trình', selectGuestsFirst:'Thêm khách',
       pickupRequired:'Chọn đón tại khách sạn hoặc tự đến', dropoff:'Đưa về sau tour', dropoffEmpty:'Chọn cách', dropoffMode:'Đưa tôi về sau tour', noDropoff:'Không cần đưa về', chooseDropoff:'Bạn có cần đưa về không?', chooseDropoffPlace:'Bạn muốn được đưa đến đâu?', dropoffPlace:'Điểm trả khách', searchDropoff:'Nhập khách sạn hoặc địa chỉ', customDropoff:'Địa chỉ trả khác', customDropoffAddress:'Địa chỉ trả khách', dropoffRequired:'Chọn đưa về hoặc không cần đưa về', contactRequired:'Điền thông tin liên hệ', yes:'Có', no:'Không'
     },
@@ -97,7 +98,7 @@
       select:'选择', selected:'已选择', pricePerPerson:'每人', liveQuote:'价格已实时核对', onRequest:'需要运营商确认',
       refreshError:'无法更新可用情况，请重试。', moreDates:'显示更多日期',
       minGuests:'最少', maxGuests:'最多', noExtra:'目前没有附加服务', extras:'附加服务', extrasEmpty:'不添加', chooseExtras:'附加服务', extrasRequired:'请选择必选服务', passengerDetails:'出行人信息', passenger:'出行人', questions:'预订问题', additionalInfo:'补充信息', roomNumber:'房间号', save:'保存', customPickup:'其他地址', customPickupAddress:'接送地址',
-      bookingNotSent:'目前尚未向 Bókun 提交预订，此步骤用于核对配置。',
+      bookingNotSent:'目前尚未向 Bókun 提交预订，此步骤用于核对配置。', demoCreate:'创建测试预订', demoCreating:'正在创建测试预订…', demoNote:'客户测试模式：将在 Bókun 中创建一条真实的测试预订，不付款，也不会向游客发送通知。', demoSuccessTitle:'测试预订已创建', demoSuccess:'该预订已出现在 Bókun 中。编号', demoFailure:'无法创建测试预订，系统不会自动重复提交。',
       selectDateFirst:'请先选择日期', selectOptionFirst:'请选择方案', selectGuestsFirst:'请添加出行人',
       pickupRequired:'请选择酒店接送或自行前往', dropoff:'返程接送', dropoffEmpty:'选择方式', dropoffMode:'行程结束后送我回去', noDropoff:'无需返程接送', chooseDropoff:'需要返程接送吗？', chooseDropoffPlace:'请选择送达地点', dropoffPlace:'下车地点', searchDropoff:'输入酒店或地址', customDropoff:'其他下车地址', customDropoffAddress:'下车地址', dropoffRequired:'请选择返程接送或无需接送', contactRequired:'请填写联系信息', yes:'是', no:'否'
     },
@@ -119,12 +120,26 @@
       select:'선택', selected:'선택됨', pricePerPerson:'1인당', liveQuote:'실시간 가격 확인됨', onRequest:'운영사 확인 필요',
       refreshError:'예약 가능 여부를 업데이트하지 못했습니다. 다시 시도해 주세요.', moreDates:'이후 날짜 보기',
       minGuests:'최소', maxGuests:'최대', noExtra:'현재 추가 옵션이 없습니다', extras:'추가 옵션', extrasEmpty:'추가 옵션 없음', chooseExtras:'추가 서비스', extrasRequired:'필수 추가 서비스를 선택하세요', passengerDetails:'참가자 정보', passenger:'참가자', questions:'예약 질문', additionalInfo:'추가 정보', roomNumber:'객실 번호', save:'저장', customPickup:'다른 주소', customPickupAddress:'픽업 주소',
-      bookingNotSent:'아직 Bókun에 예약을 전송하지 않습니다. 이 단계에서는 구성을 검증합니다.',
+      bookingNotSent:'아직 Bókun에 예약을 전송하지 않습니다. 이 단계에서는 구성을 검증합니다.', demoCreate:'테스트 예약 만들기', demoCreating:'테스트 예약 생성 중…', demoNote:'고객 테스트 모드: 결제 및 고객 알림 없이 Bókun에 실제 테스트 예약을 생성합니다.', demoSuccessTitle:'테스트 예약 생성 완료', demoSuccess:'예약이 Bókun에 표시됩니다. 코드', demoFailure:'테스트 예약을 만들 수 없습니다. 자동으로 다시 제출하지 않습니다.',
       selectDateFirst:'먼저 날짜를 선택하세요', selectOptionFirst:'옵션 선택', selectGuestsFirst:'인원 추가',
       pickupRequired:'호텔 픽업 또는 직접 이동을 선택하세요', dropoff:'귀환 이동', dropoffEmpty:'방법 선택', dropoffMode:'투어 후 내려주세요', noDropoff:'귀환 이동 없음', chooseDropoff:'귀환 이동이 필요하신가요?', chooseDropoffPlace:'어디에 내려드릴까요?', dropoffPlace:'하차 지점', searchDropoff:'호텔 또는 주소 입력', customDropoff:'다른 하차 주소', customDropoffAddress:'하차 주소', dropoffRequired:'귀환 이동 여부를 선택하세요', contactRequired:'연락처 정보를 입력하세요', yes:'예', no:'아니요'
     }
   };
 
+  function clientDemoToken(){
+    try{
+      const fromUrl=new URLSearchParams(location.search).get('demo');
+      if(fromUrl){
+        sessionStorage.setItem('lovetravel-client-demo-token',fromUrl);
+        const clean=new URL(location.href);
+        clean.searchParams.delete('demo');
+        history.replaceState(history.state,'',clean.pathname+clean.search+clean.hash);
+        return fromUrl;
+      }
+      return sessionStorage.getItem('lovetravel-client-demo-token')||'';
+    }catch(_){ return ''; }
+  }
+  function clientDemoEnabled(){ return Boolean(clientDemoToken()); }
   function locale(){
     const localized=globalThis.LoveTravelTourLocale?.locale?.();
     if(localized&&copy[localized]) return localized;
@@ -360,7 +375,7 @@
     return pending ? t().contactRequired : t().verified;
   }
   function ctaLabel(r,ready){
-    if(ready) return t().verified;
+    if(ready) return clientDemoEnabled() ? (demoBookingByProduct.get(activeProductId)?.confirmationCode || t().demoCreate) : t().verified;
     const step=firstBlockingStep(r);
     if(step==='date') return t().chooseDate;
     if(step==='option') return t().chooseOption;
@@ -479,7 +494,8 @@
     mount.querySelectorAll('[data-lt-step]').forEach(btn=>btn.addEventListener('click',()=>openSheet(productId,btn.dataset.ltStep)));
     mount.querySelector('[data-lt-config-continue]')?.addEventListener('click',()=>{
       const step=firstBlockingStep(r);
-      if(ready) openSheet(productId,'contact');
+      if(ready && clientDemoEnabled()) openDemoConfirmSheet(productId);
+      else if(ready) openSheet(productId,'contact');
       else openSheet(productId,step);
     });
   }
@@ -1165,6 +1181,52 @@
         const btn=root.querySelector('[data-lt-contact-check]'); if(btn){btn.textContent=t().verified;btn.classList.add('is-success');}
         setTimeout(closeSheet,550);
       }else openContactSheet(productId);
+    });
+  }
+
+
+  function openDemoConfirmSheet(productId){
+    const r=resolutionByProduct.get(productId);
+    if(!r?.readyToBook || !checkoutContactComplete(r)) return openContactSheet(productId);
+    const existing=demoBookingByProduct.get(productId);
+    if(existing?.confirmationCode){
+      const root=showSheet(t().demoSuccessTitle,
+        '<div class="lt-sheet-scroll"><div class="lt-form-section"><p class="lt-booking-note">'+esc(t().demoSuccess)+' <strong>'+esc(existing.confirmationCode)+'</strong></p></div></div>'
+      );
+      return root;
+    }
+    const body='<div class="lt-sheet-scroll">'+
+      '<div class="lt-form-section"><span class="lt-form-caption">'+esc(t().total)+'</span><strong class="lt-demo-total">'+esc(quoteSummary(r))+'</strong><p class="lt-booking-note">'+esc(t().demoNote)+'</p></div>'+
+      '<div class="lt-sheet-action"><button type="button" class="lt-sheet-primary" data-lt-demo-submit>'+esc(t().demoCreate)+'</button></div>'+
+      '<p class="lt-booking-note" data-lt-demo-error hidden></p></div>';
+    const root=showSheet(t().demoCreate,body);
+    root.querySelector('[data-lt-demo-submit]')?.addEventListener('click',async event=>{
+      const button=event.currentTarget;
+      const errorNode=root.querySelector('[data-lt-demo-error]');
+      button.disabled=true;
+      button.textContent=t().demoCreating;
+      if(errorNode) errorNode.hidden=true;
+      try{
+        const response=await fetch('/api/bokun/client-demo/submit',{
+          method:'POST',
+          headers:{'content-type':'application/json'},
+          cache:'no-store',
+          credentials:'same-origin',
+          body:JSON.stringify({selection:selection(productId),locale:locale(),demoToken:clientDemoToken()}),
+        });
+        const data=await response.json().catch(()=>null);
+        if(!response.ok || !data?.ok || !data?.confirmationCode) throw new Error(data?.error||'demo submit failed');
+        demoBookingByProduct.set(productId,data);
+        const content=root.closest('.lt-booking-sheet')?.querySelector('.lt-booking-sheet__content')||root;
+        content.innerHTML='<header class="lt-booking-sheet__header"><div><h3>'+esc(t().demoSuccessTitle)+'</h3></div><button type="button" data-lt-sheet-close data-lt-sheet-close-button aria-label="'+esc(t().close)+'">×</button></header>'+
+          '<div class="lt-sheet-scroll"><div class="lt-form-section"><p class="lt-booking-note">'+esc(t().demoSuccess)+' <strong>'+esc(data.confirmationCode)+'</strong></p><p class="lt-booking-note">'+esc(String(data.status||'CONFIRMED'))+' · '+esc(String(data.paymentType||'NOT_PAID'))+'</p></div></div>';
+        render(productId);
+      }catch(error){
+        console.error('[LoveTravel] client demo booking failed',error);
+        button.disabled=false;
+        button.textContent=t().demoCreate;
+        if(errorNode){errorNode.textContent=t().demoFailure;errorNode.hidden=false;}
+      }
     });
   }
 
