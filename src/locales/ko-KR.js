@@ -260,6 +260,9 @@
   "catalog.finishByProgram": "일정에 따라",
   "catalog.groupFrom": "그룹 최저",
   "catalog.privateFrom": "프라이빗 최저",
-  "catalog.city": "나트랑"
+  "catalog.city": "나트랑",
+  "enum.format.GROUP": "그룹",
+  "enum.format.PRIVATE": "프라이빗",
+  "enum.format.UNKNOWN": ""
 });
 })();
