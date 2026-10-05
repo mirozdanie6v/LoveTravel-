@@ -72,6 +72,17 @@
     return Boolean(b&&Object.prototype.hasOwnProperty.call(b,String(key)));
   }
 
+  function plural(key,count,params={}){
+    const number=Number(count);
+    const category=Number.isFinite(number)
+      ? new Intl.PluralRules(intlLocale()).select(number)
+      : 'other';
+    const exact=String(key)+'.'+category;
+    const other=String(key)+'.other';
+    const chosen=has(exact)?exact:other;
+    return t(chosen,{...params,count:Number.isFinite(number)?formatNumber(number):count});
+  }
+
   function apiLocale(locale=activeLocale){
     return API_LOCALE[normalize(locale)||activeLocale]||'ru';
   }
@@ -223,7 +234,7 @@
 
   const api=Object.freeze({
     STORAGE_KEY,LEGACY_STORAGE_KEY,DEFAULT_LOCALE,SUPPORTED,
-    normalize,locale,shortLocale,apiLocale,t,has,setLocale,subscribe,
+    normalize,locale,shortLocale,apiLocale,t,has,plural,setLocale,subscribe,
     formatDate,formatNumber,formatCurrency,formatUnit,formatDuration,formatAgeRange,formatMinutes,formatList,
     ensureSwitcher,assertComplete,bundle
   });
