@@ -267,6 +267,10 @@
   "booking.timeCount.one": "{count} 个时间",
   "booking.timeCount.few": "{count} 个时间",
   "booking.timeCount.many": "{count} 个时间",
-  "booking.timeCount.other": "{count} 个时间"
+  "booking.timeCount.other": "{count} 个时间",
+  "nav.home": "首页",
+  "nav.catalog": "行程",
+  "nav.trips": "我的行程",
+  "nav.ai": "AI 顾问"
 });
 })();
