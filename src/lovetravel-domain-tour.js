@@ -368,15 +368,21 @@
   function l10n(){ return globalThis.LoveTravelTourLocale || null; }
   function providerText(value){ return l10n()?.providerText?.(value) ?? String(value ?? ''); }
   function serverLocalized(domain){ return Boolean(l10n()?.serverLocalizationMatches?.(domain)); }
+  function preferCurated(domain){
+    return (locale()==='zh'||locale()==='ko') && PRODUCT_IDS.has(String(domain?.experience?.id||''));
+  }
   function localizedProductTitle(domain){
+    if(preferCurated(domain)) return l10n()?.productTitle?.(domain?.experience?.id,domain?.experience?.title||'') ?? String(domain?.experience?.title||'');
     if(serverLocalized(domain)) return String(domain?.experience?.title||'');
     return l10n()?.productTitle?.(domain?.experience?.id,domain?.experience?.title||'') ?? String(domain?.experience?.title||'');
   }
   function localizedProductDescription(domain){
+    if(preferCurated(domain)) return l10n()?.productDescription?.(domain?.experience?.id,domain?.experience?.description||'') ?? String(domain?.experience?.description||'');
     if(serverLocalized(domain)) return String(domain?.experience?.description||'');
     return l10n()?.productDescription?.(domain?.experience?.id,domain?.experience?.description||'') ?? String(domain?.experience?.description||'');
   }
   function localizedRateTitle(domain,rate){
+    if(preferCurated(domain)) return l10n()?.rateTitle?.(domain?.experience?.id,rate?.id,rate?.title||rate?.code||rate?.id||'') ?? String(rate?.title||rate?.code||rate?.id||'');
     if(serverLocalized(domain)) return String(rate?.title||rate?.code||rate?.id||'');
     return l10n()?.rateTitle?.(domain?.experience?.id,rate?.id,rate?.title||rate?.code||rate?.id||'') ?? String(rate?.title||rate?.code||rate?.id||'');
   }
@@ -614,9 +620,11 @@
     if(!items.length) return '';
     return '<section class="lt-domain-section"><div class="lt-domain-section__head"><div><span class="lt-domain-eyebrow">'+esc(t().itinerary)+'</span>'+(arr(domain.rates).length>1?'<p>'+esc(t().itineraryHint)+'</p>':'')+'</div></div><div class="lt-domain-itinerary">'+items.map((item,index)=>{
       const title=providerText(item.title||'');
-      const body=serverLocalized(domain)
-        ? textFromHtml(item.body)
-        : (l10n()?.itineraryBody?.(domain?.experience?.id,index,textFromHtml(item.body)) ?? textFromHtml(item.body));
+      const body=preferCurated(domain)
+        ? (l10n()?.itineraryBody?.(domain?.experience?.id,index,textFromHtml(item.body)) ?? textFromHtml(item.body))
+        : serverLocalized(domain)
+          ? textFromHtml(item.body)
+          : (l10n()?.itineraryBody?.(domain?.experience?.id,index,textFromHtml(item.body)) ?? textFromHtml(item.body));
       return '<div class="lt-domain-itinerary__item"><span>'+(index+1)+'</span><div>'+(title?'<b>'+esc(title)+'</b>':'')+(body?'<p>'+esc(body)+'</p>':'')+'</div></div>';
     }).join('')+'</div></section>';
   }
