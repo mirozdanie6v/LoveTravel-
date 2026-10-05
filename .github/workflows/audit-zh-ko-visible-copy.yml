@@ -85,7 +85,25 @@ jobs:
             await page.waitForTimeout(700);
             report[locale].ai=summarize(await visibleText(),locale);
           }
-          console.log(JSON.stringify(report,null,2));
+          const collect=(node,key,out=[])=>{
+            if(!node||typeof node!=='object') return out;
+            if(Array.isArray(node)){ for(const item of node) collect(item,key,out); return out; }
+            for(const [k,v] of Object.entries(node)){
+              if(k===key && Array.isArray(v)) out.push(...v);
+              else collect(v,key,out);
+            }
+            return out;
+          };
+          const violations={
+            zhCyrillic:[...new Set(collect(report.zh,'cyrillic'))],
+            koCyrillic:[...new Set(collect(report.ko,'cyrillic'))],
+            zhHangul:[...new Set(collect(report.zh,'hangulInZh'))],
+            koHan:[...new Set(collect(report.ko,'hanInKo'))],
+          };
+          console.log(JSON.stringify({report,violations},null,2));
+          if(violations.zhCyrillic.length||violations.koCyrillic.length||violations.zhHangul.length||violations.koHan.length){
+            throw new Error('Visible cross-language leakage: '+JSON.stringify(violations));
+          }
           await browser.close();
           NODE
           node audit.mjs
