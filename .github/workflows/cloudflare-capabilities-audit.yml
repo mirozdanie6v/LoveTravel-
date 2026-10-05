@@ -55,6 +55,7 @@ jobs:
                   return 0, {"error_type": type(exc).__name__}
 
           found = False
+          reports = []
           for slot, token in tokens:
               if not token:
                   continue
@@ -62,7 +63,9 @@ jobs:
               verify_code, verify = request(token, "/user/tokens/verify")
               active = verify_code == 200 and verify.get("result", {}).get("status") == "active"
               if not active:
-                  print(json.dumps({"token_slot": slot, "active": False, "verify_http": verify_code}))
+                  item = {"token_slot": slot, "active": False, "verify_http": verify_code}
+                  print(json.dumps(item))
+                  reports.append(item)
                   continue
 
               candidate_accounts = list(accounts)
@@ -74,7 +77,9 @@ jobs:
                           candidate_accounts.append(aid)
 
               if not candidate_accounts:
-                  print(json.dumps({"token_slot": slot, "active": True, "account_resolved": False}))
+                  item = {"token_slot": slot, "active": True, "account_resolved": False}
+                  print(json.dumps(item))
+                  reports.append(item)
                   continue
 
               for account in candidate_accounts:
@@ -107,7 +112,7 @@ jobs:
                   text = json.dumps(ai_body).lower()[:500] if ai_code != 200 else ""
                   quota_hint = any(word in text for word in ("quota", "daily", "neuron", "paid", "payment", "limit"))
 
-                  print(json.dumps({
+                  item = {
                       "token_slot": slot,
                       "active": True,
                       "account_resolved": True,
@@ -119,9 +124,23 @@ jobs:
                       "workers_ai_http": ai_code,
                       "workers_ai_error_codes": error_codes,
                       "workers_ai_quota_or_plan_hint": quota_hint,
-                  }))
+                  }
+                  print(json.dumps(item))
+                  reports.append(item)
                   found = True
                   break
 
+          with open("cloudflare-capabilities.json", "w", encoding="utf-8") as handle:
+              json.dump({"reports": reports, "found_workers_credential": found}, handle, indent=2)
+
           if not found:
               raise SystemExit("No active LoveTravel credential had Workers access to a configured account")
+
+      - name: Upload capability report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cloudflare-capabilities
+          path: cloudflare-capabilities.json
+          if-no-files-found: error
+          retention-days: 1
