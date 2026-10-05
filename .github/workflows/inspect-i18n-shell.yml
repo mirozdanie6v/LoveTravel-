@@ -30,6 +30,10 @@ jobs:
           await page.waitForTimeout(600);
           console.log('CATALOG_TITLE\n'+await page.locator('#catalogScreen .catalog-title-v26').evaluate(el=>el.outerHTML).catch(()=>'')); 
           console.log('CARD\n'+await page.locator('#catalogScreen .wide-card').first().evaluate(el=>el.outerHTML));
+          console.log('NAV\n'+await page.evaluate(()=>JSON.stringify([...document.querySelectorAll('button,a,[role="button"]')].map(el=>({
+            tag:el.tagName,text:(el.innerText||'').trim().replace(/\s+/g,' '),id:el.id,cls:el.className,
+            onclick:el.getAttribute('onclick'),screen:el.dataset?.screen,action:el.dataset?.action
+          })).filter(x=>/Главная|Каталог|Мои поездки|ИИ-Помощник|Home|Catalog|Trips|AI/i.test(x.text)),null,2)));
           await browser.close();
           NODE
           node inspect.mjs
