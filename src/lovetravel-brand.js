@@ -224,6 +224,31 @@
     }
   }
 
+  const legacyCardCopy={
+    ru:{departure:'ВЫЕЗД',finish:'ФИНИШ',group:'групповой',from:'от'},
+    vi:{departure:'KHỞI HÀNH',finish:'KẾT THÚC',group:'tour nhóm',from:'từ'},
+    en:{departure:'DEPARTURE',finish:'FINISH',group:'group',from:'from'},
+    zh:{departure:'出发',finish:'结束',group:'拼团',from:'起'},
+    ko:{departure:'출발',finish:'종료',group:'그룹',from:'최저'}
+  };
+
+  function localizeLegacyCard(card,lang){
+    const words=legacyCardCopy[lang]||legacyCardCopy.ru;
+    const walker=document.createTreeWalker(card,NodeFilter.SHOW_TEXT);
+    const nodes=[];
+    while(walker.nextNode()) nodes.push(walker.currentNode);
+    nodes.forEach(node=>{
+      const raw=node.nodeValue||'';
+      if(!raw.trim()) return;
+      let value=raw;
+      value=value.replace(/ВЫЕЗД/g,words.departure);
+      value=value.replace(/ФИНИШ/g,words.finish);
+      value=value.replace(/групповой\s+от/gi,lang==='zh'?words.group+' '+words.from:words.group+' '+words.from);
+      value=value.replace(/\bгрупповой\b/gi,words.group);
+      if(value!==raw) node.nodeValue=value;
+    });
+  }
+
   function brandCatalog() {
     const screen=document.getElementById('catalogScreen');
     if (!screen) return;
@@ -249,6 +274,7 @@
 
     screen.querySelectorAll('.wide-card').forEach(card => {
       card.classList.add('lt-tour-card');
+      localizeLegacyCard(card,lang);
       const priceRow=card.querySelector('.price-row');
       if (!priceRow) return;
       let action=priceRow.querySelector('.lt-card-action');
