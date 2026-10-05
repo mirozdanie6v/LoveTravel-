@@ -1,0 +1,130 @@
+name: Diagnose showreel Container health
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/showreel-container-health-diagnose.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/checkout@v5
+        with:
+          repository: mirozdanie6v/uniq-smart-rent
+          ref: codex/showreel-deploy
+          path: bridge
+      - name: Diagnose deployed container without exposing secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --quiet cryptography==46.0.5
+          python - <<'PY'
+          import base64, hashlib, json, os, urllib.error, urllib.request
+          from cryptography.hazmat.primitives import hashes, serialization
+          from cryptography.hazmat.primitives.asymmetric import padding
+          from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+          token=os.environ["CLOUDFLARE_API_TOKEN"]
+          account=os.environ.get("CLOUDFLARE_ACCOUNT_ID","")
+          print("::add-mask::"+token)
+
+          def api(path):
+              req=urllib.request.Request(
+                  "https://api.cloudflare.com/client/v4"+path,
+                  headers={"Authorization":"Bearer "+token,"Content-Type":"application/json"})
+              try:
+                  with urllib.request.urlopen(req,timeout=30) as response:
+                      return response.status,json.load(response)
+              except urllib.error.HTTPError as error:
+                  try: body=json.load(error)
+                  except Exception: body={}
+                  return error.code,body
+
+          if not account:
+              code,zone=api("/zones?name=viiversion.com")
+              assert code==200
+              account=next(x["account"]["id"] for x in zone["result"] if x["name"]=="viiversion.com")
+          print("::add-mask::"+account)
+
+          release=json.load(open("bridge/.deploy-showreel/release-v2.enc.json"))
+          sealed=base64.b64decode(release["sealed_private_key"])
+          seal_key=hashlib.sha256(b"showreel-deploy-v2:"+token.encode()).digest()
+          private_pem=AESGCM(seal_key).decrypt(sealed[:12],sealed[12:],b"showreel-deploy-v2")
+          private=serialization.load_pem_private_key(private_pem,password=None)
+          release_key=private.decrypt(
+              base64.b64decode(release["wrapped_key"]),
+              padding.OAEP(mgf=padding.MGF1(hashes.SHA256()),algorithm=hashes.SHA256(),label=b"showreel-release-v2"))
+          cipher=base64.b64decode(release["ciphertext"])
+          raw=AESGCM(release_key).decrypt(cipher[:12],cipher[12:],b"showreel-release-v2")
+          payload=json.loads(raw)
+          runtime=payload["secrets"]
+          for value in runtime.values():
+              if value: print("::add-mask::"+value)
+
+          sub_code,sub=api(f"/accounts/{account}/workers/subdomain")
+          subdomain=sub.get("result",{}).get("subdomain") if sub_code==200 else None
+          assert subdomain
+          url=f"https://viiversion-showreel-processor.{subdomain}.workers.dev/health"
+          request=urllib.request.Request(
+              url,
+              headers={"Authorization":"Bearer "+runtime["PROCESSOR_ADMIN_KEY"]})
+          health_code=0
+          health_body={}
+          try:
+              with urllib.request.urlopen(request,timeout=60) as response:
+                  health_code=response.status
+                  health_body=json.load(response)
+          except urllib.error.HTTPError as error:
+              health_code=error.code
+              raw_body=error.read().decode(errors="replace")
+              for value in [token,account,*runtime.values()]:
+                  if value: raw_body=raw_body.replace(value,"[redacted]")
+              try: health_body=json.loads(raw_body)
+              except Exception: health_body={"text":raw_body[:1000]}
+
+          apps_code,apps=api(f"/accounts/{account}/containers/applications")
+          app_summary=[]
+          if apps_code==200:
+              result=apps.get("result",[])
+              if isinstance(result,dict):
+                  result=result.get("applications",result.get("items",[]))
+              if isinstance(result,list):
+                  for app in result:
+                      if "viiversion-showreel-processor" in str(app.get("name","")):
+                          app_summary.append({
+                              "id":app.get("id"),
+                              "name":app.get("name"),
+                              "status":app.get("status"),
+                              "instances":app.get("instances"),
+                              "max_instances":app.get("max_instances"),
+                              "configuration": {
+                                  "instance_type":(app.get("configuration") or {}).get("instance_type")
+                              }
+                          })
+
+          report={
+              "health_http":health_code,
+              "health_body":health_body,
+              "containers_api_http":apps_code,
+              "applications":app_summary
+          }
+          json.dump(report,open("showreel-container-health.json","w"),indent=2)
+          print(json.dumps(report))
+          PY
+      - name: Upload diagnostic report
+        uses: actions/upload-artifact@v4
+        with:
+          name: showreel-container-health
+          path: showreel-container-health.json
+          retention-days: 1
