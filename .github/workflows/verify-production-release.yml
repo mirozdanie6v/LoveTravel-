@@ -1,0 +1,46 @@
+name: Verify LoveTravel production release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/verify-production-release.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Verify live Bókun, languages, AI and demo guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          base='https://lovetravel.viiversion.com'
+
+          for locale in ru en vi zh ko; do
+            curl -fsS "$base/api/bokun/tours?locale=$locale" > "/tmp/tours-$locale.json"
+            jq -e '.ok == true and .source == "bokun" and .vendorId == "137689" and ([.tours[].id]|sort)==["1287578","1287580"]' "/tmp/tours-$locale.json" >/dev/null
+
+            case "$locale" in
+              ru) msg='Какие две экскурсии сейчас доступны?' ;;
+              en) msg='Which two tours are currently available?' ;;
+              vi) msg='Hiện có hai tour nào?' ;;
+              zh) msg='目前有哪两条行程？' ;;
+              ko) msg='현재 이용 가능한 두 투어는 무엇인가요?' ;;
+            esac
+            payload="$(jq -nc --arg locale "$locale" --arg message "$msg" '{locale:$locale,message:$message}')"
+            curl -fsS -X POST "$base/api/ai/chat"               -H 'content-type: application/json'               -H "x-max-tour-locale: $locale"               --data "$payload" > "/tmp/ai-$locale.json"
+            jq -e '.ok == true and (.reply|type=="string") and (.reply|length>0) and (.tourId == "" or .tourId == "1287578" or .tourId == "1287580") and ((.source // "")|contains("bokun"))' "/tmp/ai-$locale.json" >/dev/null
+            echo "$locale $(jq -c '{source,tourId,reply}' "/tmp/ai-$locale.json")"
+          done
+
+          code="$(curl -sS -o /tmp/demo.json -w '%{http_code}' -X POST             "$base/api/bokun/client-demo/submit"             -H 'content-type: application/json' --data '{}')"
+          test "$code" = 403
+          jq -e '.error=="demo_access_denied"' /tmp/demo.json >/dev/null
+
+          curl -fsS 'https://integration.viiversion.com/api/bokun/status?vendorId=137689' > /tmp/status.json
+          jq -e '.ok == true and .vendorId == "137689" and .oauthConnected == true and .restCredentialsReady == true' /tmp/status.json >/dev/null
+          jq '{vendorId,oauthConnected,restCredentialsReady,realBookingWriteEnabled,oneTimeBookingTestArmed}' /tmp/status.json
