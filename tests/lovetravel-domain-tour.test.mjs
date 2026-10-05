@@ -66,9 +66,11 @@ test('tour gallery renders every Bókun photo and supports full-screen navigatio
   assert.match(css,/\.lt-domain-lightbox/);
 });
 
-test('tour options are visual cards with curated descriptions and tour photos',()=>{
-  assert.match(js,/RATE_PRESENTATION/);
+test('tour options are visual cards with curated content keys and tour photos',()=>{
+  assert.doesNotMatch(js,/RATE_PRESENTATION/);
+  assert.match(js,/content\.rate\.'\+rateId\+'\.description/);
   assert.match(js,/function rateDescription/);
   assert.match(js,/lt-domain-rate__media/);
   assert.match(css,/\.lt-domain-section--options/);
+  for(const bundle of locales) assert.match(bundle,/"content\.rate\.2581224\.description":/);
 });
