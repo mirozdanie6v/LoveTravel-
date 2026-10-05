@@ -254,6 +254,12 @@
   "ai.date.past": "该日期已经过去。越南今天是 {today}。请选择 {minDate} 或之后的日期。",
   "format.ageRange": "{min}–{max} 岁",
   "format.minutes": "{value} 分钟",
-  "tour.stop": "第 {index} 站"
+  "tour.stop": "第 {index} 站",
+  "catalog.departure": "出发",
+  "catalog.finish": "结束",
+  "catalog.finishByProgram": "按行程安排",
+  "catalog.groupFrom": "拼团价起",
+  "catalog.privateFrom": "私人行程价起",
+  "catalog.city": "芽庄"
 });
 })();
