@@ -267,6 +267,10 @@
   "booking.timeCount.one": "{count}개 시간",
   "booking.timeCount.few": "{count}개 시간",
   "booking.timeCount.many": "{count}개 시간",
-  "booking.timeCount.other": "{count}개 시간"
+  "booking.timeCount.other": "{count}개 시간",
+  "nav.home": "홈",
+  "nav.catalog": "투어",
+  "nav.trips": "내 여행",
+  "nav.ai": "AI 도우미"
 });
 })();
