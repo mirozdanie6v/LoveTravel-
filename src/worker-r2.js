@@ -39,7 +39,7 @@ const ADMIN_SHARED_ASSETS = new Set([
 const ADMIN_TOURIST_ROLE_PATTERN = /\s*<a href="\/" aria-label="Открыть кабинет туриста"><span class="role-long">Турист<\/span><span class="role-short">Турист<\/span><\/a>/i;
 const AVAILABILITY_INTENT = /(?:есть|мест[ао]?|свобод|наличи|заброни)/i;
 const ORIGIN_CUE = /(?:^|\s)(?:я|мы|сейчас|нахожусь|находимся|живу|живем|живём|из|выезд(?:\s+из)?|старт(?:\s+из)?)(?:\s|$|[^а-яё])/i;
-const LOVE_TRAVEL_CLIENT_DEMO_TOKEN_SHA256 = '0551905d7ba4e0dee3190b5e9f29f7a07be5ce0d09a27cd35ce587f601019432';
+const LOVE_TRAVEL_CLIENT_DEMO_TOKEN_SHA256 = '42cad24054916ff2040742df44c06a31421534cf640b784371f8d05e46635489';
 async function requestedLocale(request, url) {
   if (url.pathname !== '/api/ai/chat' || request.method !== 'POST') return 'ru';
   const header = String(request.headers.get('x-max-tour-locale') || '').toLowerCase();
