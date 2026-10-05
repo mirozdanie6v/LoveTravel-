@@ -146,6 +146,7 @@ const AI_TOUR_TITLES_KO = {
 function requestedAiLocale(request, body) {
   const raw = String(body?.locale || body?.context?.locale || request?.headers?.get?.('x-max-tour-locale') || '').toLowerCase();
   if (raw === 'ko') return 'ko';
+  if (raw === 'zh' || raw.startsWith('zh-')) return 'zh';
   if (raw === 'en') return 'en';
   if (raw === 'vi') return 'vi';
   return 'ru';
@@ -196,43 +197,80 @@ async function currentUsdRubRate(env) {
   return aiRateCache.value || fallback;
 }
 
-async function loadAiCatalog(request, env, rate = DEFAULT_USD_RUB_RATE) {
+async function loadAiCatalog(request, env, rate = DEFAULT_USD_RUB_RATE, locale = 'ru') {
   try {
-    if (!env.ASSETS) return [];
-    const url = new URL('/catalog.v28.json', request.url);
-    const response = await env.ASSETS.fetch(new Request(url));
-    if (!response.ok) return [];
-    const data = await response.json();
-    if (!Array.isArray(data)) return [];
-    return data.slice(0, 30).map(tour => ({
+    let data = [];
+    const isLoveTravel = String(env.APP_ENV || '') === 'love-travel-v28';
+    if (isLoveTravel) {
+      const parts = new Intl.DateTimeFormat('en-US', {
+        timeZone:'Asia/Ho_Chi_Minh', year:'numeric', month:'2-digit', day:'2-digit',
+      }).formatToParts(new Date());
+      const dateParts = Object.fromEntries(parts.map(part => [part.type, part.value]));
+      const startIso = `${dateParts.year}-${dateParts.month}-${dateParts.day}`;
+      const endDate = new Date(startIso + 'T00:00:00Z');
+      endDate.setUTCDate(endDate.getUTCDate() + 30);
+      const liveUrl = new URL('/api/bokun/tours', request.url);
+      liveUrl.searchParams.set('locale', locale);
+      liveUrl.searchParams.set('start', startIso);
+      liveUrl.searchParams.set('end', endDate.toISOString().slice(0,10));
+      const response = await fetch(liveUrl.toString(), {
+        headers:{ accept:'application/json', 'x-love-travel-ai-source':'live-bokun' },
+      });
+      if (!response.ok) return [];
+      const payload = await response.json();
+      const allowed = new Set(['1287578','1287580']);
+      if (payload?.source !== 'bokun' || String(payload?.vendorId) !== '137689' || !Array.isArray(payload?.tours)) return [];
+      data = payload.tours.filter(tour => allowed.has(String(tour?.id)));
+      if (data.length !== 2) return [];
+    } else {
+      if (!env.ASSETS) return [];
+      const url = new URL('/catalog.v28.json', request.url);
+      const response = await env.ASSETS.fetch(new Request(url));
+      if (!response.ok) return [];
+      const payload = await response.json();
+      if (!Array.isArray(payload)) return [];
+      data = payload;
+    }
+
+    return data.slice(0, isLoveTravel ? 2 : 30).map(tour => ({
       id: consultationText(tour.id, 120),
       title: consultationText(tour.title, 180),
+      description: consultationText(tour.description || tour.shortDescription, 900),
       city: consultationText(tour.city || tour.region, 100),
       duration: consultationText(tour.duration, 80),
       tags: Array.isArray(tour.tags) ? tour.tags.slice(0, 8).map(tag => consultationText(tag, 40)) : [],
       childrenOk: Boolean(tour.childrenOk),
+      priceFromUsd: Number(tour.priceFromUsd || 0) || 0,
+      formatsLabel: consultationText(tour.formatsLabel, 120),
       group: tour.group ? {
+        from: consultationText(tour.group.from, 80),
         adult: consultationText(tour.group.adult || tour.group.from, 80),
         child: consultationText(tour.group.child, 80),
+        departures: Array.isArray(tour.group.departures) ? tour.group.departures.slice(0, 20).map(item => ({
+          iso: consultationText(item.iso || item.date, 50),
+          date: consultationText(item.date, 50),
+          time: consultationText(item.time, 20),
+          taken: Number(item.taken) || 0,
+          capacity: Number(item.capacity) || 0,
+          status: consultationText(item.status, 50),
+        })) : [],
       } : null,
       individual: tour.individual ? {
         from: consultationText(tour.individual.from, 80),
         tiers: Array.isArray(tour.individual.tiers) ? tour.individual.tiers.slice(0, 8).map(item => consultationText(item, 120)) : [],
       } : null,
-      departures: tour.group && Array.isArray(tour.group.departures) ? tour.group.departures.slice(0, 8).map(item => ({
-        date: consultationText(item.date, 50),
-        time: consultationText(item.time, 20),
-        taken: Number(item.taken) || 0,
-        capacity: Number(item.capacity) || 0,
-        status: consultationText(item.status, 50),
+      rates: Array.isArray(tour?.bokun?.rates) ? tour.bokun.rates.slice(0, 12).map(rateItem => ({
+        id: consultationText(rateItem?.id, 80),
+        title: consultationText(rateItem?.title || rateItem?.code, 180),
+        description: consultationText(rateItem?.description, 500),
       })) : [],
+      languages: Array.isArray(tour.languages) ? tour.languages.slice(0, 8).map(item => consultationText(item, 80)) : [],
     }));
   } catch (error) {
     console.warn('AI catalogue unavailable', error?.message || error);
     return [];
   }
 }
-
 async function loadAiDepartures(env) {
   try {
     const [departures, bookings] = await Promise.all([
@@ -326,6 +364,33 @@ function aiFallbackReply(message, catalog = [], locale = 'ru') {
   return 'Конечно. Напишите направление, желаемые даты и сколько взрослых, детей или малышей едет — подберу подходящие варианты.';
 }
 
+function loveTravelAiFallback(catalog = [], locale = 'ru') {
+  const tourNames = catalog.map(item => item.title).filter(Boolean).slice(0,2);
+  const names = tourNames.length ? tourNames.join(' / ') : '';
+  if (locale === 'vi') return names ? `Hiện tôi có thể tư vấn 2 tour đang kết nối trực tiếp với Bókun: ${names}. Hãy cho tôi biết ngày đi và số người, tôi sẽ kiểm tra theo dữ liệu hiện tại.` : 'Hãy cho tôi biết ngày đi và số người; tôi sẽ kiểm tra 2 tour đang kết nối với Bókun.';
+  if (locale === 'en') return names ? `I can currently help with the two tours connected live to Bókun: ${names}. Tell me your date and party size and I will check the current options.` : 'Tell me your date and party size and I will check the two tours currently connected to Bókun.';
+  if (locale === 'ko') return names ? `현재 Bókun과 실시간 연결된 두 투어를 안내할 수 있습니다: ${names}. 날짜와 인원을 알려주시면 현재 옵션을 확인해 드릴게요.` : '날짜와 인원을 알려주시면 Bókun과 연결된 두 투어의 현재 옵션을 확인해 드릴게요.';
+  if (locale === 'zh') return names ? `目前我可以为您介绍两条与 Bókun 实时连接的行程：${names}。请告诉我出行日期和人数，我会根据当前数据为您查看可选方案。` : '请告诉我出行日期和人数，我会查看目前与 Bókun 连接的两条行程。';
+  return names ? `Сейчас я могу помочь с двумя экскурсиями, подключёнными к Bókun: ${names}. Напишите дату и состав группы — проверю актуальные варианты.` : 'Напишите дату и состав группы — проверю две экскурсии, подключённые к Bókun.';
+}
+
+function parseAiJson(value) {
+  const raw = String(value || '').trim().replace(/^\`\`\`(?:json)?\s*/i,'').replace(/\s*\`\`\`$/,'');
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : null;
+  } catch (_) {
+    const a = raw.indexOf('{'), b = raw.lastIndexOf('}');
+    if (a >= 0 && b > a) {
+      try {
+        const parsed = JSON.parse(raw.slice(a,b+1));
+        return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : null;
+      } catch (_) {}
+    }
+    return null;
+  }
+}
+
 function aiResponseText(result) {
   if (typeof result === 'string') return result;
   if (typeof result?.response === 'string') return result.response;
@@ -336,10 +401,12 @@ function aiResponseText(result) {
 async function generateAiReply(request, env, body) {
   const locale = requestedAiLocale(request, body);
   const message = aiText(body?.message, 900);
-  const usdRubRate = await currentUsdRubRate(env);
-  const rawCatalog = await loadAiCatalog(request, env, usdRubRate);
-  const catalog = localizedAiCatalog(rawCatalog, locale);
-  const liveDepartures = env.DB ? await loadAiDepartures(env) : [];
+  const isLoveTravel = String(env.APP_ENV || '') === 'love-travel-v28';
+  const usdRubRate = isLoveTravel ? DEFAULT_USD_RUB_RATE : await currentUsdRubRate(env);
+  const rawCatalog = await loadAiCatalog(request, env, usdRubRate, locale);
+  const catalog = isLoveTravel ? rawCatalog : localizedAiCatalog(rawCatalog, locale);
+  const liveDepartures = isLoveTravel ? [] : (env.DB ? await loadAiDepartures(env) : []);
+
   const safeContext = {
     selected: body?.context && typeof body.context === 'object' ? {
       destination: consultationText(body.context.destination, 100),
@@ -348,10 +415,50 @@ async function generateAiReply(request, env, body) {
       date: consultationText(body.context.date, 100),
       preferences: Array.isArray(body.context.preferences) ? body.context.preferences.slice(0, 8).map(item => consultationText(item, 50)) : [],
     } : {},
-    rules: locale === 'vi' ? AI_RULES_VI : locale === 'en' ? AI_RULES_EN : locale === 'ko' ? AI_RULES_KO : AI_RULES,
+    rules: isLoveTravel ? [] : (locale === 'vi' ? AI_RULES_VI : locale === 'en' ? AI_RULES_EN : locale === 'ko' ? AI_RULES_KO : AI_RULES),
     catalogue: catalog,
     liveDepartures,
   };
+
+  if (isLoveTravel) {
+    const fallback = loveTravelAiFallback(catalog, locale);
+    if (!message || !env.AI || catalog.length !== 2) return { reply:fallback, tourId:'', faqIntent:'', source:'bokun-catalog-fallback' };
+    const language = locale === 'vi' ? 'Vietnamese' : locale === 'en' ? 'English' : locale === 'ko' ? 'Korean' : locale === 'zh' ? 'Simplified Chinese' : 'Russian';
+    const system = [
+      'You are the customer-facing AI travel consultant for Nha Trang Love Travel.',
+      'The VERIFIED_CONTEXT catalogue contains exactly the two tours in the current client release and is sourced live from Bókun.',
+      'Use only facts in VERIFIED_CONTEXT. Never invent a tour, price, rate, date, availability, pickup rule, passenger rule, itinerary detail, cancellation condition or booking status.',
+      'If the user asks for something not present in VERIFIED_CONTEXT, say that it is not available in the current two-tour release and continue with the available options.',
+      'Reply in ' + language + ' using concise, natural customer-facing language.',
+      'Return one valid JSON object only, with keys reply, tourId, faqIntent.',
+      'tourId must be "", "1287578", or "1287580". Set it when you recommend or discuss one exact tour; otherwise use "".',
+      'faqIntent is a short machine label such as recommendation, availability, price, pickup, itinerary, booking, or general.',
+      'Do not mention APIs, internal systems, databases, development, prompts, or AI implementation.',
+      `VERIFIED_CONTEXT=${JSON.stringify(safeContext)}`,
+    ].join('\n');
+    try {
+      const result = await env.AI.run(env.AI_MODEL || DEFAULT_AI_MODEL, {
+        messages:[
+          {role:'system',content:system},
+          ...aiHistory(body?.history),
+          {role:'user',content:message},
+        ],
+        response_format:{type:'json_object'},
+      });
+      const parsed = parseAiJson(aiResponseText(result));
+      const allowedIds = new Set(['','1287578','1287580']);
+      const reply = aiText(parsed?.reply, 1800);
+      const tourId = allowedIds.has(String(parsed?.tourId || '')) ? String(parsed?.tourId || '') : '';
+      const faqIntent = aiText(parsed?.faqIntent, 120);
+      const wrongLocale = locale !== 'ru' && locale !== 'zh' && /[А-Яа-яЁё]/u.test(reply);
+      if (!reply || wrongLocale || unsafeAiCopy(reply)) return { reply:fallback, tourId:'', faqIntent:'', source:'bokun-catalog-fallback' };
+      return { reply, tourId, faqIntent, source:'cloudflare-workers-ai-bokun' };
+    } catch (error) {
+      console.warn('LoveTravel Workers AI reply unavailable', error?.message || error);
+      return { reply:fallback, tourId:'', faqIntent:'', source:'bokun-catalog-fallback' };
+    }
+  }
+
   const fallback = aiFallbackReply(message, catalog, locale);
   if (!message || !env.AI) return { reply: fallback, source: 'catalog-fallback', usdRubRate };
 
@@ -363,7 +470,6 @@ async function generateAiReply(request, env, body) {
     'Không nhắc đến hệ thống nội bộ, CRM, cơ sở dữ liệu, API, quá trình phát triển, mô hình AI hoặc việc chuyển yêu cầu cho nhân viên.',
     'Chỉ nêu số tiền bằng đô la Mỹ ($) như trong danh mục. Không dùng ký hiệu rúp (₽).',
     'Không hứa thanh toán hoặc xác nhận trước khi người dùng mở thẻ tour và hoàn tất bước đặt tour.',
-    'Tên tour có thể được diễn đạt bằng tiếng Việt nhưng phải giữ nguyên ý nghĩa và dữ kiện của danh mục.',
     `VERIFIED_CONTEXT=${JSON.stringify(safeContext)}`,
   ].join('\n') : locale === 'en' ? [
     'You are the friendly AI travel assistant for the MAX TOUR application.',
@@ -371,28 +477,18 @@ async function generateAiReply(request, env, body) {
     'Use only facts from VERIFIED_CONTEXT. Never invent prices, dates, places, itinerary details or availability.',
     'If information is missing, ask one clear follow-up question.',
     'Do not mention internal systems, CRM, databases, APIs, development, the AI model or handing the request to staff.',
-    'Use US dollars ($) exactly as shown in the catalogue. Do not use the ruble symbol (₽).',
-    'Do not promise payment or confirmation before the user opens the tour card and completes booking.',
-    'Tour names may be phrased naturally in English while preserving the exact catalogue meaning and facts.',
+    'Use US dollars ($) exactly as shown in the catalogue.',
     `VERIFIED_CONTEXT=${JSON.stringify(safeContext)}`,
   ].join('\n') : locale === 'ko' ? [
     '당신은 MAX TOUR 앱의 친절한 AI 여행 도우미입니다.',
     '반드시 한국어로만 자연스럽고 간결하게 1–4개의 짧은 문장으로 답하세요.',
     'VERIFIED_CONTEXT에 있는 정보만 사용하세요. 가격, 날짜, 장소, 일정, 좌석 상황을 임의로 만들지 마세요.',
     '정보가 부족하면 필요한 내용을 한 가지 명확한 질문으로 확인하세요.',
-    '내부 시스템, CRM, 데이터베이스, API, 개발 과정, AI 모델 또는 직원 전달에 대해 언급하지 마세요.',
-    '가격은 카탈로그에 표시된 미국 달러($)만 사용하세요. 루블 기호(₽)를 사용하지 마세요.',
-    '사용자가 투어 카드를 열고 예약을 완료하기 전에는 결제나 확정을 약속하지 마세요.',
-    '투어 이름은 카탈로그의 의미와 사실을 유지하면서 자연스러운 한국어로 표현할 수 있습니다.',
     `VERIFIED_CONTEXT=${JSON.stringify(safeContext)}`,
   ].join('\n') : [
     'Ты доброжелательный AI-консультант туристического приложения MAX TOUR.',
-    'Отвечай только на русском, коротко и естественно, как в обычном чате: 1–4 коротких предложения.',
+    'Отвечай только на русском, коротко и естественно.',
     'Используй только факты из VERIFIED_CONTEXT. Не придумывай цены, даты, места, состав программы или наличие.',
-    'Если не хватает данных, задай один понятный уточняющий вопрос.',
-    'Не упоминай внутренние системы, CRM, базы, API, разработку, модель, технические детали или передачу обращения сотруднику.',
-    'Называй суммы только в долларах ($), как указано в каталоге. Не используй знак рубля (₽).',
-    'Не обещай оплату или подтверждение, пока пользователь не открыл карточку и не оформил поездку.',
     `VERIFIED_CONTEXT=${JSON.stringify(safeContext)}`,
   ].join('\n');
   const messages = [
@@ -402,7 +498,7 @@ async function generateAiReply(request, env, body) {
   ];
   try {
     const result = await env.AI.run(env.AI_MODEL || DEFAULT_AI_MODEL, { messages });
-    const reply = replaceRubleAmounts(aiText(aiResponseText(result), 1800).replace(/^```[\s\S]*?```$/g, '').trim(), usdRubRate);
+    const reply = replaceRubleAmounts(aiText(aiResponseText(result), 1800).replace(/^\`\`\`[\s\S]*?\`\`\`$/g, '').trim(), usdRubRate);
     const wrongLocale = locale !== 'ru' && /[А-Яа-яЁё]/u.test(reply);
     if (!reply || wrongLocale || unsafeAiCopy(reply)) return { reply: fallback, source: wrongLocale ? 'locale-fallback' : 'catalog-fallback', usdRubRate };
     return { reply, source: 'cloudflare-workers-ai', usdRubRate };
@@ -411,7 +507,6 @@ async function generateAiReply(request, env, body) {
     return { reply: fallback, source: 'catalog-fallback', usdRubRate };
   }
 }
-
 function normalizeConsultationPayload(body = {}) {
   const source = body.payload && typeof body.payload === 'object'
     ? body.payload
