@@ -145,7 +145,6 @@ const analyticsTracker = '<script defer src="https://dashboard.viiversion.com/tr
 const productionEmbedCss = '<link rel="stylesheet" href="/production-embed-polish.css">';
 const i18nCss = '<link rel="stylesheet" href="/i18n-v1.css">';
 const productionEmbedJs = '<script defer src="/production-embed-polish.js"></script>';
-const i18nJs = '<script defer src="/i18n-en-v1.js"></script>\n<script defer src="/i18n-ko-v1.js"></script>\n<script defer src="/i18n-zh-v1.js"></script>\n<script defer src="/i18n-v1.js"></script>';
 const loveTravelI18nRuntime = '<script src="/locales/ru-RU.js"></script>\n<script src="/locales/en-US.js"></script>\n<script src="/locales/vi-VN.js"></script>\n<script src="/locales/zh-CN.js"></script>\n<script src="/locales/ko-KR.js"></script>\n<script src="/lovetravel-i18n-core.js"></script>';
 
 function withViiversionAnalytics(html) {
@@ -173,10 +172,6 @@ function withViiversionAnalytics(html) {
   if (!result.includes('production-embed-polish.js')) {
     if (!result.includes('</body>')) throw new Error('HTML has no </body> marker');
     result = result.replace('</body>', `${productionEmbedJs}\n</body>`);
-  }
-  if (!result.includes('i18n-v1.js')) {
-    if (!result.includes('</body>')) throw new Error('HTML has no </body> marker');
-    result = result.replace('</body>', `${i18nJs}\n</body>`);
   }
   return result;
 }
