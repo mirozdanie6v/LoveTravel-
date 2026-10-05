@@ -323,7 +323,7 @@ export async function fetchLoveTravelBokunDomains({
     lang,
     includePickupPlaces,
   })));
-  return pairs.map(({ product, availability, pickupPlaces }) => buildBokunDomain(product, availability, { vendorId, pickupPlaces }));
+  return pairs.map(({ product, availability, pickupPlaces }) => buildBokunDomain(product, availability, { vendorId, pickupPlaces, contentLocale:String(lang||'EN').toLowerCase() }));
 }
 
 export async function fetchLoveTravelBokunTours(options = {}) {
