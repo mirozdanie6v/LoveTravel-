@@ -4,6 +4,9 @@ on:
     branches: [refactor/lovetravel-i18n-core]
 permissions:
   contents: read
+concurrency:
+  group: lovetravel-i18n-refactor
+  cancel-in-progress: true
 jobs:
   check:
     runs-on: ubuntu-latest
