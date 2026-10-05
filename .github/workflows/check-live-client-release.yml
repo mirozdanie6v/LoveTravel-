@@ -1,0 +1,51 @@
+name: Check live LoveTravel client release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.check-live-client-release'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check integration release marker
+        shell: bash
+        run: |
+          set -euo pipefail
+          code="$(curl -sS -o /tmp/int.json -w '%{http_code}'             -X POST 'https://integration.viiversion.com/internal/lovetravel/bokun/demo-submit?vendorId=137689&currency=USD'             -H 'content-type: application/json' --data '{}')"
+          echo "integration demo endpoint HTTP=$code"
+          test "$code" = 401
+
+      - name: Check LoveTravel release marker
+        shell: bash
+        run: |
+          set -euo pipefail
+          code="$(curl -sS -o /tmp/app.json -w '%{http_code}'             -X POST 'https://lovetravel.viiversion.com/api/bokun/client-demo/submit'             -H 'content-type: application/json' --data '{}')"
+          echo "LoveTravel demo endpoint HTTP=$code"
+          cat /tmp/app.json || true
+          test "$code" = 403
+
+      - name: Check five live locales
+        shell: bash
+        run: |
+          set -euo pipefail
+          for locale in ru en vi zh ko; do
+            curl -fsS "https://lovetravel.viiversion.com/api/bokun/tours?locale=$locale" > "/tmp/tours-$locale.json"
+            jq -e '.ok == true and .source == "bokun" and .vendorId == "137689" and ([.tours[].id]|sort) == ["1287578","1287580"]' "/tmp/tours-$locale.json" >/dev/null
+          done
+          jq '{titles:[.tours[].title]}' /tmp/tours-zh.json
+
+      - name: Check Bókun-bound Chinese AI
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS -X POST 'https://lovetravel.viiversion.com/api/ai/chat'             -H 'content-type: application/json'             -H 'x-max-tour-locale: zh'             --data '{"locale":"zh","message":"请介绍目前可以预订的两条行程"}' > /tmp/ai.json
+          cat /tmp/ai.json | jq '{ok,source,tourId,reply}'
+          jq -e '.ok == true and (.reply|type=="string") and (.reply|length>0) and (.tourId == "" or .tourId == "1287578" or .tourId == "1287580") and ((.source // "") | contains("bokun"))' /tmp/ai.json >/dev/null
