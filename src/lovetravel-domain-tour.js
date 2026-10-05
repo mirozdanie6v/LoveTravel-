@@ -417,11 +417,11 @@
   }
   function fieldLabel(value){
     const labels={
-      FIRSTNAME:{ru:'Имя',en:'First name',vi:'Tên',ko:'이름'},
-      LASTNAME:{ru:'Фамилия',en:'Last name',vi:'Họ',ko:'성'},
-      PHONE:{ru:'Телефон',en:'Phone',vi:'Điện thoại',ko:'전화번호'},
-      PHONENUMBER:{ru:'Телефон',en:'Phone',vi:'Điện thoại',ko:'전화번호'},
-      EMAIL:{ru:'Email',en:'Email',vi:'Email',ko:'이메일'}
+      FIRSTNAME:{ru:'Имя',en:'First name',vi:'Tên',ko:'이름',zh:'名字'},
+      LASTNAME:{ru:'Фамилия',en:'Last name',vi:'Họ',ko:'성',zh:'姓氏'},
+      PHONE:{ru:'Телефон',en:'Phone',vi:'Điện thoại',ko:'전화번호',zh:'电话'},
+      PHONENUMBER:{ru:'Телефон',en:'Phone',vi:'Điện thoại',ko:'전화번호',zh:'电话'},
+      EMAIL:{ru:'Email',en:'Email',vi:'Email',ko:'이메일',zh:'电子邮箱'}
     };
     const key=String(value||'').replace(/[^a-z0-9]/gi,'').toUpperCase();
     return labels[key]?.[locale()] || providerText(String(value || '').replaceAll('_',' ').toLowerCase());
