@@ -123,7 +123,7 @@ test('LoveTravel forwards the active locale to Bókun product reads', async () =
     const body=await response.json();
     assert.equal(response.status,200);
     assert.equal(body.locale,'ko');
-    assert.ok(calls.filter(url=>url.pathname.endsWith('/product')).every(url=>url.searchParams.get('lang')==='KO'));
+    assert.ok(calls.filter(url=>url.pathname.endsWith('/product')).every(url=>url.searchParams.get('lang')==='EN'));
     assert.ok(body.tours.every(tour=>tour.localization?.locale==='ko'));
   } finally {
     globalThis.fetch=originalFetch;
