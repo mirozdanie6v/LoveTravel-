@@ -180,10 +180,29 @@
     });
   }
 
+  function renderNavigation(){
+    const keys=['nav.home','nav.catalog','nav.trips','nav.ai'];
+    document.querySelectorAll('.bottom-nav .nav-btn').forEach((button,index)=>{
+      const key=keys[index];
+      if(!key) return;
+      const text=tr(key);
+      const textNode=[...button.childNodes].find(node=>node.nodeType===Node.TEXT_NODE&&String(node.nodeValue||'').trim());
+      if(textNode) textNode.nodeValue=' '+text;
+      else {
+        const label=button.querySelector('[data-lt-nav-label]')||document.createElement('span');
+        label.dataset.ltNavLabel='1';
+        label.textContent=text;
+        if(!label.parentNode) button.appendChild(label);
+      }
+      button.setAttribute('aria-label',text);
+    });
+  }
+
   function apply(){
     brandHeader();
     renderHome();
     renderCatalog();
+    renderNavigation();
   }
 
   function wrapRenderer(name,after){
@@ -205,9 +224,10 @@
     wrapRenderer('renderCatalog',renderCatalog);
     renderHome();
     renderCatalog();
+    renderNavigation();
     document.addEventListener('lovetravel:catalog-updated',renderCatalog);
   }
 
   install();
-  globalThis.LoveTravelBrand=Object.freeze({apply,renderHome,renderCatalog,logo:OFFICIAL_LOGO});
+  globalThis.LoveTravelBrand=Object.freeze({apply,renderHome,renderCatalog,renderNavigation,logo:OFFICIAL_LOGO});
 })();
