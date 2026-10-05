@@ -1,0 +1,91 @@
+name: Audit LoveTravel ZH KO visible copy
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/audit-zh-ko-visible-copy.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - run: |
+          npm init -y >/dev/null
+          npm install --no-fund --no-audit playwright@1.55.0
+          npx playwright install --with-deps chromium >/dev/null
+      - name: Inspect every visible customer surface
+        shell: bash
+        run: |
+          cat > /tmp/audit.mjs <<'NODE'
+          import { chromium } from 'playwright';
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
+          const base='https://lovetravel.viiversion.com';
+          const locales=['zh','ko'];
+          const products=['1287578','1287580'];
+          const report={};
+
+          const visibleText=()=>page.evaluate(()=>{
+            const visible=e=>{const r=e.getBoundingClientRect(),s=getComputedStyle(e);return r.width>0&&r.height>0&&s.display!=='none'&&s.visibility!=='hidden'};
+            return [...document.querySelectorAll('body *')]
+              .filter(e=>visible(e)&&e.children.length===0)
+              .map(e=>(e.innerText||e.textContent||'').trim().replace(/\s+/g,' '))
+              .filter(Boolean);
+          });
+          const summarize=(arr,locale)=>{
+            const uniq=[...new Set(arr)];
+            return {
+              all:uniq,
+              cyrillic:uniq.filter(x=>/[А-Яа-яЁё]/.test(x)),
+              hangulInZh:locale==='zh'?uniq.filter(x=>/[가-힣]/.test(x)):[],
+              hanInKo:locale==='ko'?uniq.filter(x=>/[\u3400-\u9FFF]/.test(x)):[],
+              suspiciousEnglish:uniq.filter(x=>/\b(?:Book|Booking|Tour|Price|Total|Date|Guests|Contact|Available|Live|Choose|Select|Pickup|Meeting|Included|Excluded|Cancellation|Duration|From|Start|Finish|Adult|Child|Infant|Group|Private|Required|Room|Hotel|Language|Difficulty|Confirmation|Program|Information)\b/i.test(x)),
+            };
+          };
+
+          for(const locale of locales){
+            await page.goto(base,{waitUntil:'domcontentloaded',timeout:45000});
+            await page.evaluate(l=>localStorage.setItem('max-tour-locale-v1',l),locale);
+            await page.reload({waitUntil:'domcontentloaded'});
+            await page.waitForFunction(()=>document.documentElement.classList.contains('love-travel-catalog-ready'),null,{timeout:45000});
+            await page.waitForTimeout(1800);
+            report[locale]={home:summarize(await visibleText(),locale),tours:{}};
+
+            if(typeof await page.evaluate(()=>typeof showScreen)==='string'){}
+            await page.evaluate(()=>typeof showScreen==='function'&&showScreen('catalog'));
+            await page.waitForTimeout(900);
+            report[locale].catalog=summarize(await visibleText(),locale);
+
+            for(const id of products){
+              await page.evaluate(pid=>globalThis.openTour?.(pid),id);
+              await page.waitForFunction(pid=>document.querySelector('#tourScreen')?.dataset?.ltDomainProduct===pid,id,{timeout:30000});
+              await page.waitForTimeout(1500);
+              const tour={main:summarize(await visibleText(),locale),sheets:{}};
+              for(const step of ['date','option','guests','pickup','contact']){
+                await page.evaluate(s=>globalThis.LoveTravelBookingConfigurator?.open?.(s),step);
+                await page.waitForTimeout(700);
+                tour.sheets[step]=summarize(await visibleText(),locale);
+                await page.locator('[data-lt-sheet-close-button]').click().catch(()=>{});
+                await page.waitForTimeout(250);
+              }
+              report[locale].tours[id]=tour;
+              await page.evaluate(()=>typeof showScreen==='function'&&showScreen('catalog'));
+              await page.waitForTimeout(500);
+            }
+
+            await page.evaluate(()=>typeof showScreen==='function'&&showScreen('ai'));
+            await page.waitForTimeout(700);
+            report[locale].ai=summarize(await visibleText(),locale);
+          }
+          console.log(JSON.stringify(report,null,2));
+          await browser.close();
+          NODE
+          node /tmp/audit.mjs
