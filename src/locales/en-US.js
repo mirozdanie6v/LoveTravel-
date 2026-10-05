@@ -260,6 +260,9 @@
   "catalog.finishByProgram": "by itinerary",
   "catalog.groupFrom": "group from",
   "catalog.privateFrom": "private from",
-  "catalog.city": "Nha Trang"
+  "catalog.city": "Nha Trang",
+  "enum.format.GROUP": "group",
+  "enum.format.PRIVATE": "private",
+  "enum.format.UNKNOWN": ""
 });
 })();
