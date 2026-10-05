@@ -384,20 +384,11 @@ export async function localizeDomainFromCache(domain, env, requestedLocale, ctx 
   let rows = [];
   try {
     rows = await cachedRows(env, productId, locale);
-    if (strictLocale) {
-      const cache = new Map(rows.map(row => [String(row.field_key), row]));
-      const missing = fields.some(field => {
-        const row = cache.get(field.key);
-        return !row ||
-          String(row.source_hash) !== field.sourceHash ||
-          !text(row.translated_text) ||
-          String(row.provider || '') !== TRANSLATION_PROVIDER;
-      });
-      if (missing && env?.AI && env?.DB) {
-        await syncDomainTranslations(domain, env, locale);
-        rows = await cachedRows(env, productId, locale);
-      }
-    }
+    // Never block a customer request on AI translation. Existing cache rows,
+    // including rows from an earlier translation-provider version, are safe to
+    // serve immediately when their source hash still matches. Any missing or
+    // older-provider fields are refreshed below with ctx.waitUntil().
+
   } catch (error) {
     console.warn('Bókun localization cache unavailable', error?.message || error);
   }
