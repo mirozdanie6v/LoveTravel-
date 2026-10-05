@@ -6,6 +6,7 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/deploy-showreel-shared.yml'
+      - '.github/scripts/deploy-showreel-v2.py'
 
 permissions:
   contents: read
