@@ -521,17 +521,11 @@
     };
   }
 
-  const observer = new MutationObserver(() => {
-    let intent = null; try { intent = JSON.parse(sessionStorage.getItem(BOOKING_INTENT_KEY) || 'null'); } catch (_) {}
-    if (intent?.tourId) prefillBooking(intent);
-  });
-  try { observer.observe(document.documentElement, { childList:true, subtree:true }); } catch (_) {}
-
   globalThis.MaxTourAI = {
     mount,
     _test:{
       vietnamTodayIso, parseDate, parseParty, departureIso, isDiscoveryIntent, isBookingIntent,
-      recommendationForTourId, applyServerTour, locationAllowsTour, dispatchValue, prefillBooking,
+      recommendationForTourId, applyServerTour, locationAllowsTour, prefillBooking,
     },
   };
 })();
