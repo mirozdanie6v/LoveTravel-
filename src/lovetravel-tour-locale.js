@@ -136,7 +136,7 @@
       ru:'Условия отмены',vi:'Chính sách hủy',en:'Cancellation policy',ko:'취소 정책',zh:'取消政策'
     },
     'English':{ru:'Английский',vi:'Tiếng Anh',en:'English',ko:'영어',zh:'英语'},
-    'Vietnamese':{ru:'Вьетнамский',vi:'Tiếng Việt',en:'Vietnamese',ko:'베트남어'},
+    'Vietnamese':{ru:'Вьетнамский',vi:'Tiếng Việt',en:'Vietnamese',ko:'베트남어',zh:'越南语'},
     'Russian':{ru:'Русский',vi:'Tiếng Nga',en:'Russian',ko:'러시아어',zh:'俄语'},
     'Korean':{ru:'Корейский',vi:'Tiếng Hàn',en:'Korean',ko:'한국어',zh:'韩语'},
     'Chinese':{ru:'Китайский',vi:'Tiếng Trung',en:'Chinese',ko:'중국어',zh:'中文'},
