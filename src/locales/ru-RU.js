@@ -271,6 +271,16 @@
   "nav.home": "Главная",
   "nav.catalog": "Каталог",
   "nav.trips": "Мои поездки",
-  "nav.ai": "AI-консультант"
+  "nav.ai": "AI-консультант",
+  "provider.policy.standard": "Условия отмены",
+  "provider.field.hotelName": "Название отеля",
+  "provider.field.roomNumber": "Номер комнаты",
+  "provider.transfer.private": "Индивидуальный трансфер",
+  "provider.notice.bringSunscreen": "Возьмите солнцезащитный крем",
+  "provider.area.nhaTrangHotels": "Отели Нячанга",
+  "provider.required": "обязательно",
+  "provider.accessibility.walking": "Пешая доступность",
+  "enum.availability.available": "доступно",
+  "enum.availability.full": "нет мест"
 });
 })();
