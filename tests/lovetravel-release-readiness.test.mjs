@@ -54,3 +54,15 @@ test('booking path remains resolver-backed and covers pickup, customer and quest
   }
   assert.match(booking, /CHECKOUT_REQUIRED_CUSTOMER_FIELDS = \['firstName','lastName','email','phoneNumber'\]/);
 });
+
+test('client demo booking is hidden behind a private demo token and server-to-server integration token', () => {
+  assert.match(workerR2, /LOVE_TRAVEL_CLIENT_DEMO_ACCESS_TOKEN/);
+  assert.match(workerR2, /LOVE_TRAVEL_INTEGRATION_TOKEN/);
+  assert.match(workerR2, /LT-TEST-CLIENT-/);
+  assert.match(workerR2, /lovetravel_demo_booking_guards/);
+  assert.match(workerR2, /SUBMIT_LOVE_TRAVEL_CLIENT_DEMO_BOOKING/);
+  assert.match(booking, /clientDemoEnabled\(\)/);
+  assert.match(booking, /\/api\/bokun\/client-demo\/submit/);
+  assert.match(booking, /demoCreate:'Создать тестовую бронь'/);
+  assert.match(booking, /demoCreate:'创建测试预订'/);
+});
