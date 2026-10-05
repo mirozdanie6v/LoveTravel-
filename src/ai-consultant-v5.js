@@ -146,7 +146,8 @@
       'Задавайте вопрос — я помогу подобрать экскурсию и сразу перейти к бронированию.',
       'Hãy đặt câu hỏi — tôi sẽ giúp bạn chọn tour và chuyển ngay đến bước đặt tour.',
       'Ask a question — I will help you choose a tour and continue straight to booking.',
-      '질문해 주세요. 알맞은 투어를 추천하고 바로 예약까지 도와드릴게요.'
+      '질문해 주세요. 알맞은 투어를 추천하고 바로 예약까지 도와드릴게요.',
+      '请提问，我会帮助您选择合适的行程并直接进入预订。'
     ) }], recommendations:[], selectedTourId:'' };
   }
   let state = freshState();
@@ -165,11 +166,11 @@
   }
   function peopleCount() { return Number(state.slots.adults || 0) + state.slots.children.length + Number(state.slots.infants || 0); }
   function peopleLabel() {
-    const s = state.slots, parts = [];
-    if (s.adults) parts.push(`${s.adults} взр.`);
-    if (s.children.length) parts.push(`${s.children.length} дет.`);
-    if (s.infants) parts.push(`${s.infants} мал.`);
-    return parts.join(' + ') || 'состав не указан';
+    const s = state.slots, parts = [], t=ui();
+    if (s.adults) parts.push(`${s.adults} ${t.adultShort}`);
+    if (s.children.length) parts.push(`${s.children.length} ${t.childShort}`);
+    if (s.infants) parts.push(`${s.infants} ${t.infantShort}`);
+    return parts.join(' + ') || t.partyUnknown;
   }
 
   function parseMessage(text) {
@@ -215,7 +216,7 @@
     const match = String(value || '').match(/\$\s*([\d,.]+)/);
     return match ? Math.max(0, Number(match[1].replace(/,/g,'')) || 0) : 0;
   }
-  function moneyLabel(value) { const amount = Math.round(Number(value) || 0); return amount ? `$${amount.toLocaleString('en-US')}` : 'цена уточняется'; }
+  function moneyLabel(value) { const amount = Math.round(Number(value) || 0); return amount ? `${amount.toLocaleString('en-US')}` : ui().priceTbd; }
 
   function departureIso(departure) {
     const direct = String(departure?.iso || '').trim();
@@ -271,10 +272,10 @@
     if (mode !== 'group' && individualPrice) score += 2;
     const nearest = exactDeparture || future[0];
     const availability = exactDeparture
-      ? `есть выезд ${dateLabel(exactDeparture.iso, { short:true, year:false })}${exactDeparture.item.time ? ` · ${exactDeparture.item.time}` : ''}`
+      ? `${ui().exactDeparture} ${dateLabel(exactDeparture.iso, { short:true, year:false })}${exactDeparture.item.time ? ` · ${exactDeparture.item.time}` : ''}`
       : nearest
-        ? `ближайший выезд ${dateLabel(nearest.iso, { short:true, year:false })}${nearest.item.time ? ` · ${nearest.item.time}` : ''}`
-        : (format === 'individual' || format === 'compare') ? 'индивидуальная дата подтверждается при оформлении' : 'даты уточняются';
+        ? `${ui().nearestDeparture} ${dateLabel(nearest.iso, { short:true, year:false })}${nearest.item.time ? ` · ${nearest.item.time}` : ''}`
+        : (format === 'individual' || format === 'compare') ? ui().individualDate : ui().datesTbd;
     return { tour, format, score, groupPrice, individualPrice, availability, exactDeparture, nearest };
   }
 
@@ -332,23 +333,35 @@
   }
 
   function recommendationPrice(item) {
+    const g=moneyLabel(item.groupPrice), p=moneyLabel(item.individualPrice);
     if (ACTIVE_LOCALE === 'zh') {
-      if (item.format === 'compare') return [item.groupPrice && `拼团 ${moneyLabel(item.groupPrice)} 起`, item.individualPrice && `私人 ${moneyLabel(item.individualPrice)} 起`].filter(Boolean).join(' · ');
-      return item.format === 'group' ? `${moneyLabel(item.groupPrice)} / 成人起` : `${moneyLabel(item.individualPrice)} / 行程起`;
+      if (item.format === 'compare') return [item.groupPrice && `拼团 ${g} 起`, item.individualPrice && `私人 ${p} 起`].filter(Boolean).join(' · ');
+      return item.format === 'group' ? `${g} / 成人起` : `${p} / 行程起`;
     }
-    if (item.format === 'compare') return [item.groupPrice && `группа от ${moneyLabel(item.groupPrice)}`, item.individualPrice && `индивидуально от ${moneyLabel(item.individualPrice)}`].filter(Boolean).join(' · ');
-    return item.format === 'group' ? `от ${moneyLabel(item.groupPrice)} / взрослый` : `от ${moneyLabel(item.individualPrice)} за поездку`;
+    if (ACTIVE_LOCALE === 'ko') {
+      if (item.format === 'compare') return [item.groupPrice && `그룹 ${g}부터`, item.individualPrice && `프라이빗 ${p}부터`].filter(Boolean).join(' · ');
+      return item.format === 'group' ? `${g}부터 / 성인` : `${p}부터 / 투어`;
+    }
+    if (ACTIVE_LOCALE === 'vi') {
+      if (item.format === 'compare') return [item.groupPrice && `tour ghép từ ${g}`, item.individualPrice && `tour riêng từ ${p}`].filter(Boolean).join(' · ');
+      return item.format === 'group' ? `từ ${g} / người lớn` : `từ ${p} / chuyến`;
+    }
+    if (ACTIVE_LOCALE === 'en') {
+      if (item.format === 'compare') return [item.groupPrice && `group from ${g}`, item.individualPrice && `private from ${p}`].filter(Boolean).join(' · ');
+      return item.format === 'group' ? `from ${g} / adult` : `from ${p} / trip`;
+    }
+    if (item.format === 'compare') return [item.groupPrice && `группа от ${g}`, item.individualPrice && `индивидуально от ${p}`].filter(Boolean).join(' · ');
+    return item.format === 'group' ? `от ${g} / взрослый` : `от ${p} за поездку`;
   }
   function imageFor(tour) { return tour.image || tour.gallery?.[0] || tour.images?.[0] || tour.fallbackImage || ''; }
   function reasonFor(item) {
-    const bits = [];
-    if (state.slots.preferences.includes('выгодная цена')) bits.push('выгоднее по цене');
-    if (state.slots.preferences.includes('море')) bits.push('море / острова');
-    if (state.slots.preferences.includes('природа')) bits.push('красивые виды');
-    if (state.slots.children.length && item.tour.childrenOk !== false) bits.push('подходит с детьми');
+    const bits = [], t=ui();
+    if (state.slots.preferences.includes('выгодная цена')) bits.push(t.reasonBudget);
+    if (state.slots.preferences.includes('море')) bits.push(t.reasonSea);
+    if (state.slots.preferences.includes('природа')) bits.push(t.reasonNature);
+    if (state.slots.children.length && item.tour.childrenOk !== false) bits.push(t.reasonChildren);
     if (item.availability) bits.push(item.availability);
-    if (ACTIVE_LOCALE === 'zh') return '符合您的需求';
-    return bits.slice(0,3).join(' · ') || 'подходит под ваш запрос';
+    return bits.slice(0,3).join(' · ') || t.reasonDefault;
   }
 
   function nextQuestion() {
