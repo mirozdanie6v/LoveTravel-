@@ -521,6 +521,47 @@
     };
   }
 
+  function aiRoot(){
+    return document.getElementById('aiScreen')
+      || document.getElementById('assistantScreen')
+      || document.querySelector('[data-screen="ai"],[data-screen="assistant"]');
+  }
+
+  function mountCurrentAi(){
+    const root=aiRoot();
+    if(!root) return false;
+    mount(root);
+    return true;
+  }
+
+  function installAiScreenHook(){
+    const previousRender=globalThis.renderAI;
+    if(typeof previousRender==='function'&&!previousRender.__loveTravelSemanticAi){
+      const wrapped=function(...args){
+        const result=previousRender.apply(this,args);
+        queueMicrotask(mountCurrentAi);
+        return result;
+      };
+      wrapped.__loveTravelSemanticAi=true;
+      wrapped.__previous=previousRender;
+      globalThis.renderAI=wrapped;
+    }
+    const previousShow=globalThis.showScreen;
+    if(typeof previousShow==='function'&&!previousShow.__loveTravelSemanticAi){
+      const wrapped=function(name,...args){
+        const result=previousShow.call(this,name,...args);
+        if(String(name||'').toLowerCase()==='ai') queueMicrotask(mountCurrentAi);
+        return result;
+      };
+      wrapped.__loveTravelSemanticAi=true;
+      wrapped.__previous=previousShow;
+      globalThis.showScreen=wrapped;
+    }
+    queueMicrotask(mountCurrentAi);
+  }
+
+  installAiScreenHook();
+
   globalThis.MaxTourAI = {
     mount,
     _test:{
