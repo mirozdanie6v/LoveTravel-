@@ -260,6 +260,9 @@
   "catalog.finishByProgram": "по программе",
   "catalog.groupFrom": "групповой от",
   "catalog.privateFrom": "индивидуальный от",
-  "catalog.city": "Nha Trang"
+  "catalog.city": "Nha Trang",
+  "enum.format.GROUP": "групповой",
+  "enum.format.PRIVATE": "индивидуальный",
+  "enum.format.UNKNOWN": ""
 });
 })();
