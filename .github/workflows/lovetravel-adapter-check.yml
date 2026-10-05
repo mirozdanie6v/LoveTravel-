@@ -1,4 +1,5 @@
 name: LoveTravel Bókun check
+# multilingual release gate
 
 on:
   push:
