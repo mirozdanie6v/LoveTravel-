@@ -281,6 +281,17 @@
   "provider.required": "bắt buộc",
   "provider.accessibility.walking": "Có thể đi bộ",
   "enum.availability.available": "còn chỗ",
-  "enum.availability.full": "hết chỗ"
+  "enum.availability.full": "hết chỗ",
+  "content.rate.2581224.description": "Kết hợp làng chài Bích Đầm và thời gian thư giãn tại Robinson Beach.",
+  "content.rate.2581226.description": "Lặn ống thở tại Hòn Mun kết hợp dừng chân ở Bãi Sỏi.",
+  "content.rate.2581227.description": "Lặn ống thở tại Hòn Mun và thư giãn ở Bãi Tranh.",
+  "content.rate.2581228.description": "Hòn Mun và Mini Beach — kết hợp lặn ống thở và thư giãn bên biển.",
+  "content.rate.2581229.description": "Lặn ống thở tại Hòn Mun kết hợp tắm bùn khoáng ở Hòn Tằm.",
+  "content.rate.2623660.description": "Kết hợp Robinson Beach với lặn ống thở tại Khu bảo tồn biển Hòn Mun.",
+  "content.rate.2623666.description": "Robinson Beach kết hợp trải nghiệm tắm bùn khoáng tại Hòn Tằm.",
+  "content.rate.2623667.description": "Robinson Beach kết hợp thêm thời gian thư giãn tại Bãi Tranh.",
+  "content.rate.2623668.description": "Robinson Beach và Mini Beach, phù hợp nếu bạn muốn ưu tiên thời gian thư giãn bên biển.",
+  "content.rate.2623669.description": "Robinson Beach và Bãi Sỏi cho một hành trình đảo và biển thư giãn hơn.",
+  "content.rate.2623670.description": "Robinson Beach kết hợp tham quan Thủy cung Trí Nguyên."
 });
 })();
