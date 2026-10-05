@@ -53,3 +53,12 @@ test('LoveTravel focuses public navigation on tours until booking and trip histo
   assert.match(css,/display:none!important/);
   assert.match(css,/\.lt-card-action[\s\S]*var\(--lt-orange-deep\)/);
 });
+
+
+test('LoveTravel localizes legacy card labels after dynamic catalog rendering', () => {
+  assert.match(js,/legacyCardCopy/);
+  assert.match(js,/zh:\{departure:'出发',finish:'结束',group:'拼团',from:'起'\}/);
+  assert.match(js,/replace\(\/ВЫЕЗД\/g,words\.departure\)/);
+  assert.match(js,/replace\(\/ФИНИШ\/g,words\.finish\)/);
+  assert.match(js,/localizeLegacyCard\(card,lang\)/);
+});
