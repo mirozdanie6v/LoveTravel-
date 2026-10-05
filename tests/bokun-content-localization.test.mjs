@@ -139,8 +139,9 @@ test('translates only cache misses and invalidates a field when its Bókun sourc
   const changed=sampleDomain();
   changed.experience.title='Updated English title';
   const stale=await localizeDomainFromCache(changed,env,'ko');
-  assert.equal(stale.experience.title,'Updated English title');
-  assert.ok(stale.localization.pendingFields>=1);
+  assert.equal(stale.experience.title,'KO:Updated English title');
+  assert.equal(stale.localization.pendingFields,0);
+  assert.equal(stale.localization.source,'viiversion-cache');
   assert.equal(stale.experience.description,'KO:English description');
 });
 
