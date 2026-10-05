@@ -72,7 +72,9 @@ test('AI recommendations render visual excursion cards with direct booking actio
   assert.match(ai, /class="ai-tour-image"/);
   assert.match(ai, /data-ai-action="open-tour"/);
   assert.match(ai, /data-ai-action="book-tour"/);
-  assert.match(ai, />Забронировать</);
+  assert.match(ai, /book:'Забронировать'/);
+  assert.match(ai, /book:'예약하기'/);
+  assert.match(ai, /book:'预订'/);
   assert.match(ai, /BOOKING_INTENT_KEY/);
   assert.match(ai, /continueToBooking/);
   assert.match(ai, /prefillBooking/);
