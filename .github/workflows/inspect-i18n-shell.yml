@@ -24,16 +24,19 @@ jobs:
           const page=await browser.newPage({viewport:{width:390,height:844}});
           await page.goto('https://lovetravel.viiversion.com',{waitUntil:'domcontentloaded',timeout:45000});
           await page.waitForFunction(()=>document.documentElement.classList.contains('love-travel-catalog-ready'),null,{timeout:45000});
-          await page.waitForTimeout(1000);
-          console.log('HOME\n'+await page.locator('#homeScreen').evaluate(el=>el.outerHTML));
-          await page.evaluate(()=>globalThis.showScreen?.('catalog'));
-          await page.waitForTimeout(600);
-          console.log('CATALOG_TITLE\n'+await page.locator('#catalogScreen .catalog-title-v26').evaluate(el=>el.outerHTML).catch(()=>'')); 
-          console.log('CARD\n'+await page.locator('#catalogScreen .wide-card').first().evaluate(el=>el.outerHTML));
-          console.log('NAV\n'+await page.evaluate(()=>JSON.stringify([...document.querySelectorAll('button,a,[role="button"]')].map(el=>({
-            tag:el.tagName,text:(el.innerText||'').trim().replace(/\s+/g,' '),id:el.id,cls:el.className,
-            onclick:el.getAttribute('onclick'),screen:el.dataset?.screen,action:el.dataset?.action
-          })).filter(x=>/Главная|Каталог|Мои поездки|ИИ-Помощник|Home|Catalog|Trips|AI/i.test(x.text)),null,2)));
+          await page.waitForTimeout(800);
+          const result=await page.evaluate(()=>{
+            const visible=el=>{
+              const s=getComputedStyle(el),r=el.getBoundingClientRect();
+              return s.display!=='none'&&s.visibility!=='hidden'&&r.width>0&&r.height>0;
+            };
+            const rows=[...document.querySelectorAll('header,nav,footer,.brandrow,[class*="nav"],[class*="tabs"],[class*="bottom"],button,a')]
+              .filter(visible)
+              .map(el=>({tag:el.tagName,cls:el.className||'',id:el.id||'',text:(el.innerText||el.textContent||'').replace(/\s+/g,' ').trim().slice(0,240)}))
+              .filter(x=>x.text);
+            return rows;
+          });
+          console.log(JSON.stringify(result,null,2));
           await browser.close();
           NODE
           node inspect.mjs
