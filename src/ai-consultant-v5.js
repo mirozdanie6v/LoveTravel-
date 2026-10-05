@@ -239,7 +239,7 @@
   function futureDepartures(tour) {
     return (Array.isArray(tour?.group?.departures) ? tour.group.departures : [])
       .map(item => ({ item, iso:departureIso(item) })).filter(row => row.iso)
-      .filter(row => !/лист ожидания|полон|отмен/i.test(String(row.item.status || '')))
+      .filter(row => !/лист ожидания|полон|отмен|waitlist|sold\s*out|cancel|대기|매진|취소|候补|已满|取消/i.test(String(row.item.status || '')))
       .sort((a,b) => a.iso.localeCompare(b.iso));
   }
 
@@ -249,11 +249,11 @@
     let score = Number(tour.popular) ? 2 : 0;
     if (s.destination && hay.includes(lower(s.destination).split('/')[0])) score += 8;
     for (const pref of s.preferences) {
-      if (pref === 'море' && /море|остров|пляж|сноркл|океан/.test(hay)) score += 7;
-      if (pref === 'природа' && /природ|гора|водопад|дюны|вид|фото|далат/.test(hay)) score += 5;
-      if (pref.includes('город') && /город|храм|культур|истори|обзор/.test(hay)) score += 4;
-      if (pref.includes('лёг') && /обзор|легк|лёгк|комфорт|трансфер/.test(hay)) score += 3;
-      if (pref.includes('премиум') && /премиум|vip|вип|комфорт/.test(hay)) score += 4;
+      if (pref === 'море' && /море|остров|пляж|сноркл|океан|sea|island|beach|snork|biển|đảo|bãi|바다|섬|해변|스노클|海|岛|海滩|浮潜/.test(hay)) score += 7;
+      if (pref === 'природа' && /природ|гора|водопад|дюны|вид|фото|далат|nature|mountain|waterfall|view|photo|thiên\s*nhiên|núi|thác|자연|산|폭포|풍경|사진|自然|山|瀑布|风景|拍照/.test(hay)) score += 5;
+      if (pref.includes('город') && /город|храм|культур|истори|обзор|city|temple|culture|history|thành\s*phố|chùa|도시|사원|문화|역사|城市|寺庙|文化|历史/.test(hay)) score += 4;
+      if (pref.includes('лёг') && /обзор|легк|лёгк|комфорт|трансфер|easy|comfortable|transfer|thoải\s*mái|편안|여유|轻松|舒适/.test(hay)) score += 3;
+      if (pref.includes('премиум') && /премиум|vip|вип|комфорт|premium|luxury|cao\s*cấp|프리미엄|고급|豪华|高端/.test(hay)) score += 4;
     }
     if (state.slots.children.length && tour.childrenOk !== false) score += 3;
     return score;
@@ -500,9 +500,9 @@
       date.min = vietnamTodayIso();
       if (intent.date && intent.date >= vietnamTodayIso()) dispatchValue(date, intent.date);
     }
-    setCounter(root, 'Взрослые', intent.adults);
-    setCounter(root, 'Дети', intent.children.length);
-    setCounter(root, 'Малыши', intent.infants);
+    setCounter(root, localeText('Взрослые','Người lớn','Adults','성인','成人'), intent.adults);
+    setCounter(root, localeText('Дети','Trẻ em','Children','아동','儿童'), intent.children.length);
+    setCounter(root, localeText('Малыши','Em bé','Infants','유아','婴儿'), intent.infants);
     return true;
   }
 
@@ -517,9 +517,11 @@
     if (prefillBooking(intent)) return;
     const scope = document.getElementById('tourScreen') || document;
     const buttons = visibleButtons(scope);
-    const exact = buttons.find(btn => /^\s*(присоединиться|забронировать|оформить)\s*$/i.test(btn.textContent || ''));
-    const broad = buttons.find(btn => /присоединиться|забронировать|оформить/i.test(btn.textContent || ''));
-    const action = exact || broad;
+    const loveTravelAction = scope.querySelector?.('[data-lt-jump-booking],[data-lt-config-continue]');
+    const bookingPattern = /присоединиться|забронировать|оформить|book|reserve|đặt\s*(?:tour|chỗ)?|예약|预订|立即预订/i;
+    const exact = buttons.find(btn => /^\s*(?:присоединиться|забронировать|оформить|book(?:\s+now)?|reserve|đặt\s*(?:tour|chỗ)?|예약(?:하기)?|预订|立即预订)\s*$/i.test(btn.textContent || ''));
+    const broad = buttons.find(btn => bookingPattern.test(btn.textContent || ''));
+    const action = loveTravelAction || exact || broad;
     if (action && !action.dataset.aiBookingClicked) {
       action.dataset.aiBookingClicked = '1'; action.click();
     }
