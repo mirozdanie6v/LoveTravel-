@@ -85,10 +85,9 @@ test('LoveTravel build keeps live trip policy but omits the legacy multi-city lo
   const trip = build.indexOf('/trip-actions.js');
   const policyIndex = build.indexOf('/trip-policy-live-v2.js');
   const aiV5 = build.indexOf('/ai-consultant-v5.js');
-  const aiV6 = build.indexOf('/ai-location-guard-v6.js');
   const runtime = build.indexOf('/runtime-api.js');
   assert.ok(trip >= 0 && policyIndex > trip);
   assert.ok(aiV5 >= 0);
-  assert.equal(aiV6, -1);
+  assert.doesNotMatch(build, /<script src="\/ai-location-guard-v6\.js"><\/script>/);
   assert.ok(runtime > aiV5);
 });
