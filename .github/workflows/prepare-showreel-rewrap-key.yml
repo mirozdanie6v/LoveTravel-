@@ -1,0 +1,61 @@
+name: Prepare showreel release rewrap key
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/prepare-showreel-rewrap-key.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - name: Generate token-sealed rewrap key
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CLOUDFLARE_API_TOKEN:-}"
+          python -m pip install --quiet cryptography==46.0.5
+          python - <<'PY'
+          import base64, hashlib, json, os
+          from cryptography.hazmat.primitives import serialization
+          from cryptography.hazmat.primitives.asymmetric import rsa
+          from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+          token=os.environ["CLOUDFLARE_API_TOKEN"]
+          print("::add-mask::"+token)
+          private=rsa.generate_private_key(public_exponent=65537,key_size=3072)
+          private_pem=private.private_bytes(
+              serialization.Encoding.PEM,
+              serialization.PrivateFormat.PKCS8,
+              serialization.NoEncryption())
+          public_pem=private.public_key().public_bytes(
+              serialization.Encoding.PEM,
+              serialization.PublicFormat.SubjectPublicKeyInfo)
+
+          aad=b"showreel-deploy-v2"
+          key=hashlib.sha256(b"showreel-deploy-v2:"+token.encode()).digest()
+          nonce=os.urandom(12)
+          sealed=nonce+AESGCM(key).encrypt(nonce,private_pem,aad)
+
+          out={
+              "version":2,
+              "public_key":base64.b64encode(public_pem).decode(),
+              "sealed_private_key":base64.b64encode(sealed).decode()
+          }
+          json.dump(out,open("showreel-rewrap-key.json","w"),indent=2)
+          PY
+
+      - name: Upload rewrap key
+        uses: actions/upload-artifact@v4
+        with:
+          name: showreel-rewrap-key
+          path: showreel-rewrap-key.json
+          retention-days: 1
