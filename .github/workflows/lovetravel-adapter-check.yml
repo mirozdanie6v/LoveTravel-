@@ -27,6 +27,8 @@ on:
       - 'tests/bokun-adapter.test.mjs'
       - 'tests/ai-multilingual-ui.test.mjs'
       - 'tests/ai-sales-v5.test.mjs'
+      - 'tests/location-policy-v6.test.mjs'
+      - 'tests/ai-catalog-card-v7.test.mjs'
       - 'tests/bokun-content-localization.test.mjs'
       - 'tests/bokun-domain.test.mjs'
       - 'tests/booking-selection-engine.test.mjs'
