@@ -225,11 +225,11 @@
   }
 
   const legacyCardCopy={
-    ru:{departure:'ВЫЕЗД',finish:'ФИНИШ',group:'групповой',from:'от'},
-    vi:{departure:'KHỞI HÀNH',finish:'KẾT THÚC',group:'tour nhóm',from:'từ'},
-    en:{departure:'DEPARTURE',finish:'FINISH',group:'group',from:'from'},
-    zh:{departure:'出发',finish:'结束',group:'拼团',from:'起'},
-    ko:{departure:'출발',finish:'종료',group:'그룹',from:'최저'}
+    ru:{departure:'ВЫЕЗД',finish:'ФИНИШ',group:'групповой',individual:'индивидуальный',from:'от'},
+    vi:{departure:'KHỞI HÀNH',finish:'KẾT THÚC',group:'tour nhóm',individual:'riêng',from:'từ'},
+    en:{departure:'DEPARTURE',finish:'FINISH',group:'group',individual:'private',from:'from'},
+    zh:{departure:'出发',finish:'结束',group:'拼团',individual:'私人',from:'起'},
+    ko:{departure:'출발',finish:'종료',group:'그룹',individual:'프라이빗',from:'최저'}
   };
 
   function localizeLegacyCard(card,lang){
@@ -241,10 +241,11 @@
       const raw=node.nodeValue||'';
       if(!raw.trim()) return;
       let value=raw;
-      value=value.replace(/ВЫЕЗД/g,words.departure);
-      value=value.replace(/ФИНИШ/g,words.finish);
+      value=value.replace(/выезд/giu,words.departure);
+      value=value.replace(/финиш/giu,words.finish);
       value=value.replace(/групповой\s+от/gi,lang==='zh'?words.group+' '+words.from:words.group+' '+words.from);
-      value=value.replace(/\bгрупповой\b/gi,words.group);
+      value=value.replace(/групповой/giu,words.group);
+      value=value.replace(/индивидуальный/giu,words.individual);
       if(value!==raw) node.nodeValue=value;
     });
   }
