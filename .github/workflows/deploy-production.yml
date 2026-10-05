@@ -1,4 +1,5 @@
 name: Deploy LoveTravel production
+# localization quality release
 
 on:
   workflow_dispatch:
