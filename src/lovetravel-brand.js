@@ -178,10 +178,29 @@
       <div class="lt-trust-item"><b>${c.trust3[0]}</b><span>${c.trust3[1]}</span></div>`;
   }
 
+  function hideLegacyDiscovery(screen, hero) {
+    const cards=[...screen.querySelectorAll('.quick-destination-card-v23')];
+    if (!cards.length) return;
+    let container=cards[0].parentElement;
+    while (container?.parentElement && container.parentElement !== screen) {
+      const candidate=container.parentElement;
+      if (candidate.contains(hero)) break;
+      if (candidate.querySelectorAll('.quick-destination-card-v23').length !== cards.length) break;
+      container=candidate;
+    }
+    if (container && container !== screen && !container.contains(hero)) {
+      container.hidden=true;
+      container.setAttribute('aria-hidden','true');
+    } else {
+      cards.forEach(card => { card.hidden=true; card.setAttribute('aria-hidden','true'); });
+    }
+  }
+
   function brandHome() {
     const screen=document.getElementById('homeScreen');
     const hero=screen?.querySelector('.hero');
     if (!screen || !hero) return;
+    hideLegacyDiscovery(screen, hero);
 
     const lang=locale();
     const image=currentImage();
