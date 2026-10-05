@@ -271,6 +271,16 @@
   "nav.home": "Trang chủ",
   "nav.catalog": "Tour",
   "nav.trips": "Chuyến đi",
-  "nav.ai": "Trợ lý AI"
+  "nav.ai": "Trợ lý AI",
+  "provider.policy.standard": "Chính sách hủy",
+  "provider.field.hotelName": "Tên khách sạn",
+  "provider.field.roomNumber": "Số phòng",
+  "provider.transfer.private": "Xe đưa đón riêng",
+  "provider.notice.bringSunscreen": "Mang theo kem chống nắng",
+  "provider.area.nhaTrangHotels": "Khách sạn Nha Trang",
+  "provider.required": "bắt buộc",
+  "provider.accessibility.walking": "Có thể đi bộ",
+  "enum.availability.available": "còn chỗ",
+  "enum.availability.full": "hết chỗ"
 });
 })();
