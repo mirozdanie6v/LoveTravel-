@@ -260,6 +260,9 @@
   "catalog.finishByProgram": "theo chương trình",
   "catalog.groupFrom": "tour ghép từ",
   "catalog.privateFrom": "tour riêng từ",
-  "catalog.city": "Nha Trang"
+  "catalog.city": "Nha Trang",
+  "enum.format.GROUP": "tour ghép",
+  "enum.format.PRIVATE": "tour riêng",
+  "enum.format.UNKNOWN": ""
 });
 })();
