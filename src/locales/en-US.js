@@ -254,6 +254,12 @@
   "ai.date.past": "That date has already passed. Today in Vietnam is {today}. Choose {minDate} or any later date.",
   "format.ageRange": "{min}–{max} years",
   "format.minutes": "{value} min",
-  "tour.stop": "Stop {index}"
+  "tour.stop": "Stop {index}",
+  "catalog.departure": "DEPARTURE",
+  "catalog.finish": "FINISH",
+  "catalog.finishByProgram": "by itinerary",
+  "catalog.groupFrom": "group from",
+  "catalog.privateFrom": "private from",
+  "catalog.city": "Nha Trang"
 });
 })();
