@@ -281,6 +281,17 @@
   "provider.required": "required",
   "provider.accessibility.walking": "Walking access",
   "enum.availability.available": "available",
-  "enum.availability.full": "sold out"
+  "enum.availability.full": "sold out",
+  "content.rate.2581224.description": "Bích Đầm fishing village and relaxed beach time at Robinson Beach in one route.",
+  "content.rate.2581226.description": "Snorkeling at Hòn Mun combined with a stop at Bãi Sỏi.",
+  "content.rate.2581227.description": "Snorkeling at Hòn Mun followed by beach time at Bãi Tranh.",
+  "content.rate.2581228.description": "Hòn Mun and Mini Beach for snorkeling plus relaxed beach time.",
+  "content.rate.2581229.description": "Hòn Mun snorkeling combined with Hòn Tằm mineral mud baths.",
+  "content.rate.2623660.description": "Robinson Beach paired with snorkeling in Hòn Mun Marine Park.",
+  "content.rate.2623666.description": "Robinson Beach combined with the mineral mud-bath experience on Hòn Tằm.",
+  "content.rate.2623667.description": "Robinson Beach with an additional beach stop at Bãi Tranh.",
+  "content.rate.2623668.description": "Robinson Beach and intimate Mini Beach, focused on relaxed beach time.",
+  "content.rate.2623669.description": "Robinson Beach and Bãi Sỏi for another relaxed island-beach combination.",
+  "content.rate.2623670.description": "Robinson Beach paired with a visit to Trí Nguyên Aquarium."
 });
 })();
