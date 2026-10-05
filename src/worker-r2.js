@@ -39,6 +39,7 @@ const ADMIN_SHARED_ASSETS = new Set([
 const ADMIN_TOURIST_ROLE_PATTERN = /\s*<a href="\/" aria-label="Открыть кабинет туриста"><span class="role-long">Турист<\/span><span class="role-short">Турист<\/span><\/a>/i;
 const AVAILABILITY_INTENT = /(?:есть|мест[ао]?|свобод|наличи|заброни)/i;
 const ORIGIN_CUE = /(?:^|\s)(?:я|мы|сейчас|нахожусь|находимся|живу|живем|живём|из|выезд(?:\s+из)?|старт(?:\s+из)?)(?:\s|$|[^а-яё])/i;
+const LOVE_TRAVEL_CLIENT_DEMO_TOKEN_SHA256 = '0551905d7ba4e0dee3190b5e9f29f7a07be5ce0d09a27cd35ce587f601019432';
 async function requestedLocale(request, url) {
   if (url.pathname !== '/api/ai/chat' || request.method !== 'POST') return 'ru';
   const header = String(request.headers.get('x-max-tour-locale') || '').toLowerCase();
@@ -366,23 +367,6 @@ async function demoTokenHash(token) {
   return [...digest].map(value => value.toString(16).padStart(2,'0')).join('');
 }
 
-async function ensureDemoGuardTable(env) {
-  if (!env.DB) throw new Error('LoveTravel demo booking database is unavailable');
-  await env.DB.prepare(`
-    CREATE TABLE IF NOT EXISTS lovetravel_demo_booking_guards (
-      token_hash TEXT NOT NULL,
-      product_id TEXT NOT NULL,
-      status TEXT NOT NULL,
-      confirmation_code TEXT,
-      booking_status TEXT,
-      external_reference TEXT,
-      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      PRIMARY KEY (token_hash, product_id)
-    )
-  `).run();
-}
-
 export async function handleLoveTravelClientDemoBooking(request, env, url = new URL(request.url)) {
   if (url.pathname !== '/api/bokun/client-demo/submit') return null;
   if (request.method !== 'POST') {
@@ -396,9 +380,8 @@ export async function handleLoveTravelClientDemoBooking(request, env, url = new 
 
   const body = await request.clone().json().catch(() => null);
   const demoToken = String(body?.demoToken || '').trim();
-  const expectedToken = String(env.LOVE_TRAVEL_CLIENT_DEMO_ACCESS_TOKEN || '').trim();
-  const integrationToken = String(env.LOVE_TRAVEL_INTEGRATION_TOKEN || '').trim();
-  if (!demoToken || !expectedToken || demoToken !== expectedToken || !integrationToken) {
+  const tokenHash = demoToken ? await demoTokenHash(demoToken) : '';
+  if (!demoToken || tokenHash !== LOVE_TRAVEL_CLIENT_DEMO_TOKEN_SHA256) {
     return json({ok:false,error:'demo_access_denied'},{status:403,headers:{'cache-control':'no-store'}});
   }
 
@@ -470,30 +453,6 @@ export async function handleLoveTravelClientDemoBooking(request, env, url = new 
       return json({ok:false,error:'checkout_not_ready',issues:draft.issues},{status:409,headers:{'cache-control':'no-store'}});
     }
 
-    await ensureDemoGuardTable(env);
-    const tokenHash = await demoTokenHash(demoToken);
-    const claimed = await env.DB.prepare(`
-      INSERT INTO lovetravel_demo_booking_guards(token_hash,product_id,status,external_reference)
-      VALUES(?,?,?,?)
-      ON CONFLICT(token_hash,product_id) DO NOTHING
-      RETURNING token_hash
-    `).bind(tokenHash,productId,'PENDING',externalBookingReference).first();
-
-    if (!claimed) {
-      const existing = await env.DB.prepare(`
-        SELECT status,confirmation_code,booking_status,external_reference
-        FROM lovetravel_demo_booking_guards WHERE token_hash=? AND product_id=?
-      `).bind(tokenHash,productId).first();
-      return json({
-        ok:existing?.status === 'CONFIRMED',
-        reused:true,
-        error:existing?.status === 'CONFIRMED' ? null : 'demo_booking_already_used',
-        confirmationCode:existing?.confirmation_code || null,
-        status:existing?.booking_status || existing?.status || null,
-        externalBookingReference:existing?.external_reference || null,
-      },{status:existing?.status === 'CONFIRMED' ? 200 : 409,headers:{'cache-control':'no-store'}});
-    }
-
     const submitResponse = await fetch(
       integrationBase + '/internal/lovetravel/bokun/demo-submit?vendorId='
         + encodeURIComponent(LOVE_TRAVEL_BOKUN_VENDOR_ID) + '&currency=USD',
@@ -502,7 +461,7 @@ export async function handleLoveTravelClientDemoBooking(request, env, url = new 
         headers:{
           'content-type':'application/json',
           'accept':'application/json',
-          'authorization':'Bearer ' + integrationToken,
+          'x-love-travel-demo-token':demoToken,
           'x-viiversion-booking-intent':'SUBMIT_LOVE_TRAVEL_CLIENT_DEMO_BOOKING',
         },
         body:JSON.stringify(draft.checkoutRequestTemplate),
@@ -513,19 +472,10 @@ export async function handleLoveTravelClientDemoBooking(request, env, url = new 
     const confirmationCode = String(booking?.confirmationCode || '').trim();
     const bookingStatus = String(booking?.status || '').trim().toUpperCase();
     if (!submitResponse.ok || !submitted?.ok || !/^NHA-[0-9]+$/.test(confirmationCode)) {
-      await env.DB.prepare(`
-        UPDATE lovetravel_demo_booking_guards
-        SET status='ERROR',updated_at=CURRENT_TIMESTAMP
-        WHERE token_hash=? AND product_id=?
-      `).bind(tokenHash,productId).run();
       return json({ok:false,error:'demo_booking_submit_failed'},{status:502,headers:{'cache-control':'no-store'}});
     }
 
-    await env.DB.prepare(`
-      UPDATE lovetravel_demo_booking_guards
-      SET status='CONFIRMED',confirmation_code=?,booking_status=?,updated_at=CURRENT_TIMESTAMP
-      WHERE token_hash=? AND product_id=?
-    `).bind(confirmationCode,bookingStatus || 'CONFIRMED',tokenHash,productId).run();
+
 
     return json({
       ok:true,
