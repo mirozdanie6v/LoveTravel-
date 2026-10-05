@@ -132,25 +132,23 @@
 
   function applyCatalog(catalog, source = 'static') {
     if (!Array.isArray(catalog) || !catalog.length) return false;
-    const localizer=globalThis.LoveTravelTourLocale;
-    const visibleCatalog=localizer?.localizeCatalogTour
-      ? catalog.map(tour=>localizer.localizeCatalogTour(tour))
-      : catalog;
-    TOURS.splice(0, TOURS.length, ...visibleCatalog);
+    // Keep the runtime catalogue language-neutral. Presentation modules derive
+    // localized view models without mutating Bókun/provider data.
+    const neutralCatalog=catalog.map(tour=>structuredClone(tour));
+    TOURS.splice(0, TOURS.length, ...neutralCatalog);
     globalThis.LOVE_TRAVEL_CATALOG_SOURCE = source;
     globalThis.LOVE_TRAVEL_BOKUN_ACTIVE = source === 'bokun';
     if (!TOURS.some(t => String(t.id) === String(state.selectedTour?.id))) state.selectedTour = TOURS[0];
     else state.selectedTour = TOURS.find(t => String(t.id) === String(state.selectedTour.id));
+    try { document.dispatchEvent(new CustomEvent('lovetravel:catalog-updated',{detail:{source,count:TOURS.length}})); } catch (_) {}
     return true;
   }
 
   function currentCatalogLocale(){
+    const semantic=globalThis.LoveTravelI18n?.apiLocale?.();
+    if(['ru','vi','en','zh','ko'].includes(semantic)) return semantic;
     const localized=globalThis.LoveTravelTourLocale?.locale?.();
-    if(['ru','vi','en','ko'].includes(localized)) return localized;
-    try {
-      const stored=String(localStorage.getItem('max-tour-locale-v1')||'').toLowerCase();
-      if(['ru','vi','en','ko'].includes(stored)) return stored;
-    } catch (_) {}
+    if(['ru','vi','en','zh','ko'].includes(localized)) return localized;
     return 'ru';
   }
 
