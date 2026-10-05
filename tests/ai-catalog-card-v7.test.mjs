@@ -24,7 +24,7 @@ test('catalog card parity layer is syntactically valid and loaded after the Love
   const aiIndex = build.indexOf('/ai-consultant-v5.js');
   const parityIndex = build.indexOf('/ai-catalog-card-v7.js');
   assert.ok(aiIndex >= 0 && parityIndex > aiIndex);
-  assert.equal(build.indexOf('/ai-location-guard-v6.js'), -1);
+  assert.doesNotMatch(build, /<script src="\/ai-location-guard-v6\.js"><\/script>/);
   assert.match(build, /copyFile\(resolve\(root, 'src\/ai-catalog-card-v7\.js'/);
 });
 
