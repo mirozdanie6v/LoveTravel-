@@ -1,9 +1,8 @@
 (() => {
   'use strict';
 
-  const STORAGE_KEY='max-tour-locale-v1';
+  const i18n=()=>globalThis.LoveTravelI18n || null;
   const SUPPORTED=['ru','vi','en','ko','zh'];
-  const intlLocale={ru:'ru-RU',vi:'vi-VN',en:'en-US',ko:'ko-KR',zh:'zh-CN'};
 
   const products={
     '1287578':{
@@ -169,16 +168,14 @@
   };
 
   function locale(){
-    const stored=String(localStorage.getItem(STORAGE_KEY)||'').toLowerCase();
-    if(SUPPORTED.includes(stored)) return stored;
-    const html=String(document.documentElement.lang||'').toLowerCase();
-    return SUPPORTED.includes(html)?html:'ru';
+    const value=i18n()?.apiLocale?.();
+    return SUPPORTED.includes(value)?value:'ru';
   }
   function pick(row,fallback=''){
-    return row?.[locale()] ?? row?.en ?? fallback;
+    return row?.[locale()] ?? fallback;
   }
   function product(productId){
-    return products[String(productId)]?.[locale()] || products[String(productId)]?.en || null;
+    return products[String(productId)]?.[locale()] || null;
   }
   function productTitle(productId,fallback=''){
     return product(productId)?.title || fallback;
@@ -200,80 +197,50 @@
   function languageName(value){
     const raw=String(value??'').trim();
     const normalized=raw.toLowerCase().replace('_','-');
-    const canonical={
-      en:'English','en-gb':'English','en-us':'English','english':'English',
-      vi:'Vietnamese','vi-vn':'Vietnamese','vietnamese':'Vietnamese',
-      ru:'Russian','ru-ru':'Russian','russian':'Russian',
-      ko:'Korean','ko-kr':'Korean','korean':'Korean',
-      zh:'Chinese','zh-cn':'Chinese','zh-hans':'Chinese','chinese':'Chinese'
+    const code={
+      en:'en','en-gb':'en','en-us':'en','english':'en',
+      vi:'vi','vi-vn':'vi','vietnamese':'vi',
+      ru:'ru','ru-ru':'ru','russian':'ru',
+      ko:'ko','ko-kr':'ko','korean':'ko',
+      zh:'zh','zh-cn':'zh','zh-hans':'zh','chinese':'zh'
     }[normalized];
-    return providerText(canonical||raw);
+    return code ? i18n()?.t?.('enum.language.'+code,{},{fallback:raw}) ?? raw : providerText(raw);
   }
   function difficulty(value){
-    const raw=String(value??'').trim();
-    return pick(difficultyMap[raw.toUpperCase()],providerText(raw.replaceAll('_',' ')));
+    const code=String(value??'').trim().toUpperCase();
+    return code ? i18n()?.t?.('enum.difficulty.'+code,{},{fallback:providerText(code.replaceAll('_',' '))}) ?? code : '';
   }
   function meetingType(value){
-    const raw=String(value??'').trim().toUpperCase();
-    return pick(meetingMap[raw],providerText(raw.replaceAll('_',' ').toLowerCase()));
+    const code=String(value??'').trim().toUpperCase();
+    return code ? i18n()?.t?.('enum.meeting.'+code,{},{fallback:providerText(code.replaceAll('_',' ').toLowerCase())}) ?? code : '';
+  }
+  function formatType(value){
+    const code=String(value??'UNKNOWN').trim().toUpperCase() || 'UNKNOWN';
+    return i18n()?.t?.('enum.format.'+code,{},{fallback:''}) ?? '';
+  }
+  function participantType(value,fallback=''){
+    const code=String(value??'').trim().toUpperCase();
+    return code ? i18n()?.t?.('enum.participant.'+code,{},{fallback}) ?? fallback : fallback;
   }
   function policyTitle(value){
     return providerText(value||'Standard Viator policy');
   }
   function duration(value={}){
-    const lang=locale();
-    const units={
-      ru:{day:['день','дня','дней'],hour:['час','часа','часов'],minute:['минута','минуты','минут']},
-      vi:{day:'ngày',hour:'giờ',minute:'phút'},
-      en:{day:['day','days'],hour:['hour','hours'],minute:['minute','minutes']},
-      ko:{day:'일',hour:'시간',minute:'분'},
-      zh:{day:'天',hour:'小时',minute:'分钟'}
-    };
-    const pluralRu=(n,forms)=>{
-      const n10=n%10,n100=n%100;
-      return forms[n10===1&&n100!==11?0:(n10>=2&&n10<=4&&(n100<12||n100>14))?1:2];
-    };
-    const parts=[];
-    const nums=[['day',Number(value.days)||0],['hour',Number(value.hours)||0],['minute',Number(value.minutes)||0]];
-    for(const [unit,n] of nums){
-      if(!n) continue;
-      if(lang==='ru') parts.push(n+' '+pluralRu(n,units.ru[unit]));
-      else if(lang==='en') parts.push(n+' '+units.en[unit][n===1?0:1]);
-      else if(lang==='vi') parts.push(n+' '+units.vi[unit]);
-      else if(lang==='ko') parts.push(n+units.ko[unit]);
-      else parts.push(n+units.zh[unit]);
-    }
-    if(parts.length) return parts.join(' ');
-    const raw=String(value.text||'').trim();
+    const direct=i18n()?.formatDuration?.(value);
+    if(direct && direct!==String(value?.text||'')) return direct;
+    const raw=String(value?.text||'').trim();
     const hours=raw.match(/^(\d+(?:\.\d+)?)\s*hours?$/i);
-    if(hours) return duration({hours:Number(hours[1])});
+    if(hours) return i18n()?.formatDuration?.({hours:Number(hours[1])}) ?? raw;
     return providerText(raw);
   }
   function formatDate(iso,options={weekday:'short',day:'numeric',month:'short'}){
-    const raw=String(iso||'');
-    if(!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
-    const date=new Date(raw+'T12:00:00Z');
-    return new Intl.DateTimeFormat(intlLocale[locale()],{...options,timeZone:'UTC'}).format(date);
+    return i18n()?.formatDate?.(iso,options) ?? String(iso||'');
   }
   function ageRange(min,max){
-    const a=Number(min),b=Number(max);
-    if(!Number.isFinite(a)||!Number.isFinite(b)) return '';
-    const lang=locale();
-    if(lang==='ru') return a+'–'+b+' лет';
-    if(lang==='vi') return a+'–'+b+' tuổi';
-    if(lang==='ko') return a+'–'+b+'세';
-    if(lang==='zh') return a+'–'+b+' 岁';
-    return a+'–'+b+' years';
+    return i18n()?.formatAgeRange?.(min,max) ?? '';
   }
   function minutes(value){
-    const n=Number(value);
-    if(!Number.isFinite(n)) return '';
-    const lang=locale();
-    if(lang==='ru') return n+' мин';
-    if(lang==='vi') return n+' phút';
-    if(lang==='ko') return n+'분';
-    if(lang==='zh') return n+' 分钟';
-    return n+' min';
+    return i18n()?.formatMinutes?.(value) ?? '';
   }
   function serverLocalizationMatches(value){
     const meta=value?.localization;
@@ -294,7 +261,8 @@
       languages:Array.isArray(tour.languages)?tour.languages.map(languageName):tour.languages,
       included:Array.isArray(tour.included)?tour.included.map(providerText):tour.included,
       excluded:Array.isArray(tour.excluded)?tour.excluded.map(providerText):tour.excluded,
-      formatsLabel:tour.formatsLabel?providerText(tour.formatsLabel):tour.formatsLabel,
+      formatCode:String(tour.formatCode||'UNKNOWN').toUpperCase(),
+      formatsLabel:formatType(tour.formatCode),
     };
     if('shortDescription' in next) next.shortDescription=dynamic?next.shortDescription:productDescription(id,next.shortDescription);
     if(Array.isArray(tour.route)){
@@ -329,13 +297,9 @@
       if(Array.isArray(tour.bokun.pricingCategories)){
         next.bokun.pricingCategories=tour.bokun.pricingCategories.map(item=>{
           const type=String(item?.ticketCategory||'').toUpperCase();
-          const title=type==='ADULT'
-            ? {ru:'Взрослый',vi:'Người lớn',en:'Adult',ko:'성인',zh:'成人'}[locale()]
-            : type==='CHILD'
-              ? {ru:'Ребёнок',vi:'Trẻ em',en:'Child',ko:'아동',zh:'儿童'}[locale()]
-              : type==='INFANT'
-                ? {ru:'Младенец',vi:'Em bé',en:'Infant',ko:'유아',zh:'婴儿'}[locale()]
-                : providerText(item?.title||type);
+          const title=['ADULT','CHILD','INFANT'].includes(type)
+            ? participantType(type,item?.title||type)
+            : providerText(item?.title||type);
           return {...item,title};
         });
       }
@@ -372,6 +336,8 @@
     formatDate,
     ageRange,
     minutes,
+    formatType,
+    participantType,
     localizeCatalogTour,
     localizeQuestion,
     serverLocalizationMatches
