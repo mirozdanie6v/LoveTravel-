@@ -98,7 +98,7 @@ test('migration creates dedicated authoritative commerce tables separate from AI
   const {db}=await database();
   try{
     const rows=db.prepare(`SELECT name FROM sqlite_master
-      WHERE type='table' AND name LIKE 'travel_%' ORDER BY name`).all();
+      WHERE type='table' AND substr(name,1,7)='travel_' ORDER BY name`).all();
     assert.deepEqual(rows.map(row=>row.name),[
       'travel_booking_transactions',
       'travel_command_receipts',
