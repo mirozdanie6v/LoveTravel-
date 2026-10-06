@@ -30,6 +30,20 @@ import {
 
 const str=value=>String(value??'').trim();
 
+function vietnamTodayIso(now=new Date()){
+  const parts=new Intl.DateTimeFormat('en-CA',{
+    timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit',
+  }).formatToParts(now);
+  const map=Object.fromEntries(parts.map(part=>[part.type,part.value]));
+  return `${map.year}-${map.month}-${map.day}`;
+}
+
+function addIsoDays(iso,days){
+  const date=new Date(`${iso}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate()+Number(days||0));
+  return date.toISOString().slice(0,10);
+}
+
 export class BookingSessionRuntimeError extends Error {
   constructor(code,message,status=409){
     super(message||code);
@@ -235,10 +249,13 @@ export function createBookingSessionRuntime({
       fail('selection_required','SYNC_SELECTION requires a selection',400);
     }
 
+    const today=vietnamTodayIso(now());
+    const start=selection.date||today;
+    const end=selection.date||addIsoDays(today,30);
     const resolved=await provider.resolveOffer({
       selection,
-      start:selection.date||undefined,
-      end:selection.date||undefined,
+      start,
+      end,
       currency:'USD',
       includePickupPlaces:
         String(selection?.pickup?.mode||'').toUpperCase()==='PICKUP'
