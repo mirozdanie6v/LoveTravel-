@@ -259,3 +259,39 @@ test('serves the last complete same-source locale while a new translation profil
   assert.equal(refreshed.localization.source,'viiversion-cache');
   assert.equal(refreshed.localization.pendingFields,0);
 });
+
+
+test('recovers every field when the translation model returns a partial JSON object', async () => {
+  const DB=new FakeDB();
+  let calls=0;
+  const AI={
+    async run(_model,input){
+      calls+=1;
+      const payload=JSON.parse(input.messages.at(-1).content);
+      const entries=Object.entries(payload);
+      if(entries.length>1){
+        const keep=Math.max(1,Math.floor(entries.length/3));
+        return {response:JSON.stringify(Object.fromEntries(
+          entries.slice(0,keep).map(([key,value])=>[key,'ZH:'+value])
+        ))};
+      }
+      return {response:JSON.stringify(Object.fromEntries(
+        entries.map(([key,value])=>[key,'ZH:'+value])
+      ))};
+    }
+  };
+  const domain=sampleDomain();
+  const env={DB,AI,BOKUN_TRANSLATION_MODEL:'test-model'};
+  const sync=await syncDomainTranslations(domain,env,'zh');
+  const fields=collectTranslatableFields(domain);
+  assert.equal(sync.ok,true);
+  assert.equal(sync.translated,fields.length);
+  assert.ok(calls>1);
+
+  const localized=await localizeDomainFromCache(domain,env,'zh');
+  assert.equal(localized.localization.source,'viiversion-cache');
+  assert.equal(localized.localization.pendingFields,0);
+  assert.equal(localized.localization.translatedFields,fields.length);
+  assert.equal(localized.experience.title,'ZH:English title');
+  assert.equal(localized.experience.description,'ZH:English description');
+});
