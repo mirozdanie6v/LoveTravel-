@@ -31,6 +31,7 @@
     'Bring sunscreen':'provider.bringSunscreen',
     'Nha Trang hotels':'provider.nhaTrangHotels',
     'Nha Trang':'provider.nhaTrang',
+    'Bến Tàu Du Lịch Nha Trang':'provider.nhaTrangTouristPier',
     'required':'provider.required',
     'WALKING':'provider.walking',
     'индивидуальный':'provider.format.private',
