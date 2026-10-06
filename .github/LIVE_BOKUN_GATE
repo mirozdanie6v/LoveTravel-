@@ -1,3 +1,4 @@
 VII-119 live Bókun gate trigger
 Purpose: create one real transaction-backed demo booking and capture the NHA confirmation.
 retry-after-existing-demo-contract-rewire
+post-production-deploy-live-gate
