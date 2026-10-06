@@ -78,6 +78,20 @@ with urllib.request.urlopen(api_req, timeout=30) as response:
     subdomain = json.load(response)["result"]["subdomain"]
 processor_url = f"https://viiversion-showreel-processor.{subdomain}.workers.dev"
 
+# Mirror the container readiness probe through the exact deployed AI relay.
+os.environ["CLOUDFLARE_ACCOUNT_ID"] = account
+os.environ["CLOUDFLARE_AI_URL"] = processor_url + "/infer"
+os.environ["SHOWREEL_PROCESSOR_KEY"] = site_key
+os.environ["CLOUDFLARE_AI_TOKEN"] = ""
+os.environ["CLOUDFLARE_VISION_MODEL"] = "@cf/qwen/qwen3.8-27b"
+from showreel.model import CloudflareReviewer
+
+try:
+    mirror = CloudflareReviewer().check()
+    print("MIRROR_READINESS=ok:" + json.dumps(mirror), flush=True)
+except Exception as exc:
+    print("MIRROR_READINESS=failed:" + type(exc).__name__ + ":" + str(exc), flush=True)
+
 
 def processor_post(path):
     req = urllib.request.Request(
