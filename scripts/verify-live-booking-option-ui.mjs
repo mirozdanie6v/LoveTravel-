@@ -53,14 +53,6 @@ try{
   });
   console.log(JSON.stringify({stage:'transaction-ready',...tx}));
 
-  const runtimeFns=await page.evaluate(()=>({
-    openTourPrevious:typeof openTour?.__previous==='function' ? Function.prototype.toString.call(openTour.__previous).slice(0,7000) : '',
-    openTourWrapped:typeof openTour==='function' ? Function.prototype.toString.call(openTour).slice(0,2500) : '',
-    showScreen:typeof showScreen==='function' ? Function.prototype.toString.call(showScreen).slice(0,7000) : '',
-    screenState:typeof state!=='undefined' ? String(state?.screen||'') : 'unavailable',
-  }));
-  console.log('RUNTIME_FUNCTIONS '+JSON.stringify(runtimeFns));
-
   const catalogEntry=page.locator('#homeScreen [data-lt-action="catalog"]');
   await catalogEntry.waitFor({state:'visible',timeout:10000});
   await catalogEntry.click();
