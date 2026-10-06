@@ -322,7 +322,8 @@ function validateSelectionParticipantMix(value, path, issues) {
 function validateBookingSelectionSnapshotInternal(value, path, issues) {
   const keys = [
     'productRef', 'date', 'rateRef', 'startTimeRef', 'slotRef', 'participants',
-    'pickup', 'dropoff', 'customer', 'travellers', 'answers', 'extras',
+    'pickup', 'pickupRoomNumber', 'pickupAnswers', 'dropoff', 'customer',
+    'travellers', 'answers', 'extras',
   ];
   if (!exactObject(value, path, keys, issues)) return;
   validateProviderRef(value.productRef, `${path}productRef`, issues);
@@ -332,6 +333,8 @@ function validateBookingSelectionSnapshotInternal(value, path, issues) {
   if (value.slotRef !== undefined) validateProviderRef(value.slotRef, `${path}slotRef`, issues);
   validateSelectionParticipantMix(value.participants, `${path}participants`, issues);
   if (value.pickup !== undefined) validateTransportChoice(value.pickup, `${path}pickup`, issues, PICKUP_MODES);
+  optionalString(value.pickupRoomNumber, `${path}pickupRoomNumber`, issues);
+  if (value.pickupAnswers !== undefined) validateAnswers(value.pickupAnswers, `${path}pickupAnswers`, issues);
   if (value.dropoff !== undefined) validateTransportChoice(value.dropoff, `${path}dropoff`, issues, DROPOFF_MODES);
   if (value.customer !== undefined) validateCustomer(value.customer, `${path}customer`, issues);
   if (!Array.isArray(value.travellers)) issue(issues, 'array_required', `${path}travellers`, 'must be an array');
