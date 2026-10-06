@@ -47,7 +47,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python -m pip install --quiet cryptography==46.0.5
+          python -m pip install --quiet cryptography==46.0.5 Pillow
           sudo apt-get update -qq
           sudo apt-get install -y -qq ffmpeg
 
