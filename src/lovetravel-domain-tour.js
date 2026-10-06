@@ -512,10 +512,13 @@
     if(globalThis.openTour.__loveTravelDomain) return true;
     const previous=globalThis.openTour;
     const wrapped=function(id,...args){
-      const result=previous.call(this,id,...args);
       const productId=String(id ?? '');
-      if(PRODUCT_IDS.has(productId)) queueMicrotask(()=>renderProduct(productId));
-      return result;
+      if(PRODUCT_IDS.has(productId)){
+        if(typeof showScreen==='function') showScreen('tour');
+        void renderProduct(productId);
+        return;
+      }
+      return previous.call(this,id,...args);
     };
     wrapped.__loveTravelDomain=true;
     wrapped.__previous=previous;
