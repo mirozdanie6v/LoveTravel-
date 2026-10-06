@@ -126,3 +126,9 @@ test('provider boolean artifacts never render as customer list items',()=>{
   assert.match(js,/typeof v!=='boolean'/);
   assert.match(js,/true\|false/);
 });
+
+
+test('meeting point display names pass through provider localization while addresses stay literal',()=>{
+  assert.match(js,/providerText\(point\.title \|\| point\.addressLine1 \|\| ''\)/);
+  assert.match(js,/\[point\.addressLine1,point\.city,point\.state\]/);
+});
