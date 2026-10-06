@@ -1,0 +1,31 @@
+name: LoveTravel visual booking option smoke
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/booking-option-browser-smoke.yml'
+      - 'scripts/verify-live-booking-option-ui.mjs'
+
+permissions:
+  contents: read
+
+jobs:
+  booking-option-ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - name: Install browser runtime
+        run: |
+          npm install --no-fund --no-audit
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Verify visual booking option chooser
+        env:
+          LOVE_TRAVEL_LIVE_BASE_URL: https://lovetravel.viiversion.com
+        run: node scripts/verify-live-booking-option-ui.mjs
