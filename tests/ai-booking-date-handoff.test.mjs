@@ -3,27 +3,42 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
-const source = await readFile(resolve(import.meta.dirname, '../src/ai-booking-bridge-v25.js'), 'utf8');
+const root=resolve(import.meta.dirname,'..');
+const bridge=await readFile(resolve(root,'src/ai-booking-bridge-v25.js'),'utf8');
+const consultant=await readFile(resolve(root,'src/ai-consultant-v5.js'),'utf8');
 
-test('AI booking bridge prefers the exact departure selected by date quick reply', () => {
-  assert.match(source, /const targetDate = isIsoDate\(intent\?\.date\)/);
-  assert.match(source, /dataset\?\.departureIso[^\n]+targetDate/);
-  assert.match(source, /продолжить бронирование/);
-  assert.match(source, /if \(!targetCard\) return null/);
+test('AI booking bridge uses structured BookingConfigurator transaction handoff',()=>{
+  assert.match(bridge,/LoveTravelBookingConfigurator/);
+  assert.match(bridge,/refreshTransaction/);
+  assert.match(bridge,/applySelection/);
+  assert.match(bridge,/openStructuredBooking/);
+  assert.match(bridge,/configurator\.open\?\.\(\)/);
 });
 
-test('AI booking bridge does not silently fall back to another group date', () => {
-  assert.match(source, /if \(targetDate && departureCards\.length\)/);
-  assert.match(source, /return buttons\.find\(button => button\.closest\('\.depart-card'\) === targetCard\) \|\| null/);
-  const guardedBranch = source.slice(source.indexOf('if (targetDate && departureCards.length)'), source.indexOf('return buttons[0] || null;'));
-  assert.match(guardedBranch, /if \(!targetCard\) return null/);
-  assert.doesNotMatch(guardedBranch, /buttons\[0\]/);
+test('critical AI booking bridge no longer searches or clicks booking DOM heuristically',()=>{
+  assert.doesNotMatch(bridge,/MutationObserver/);
+  assert.doesNotMatch(bridge,/setTimeout/);
+  assert.doesNotMatch(bridge,/querySelectorAll\(['"]button/);
+  assert.doesNotMatch(bridge,/bookingButtonInTour/);
+  assert.doesNotMatch(bridge,/continueOnceToBooking/);
+  assert.doesNotMatch(bridge,/BOOKING_INTENT_KEY/);
+  assert.doesNotMatch(bridge,/sessionStorage/);
 });
 
-test('AI date is re-applied after the legacy booking screen opens', () => {
-  assert.match(source, /continueOnceToBooking\(intent, attempt = 0\)/);
-  assert.match(source, /if \(bookingScreenVisible\(\)\) \{[\s\S]*applyIntentToBooking\(intent\)/);
-  assert.match(source, /MaxTourDepartureLiveV3\.applyIntentToBooking\(intent, intent\.date\)/);
-  assert.match(source, /state\.booking\.date = intent\.date/);
-  assert.match(source, /input\.value = intent\.date/);
+test('AI consultant startBooking reads current transaction rather than replaying DOM intent',()=>{
+  const start=consultant.slice(
+    consultant.indexOf('async function startBooking'),
+    consultant.indexOf('function renderRecommendations'),
+  );
+  assert.match(start,/LoveTravelBookingConfigurator/);
+  assert.match(start,/refreshTransaction/);
+  assert.match(start,/applySelection/);
+  assert.doesNotMatch(start,/continueToBooking/);
+  assert.doesNotMatch(start,/BOOKING_INTENT_KEY/);
+  assert.doesNotMatch(start,/sessionStorage/);
+  assert.doesNotMatch(start,/setTimeout/);
+});
+
+test('legacy MutationObserver booking-intent orchestration is removed from AI consultant',()=>{
+  assert.doesNotMatch(consultant,/const observer = new MutationObserver\(\(\) => \{[\s\S]*BOOKING_INTENT_KEY/);
 });
