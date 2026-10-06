@@ -2,6 +2,11 @@ name: Build current encrypted showreel release
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.build-current-showreel-release'
+      - '.github/workflows/build-current-showreel-release.yml'
 
 permissions:
   contents: read
