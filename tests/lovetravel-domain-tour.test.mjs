@@ -7,6 +7,7 @@ const root=resolve(import.meta.dirname,'..');
 const js=await readFile(resolve(root,'src/lovetravel-domain-tour.js'),'utf8');
 const css=await readFile(resolve(root,'src/lovetravel-domain-tour.css'),'utf8');
 const build=await readFile(resolve(root,'build.mjs'),'utf8');
+const i18n=await readFile(resolve(root,'src/lovetravel-i18n.js'),'utf8');
 
 test('LoveTravel domain tour renderer is syntactically valid and reads the domain endpoint',()=>{
   assert.doesNotThrow(()=>new Function(js));
@@ -65,11 +66,8 @@ test('tour page exposes a high-position booking CTA and suppresses empty reviews
 
 
 test('tour start point is separated from hotel pickup in every supported locale',()=>{
-  assert.match(js,/meeting:'Место начала экскурсии'/);
-  assert.match(js,/meeting:'Tour starting point'/);
-  assert.match(js,/meeting:'Điểm bắt đầu tour'/);
-  assert.match(js,/meeting:'行程集合地点'/);
-  assert.match(js,/meeting:'투어 출발 지점'/);
+  for(const text of ['Место начала экскурсии','Tour starting point','Điểm bắt đầu tour','行程集合地点','투어 출발 지점']) assert.ok(i18n.includes(text),text);
+  assert.equal(/const copy\s*=/.test(js),false);
   assert.match(js,/data-lt-start-point-card/);
   assert.match(js,/data-lt-pickup-card/);
   assert.match(js,/data-lt-selected-pickup/);
@@ -91,7 +89,8 @@ test('tour gallery renders every Bókun photo and supports full-screen navigatio
 });
 
 test('tour options are visual cards with curated descriptions and tour photos',()=>{
-  assert.match(js,/RATE_PRESENTATION/);
+  assert.match(i18n,/tour\.ratePresentation\.2581224/);
+  assert.equal(js.includes('RATE_PRESENTATION'),false);
   assert.match(js,/function rateDescription/);
   assert.match(js,/function ratePhotos/);
   assert.match(js,/lt-domain-rate__media/);
@@ -111,4 +110,13 @@ test('tour page keeps the existing LoveTravel layout but exposes the requested p
   assert.match(css,/radial-gradient\(circle at 8% 5%,rgba\(246,189,57,.22\),transparent 28%\)/);
   assert.match(css,/linear-gradient\(160deg,rgba\(255,247,226,.88\) 0%,rgba\(252,252,250,.92\) 38%,rgba\(236,247,255,.94\) 100%\)/);
   assert.match(css,/linear-gradient\(135deg,#65c9ff 0%,#3683e8 56%,#0b5aa8 100%\)/);
+});
+
+
+test('semantic i18n core loads before provider localization and domain rendering',()=>{
+  const core=build.indexOf('<script src="/lovetravel-i18n.js" defer></script>');
+  const provider=build.indexOf('<script src="/lovetravel-tour-locale.js" defer></script>');
+  const domain=build.indexOf('<script src="/lovetravel-domain-tour.js" defer></script>');
+  assert.ok(core>=0 && provider>core && domain>provider);
+  assert.match(build,/copyFile\(resolve\(root, 'src\/lovetravel-i18n\.js'/);
 });
