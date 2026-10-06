@@ -75,10 +75,13 @@ function offer(){
   };
 }
 
-function fakeProvider(){
+function fakeProvider(calls=null){
   return {
     vendorId:'137689',
-    async getDomains(){return [domain()];},
+    async getDomains(options={}){
+      calls?.push(structuredClone(options));
+      return [domain()];
+    },
     async resolveOffer({selection}){
       return {
         offer:offer(),
@@ -186,9 +189,10 @@ test('Sales Orchestrator turns natural language into verified offer recommendati
     },
   };
   const store=fakeStore();
+  const providerCalls=[];
   const orchestrator=createLoveTravelSalesOrchestrator({
     env,
-    provider:fakeProvider(),
+    provider:fakeProvider(providerCalls),
     store,
     now:()=>new Date('2026-10-06T12:00:00.000Z'),
   });
@@ -216,6 +220,9 @@ test('Sales Orchestrator turns natural language into verified offer recommendati
   assert.ok(store._events().includes('SALES_CANDIDATES_UPDATED'));
   assert.ok(store._events().includes('SALES_OFFER_SELECTED'));
   assert.equal(calls.length,2);
+  assert.equal(providerCalls[0]?.includePickupPlaces,false);
+  assert.equal(providerCalls[1]?.includePickupPlaces,true);
+  assert.deepEqual(providerCalls[1]?.productIds,['1287580']);
   const saved=env.DB._memory();
   assert.equal(saved.travelSales.turns.at(-1).role,'assistant');
 });
