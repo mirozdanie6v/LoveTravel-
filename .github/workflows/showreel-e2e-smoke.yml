@@ -43,8 +43,13 @@ jobs:
             echo "CLOUDFLARE_ACCOUNT_ID=$CLOUDFLARE_ACCOUNT_ID" >> "$GITHUB_ENV"
           fi
 
-      - name: Install crypto dependency
-        run: python -m pip install --quiet cryptography==46.0.5
+      - name: Install test dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --quiet cryptography==46.0.5
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
 
       - name: Run real upload to MP4 smoke test
         run: python .github/scripts/showreel-e2e-smoke.py
