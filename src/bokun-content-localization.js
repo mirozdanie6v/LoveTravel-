@@ -6,7 +6,20 @@ const TARGET_NAMES = Object.freeze({
   ko:'Korean',
   zh:'Simplified Chinese',
 });
-const TRANSLATION_PROVIDER = 'workers-ai:gemma-4-26b-a4b-it:v4-native-travel';
+const TRANSLATION_PROVIDER_V3 = 'workers-ai:gemma-4-26b-a4b-it:v3';
+const TRANSLATION_PROVIDER_V4 = 'workers-ai:gemma-4-26b-a4b-it:v4-native-travel';
+
+function translationProvider(locale) {
+  return normalizeContentLocale(locale) === 'ru' ? TRANSLATION_PROVIDER_V3 : TRANSLATION_PROVIDER_V4;
+}
+
+function acceptedTranslationProvider(locale, provider) {
+  const value=String(provider||'');
+  if (normalizeContentLocale(locale) === 'ru') {
+    return value === TRANSLATION_PROVIDER_V3 || value === TRANSLATION_PROVIDER_V4;
+  }
+  return value === TRANSLATION_PROVIDER_V4;
+}
 
 let tableReadyPromise = null;
 const inFlightSync = new Map();
@@ -294,7 +307,7 @@ async function translateChunk(env, locale, fields) {
   return translated;
 }
 
-async function saveTranslations(env, productId, locale, fields, translated, provider = TRANSLATION_PROVIDER) {
+async function saveTranslations(env, productId, locale, fields, translated, provider = translationProvider(locale)) {
   if (!await ensureTable(env)) return 0;
   const rows = fields.filter(field => typeof translated[field.key] === 'string' && translated[field.key].trim());
   if (!rows.length) return 0;
@@ -345,7 +358,7 @@ export async function syncDomainTranslations(domain, env, requestedLocale) {
     const cache = new Map(rows.map(row => [String(row.field_key), row]));
     const missing = fields.filter(field => {
       const row = cache.get(field.key);
-      return !row || String(row.source_hash) !== field.sourceHash || !text(row.translated_text) || String(row.provider || '') !== TRANSLATION_PROVIDER;
+      return !row || String(row.source_hash) !== field.sourceHash || !text(row.translated_text) || !acceptedTranslationProvider(locale, row.provider);
     });
     if (!missing.length) return {ok:true, productId, locale, translated:0, skipped:false};
 
@@ -392,7 +405,7 @@ export async function localizeDomainFromCache(domain, env, requestedLocale, ctx 
       row &&
       String(row.source_hash) === field.sourceHash &&
       text(row.translated_text) &&
-      String(row.provider || '') === TRANSLATION_PROVIDER
+      acceptedTranslationProvider(locale, row.provider)
     ) {
       ready.set(field.key,row);
     }
@@ -451,6 +464,8 @@ export async function syncAllDomainLocales(domains, env) {
 
 export const _localizationTest = {
   cleanLocale,
+  translationProvider,
+  acceptedTranslationProvider,
   pathSet,
   parseJsonObject,
   chunks,
