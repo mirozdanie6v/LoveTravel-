@@ -12,12 +12,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
+      - uses: actions/checkout@v5
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
       - name: Install Playwright
         run: |
-          npm init -y >/dev/null 2>&1
+          npm install --no-fund --no-audit
           npm install --no-save playwright@1.55.0
           npx playwright install --with-deps chromium
       - name: Verify live LoveTravel Bókun catalog and galleries
@@ -260,7 +261,7 @@ jobs:
               configColumns:getComputedStyle(document.querySelector('#tourScreen .lt-booking-config__grid')).gridTemplateColumns,
               reviewText:document.querySelector('#tourScreen .lt-domain-hero')?.innerText || '',
             }));
-            if (publicFocus.heroAi) throw new Error('AI still competes with primary home CTA');
+            if (!publicFocus.heroAi) throw new Error('public AI entry point is missing: '+JSON.stringify(publicFocus));
             if (publicFocus.visibleNav.length !== 2) throw new Error('public nav is not focused on home/catalog: '+JSON.stringify(publicFocus));
             if (!publicFocus.quickBook) throw new Error('tour quick booking CTA missing');
             if (publicFocus.configColumns.split(' ').filter(Boolean).length !== 1) throw new Error('mobile configurator is not single-column: '+publicFocus.configColumns);
@@ -291,3 +292,8 @@ jobs:
             process.exit(1);
           });
           NODE
+
+      - name: Verify public AI journey in RU and EN
+        env:
+          LOVE_TRAVEL_LIVE_BASE_URL: https://lovetravel.viiversion.com
+        run: node scripts/verify-live-client-ai-browser.mjs
