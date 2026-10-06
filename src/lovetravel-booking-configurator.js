@@ -33,11 +33,8 @@
   function t(){ return i18n()?.scope?.('booking') || UI_FALLBACK; }
   function l10n(){ return globalThis.LoveTravelTourLocale || null; }
   function providerText(value){ return l10n()?.providerText?.(value) ?? String(value ?? ''); }
-  function localizedRateTitle(productId,rate,localization=null){
-    if(localization?.locale===locale()&&localization?.source==='bokun-native'){
-      return String(rate?.title||rate?.code||rate?.id||'');
-    }
-    return l10n()?.rateTitle?.(productId,rate?.id,rate?.title||rate?.code||rate?.id||'') ?? String(rate?.title||rate?.code||rate?.id||'');
+  function localizedRateTitle(_productId,rate,_localization=null){
+    return String(rate?.title||rate?.code||rate?.id||'');
   }
   function arr(v){ return Array.isArray(v) ? v : []; }
   function esc(v){ return String(v ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
