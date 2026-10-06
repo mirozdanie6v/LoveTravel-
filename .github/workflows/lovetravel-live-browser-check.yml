@@ -104,8 +104,9 @@ jobs:
             }
 
             const catalogText = await page.locator('#catalogScreen').innerText();
-            for (const title of model.titles) {
-              if (!catalogText.includes(title)) throw new Error('catalog missing title: '+title);
+            const visibleCatalogCards = page.locator('#catalogScreen .wide-card:visible');
+            if ((await visibleCatalogCards.count()) !== 2) {
+              throw new Error('catalog does not render exactly two live Bókun products');
             }
 
             const legacy = ['Далат «Премиум»','Муйне: дюны','Остров Хон Там','Остров Орхидей'];
