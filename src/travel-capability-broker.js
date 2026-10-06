@@ -89,7 +89,7 @@ function participantCategory(domain,role,age=null){
     const min=Number(item?.minAge);
     const max=Number(item?.maxAge);
     return (!Number.isFinite(min)||age>=min)&&(!Number.isFinite(max)||age<=max);
-  })||candidates[0]||null;
+  })||null;
 }
 
 function participantSelection(domain,intent){
@@ -166,6 +166,15 @@ export function selectionFromTravelIntent(domain,intent){
   if(total<1){
     throw new CapabilityPolicyError('party_required','Offer search requires at least one traveller',409);
   }
+  const participants=participantSelection(domain,valid);
+  const mappedTotal=Object.values(participants).reduce((sum,count)=>sum+Math.max(0,Number(count)||0),0);
+  if(mappedTotal!==total){
+    throw new CapabilityPolicyError(
+      'participant_category_unavailable',
+      'One or more travellers do not match a provider participant category',
+      409,
+    );
+  }
   const slot=slotFor(domain,date,total);
   const rate=rateFor(domain,slot);
   return {
@@ -174,7 +183,7 @@ export function selectionFromTravelIntent(domain,intent){
     ...(slot?.id?{slotId:String(slot.id)}:{}),
     ...(slot?.startTimeId?{startTimeId:String(slot.startTimeId)}:{}),
     ...(rate?.id?{rateId:String(rate.id)}:{}),
-    participants:participantSelection(domain,valid),
+    participants,
     pickup:pickupSelection(domain,valid),
     dropoff:{mode:'NO_DROPOFF'},
     extras:{},
