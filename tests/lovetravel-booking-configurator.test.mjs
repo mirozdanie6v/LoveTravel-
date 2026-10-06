@@ -240,3 +240,23 @@ test('structured handoff API exposes transaction snapshot and applySelection wit
   assert.match(js,/applySelection:async next=>/);
   assert.match(js,/return resolve\(productId,\{quiet:true\}\)/);
 });
+
+
+test('option sheet reuses the visual Bókun tour cards instead of a dry rate list',()=>{
+  assert.match(js,/function optionCardMarkup\(/);
+  assert.match(js,/\.lt-domain-section--options \[data-lt-domain-rate\]/);
+  assert.match(js,/cloneNode\(true\)/);
+  assert.match(js,/classList\.add\('lt-booking-option-card'\)/);
+  assert.match(js,/data-lt-rate/);
+  assert.match(js,/button\.dataset\.ltRate/);
+  assert.doesNotMatch(js,/class="lt-option-card /);
+  assert.match(css,/\.lt-booking-option-grid/);
+  assert.match(css,/\.lt-booking-option-card \.lt-domain-rate__media/);
+});
+
+test('legacy option section is hidden immediately when BookingConfigurator takes ownership',()=>{
+  const bootstrap=js.slice(js.indexOf('async function bootstrap(productId)'),js.indexOf('function detectProduct()'));
+  assert.ok(bootstrap.indexOf('markLegacySelection();')>=0);
+  assert.ok(bootstrap.indexOf('markLegacySelection();')<bootstrap.indexOf('await loadTransaction()'));
+  assert.match(css,/\.lt-domain-tour\.lt-booking-ui \.lt-domain-section--options\{display:none!important\}/);
+});
