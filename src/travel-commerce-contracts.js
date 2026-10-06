@@ -506,6 +506,9 @@ export function validateShoppingSession(value) {
     if (!SHOPPING_SESSION_STATES.includes(item.status)) issue(issues, 'invalid_session_status', 'status', `must be one of ${SHOPPING_SESSION_STATES.join(', ')}`);
     requiredInstant(item.createdAt, 'createdAt', issues);
     requiredInstant(item.updatedAt, 'updatedAt', issues);
+    if (isIsoInstant(item.createdAt) && isIsoInstant(item.updatedAt) && Date.parse(item.updatedAt) < Date.parse(item.createdAt)) {
+      issue(issues, 'invalid_session_time', 'updatedAt', 'cannot be before createdAt');
+    }
   });
 }
 
@@ -585,6 +588,7 @@ export function validateBookingTransaction(value) {
 
     if (item.mutation !== undefined) validateMutation(item.mutation, 'mutation', issues);
     if (['RESERVING', 'CONFIRMED', 'FAILED_NEEDS_RECONCILIATION'].includes(item.state) && !item.mutation) issue(issues, 'mutation_required', 'mutation', `${item.state} requires mutation state`);
+    if (item.state === 'RESERVING' && item.mutation?.status !== 'PENDING') issue(issues, 'pending_mutation_required', 'mutation.status', 'RESERVING requires PENDING mutation');
     if (item.state === 'FAILED_NEEDS_RECONCILIATION' && item.mutation?.status !== 'AMBIGUOUS') issue(issues, 'ambiguous_mutation_required', 'mutation.status', 'FAILED_NEEDS_RECONCILIATION requires AMBIGUOUS mutation');
 
     if (item.providerBooking !== undefined) validateProviderBooking(item.providerBooking, 'providerBooking', issues);
