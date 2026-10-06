@@ -11,6 +11,7 @@ on:
       - fix-zh-partial-translation-retry
       - fix-zh-meeting-point-name
       - fix-meeting-point-render-localization
+      - fix-zh-pier-chinese-only
   workflow_dispatch:
 
 jobs:
