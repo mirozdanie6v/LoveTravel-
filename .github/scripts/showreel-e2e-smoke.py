@@ -90,8 +90,20 @@ def processor_post(path):
         },
         method="POST",
     )
-    with urllib.request.urlopen(req, timeout=300) as response:
-        return response.status, json.load(response)
+    try:
+        with urllib.request.urlopen(req, timeout=300) as response:
+            return response.status, json.load(response)
+    except urllib.error.HTTPError as error:
+        raw = error.read().decode(errors="replace")
+        try:
+            body = json.loads(raw)
+        except Exception:
+            body = {"error": "non-json response"}
+        safe = {
+            key: value for key, value in body.items()
+            if key in {"state", "error", "errorType", "category"}
+        } if isinstance(body, dict) else {}
+        raise RuntimeError(f"Processor {path} HTTP {error.code}: {safe}") from None
 
 
 def processor_health():
