@@ -54,7 +54,12 @@ jobs:
               hanInKo:locale==='ko'?uniq.filter(x=>/[\u3400-\u9FFF]/.test(x)):[],
               foreignScriptInVi:locale==='vi'?uniq.filter(x=>/[А-Яа-яЁё\u3400-\u9FFF가-힣]/.test(x)):[],
               foreignScriptInEn:locale==='en'?uniq.filter(x=>/[А-Яа-яЁё\u3400-\u9FFF가-힣]/.test(x)):[],
-              suspiciousEnglish:uniq.filter(x=>/\b(?:Book|Booking|Tour|Price|Total|Date|Guests|Contact|Available|Live|Choose|Select|Pickup|Meeting|Included|Excluded|Cancellation|Duration|From|Start|Finish|Adult|Child|Infant|Group|Private|Required|Room|Hotel|Language|Difficulty|Confirmation|Program|Information)\b/i.test(x)),
+              suspiciousEnglish:uniq.filter(x=>{
+                const pattern=locale==='vi'
+                  ? /\b(?:Book|Booking|Price|Total|Date|Guests|Contact|Available|Live|Choose|Select|Pickup|Meeting|Included|Excluded|Cancellation|Duration|Start|Finish|Adult|Child|Infant|Group|Private|Required|Room|Hotel|Language|Difficulty|Confirmation|Program|Information)\b/i
+                  : /\b(?:Book|Booking|Tour|Price|Total|Date|Guests|Contact|Available|Live|Choose|Select|Pickup|Meeting|Included|Excluded|Cancellation|Duration|From|Start|Finish|Adult|Child|Infant|Group|Private|Required|Room|Hotel|Language|Difficulty|Confirmation|Program|Information)\b/i;
+                return pattern.test(x);
+              }),
             };
           };
 
