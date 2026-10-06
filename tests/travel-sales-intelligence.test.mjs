@@ -132,7 +132,7 @@ test('Conversation Intelligence accepts only structured model output',async()=>{
   assert.equal(result.bookingRequested,true);
 });
 
-test('invalid Conversation Intelligence output fails to an empty non-mutating patch',async()=>{
+test('invalid Conversation Intelligence output falls back to explicit non-mutating facts',async()=>{
   const env={
     AI:{
       async run(){
@@ -152,9 +152,67 @@ test('invalid Conversation Intelligence output fails to an empty non-mutating pa
     locale:'en',
   });
   assert.equal(result.goal,'GENERAL');
-  assert.equal(result.source,'deterministic-empty');
+  assert.equal(result.source,'deterministic-explicit');
   assert.deepEqual(result.patch,{locale:'en'});
 });
+
+const explicitFallbackCases=[
+  {
+    locale:'en',
+    message:'Two adults, tomorrow, snorkeling, pickup from Oceanus. We want to book it.',
+  },
+  {
+    locale:'ru',
+    message:'Двое взрослых, завтра хотим снорклинг, заберите нас из Oceanus. Хотим забронировать.',
+  },
+  {
+    locale:'vi',
+    message:'Hai người lớn, ngày mai muốn lặn ngắm san hô, đón tại Oceanus. Muốn đặt tour.',
+  },
+  {
+    locale:'zh',
+    message:'两位成人，明天想去浮潜，请从 Oceanus 接我们。我们要预订。',
+  },
+  {
+    locale:'ko',
+    message:'성인 두 명이고 내일 스노클링을 원합니다. Oceanus에서 픽업해 주세요. 예약하고 싶습니다.',
+  },
+];
+
+for(const sample of explicitFallbackCases){
+  test(`Conversation Intelligence preserves explicit booking facts when Workers AI structured output fails: ${sample.locale}`,async()=>{
+    const env={
+      AI:{
+        async run(){
+          throw new Error('structured_json_generation_failed');
+        },
+      },
+    };
+    const result=await extractConversationIntent({
+      env,
+      message:sample.message,
+      currentIntent:createInitialTravelIntent(sample.locale),
+      locale:sample.locale,
+      products:[{
+        product:{
+          productId:'love-travel-hon-mun',
+          title:'Hòn Mun Marine Park Snorkeling',
+        },
+      }],
+      now:new Date('2026-10-06T12:00:00.000Z'),
+    });
+
+    assert.equal(result.source,'deterministic-explicit');
+    assert.equal(result.patch.locale,sample.locale);
+    assert.equal(result.patch.dateConstraint.exact,'2026-10-07');
+    assert.equal(result.patch.party.adults,2);
+    assert.ok(result.patch.preferenceAdds.includes('SNORKELING'));
+    assert.equal(result.patch.hotel,'Oceanus');
+    assert.equal(result.patch.pickupPreference,'PICKUP');
+    assert.equal(result.goal,'BOOK');
+    assert.equal(result.bookingRequested,true);
+  });
+}
 
 test('grounded sales validation rejects unverified product, evidence and price claims',()=>{
   const evidence=[productEvidence(),offerEvidence(98)];
