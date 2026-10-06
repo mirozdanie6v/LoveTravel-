@@ -226,7 +226,8 @@ await copyFile(resolve(root, 'src/tour-lightbox.css'), resolve(dist, 'tour-light
 await copyFile(resolve(root, 'src/tour-lightbox.js'), resolve(dist, 'tour-lightbox.js'));
 await copyFile(resolve(root, 'src/lovetravel-brand.css'), resolve(dist, 'lovetravel-brand.css'));
 await copyFile(resolve(root, 'src/lovetravel-brand.js'), resolve(dist, 'lovetravel-brand.js'));
-await copyFile(resolve(root, 'src/lovetravel-i18n.js'), resolve(dist, 'lovetravel-i18n.js'));\nawait copyFile(resolve(root, 'src/lovetravel-tour-locale.js'), resolve(dist, 'lovetravel-tour-locale.js'));
+await copyFile(resolve(root, 'src/lovetravel-i18n.js'), resolve(dist, 'lovetravel-i18n.js'));
+await copyFile(resolve(root, 'src/lovetravel-tour-locale.js'), resolve(dist, 'lovetravel-tour-locale.js'));
 await copyFile(resolve(root, 'src/lovetravel-domain-tour.css'), resolve(dist, 'lovetravel-domain-tour.css'));
 await copyFile(resolve(root, 'src/lovetravel-domain-tour.js'), resolve(dist, 'lovetravel-domain-tour.js'));
 await copyFile(resolve(root, 'src/lovetravel-booking-configurator.css'), resolve(dist, 'lovetravel-booking-configurator.css'));
