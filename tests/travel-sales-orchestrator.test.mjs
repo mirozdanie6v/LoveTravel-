@@ -124,6 +124,9 @@ function fakeStore(){
 function fakeDb(){
   let memoryJson=null;
   return {
+    async batch(statements){
+      return (Array.isArray(statements)?statements:[]).map(()=>({success:true}));
+    },
     prepare(sql){
       return {
         bind(...args){
