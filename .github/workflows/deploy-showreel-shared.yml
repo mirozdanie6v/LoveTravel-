@@ -29,6 +29,13 @@ jobs:
           ref: codex/showreel-deploy
           path: bridge
 
+      - name: Checkout exact showreel source
+        uses: actions/checkout@v5
+        with:
+          repository: mirozdanie6v/EventVideoHumanEditor
+          ref: b15f0b43a4ffc0277ae79c1d31c1e4967b82bc8a
+          path: showreel-source
+
       - uses: actions/setup-node@v5
         with:
           node-version: '22'
@@ -48,7 +55,7 @@ jobs:
             echo "CLOUDFLARE_ACCOUNT_ID=$CLOUDFLARE_ACCOUNT_ID" >> "$GITHUB_ENV"
           fi
 
-      - name: Deploy encrypted showreel release
+      - name: Deploy canonical showreel source
         shell: bash
         run: |
           set -euo pipefail
