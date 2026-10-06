@@ -132,3 +132,16 @@ test('meeting point display names pass through provider localization while addre
   assert.match(js,/providerText\(point\.title \|\| point\.addressLine1 \|\| ''\)/);
   assert.match(js,/\[point\.addressLine1,point\.city,point\.state\]/);
 });
+
+
+test('Bókun tours bypass the legacy openTour renderer and open the domain screen immediately',()=>{
+  const start=js.indexOf('function installOpenTour()');
+  const end=js.indexOf('function repairLegacyOverwrite()');
+  const block=js.slice(start,end);
+  assert.match(block,/if\(PRODUCT_IDS\.has\(productId\)\)\{/);
+  assert.match(block,/showScreen==='function'\) showScreen\('tour'\)/);
+  assert.match(block,/void renderProduct\(productId\)/);
+  const bokunBranch=block.slice(block.indexOf('if(PRODUCT_IDS.has(productId))'),block.indexOf('return previous.call'));
+  assert.doesNotMatch(bokunBranch,/previous\.call/);
+  assert.match(block,/return previous\.call\(this,id,\.\.\.args\)/);
+});
