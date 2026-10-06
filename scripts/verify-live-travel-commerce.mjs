@@ -81,6 +81,14 @@ const ai=await request('/api/ai/chat',{
   headers:{'x-max-tour-locale':'en'},
 });
 
+console.log('VII-119 live AI payload',JSON.stringify({
+  agent:ai.agent,
+  intent:ai.intent,
+  transaction:ai.transaction,
+  bookingSelection:ai.bookingSelection,
+  offers:ai.offers,
+},null,2));
+
 if(ai.agent?.mutationExecuted!==false){
   throw new Error('AI layer must not execute booking mutation directly');
 }
