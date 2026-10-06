@@ -6,9 +6,10 @@ import { resolve } from 'node:path';
 const root = resolve(import.meta.dirname, '..');
 const read = path => readFile(resolve(root, path), 'utf8');
 
-const [worker, workerR2, locale, booking, i18n, semanticI18n, build, bokunLocalization, ai, brand] = await Promise.all([
+const [worker, workerR2, bokunProvider, locale, booking, i18n, semanticI18n, build, bokunLocalization, ai, brand] = await Promise.all([
   read('src/worker.js'),
   read('src/worker-r2.js'),
+  read('src/bokun-provider.js'),
   read('src/lovetravel-tour-locale.js'),
   read('src/lovetravel-booking-configurator.js'),
   read('src/i18n-v1.js'),
@@ -64,8 +65,9 @@ test('client demo booking is hidden behind a hashed invite and integration-side 
   assert.match(workerR2, /LOVE_TRAVEL_CLIENT_DEMO_TOKEN_SHA256/);
   assert.match(workerR2, /demoTokenHash\(demoToken\)/);
   assert.match(workerR2, /LT-TEST-CLIENT-/);
-  assert.match(workerR2, /x-love-travel-demo-token/);
-  assert.match(workerR2, /SUBMIT_LOVE_TRAVEL_CLIENT_DEMO_BOOKING/);
+  assert.match(bokunProvider, /x-love-travel-demo-token/);
+  assert.match(bokunProvider, /SUBMIT_LOVE_TRAVEL_CLIENT_DEMO_BOOKING/);
+  assert.match(workerR2, /createBokunProvider/);
   assert.match(booking, /clientDemoEnabled\(\)/);
   assert.match(booking, /\/api\/bokun\/client-demo\/submit/);
   assert.match(semanticI18n,/"booking\.demoCreate": "Создать тестовую бронь"/);
