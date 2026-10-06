@@ -83,7 +83,53 @@ with urllib.request.urlopen(subdomain_req, timeout=30) as response:
 subdomain = subdomain_body["result"]["subdomain"]
 assert subdomain
 processor_url = f"https://viiversion-showreel-processor.{subdomain}.workers.dev"
-config["vars"]["CLOUDFLARE_AI_URL"] = processor_url + "/infer"
+relay_url = f"https://viiversion-showreel-ai.{subdomain}.workers.dev"
+
+relay_directory = root / "ai-relay"
+relay_directory.mkdir()
+relay_source = """export default {
+  async fetch(request, env) {
+    if (new URL(request.url).pathname !== '/infer') return new Response(null, {status: 404});
+    if (!env.SHOWREEL_PROCESSOR_KEY || request.headers.get('Authorization') !== 'Bearer ' + env.SHOWREEL_PROCESSOR_KEY) {
+      return Response.json({error: 'Unauthorized'}, {status: 401});
+    }
+    if (request.method !== 'POST') return new Response(null, {status: 405});
+    if (Number(request.headers.get('Content-Length') || 0) > 8 * 1024 * 1024) return new Response(null, {status: 413});
+    const raw = await request.text();
+    if (raw.length > 8 * 1024 * 1024) return new Response(null, {status: 413});
+    try {
+      const input = JSON.parse(raw);
+      if (input.model !== env.CLOUDFLARE_VISION_MODEL || !Array.isArray(input.messages)) return new Response(null, {status: 400});
+      const result = await env.AI.run(env.CLOUDFLARE_VISION_MODEL, {
+        messages: input.messages,
+        stream: false,
+        temperature: Number.isFinite(input.temperature) ? input.temperature : 0.1,
+        max_tokens: Math.min(Number(input.max_completion_tokens) || 2400, 2400),
+        response_format: input.response_format || {type: 'json_object'},
+        chat_template_kwargs: {enable_thinking: false},
+      });
+      return Response.json(result);
+    } catch (error) {
+      console.warn('showreel-ai-relay-failed', error?.name || 'Error');
+      return Response.json({error: 'Vision temporarily unavailable'}, {status: 503});
+    }
+  }
+};
+"""
+(relay_directory / "worker.mjs").write_text(relay_source)
+relay_config = {
+    "name": "viiversion-showreel-ai",
+    "main": "worker.mjs",
+    "compatibility_date": "2026-10-04",
+    "ai": {"binding": "AI"},
+    "vars": {"CLOUDFLARE_VISION_MODEL": config["vars"]["CLOUDFLARE_VISION_MODEL"]},
+}
+(relay_directory / "wrangler.json").write_text(json.dumps(relay_config, indent=2) + "\n")
+relay_secret_path = root / "relay-secrets.json"
+relay_secret_path.write_text(json.dumps({"SHOWREEL_PROCESSOR_KEY": runtime["SHOWREEL_PROCESSOR_KEY"]}))
+relay_secret_path.chmod(0o600)
+
+config["vars"]["CLOUDFLARE_AI_URL"] = relay_url + "/infer"
 config_path.write_text(json.dumps(config, indent=2) + "\n")
 
 secret_path = root / "runtime-secrets.json"
@@ -92,9 +138,20 @@ secret_path.chmod(0o600)
 
 subprocess.run(["npm", "ci", "--no-fund", "--no-audit"], cwd=directory, check=True)
 subprocess.run(["node", "--check", "worker.mjs"], cwd=directory, check=True)
+wrangler = str(directory / "node_modules" / ".bin" / "wrangler")
+
+print("Deploying dedicated showreel AI relay", flush=True)
+subprocess.run([wrangler, "deploy", "--config", "wrangler.json"], cwd=relay_directory, check=True)
+subprocess.run(
+    [wrangler, "secret", "bulk", str(relay_secret_path), "--config", "wrangler.json"],
+    cwd=relay_directory,
+    check=True,
+)
+relay_secret_path.unlink(missing_ok=True)
+
 print("Deploying encrypted showreel source " + payload["source_commit"], flush=True)
 subprocess.run(
-    ["npx", "wrangler", "deploy", "--config", "wrangler.json"],
+    [wrangler, "deploy", "--config", "wrangler.json"],
     cwd=directory,
     check=True,
 )
@@ -143,7 +200,7 @@ probe = {
     ],
 }
 request = urllib.request.Request(
-    processor_url + "/infer",
+    relay_url + "/infer",
     data=json.dumps(probe).encode(),
     headers={
         "Authorization": "Bearer " + runtime["SHOWREEL_PROCESSOR_KEY"],
@@ -170,10 +227,10 @@ try:
         raise last_error or RuntimeError("AI relay returned no response")
     if not isinstance(result, dict):
         raise RuntimeError("AI relay returned a non-object response")
-    print("WORKERS_AI_BINDING=ok", flush=True)
+    print("WORKERS_AI_RELAY=ok", flush=True)
 except Exception as error:
     print(
-        "WORKERS_AI_BINDING=failed:"
+        "WORKERS_AI_RELAY=failed:"
         + str(getattr(error, "code", type(error).__name__)),
         flush=True,
     )
