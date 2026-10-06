@@ -272,6 +272,9 @@
 
   const AI_STATE_KEY = 'max-tour-ai-consultant-v5';
   const LOCATION_KEY = 'max-tour-ai-location-v6';
+  const ACTIVE_LOCALE = String(localStorage.getItem('max-tour-locale-v1') || 'ru').toLowerCase();
+  const BOOK_LABELS = Object.freeze({ru:'Забронировать',en:'Book',vi:'Đặt tour',zh:'预订',ko:'예약하기'});
+  const bookLabel = () => BOOK_LABELS[ACTIVE_LOCALE] || BOOK_LABELS.ru;
   const clean = value => String(value || '').replace(/\s+/g, ' ').trim();
   const lower = value => clean(value).toLocaleLowerCase('ru-RU').replace(/ё/g, 'е');
   const readJson = (key, fallback = {}) => {
@@ -346,32 +349,8 @@
     writeJson(LOCATION_KEY, { ...state, locationJustSet:false });
   }
 
-  const previousFetch = globalThis.fetch;
-  if (typeof previousFetch === 'function' && !previousFetch.__maxTourSalesFinalizerV23) {
-    const wrappedFetch = async function(input, init = {}) {
-      if (!isAiChatRequest(input) || !init?.body || typeof init.body !== 'string') return previousFetch.call(this, input, init);
-      let body;
-      try { body = JSON.parse(init.body); }
-      catch (_) { return previousFetch.call(this, input, init); }
-
-      const response = await previousFetch.call(this, input, init);
-      clearTransientLocation(body?.message || '');
-      if (!response?.ok || isFaq(body?.message || '')) return response;
-      const data = await response.clone().json().catch(() => null);
-      if (!data?.ok || data?.source === 'faq-verified') return response;
-      const state = stageState(body);
-      const reply = nextStageReply(state);
-      if (!reply) return response;
-      const headers = new Headers(response.headers);
-      headers.delete('content-length');
-      return new Response(JSON.stringify({ ...data, reply, source:'sales-finalizer-v23' }), {
-        status:response.status, statusText:response.statusText, headers,
-      });
-    };
-    wrappedFetch.__maxTourSalesFinalizerV23 = true;
-    wrappedFetch.__maxTourSalesFinalizerPrevious = previousFetch;
-    globalThis.fetch = wrappedFetch;
-  }
+  // The Travel Sales Orchestrator is authoritative for assistant replies.
+  // This compatibility layer must never rewrite a grounded server response.
 
   function stageOptions() {
     const state = stageState();
@@ -431,8 +410,8 @@
           button.className = 'primary ai-catalog-book-v23';
           button.dataset.aiAction = 'book-tour';
           button.dataset.id = id;
-          button.textContent = 'Забронировать';
         }
+        button.textContent = bookLabel();
         if (card.nextElementSibling !== button) card.after(button);
       });
     });
@@ -446,7 +425,7 @@
       scheduled = false;
       const root = document.querySelector('#aiScreen,#ai,[data-screen="ai"]') || document.querySelector('.ai-consultant-shell')?.parentElement;
       if (!root) return;
-      ensureQuickReplies(root);
+      // Native v5 owns localized quick replies and conversation state.
       ensureBookingButtons(root);
     });
   }
