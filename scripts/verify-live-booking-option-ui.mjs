@@ -27,8 +27,13 @@ try{
     null,{timeout:60000}
   );
 
+  await page.waitForFunction(()=>
+    typeof openTour==='function' && openTour.__loveTravelDomain===true,
+    null,{timeout:15000}
+  );
+
   await page.evaluate(id=>{
-    if(typeof openTour!=='function') throw new Error('openTour is unavailable');
+    if(typeof openTour!=='function' || openTour.__loveTravelDomain!==true) throw new Error('LoveTravel domain openTour is unavailable');
     void openTour(id);
   },productId);
 
