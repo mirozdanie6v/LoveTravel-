@@ -72,9 +72,24 @@ try{
     const aiResponse=await responsePromise;
     const ai=await aiResponse.json();
     invariant(aiResponse.ok() && ai?.ok===true,'AI request failed for '+row.locale+': '+JSON.stringify(ai));
-    invariant(String(ai?.source||'').includes('bokun'),'AI response is not grounded in Bókun for '+row.locale);
+    invariant(ai?.agent?.version==='travel-commerce-sales-v1','Unexpected AI agent version for '+row.locale+': '+JSON.stringify(ai?.agent));
     invariant(ai?.agent?.mutationExecuted===false,'AI performed a booking mutation for '+row.locale);
+    invariant(Array.isArray(ai?.agent?.evidenceRefs) && ai.agent.evidenceRefs.length>0,'AI response has no provider evidence refs for '+row.locale);
+    invariant(Boolean(ai?.agent?.selectedOfferId),'AI response has no provider-verified selected offer for '+row.locale);
+    invariant(Array.isArray(ai?.offers) && ai.offers.some(item=>String(item?.offer?.offerId||'')===String(ai.agent.selectedOfferId)),'Selected AI offer is absent from verified provider offers for '+row.locale+': '+JSON.stringify(ai?.offers));
+    invariant(ai?.bookingSelection && allowedProducts.has(String(ai.bookingSelection.productId||'')),'AI response has no supported Bókun booking selection for '+row.locale+': '+JSON.stringify(ai?.bookingSelection));
+    invariant(ai?.transaction?.transactionId,'AI response did not hand off to BookingTransaction for '+row.locale);
     invariant(!ai?.tourId || allowedProducts.has(String(ai.tourId)),'AI selected an unsupported product for '+row.locale);
+    console.log(JSON.stringify({
+      stage:'ai-response',
+      locale:row.locale,
+      plannerSource:ai.source,
+      intentSource:ai.agent.intentSource,
+      selectedOfferId:ai.agent.selectedOfferId,
+      evidenceRefs:ai.agent.evidenceRefs,
+      productId:ai.bookingSelection.productId,
+      transactionId:ai.transaction.transactionId,
+    }));
 
     await page.waitForFunction(expectedPending=>{
       const root=document.querySelector('#aiScreen');
