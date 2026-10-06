@@ -191,6 +191,55 @@
       "few": "{count} времени",
       "many": "{count} времени",
       "other": "{count} времени"
+    },
+    "provider.policy.standard": "Условия отмены",
+    "provider.language.english": "Английский",
+    "provider.language.vietnamese": "Вьетнамский",
+    "provider.language.russian": "Русский",
+    "provider.language.korean": "Корейский",
+    "provider.language.chinese": "Китайский",
+    "provider.hotelName": "Название отеля",
+    "provider.roomNumber": "Номер комнаты",
+    "provider.privateTransfer": "Индивидуальный трансфер",
+    "provider.bringSunscreen": "Возьмите солнцезащитный крем",
+    "provider.nhaTrangHotels": "Отели Нячанга",
+    "provider.required": "обязательно",
+    "provider.walking": "Пешая доступность",
+    "provider.format.private": "индивидуальный",
+    "provider.format.group": "групповой",
+    "provider.availability.available": "доступно",
+    "provider.availability.full": "нет мест",
+    "provider.difficulty.easy": "Лёгкая",
+    "provider.difficulty.moderate": "Средняя",
+    "provider.difficulty.challenging": "Повышенная",
+    "provider.difficulty.difficult": "Сложная",
+    "provider.difficulty.hard": "Сложная",
+    "provider.meeting.meetOnLocation": "Самостоятельно к месту начала",
+    "provider.meeting.pickup": "Трансфер из отеля",
+    "provider.meeting.both": "Самостоятельно или трансфер из отеля",
+    "provider.category.adult": "Взрослый",
+    "provider.category.child": "Ребёнок",
+    "provider.category.infant": "Младенец",
+    "provider.stop": "Остановка {count}",
+    "provider.ageRange": "{min}–{max} лет",
+    "provider.minutes": "{count} мин",
+    "provider.duration.day": {
+      "one": "{count} день",
+      "few": "{count} дня",
+      "many": "{count} дней",
+      "other": "{count} дня"
+    },
+    "provider.duration.hour": {
+      "one": "{count} час",
+      "few": "{count} часа",
+      "many": "{count} часов",
+      "other": "{count} часа"
+    },
+    "provider.duration.minute": {
+      "one": "{count} минута",
+      "few": "{count} минуты",
+      "many": "{count} минут",
+      "other": "{count} минуты"
     }
   },
   "vi": {
@@ -376,6 +425,46 @@
     "common.email": "Email",
     "booking.timeCount": {
       "other": "{count} giờ"
+    },
+    "provider.policy.standard": "Chính sách hủy",
+    "provider.language.english": "Tiếng Anh",
+    "provider.language.vietnamese": "Tiếng Việt",
+    "provider.language.russian": "Tiếng Nga",
+    "provider.language.korean": "Tiếng Hàn",
+    "provider.language.chinese": "Tiếng Trung",
+    "provider.hotelName": "Tên khách sạn",
+    "provider.roomNumber": "Số phòng",
+    "provider.privateTransfer": "Xe đưa đón riêng",
+    "provider.bringSunscreen": "Mang theo kem chống nắng",
+    "provider.nhaTrangHotels": "Khách sạn Nha Trang",
+    "provider.required": "bắt buộc",
+    "provider.walking": "Có thể đi bộ",
+    "provider.format.private": "riêng",
+    "provider.format.group": "nhóm",
+    "provider.availability.available": "còn chỗ",
+    "provider.availability.full": "hết chỗ",
+    "provider.difficulty.easy": "Dễ",
+    "provider.difficulty.moderate": "Trung bình",
+    "provider.difficulty.challenging": "Khó",
+    "provider.difficulty.difficult": "Khó",
+    "provider.difficulty.hard": "Khó",
+    "provider.meeting.meetOnLocation": "Tự đến điểm bắt đầu",
+    "provider.meeting.pickup": "Đón tại khách sạn",
+    "provider.meeting.both": "Tự đến hoặc đón tại khách sạn",
+    "provider.category.adult": "Người lớn",
+    "provider.category.child": "Trẻ em",
+    "provider.category.infant": "Em bé",
+    "provider.stop": "Điểm {count}",
+    "provider.ageRange": "{min}–{max} tuổi",
+    "provider.minutes": "{count} phút",
+    "provider.duration.day": {
+      "other": "{count} ngày"
+    },
+    "provider.duration.hour": {
+      "other": "{count} giờ"
+    },
+    "provider.duration.minute": {
+      "other": "{count} phút"
     }
   },
   "en": {
@@ -562,6 +651,49 @@
     "booking.timeCount": {
       "one": "{count} time",
       "other": "{count} times"
+    },
+    "provider.policy.standard": "Cancellation policy",
+    "provider.language.english": "English",
+    "provider.language.vietnamese": "Vietnamese",
+    "provider.language.russian": "Russian",
+    "provider.language.korean": "Korean",
+    "provider.language.chinese": "Chinese",
+    "provider.hotelName": "Hotel name",
+    "provider.roomNumber": "Room number",
+    "provider.privateTransfer": "Private transfer",
+    "provider.bringSunscreen": "Bring sunscreen",
+    "provider.nhaTrangHotels": "Nha Trang hotels",
+    "provider.required": "required",
+    "provider.walking": "Walking access",
+    "provider.format.private": "private",
+    "provider.format.group": "group",
+    "provider.availability.available": "available",
+    "provider.availability.full": "sold out",
+    "provider.difficulty.easy": "Easy",
+    "provider.difficulty.moderate": "Moderate",
+    "provider.difficulty.challenging": "Challenging",
+    "provider.difficulty.difficult": "Difficult",
+    "provider.difficulty.hard": "Hard",
+    "provider.meeting.meetOnLocation": "Arrive at the starting point",
+    "provider.meeting.pickup": "Hotel pickup",
+    "provider.meeting.both": "Independent arrival or hotel pickup",
+    "provider.category.adult": "Adult",
+    "provider.category.child": "Child",
+    "provider.category.infant": "Infant",
+    "provider.stop": "Stop {count}",
+    "provider.ageRange": "{min}–{max} years",
+    "provider.minutes": "{count} min",
+    "provider.duration.day": {
+      "one": "{count} day",
+      "other": "{count} days"
+    },
+    "provider.duration.hour": {
+      "one": "{count} hour",
+      "other": "{count} hours"
+    },
+    "provider.duration.minute": {
+      "one": "{count} minute",
+      "other": "{count} minutes"
     }
   },
   "ko": {
@@ -747,6 +879,46 @@
     "common.email": "이메일",
     "booking.timeCount": {
       "other": "시간 {count}개"
+    },
+    "provider.policy.standard": "취소 정책",
+    "provider.language.english": "영어",
+    "provider.language.vietnamese": "베트남어",
+    "provider.language.russian": "러시아어",
+    "provider.language.korean": "한국어",
+    "provider.language.chinese": "중국어",
+    "provider.hotelName": "호텔 이름",
+    "provider.roomNumber": "객실 번호",
+    "provider.privateTransfer": "프라이빗 픽업",
+    "provider.bringSunscreen": "선크림을 준비하세요",
+    "provider.nhaTrangHotels": "나트랑 호텔",
+    "provider.required": "필수",
+    "provider.walking": "도보 접근",
+    "provider.format.private": "프라이빗",
+    "provider.format.group": "그룹",
+    "provider.availability.available": "예약 가능",
+    "provider.availability.full": "매진",
+    "provider.difficulty.easy": "쉬움",
+    "provider.difficulty.moderate": "보통",
+    "provider.difficulty.challenging": "어려움",
+    "provider.difficulty.difficult": "어려움",
+    "provider.difficulty.hard": "어려움",
+    "provider.meeting.meetOnLocation": "출발 지점으로 직접 이동",
+    "provider.meeting.pickup": "호텔 픽업",
+    "provider.meeting.both": "직접 이동 또는 호텔 픽업",
+    "provider.category.adult": "성인",
+    "provider.category.child": "아동",
+    "provider.category.infant": "유아",
+    "provider.stop": "코스 {count}",
+    "provider.ageRange": "{min}–{max}세",
+    "provider.minutes": "{count}분",
+    "provider.duration.day": {
+      "other": "{count}일"
+    },
+    "provider.duration.hour": {
+      "other": "{count}시간"
+    },
+    "provider.duration.minute": {
+      "other": "{count}분"
     }
   },
   "zh": {
@@ -932,6 +1104,46 @@
     "common.email": "Email",
     "booking.timeCount": {
       "other": "{count} 个时间"
+    },
+    "provider.policy.standard": "取消政策",
+    "provider.language.english": "英语",
+    "provider.language.vietnamese": "越南语",
+    "provider.language.russian": "俄语",
+    "provider.language.korean": "韩语",
+    "provider.language.chinese": "中文",
+    "provider.hotelName": "酒店名称",
+    "provider.roomNumber": "房间号",
+    "provider.privateTransfer": "私人接送",
+    "provider.bringSunscreen": "请携带防晒霜",
+    "provider.nhaTrangHotels": "芽庄酒店",
+    "provider.required": "必填",
+    "provider.walking": "步行可达",
+    "provider.format.private": "私人",
+    "provider.format.group": "拼团",
+    "provider.availability.available": "可预订",
+    "provider.availability.full": "已满",
+    "provider.difficulty.easy": "简单",
+    "provider.difficulty.moderate": "中等",
+    "provider.difficulty.challenging": "较难",
+    "provider.difficulty.difficult": "较难",
+    "provider.difficulty.hard": "较难",
+    "provider.meeting.meetOnLocation": "自行前往出发点",
+    "provider.meeting.pickup": "酒店接送",
+    "provider.meeting.both": "自行前往或酒店接送",
+    "provider.category.adult": "成人",
+    "provider.category.child": "儿童",
+    "provider.category.infant": "婴儿",
+    "provider.stop": "第 {count} 站",
+    "provider.ageRange": "{min}–{max} 岁",
+    "provider.minutes": "{count} 分钟",
+    "provider.duration.day": {
+      "other": "{count}天"
+    },
+    "provider.duration.hour": {
+      "other": "{count}小时"
+    },
+    "provider.duration.minute": {
+      "other": "{count}分钟"
     }
   }
 });
