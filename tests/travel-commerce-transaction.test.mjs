@@ -343,17 +343,18 @@ test('command-driven flow advances exactly one revision per accepted command',()
   assert.equal(result.transaction.state,'USER_APPROVED');
   tx=result.transaction;
 
+  const reserveCommand=command(tx,'RESERVE_BOOKING',{
+    quoteId:tx.quote.quoteId,
+    quoteRevision:tx.quote.revision,
+    externalBookingReference:'LT-CMD',
+  });
   result=executeTransactionCommand(
     tx,
-    command(tx,'RESERVE_BOOKING',{
-      quoteId:tx.quote.quoteId,
-      quoteRevision:tx.quote.revision,
-      externalBookingReference:'LT-CMD',
-    }),
+    reserveCommand,
     {now:plus(5)},
   );
   assert.equal(result.transaction.state,'RESERVING');
-  assert.equal(result.transaction.mutation.idempotencyKey,result.receipt.commandId.replace(/^cmd-reserve_booking-.*/, result.transaction.mutation.idempotencyKey));
+  assert.equal(result.transaction.mutation.idempotencyKey,reserveCommand.idempotencyKey);
 });
 
 test('provider outcome API is system-only and preserves state invariants',()=>{
