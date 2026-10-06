@@ -1,12 +1,7 @@
-name: Deploy showreel processor via LoveTravel Cloudflare access
+name: Legacy Showreel deploy rollback only
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/deploy-showreel-shared.yml'
-      - '.github/scripts/deploy-showreel-v2.py'
 
 permissions:
   contents: read
