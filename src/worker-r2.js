@@ -1,3 +1,4 @@
+export { BookingSession } from './booking-session-do.js';
 import profileWorker from './worker-profile.js';
 import baseWorker from './worker.js';
 import { compactTourForAi, findTourForQuestion } from './ai-faq-knowledge.js';

@@ -94,7 +94,7 @@ test('BokunProvider exposes explicit provider capabilities and canonical product
   assert.equal(provider.provider,'BOKUN');
   assert.equal(provider.vendorId,'137689');
   assert.equal(provider.capabilities.products,true);
-  assert.equal(provider.capabilities.bookingLookupByExternalReference,false);
+  assert.equal(provider.capabilities.bookingLookupByExternalReference,true);
   assert.equal(LOVE_TRAVEL_CANONICAL_PRODUCT_IDS['1287580'],'love-travel-hon-mun');
   assert.deepEqual(bokunProviderRef('RATE',201),{
     provider:'BOKUN',resourceType:'RATE',externalId:'201',accountRef:'137689',
@@ -251,12 +251,52 @@ test('provisional checkout request and final draft preserve the verified existin
   assert.equal(calls.filter(item=>item.url.pathname.endsWith('/demo-submit')).length,1);
 });
 
-test('external-reference reconciliation is fail-closed until integration service supports reverse lookup',async()=>{
-  const provider=createBokunProvider({fetchImpl:async()=>{throw new Error('must not call network')}});
-  await assert.rejects(
-    ()=>provider.reconcileBooking({externalBookingReference:'LT-TEST-CLIENT-ABC123'}),
-    error=>error instanceof ProviderCapabilityError&&error.code==='external_reference_lookup_not_supported',
-  );
+test('external-reference reconciliation uses the guarded integration endpoint and exact reference',async()=>{
+  const calls=[];
+  const provider=createBokunProvider({
+    baseUrl:'https://integration.example',
+    fetchImpl:async(input,init)=>{
+      const url=new URL(typeof input==='string'?input:input.url);
+      calls.push({url,init});
+      return new Response(JSON.stringify({
+        ok:true,
+        found:true,
+        booking:{
+          confirmationCode:'NHA-123456789',
+          externalBookingReference:'LT-TEST-CLIENT-ABC123',
+          status:'CONFIRMED',
+        },
+      }),{status:200,headers:{'content-type':'application/json'}});
+    },
+  });
+  const booking=await provider.reconcileBooking({
+    externalBookingReference:'LT-TEST-CLIENT-ABC123',
+    bookingDate:'2026-10-08',
+    demoToken:'demo-token',
+  });
+  assert.equal(booking.confirmationCode,'NHA-123456789');
+  assert.equal(calls.length,1);
+  assert.equal(calls[0].url.pathname,'/internal/lovetravel/bokun/reconcile');
+  assert.equal(calls[0].init.headers['x-viiversion-booking-intent'],'RECONCILE_LOVE_TRAVEL_CLIENT_DEMO_BOOKING');
+  assert.equal(calls[0].init.headers['x-love-travel-demo-token'],'demo-token');
+  assert.deepEqual(JSON.parse(calls[0].init.body),{
+    externalBookingReference:'LT-TEST-CLIENT-ABC123',
+    bookingDate:'2026-10-08',
+  });
+});
+
+test('external-reference reconciliation returns null when provider search finds no booking',async()=>{
+  const provider=createBokunProvider({
+    baseUrl:'https://integration.example',
+    fetchImpl:async()=>new Response(JSON.stringify({ok:true,found:false}),{
+      status:200,headers:{'content-type':'application/json'},
+    }),
+  });
+  assert.equal(await provider.reconcileBooking({
+    externalBookingReference:'LT-TEST-CLIENT-ABC123',
+    bookingDate:'2026-10-08',
+    demoToken:'demo-token',
+  }),null);
 });
 
 test('confirmation-code reconciliation verifies the expected external booking reference',async()=>{

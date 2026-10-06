@@ -16,7 +16,9 @@
     "binding": "AI"
   },
   "triggers": {
-    "crons": ["0 * * * *"]
+    "crons": [
+      "0 * * * *"
+    ]
   },
   "assets": {
     "directory": "./dist",
@@ -36,6 +38,22 @@
       "binding": "TOUR_MEDIA",
       "bucket_name": "love-travel-v28-media",
       "preview_bucket_name": "love-travel-v28-media"
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "BOOKING_SESSIONS",
+        "class_name": "BookingSession"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1-booking-session",
+      "new_sqlite_classes": [
+        "BookingSession"
+      ]
     }
   ]
 }
