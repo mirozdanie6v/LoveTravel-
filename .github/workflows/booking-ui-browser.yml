@@ -1,0 +1,29 @@
+name: LoveTravel booking UI browser smoke
+
+on:
+  workflow_dispatch:
+  workflow_call:
+
+concurrency:
+  group: lovetravel-booking-ui-browser
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  booking-ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    container:
+      image: mcr.microsoft.com/playwright:v1.55.0-noble
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install project dependencies
+        run: |
+          npm install --no-fund --no-audit
+          npm install --no-save playwright@1.55.0
+      - name: Verify production booking UI
+        env:
+          LOVE_TRAVEL_LIVE_BASE_URL: https://lovetravel.viiversion.com
+        run: node scripts/verify-live-booking-option-ui.mjs
