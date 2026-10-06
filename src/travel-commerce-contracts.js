@@ -70,9 +70,10 @@ const TOP_LEVEL_KEYS = Object.freeze({
     'restrictionCodes', 'evidenceRefs', 'generatedAt',
   ],
   Quote: [
-    'schemaVersion', 'quoteId', 'transactionId', 'revision', 'offerId', 'providerRef',
+    'schemaVersion', 'quoteId', 'transactionId', 'revision', 'offerId', 'offer', 'providerRef',
     'selectionFingerprint', 'price', 'availabilityStatus', 'requiredFieldCodes',
-    'providerEvidenceRefs', 'createdAt', 'refreshedAt', 'expiresAt', 'status', 'readyToBook',
+    'providerEvidenceRefs', 'freshness', 'issues', 'createdAt', 'refreshedAt', 'expiresAt',
+    'status', 'readyToBook',
   ],
   BookingDraft: [
     'schemaVersion', 'quoteId', 'quoteRevision', 'customer', 'travellers', 'pickup',
@@ -385,6 +386,40 @@ export function validateOffer(value) {
   });
 }
 
+function validateQuoteFreshness(value, path, issues) {
+  if (!exactObject(value, path, ['policy', 'ttlMs'], issues)) return;
+  if (value.policy !== 'REVALIDATE_BEFORE_MUTATION') {
+    issue(issues, 'invalid_freshness_policy', `${path}.policy`, 'must equal REVALIDATE_BEFORE_MUTATION');
+  }
+  if (!isInteger(value.ttlMs) || value.ttlMs < 1 || value.ttlMs > 600000) {
+    issue(issues, 'invalid_quote_ttl', `${path}.ttlMs`, 'must be an integer between 1 and 600000 milliseconds');
+  }
+}
+
+function validateQuoteIssueArray(value, path, issues) {
+  if (!Array.isArray(value)) {
+    issue(issues, 'array_required', path, 'must be an array');
+    return;
+  }
+  value.forEach((entry, index) => {
+    const entryPath = `${path}.${index}`;
+    if (!exactObject(entry, entryPath, ['code', 'path', 'message', 'details'], issues)) return;
+    requiredString(entry.code, `${entryPath}.code`, issues);
+    optionalString(entry.path, `${entryPath}.path`, issues);
+    requiredString(entry.message, `${entryPath}.message`, issues);
+    if (entry.details !== undefined && !jsonSafe(entry.details)) {
+      issue(issues, 'invalid_issue_details', `${entryPath}.details`, 'must be JSON-safe');
+    }
+  });
+}
+
+function validateQuoteIssues(value, path, issues) {
+  if (!exactObject(value, path, ['errors', 'warnings', 'bookingDataIssues'], issues)) return;
+  validateQuoteIssueArray(value.errors, `${path}.errors`, issues);
+  validateQuoteIssueArray(value.warnings, `${path}.warnings`, issues);
+  validateQuoteIssueArray(value.bookingDataIssues, `${path}.bookingDataIssues`, issues);
+}
+
 export function validateQuote(value) {
   return assertValid('Quote', value, (item, path, issues) => {
     if (!exactObject(item, path, TOP_LEVEL_KEYS.Quote, issues)) return;
@@ -393,12 +428,36 @@ export function validateQuote(value) {
     requiredString(item.transactionId, 'transactionId', issues, { safe: true });
     requiredRevision(item.revision, 'revision', issues);
     requiredString(item.offerId, 'offerId', issues, { safe: true });
+    if (item.offer === undefined) {
+      issue(issues, 'offer_required', 'offer', 'first-class Quote requires the resolved canonical Offer');
+    } else {
+      try { validateOffer(item.offer); }
+      catch (error) {
+        if (error instanceof ContractError) error.issues.forEach(entry => issue(issues, entry.code, `offer.${entry.path}`, entry.message));
+        else throw error;
+      }
+      if (item.offer?.offerId !== item.offerId) issue(issues, 'quote_offer_id_mismatch', 'offer.offerId', 'must match offerId');
+    }
     validateProviderRef(item.providerRef, 'providerRef', issues);
+    if (item.offer?.providerRef && JSON.stringify(item.offer.providerRef) !== JSON.stringify(item.providerRef)) {
+      issue(issues, 'quote_provider_mismatch', 'providerRef', 'must match Offer providerRef');
+    }
     if (!isHash(item.selectionFingerprint)) issue(issues, 'invalid_hash', 'selectionFingerprint', 'must be a SHA-256 hex digest');
     validateMoney(item.price, 'price', issues);
+    if (item.offer?.price && (Number(item.offer.price.amount) !== Number(item.price?.amount) || item.offer.price.currency !== item.price?.currency)) {
+      issue(issues, 'quote_price_mismatch', 'price', 'must exactly match the resolved Offer price');
+    }
     if (!['AVAILABLE', 'SOLD_OUT', 'UNAVAILABLE', 'ON_REQUEST'].includes(item.availabilityStatus)) issue(issues, 'invalid_availability', 'availabilityStatus', 'invalid availability status');
+    if (item.offer?.availability?.status && item.offer.availability.status !== item.availabilityStatus) {
+      issue(issues, 'quote_availability_mismatch', 'availabilityStatus', 'must match the resolved Offer availability');
+    }
     validateStringArray(item.requiredFieldCodes, 'requiredFieldCodes', issues, { semantic: true });
     validateStringArray(item.providerEvidenceRefs, 'providerEvidenceRefs', issues);
+    if (Array.isArray(item.providerEvidenceRefs) && item.providerEvidenceRefs.length < 1) {
+      issue(issues, 'provider_evidence_required', 'providerEvidenceRefs', 'first-class Quote requires provider evidence');
+    }
+    validateQuoteFreshness(item.freshness, 'freshness', issues);
+    validateQuoteIssues(item.issues, 'issues', issues);
     requiredInstant(item.createdAt, 'createdAt', issues);
     requiredInstant(item.refreshedAt, 'refreshedAt', issues);
     if (item.expiresAt !== undefined && item.expiresAt !== null) requiredInstant(item.expiresAt, 'expiresAt', issues);
@@ -407,6 +466,9 @@ export function validateQuote(value) {
     if (item.status !== 'ACTIVE' && item.readyToBook === true) issue(issues, 'stale_quote_ready', 'readyToBook', 'non-active Quote cannot be readyToBook');
     if (item.readyToBook === true && item.availabilityStatus !== 'AVAILABLE') issue(issues, 'unavailable_quote_ready', 'availabilityStatus', 'readyToBook Quote must be AVAILABLE');
     if (isIsoInstant(item.createdAt) && isIsoInstant(item.refreshedAt) && Date.parse(item.refreshedAt) < Date.parse(item.createdAt)) issue(issues, 'invalid_quote_time', 'refreshedAt', 'cannot be before createdAt');
+    if (isIsoInstant(item.refreshedAt) && isIsoInstant(item.expiresAt) && Date.parse(item.expiresAt) <= Date.parse(item.refreshedAt)) {
+      issue(issues, 'invalid_quote_expiry', 'expiresAt', 'must be after refreshedAt');
+    }
   });
 }
 
