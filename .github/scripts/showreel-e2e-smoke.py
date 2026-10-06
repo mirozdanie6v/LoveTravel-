@@ -64,7 +64,7 @@ with tarfile.open(fileobj=io.BytesIO(base64.b64decode(payload["archive"])), mode
 sys.path.insert(0, str(source_root / "source"))
 from showreel.cloud_worker import CloudClient
 
-site_url = runtime["SHOWREEL_SITE_URL"]
+site_url = runtime.get("SHOWREEL_SITE_URL", "https://viiversion-showreel.lorem-ipsum.chatgpt.site")
 site_key = runtime["SHOWREEL_PROCESSOR_KEY"]
 sites_token = runtime["SHOWREEL_SITES_TOKEN"]
 admin_key = runtime["PROCESSOR_ADMIN_KEY"]
