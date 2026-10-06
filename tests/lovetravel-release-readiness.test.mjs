@@ -27,12 +27,12 @@ test('first release is fixed to the two Love Travel Bókun products', () => {
   assert.match(worker, /data\.length !== 2/);
 });
 
-test('Love Travel AI uses the live Bókun catalogue and bypasses legacy AI routing', () => {
+test('Love Travel AI uses typed Travel Commerce Sales Orchestrator instead of legacy AI routing', () => {
   assert.match(worker, /new URL\('\/api\/bokun\/tours', request\.url\)/);
   assert.match(worker, /source !== 'bokun'/);
-  assert.match(worker, /cloudflare-workers-ai-bokun/);
-  assert.match(worker, /tourId must be "", "1287578", or "1287580"/);
-  assert.match(workerR2, /if \(url\.pathname === '\/api\/ai\/chat' && request\.method === 'POST'\) \{\s*return baseWorker\.fetch/);
+  assert.match(workerR2, /handleLoveTravelSalesAgent/);
+  assert.match(workerR2, /const salesAgentResponse = await handleLoveTravelSalesAgent\(request, env, url\)/);
+  assert.doesNotMatch(workerR2, /return baseWorker\.fetch\(request, env, ctx\)/);
 });
 
 test('Simplified Chinese is wired across UI, booking, Bókun localization and AI', () => {
