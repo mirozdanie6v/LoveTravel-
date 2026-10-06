@@ -16,8 +16,7 @@ import {
   normalizeContentLocale,
   syncAllDomainLocales,
 } from './bokun-content-localization.js';
-import { resolveBookingSelection } from './booking-selection-engine.js';
-import { buildBokunBookingDraft } from './bokun-booking-draft.js';
+import { createBokunProvider } from './bokun-provider.js';
 
 const CONTENT_TYPES = {
   jpg: 'image/jpeg',
@@ -232,27 +231,22 @@ export async function handleLoveTravelBookingSelection(request, env, url = new U
     body?.includePickupPlaces === true;
 
   try {
-    const domains = await fetchLoveTravelBokunDomains({
+    const provider = createBokunProvider({
       fetchImpl:fetch,
       baseUrl:env.BOKUN_INTEGRATION_BASE_URL || 'https://integration.viiversion.com',
       vendorId:LOVE_TRAVEL_BOKUN_VENDOR_ID,
-      productIds:[productId],
+      productIds:LOVE_TRAVEL_BOKUN_PRODUCT_IDS,
+    });
+    const rawDomain = await provider.getDomain({
+      productId,
       start,
       end,
       currency:'USD',
       lang:bokunLanguage(locale),
       includePickupPlaces,
     });
-    const rawDomain = domains[0];
-    const domain = rawDomain ? await localizeDomainFromCache(rawDomain, env, locale, ctx) : null;
-    if (!domain) {
-      return json({ ok:false, error:'product_domain_unavailable' }, {
-        status:502,
-        headers:{ 'cache-control':'no-store' },
-      });
-    }
-
-    const resolution = resolveBookingSelection(domain, selection, { now:new Date() });
+    const domain = await localizeDomainFromCache(rawDomain, env, locale, ctx);
+    const { resolution } = await provider.resolveOffer({ selection, domain });
     return json({
       ok:true,
       source:'bokun',
@@ -279,87 +273,6 @@ export async function handleLoveTravelBookingSelection(request, env, url = new U
 }
 
 
-function bookingAnswerMap(source = {}) {
-  return Object.entries(source && typeof source === 'object' ? source : {})
-    .filter(([,value]) => value !== null && value !== undefined && String(value).trim() !== '')
-    .map(([questionId,value]) => ({
-      questionId:String(questionId),
-      values:Array.isArray(value) ? value.map(String) : [String(value)],
-    }));
-}
-
-function provisionalDemoBookingRequest(resolution, externalBookingReference) {
-  const selection = resolution?.selection || {};
-  const resolved = resolution?.resolved || {};
-  const mainContactDetails = bookingAnswerMap(selection.customer || {});
-  const explicitPassengers = Array.isArray(selection.passengers) ? selection.passengers : [];
-  const passengers = [];
-  for (const [categoryId,countRaw] of Object.entries(selection.participants || {})) {
-    const count = Math.max(0, Math.floor(Number(countRaw) || 0));
-    const matching = explicitPassengers.filter(item => String(item?.categoryId || '') === String(categoryId));
-    for (let index=0; index<count; index+=1) {
-      const person = matching[index] || {};
-      const passengerDetails = bookingAnswerMap(Object.fromEntries(
-        Object.entries(person).filter(([key]) => !['categoryId','answers','extras'].includes(key))
-      ));
-      const answers = bookingAnswerMap(person.answers || {});
-      const extras = Object.entries(person.extras || {}).flatMap(([extraId,entry]) => {
-        const item = typeof entry === 'number' ? {quantity:entry} : (entry || {});
-        const quantity = Math.max(0, Math.floor(Number(item.quantity) || 0));
-        if (!quantity) return [];
-        return [{
-          extraId:Number(extraId),
-          quantity,
-          ...(bookingAnswerMap(item.answers || {}).length ? {answers:bookingAnswerMap(item.answers || {})} : {}),
-        }];
-      });
-      passengers.push({
-        pricingCategoryId:Number(categoryId),
-        ...(passengerDetails.length ? {passengerDetails} : {}),
-        ...(answers.length ? {answers} : {}),
-        ...(extras.length ? {extras} : {}),
-      });
-    }
-  }
-
-  const pickup = String(selection?.pickup?.mode || '').toUpperCase() === 'PICKUP';
-  const dropoff = String(selection?.dropoff?.mode || '').toUpperCase() === 'DROPOFF';
-  const pickupAnswers = bookingAnswerMap({
-    ...(selection?.pickup?.answers || {}),
-    ...(selection?.pickup?.roomNumber ? {roomNumber:selection.pickup.roomNumber} : {}),
-  });
-
-  const activityBooking = {
-    activityId:Number(selection.productId),
-    rateId:Number(selection.rateId || resolved?.rate?.id),
-    startTimeId:Number(selection.startTimeId || resolved?.slot?.startTimeId),
-    date:String(selection.date || resolved?.slot?.date || ''),
-    pickup,
-    dropoff,
-    checkedIn:false,
-    customized:false,
-    ...(pickup && selection?.pickup?.placeId ? {pickupPlaceId:Number(selection.pickup.placeId)} : {}),
-    ...(pickup && !selection?.pickup?.placeId && selection?.pickup?.customLocation
-      ? {pickupDescription:String(selection.pickup.customLocation.wholeAddress || selection.pickup.customLocation.addressLine1 || '')}
-      : {}),
-    ...(dropoff && selection?.dropoff?.placeId ? {dropoffPlaceId:Number(selection.dropoff.placeId)} : {}),
-    ...(dropoff && !selection?.dropoff?.placeId && selection?.dropoff?.customLocation
-      ? {dropoffDescription:String(selection.dropoff.customLocation.wholeAddress || selection.dropoff.customLocation.addressLine1 || '')}
-      : {}),
-    ...(bookingAnswerMap(selection.answers || {}).length ? {answers:bookingAnswerMap(selection.answers || {})} : {}),
-    ...(pickupAnswers.length ? {pickupAnswers} : {}),
-    passengers,
-  };
-
-  return {
-    mainContactDetails,
-    activityBookings:[activityBooking],
-    sendCustomerNotification:false,
-    externalBookingReference,
-    externalBookingEntityName:'VIIVERSION',
-    externalBookingEntityCode:'LOVE_TRAVEL',
-  };
-}
 
 async function demoTokenHash(token) {
   const bytes = new TextEncoder().encode(String(token || ''));
@@ -405,21 +318,20 @@ export async function handleLoveTravelClientDemoBooking(request, env, url = new 
   const externalBookingReference = 'LT-TEST-CLIENT-' + crypto.randomUUID().replace(/-/g,'').slice(0,16).toUpperCase();
 
   try {
-    const domains = await fetchLoveTravelBokunDomains({
+    const provider = createBokunProvider({
       fetchImpl:fetch,
       baseUrl:integrationBase,
       vendorId:LOVE_TRAVEL_BOKUN_VENDOR_ID,
-      productIds:[productId],
+      productIds:LOVE_TRAVEL_BOKUN_PRODUCT_IDS,
+    });
+    const { resolution } = await provider.resolveOffer({
+      selection,
       start:date,
       end:date,
       currency:'USD',
       lang:bokunLanguage(locale),
       includePickupPlaces,
     });
-    const domain = domains[0];
-    if (!domain) return json({ok:false,error:'product_domain_unavailable'},{status:502,headers:{'cache-control':'no-store'}});
-
-    const resolution = resolveBookingSelection(domain, selection, {now:new Date()});
     if (!resolution.readyToBook) {
       return json({
         ok:false,
@@ -430,61 +342,34 @@ export async function handleLoveTravelClientDemoBooking(request, env, url = new 
       },{status:409,headers:{'cache-control':'no-store'}});
     }
 
-    const provisional = provisionalDemoBookingRequest(resolution, externalBookingReference);
-    const optionsResponse = await fetch(
-      integrationBase + '/api/bokun/checkout/options?vendorId=' + encodeURIComponent(LOVE_TRAVEL_BOKUN_VENDOR_ID) + '&currency=USD',
-      {
-        method:'POST',
-        headers:{'content-type':'application/json','accept':'application/json'},
-        body:JSON.stringify(provisional),
-      },
-    );
-    const contract = await optionsResponse.json().catch(() => null);
-    if (!optionsResponse.ok || !contract) {
-      return json({ok:false,error:'checkout_options_unavailable'},{status:502,headers:{'cache-control':'no-store'}});
-    }
-
-    const draft = buildBokunBookingDraft(resolution, contract, {
+    const contract = await provider.getCheckoutContract({
+      resolution,
       externalBookingReference,
-      externalBookingEntityName:'VIIVERSION',
-      externalBookingEntityCode:'LOVE_TRAVEL',
+      currency:'USD',
+    });
+    const draft = provider.createBookingDraft({
+      resolution,
+      checkoutContract:contract,
+      externalBookingReference,
     });
     if (!draft.readyForReserve) {
       return json({ok:false,error:'checkout_not_ready',issues:draft.issues},{status:409,headers:{'cache-control':'no-store'}});
     }
 
-    const submitResponse = await fetch(
-      integrationBase + '/internal/lovetravel/bokun/demo-submit?vendorId='
-        + encodeURIComponent(LOVE_TRAVEL_BOKUN_VENDOR_ID) + '&currency=USD',
-      {
-        method:'POST',
-        headers:{
-          'content-type':'application/json',
-          'accept':'application/json',
-          'x-love-travel-demo-token':demoToken,
-          'x-viiversion-booking-intent':'SUBMIT_LOVE_TRAVEL_CLIENT_DEMO_BOOKING',
-        },
-        body:JSON.stringify(draft.checkoutRequestTemplate),
-      },
-    );
-    const submitted = await submitResponse.json().catch(() => null);
-    const booking = submitted?.booking || null;
-    const confirmationCode = String(booking?.confirmationCode || '').trim();
-    const bookingStatus = String(booking?.status || '').trim().toUpperCase();
-    if (!submitResponse.ok || !submitted?.ok || !/^NHA-[0-9]+$/.test(confirmationCode)) {
-      return json({ok:false,error:'demo_booking_submit_failed'},{status:502,headers:{'cache-control':'no-store'}});
-    }
-
-
+    const submitted = await provider.submitClientDemoBooking({
+      checkoutRequestTemplate:draft.checkoutRequestTemplate,
+      demoToken,
+      currency:'USD',
+    });
 
     return json({
       ok:true,
       mode:'LOVE_TRAVEL_CLIENT_DEMO',
-      confirmationCode,
-      status:bookingStatus || 'CONFIRMED',
-      paymentType:String(booking?.paymentType || 'NOT_PAID'),
-      totalPaid:Number(booking?.totalPaid || 0),
-      externalBookingReference,
+      confirmationCode:submitted.confirmationCode,
+      status:submitted.status || 'CONFIRMED',
+      paymentType:submitted.paymentType || 'NOT_PAID',
+      totalPaid:Number(submitted.totalPaid || 0),
+      externalBookingReference:submitted.externalBookingReference || externalBookingReference,
     },{headers:{'cache-control':'no-store','x-content-type-options':'nosniff'}});
   } catch (error) {
     console.error('LoveTravel client demo booking failed', error?.message || error);
