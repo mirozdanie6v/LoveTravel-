@@ -27,6 +27,12 @@ test('first release is fixed to the two Love Travel Bókun products', () => {
   assert.match(worker, /data\.length !== 2/);
 });
 
+test('public LoveTravel home exposes the AI assistant entry point', () => {
+  assert.match(brand, /data-lt-action="ai"/);
+  assert.match(brand, /\$\{c\.ai\}/);
+  assert.match(build, /ai-consultant-v5\.js/);
+});
+
 test('Love Travel AI uses typed Travel Commerce Sales Orchestrator instead of legacy AI routing', () => {
   assert.match(worker, /new URL\('\/api\/bokun\/tours', request\.url\)/);
   assert.match(worker, /source !== 'bokun'/);
