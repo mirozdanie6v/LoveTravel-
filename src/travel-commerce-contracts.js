@@ -509,7 +509,9 @@ export function validateBookingTransaction(value) {
       if (!item.draft) issue(issues, 'draft_required', 'draft', `${item.state} requires BookingDraft`);
       if (item.quote?.status !== 'ACTIVE') issue(issues, 'active_quote_required', 'quote.status', `${item.state} requires an ACTIVE Quote`);
     }
-    if (item.state === 'READY_FOR_APPROVAL' && item.quote?.readyToBook !== true) issue(issues, 'quote_not_ready', 'quote.readyToBook', 'READY_FOR_APPROVAL requires readyToBook=true');
+    if (['READY_FOR_APPROVAL', 'USER_APPROVED', 'RESERVING', 'CONFIRMED', 'FAILED_NEEDS_RECONCILIATION'].includes(item.state) && item.quote?.readyToBook !== true) {
+      issue(issues, 'quote_not_ready', 'quote.readyToBook', `${item.state} requires readyToBook=true`);
+    }
 
     if (item.approval !== undefined) validateApproval(item.approval, 'approval', issues);
     if (['USER_APPROVED', 'RESERVING', 'CONFIRMED', 'FAILED_NEEDS_RECONCILIATION'].includes(item.state)) {
