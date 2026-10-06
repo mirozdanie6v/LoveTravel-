@@ -5,12 +5,14 @@ on:
     paths:
       - 'src/travel-commerce-contracts.js'
       - 'src/bokun-provider.js'
+      - 'src/travel-commerce-quote.js'
       - 'src/bokun-adapter.js'
       - 'src/booking-selection-engine.js'
       - 'src/bokun-booking-draft.js'
       - 'src/worker-r2.js'
       - 'tests/travel-commerce-contracts.test.mjs'
       - 'tests/bokun-provider.test.mjs'
+      - 'tests/travel-commerce-quote.test.mjs'
       - 'tests/bokun-worker.test.mjs'
       - '.github/workflows/travel-commerce-contracts-check.yml'
   push:
