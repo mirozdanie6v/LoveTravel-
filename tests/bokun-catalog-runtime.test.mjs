@@ -48,3 +48,9 @@ test('Bókun tours expose compatibility fields without inventing operator metada
   assert.match(adapter,/localization:domain\.localization \|\| null/);
   assert.match(adapter,/group\s*:\s*\{/);
 });
+
+
+test('canonical catalog locale includes Simplified Chinese instead of falling back to Russian', () => {
+  assert.match(runtime, /\['ru','vi','en','ko','zh'\]\.includes\(localized\)/);
+  assert.match(runtime, /\['ru','vi','en','ko','zh'\]\.includes\(stored\)/);
+});
