@@ -11,7 +11,7 @@ const build = await readFile(resolve(root, 'build.mjs'), 'utf8');
 
 test('AI network guard is valid JS and aborts only AI chat after a bounded wait', () => {
   new vm.Script(network);
-  assert.match(network, /const TIMEOUT_MS = 8000/);
+  assert.match(network, /const TIMEOUT_MS = 35000/);
   assert.match(network, /url\.pathname === '\/api\/ai\/chat'/);
   assert.match(network, /AbortController/);
   assert.match(network, /controller\.abort/);

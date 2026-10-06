@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const TIMEOUT_MS = 8000;
+  const TIMEOUT_MS = 35000;
   const currentFetch = globalThis.fetch;
   if (typeof currentFetch !== 'function' || currentFetch.__maxTourAiNetworkGuardV8) return;
 
