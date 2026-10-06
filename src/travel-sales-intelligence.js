@@ -71,6 +71,31 @@ function responseText(result){
   return choice?.message?.content||choice?.text||'';
 }
 
+function aiTimeoutMs(env,key,fallback){
+  const configured=Number(env?.[key]);
+  if(Number.isFinite(configured)&&configured>0) return Math.min(30000,Math.max(1,Math.round(configured)));
+  return fallback;
+}
+
+async function runAiWithBudget(env,input,{timeoutMs,label}){
+  let timer=null;
+  const timeout=new Promise((_,reject)=>{
+    timer=setTimeout(()=>{
+      const error=new Error(`${label}_timeout`);
+      error.code='ai_timeout';
+      reject(error);
+    },timeoutMs);
+  });
+  try{
+    return await Promise.race([
+      env.AI.run(env.AI_MODEL||'@cf/google/gemma-4-26b-a4b-it',input),
+      timeout,
+    ]);
+  }finally{
+    if(timer!==null) clearTimeout(timer);
+  }
+}
+
 function exactKeys(value,allowed,label){
   if(!isObject(value)) throw new TypeError(`${label} must be an object`);
   const unknown=Object.keys(value).filter(key=>!allowed.includes(key));
@@ -431,12 +456,15 @@ export async function extractConversationIntent({
   ].join('\n');
 
   try{
-    const result=await env.AI.run(env.AI_MODEL||'@cf/google/gemma-4-26b-a4b-it',{
+    const result=await runAiWithBudget(env,{
       messages:[
         {role:'system',content:system},
         {role:'user',content:str(message,1200)},
       ],
       response_format:{type:'json_object'},
+    },{
+      timeoutMs:aiTimeoutMs(env,'TRAVEL_INTENT_AI_TIMEOUT_MS',6500),
+      label:'travel_intent_ai',
     });
     const parsed=parseJson(responseText(result));
     const rawPatch=isObject(parsed?.intentPatch)?parsed.intentPatch:{};
@@ -659,12 +687,15 @@ export async function composeGroundedSalesPlan({
   ].join('\n');
 
   try{
-    const result=await env.AI.run(env.AI_MODEL||'@cf/google/gemma-4-26b-a4b-it',{
+    const result=await runAiWithBudget(env,{
       messages:[
         {role:'system',content:system},
         {role:'user',content:str(message,1200)},
       ],
       response_format:{type:'json_object'},
+    },{
+      timeoutMs:aiTimeoutMs(env,'TRAVEL_SALES_AI_TIMEOUT_MS',9000),
+      label:'travel_sales_ai',
     });
     const parsed=parseJson(responseText(result));
     const plan=validateGroundedSalesPlan(parsed,evidence,locale);
