@@ -23,12 +23,14 @@ const cases=[
     entry:'Спросить AI',
     message:'Нас двое взрослых, хотим завтра на снорклинг с трансфером от Oceanus. Что посоветуете?',
     assistant:'AI-консультант',
+    book:'Забронировать',
   },
   {
     locale:'en',
     entry:'Ask AI assistant',
     message:'We are two adults and want snorkeling tomorrow with pickup from Oceanus. What do you recommend?',
     assistant:'AI Assistant',
+    book:'Book',
   },
 ];
 
@@ -93,17 +95,19 @@ try{
 
     await page.waitForFunction(expectedPending=>{
       const root=document.querySelector('#aiScreen');
-      const cards=root?.querySelectorAll('.ai-recommendation')||[];
+      const cards=root?.querySelectorAll('.ai-sales-results .ai-recommendations > [data-tour-id]')||[];
       const text=root?.innerText||'';
       return cards.length>0 && !text.includes(expectedPending);
     },row.locale==='ru'?'Подбираю…':'Finding options…',{timeout:30000});
 
-    const cards=page.locator('#aiScreen .ai-recommendation');
+    const cards=page.locator('#aiScreen .ai-sales-results .ai-recommendations > [data-tour-id]');
     invariant((await cards.count())>0,'AI did not render Bókun-backed recommendations for '+row.locale);
     const ids=await cards.evaluateAll(nodes=>nodes.map(node=>String(node.getAttribute('data-tour-id')||'')));
     invariant(ids.every(id=>allowedProducts.has(id)),'AI rendered unsupported recommendations for '+row.locale+': '+JSON.stringify(ids));
 
     const book=page.locator('#aiScreen [data-ai-action="book-tour"]').first();
+    await book.waitFor({state:'visible',timeout:10000});
+    invariant((await book.innerText()).trim()===row.book,'AI booking CTA is not localized for '+row.locale+': '+JSON.stringify(await book.innerText()));
     const productId=String(await book.getAttribute('data-id')||'');
     invariant(allowedProducts.has(productId),'AI booking CTA has unsupported product for '+row.locale);
     await book.click();
