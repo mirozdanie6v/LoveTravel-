@@ -1,9 +1,9 @@
 const base=String(process.env.LOVE_TRAVEL_LIVE_BASE_URL||'').replace(/\/$/,'');
-const demoToken=String(process.env.LOVE_TRAVEL_DEMO_TOKEN||'').trim();
+const demoToken=String(process.env.LIVE_GATE_DEMO_TOKEN||'').trim();
 const allowWrite=String(process.env.LIVE_BOKUN_WRITE||'')==='1';
 
 if(!base) throw new Error('LOVE_TRAVEL_LIVE_BASE_URL is required');
-if(!demoToken) throw new Error('LOVE_TRAVEL_DEMO_TOKEN is required');
+if(!demoToken) throw new Error('LIVE_GATE_DEMO_TOKEN is required');
 if(!allowWrite) throw new Error('LIVE_BOKUN_WRITE=1 is required for the real Bókun gate');
 
 let cookie='';
