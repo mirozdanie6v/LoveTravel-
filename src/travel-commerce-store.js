@@ -197,7 +197,12 @@ export function createTravelCommerceStore(envOrDb){
       throw new ContractError('TransactionCommand',[{code:'idempotency_key_required',path:'idempotencyKey',message:'commitCommand requires the original command idempotencyKey'}]);
     }
     const duplicate=await getReceiptByIdempotencyKey(key);
-    if(duplicate) return {transaction:previous,receipt:duplicate,replayed:true};
+    if(duplicate){
+      if(duplicate.commandId!==commandReceipt.commandId){
+        throw new ContractError('TransactionCommand',[{code:'idempotency_key_reused',path:'idempotencyKey',message:'idempotencyKey is already bound to another command'}]);
+      }
+      return {transaction:await requireTransaction(previous.transactionId),receipt:duplicate,replayed:true};
+    }
 
     const snapshot=json(next);
     const statements=[
@@ -250,7 +255,12 @@ export function createTravelCommerceStore(envOrDb){
     }
     const key=str(idempotencyKey)||commandReceipt.commandId;
     const existing=await getReceiptByIdempotencyKey(key);
-    if(existing) return {transaction:current,receipt:existing,replayed:true};
+    if(existing){
+      if(existing.commandId!==commandReceipt.commandId){
+        throw new ContractError('TransactionCommand',[{code:'idempotency_key_reused',path:'idempotencyKey',message:'idempotencyKey is already bound to another command'}]);
+      }
+      return {transaction:await requireTransaction(current.transactionId),receipt:existing,replayed:true};
+    }
 
     await db.batch([
       db.prepare(`INSERT INTO travel_command_receipts(
