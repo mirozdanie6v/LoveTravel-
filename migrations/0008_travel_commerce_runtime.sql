@@ -54,8 +54,8 @@ CREATE TABLE IF NOT EXISTS travel_transaction_audit (
   revision_after INTEGER,
   snapshot_json TEXT NOT NULL,
   created_at TEXT NOT NULL,
-  FOREIGN KEY (transaction_id) REFERENCES travel_booking_transactions(transaction_id) ON DELETE CASCADE,
-  FOREIGN KEY (shopping_session_id) REFERENCES travel_shopping_sessions(session_id) ON DELETE CASCADE
+  FOREIGN KEY (transaction_id) REFERENCES travel_booking_transactions(transaction_id) ON DELETE SET NULL,
+  FOREIGN KEY (shopping_session_id) REFERENCES travel_shopping_sessions(session_id) ON DELETE SET NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_travel_transaction_audit_tx
@@ -70,7 +70,7 @@ CREATE TABLE IF NOT EXISTS travel_command_receipts (
   idempotency_key TEXT NOT NULL UNIQUE,
   receipt_json TEXT NOT NULL,
   created_at TEXT NOT NULL,
-  FOREIGN KEY (transaction_id) REFERENCES travel_booking_transactions(transaction_id) ON DELETE CASCADE
+  FOREIGN KEY (transaction_id) REFERENCES travel_booking_transactions(transaction_id) ON DELETE RESTRICT
 );
 
 CREATE INDEX IF NOT EXISTS idx_travel_command_receipts_tx
@@ -83,7 +83,7 @@ CREATE TABLE IF NOT EXISTS travel_provider_evidence (
   fact_type TEXT NOT NULL,
   evidence_json TEXT NOT NULL,
   retrieved_at TEXT NOT NULL,
-  FOREIGN KEY (transaction_id) REFERENCES travel_booking_transactions(transaction_id) ON DELETE CASCADE
+  FOREIGN KEY (transaction_id) REFERENCES travel_booking_transactions(transaction_id) ON DELETE SET NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_travel_provider_evidence_tx
