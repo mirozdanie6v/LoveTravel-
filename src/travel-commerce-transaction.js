@@ -4,6 +4,7 @@ import {
   ContractError,
   assertCommandRevision,
   validateBookingDraft,
+  validateBookingSelectionSnapshot,
   validateBookingTransaction,
   validateCommandReceipt,
   validateProviderEvidence,
@@ -158,6 +159,60 @@ export function closeShoppingSession(session,status,{now=new Date()}={}){
   return validateShoppingSession({
     ...current,
     status,
+    revision:current.revision+1,
+    updatedAt:iso(now),
+  });
+}
+
+export function syncTransactionSelectionState(transaction,{
+  selection,
+  selectedOfferId,
+  quote,
+  draft,
+}={},{
+  now=new Date(),
+}={}){
+  const current=validateBookingTransaction(transaction);
+  if(['RESERVING','FAILED_NEEDS_RECONCILIATION','CONFIRMED','ABANDONED'].includes(current.state)){
+    contractIssue('BookingTransaction','selection_change_not_allowed','state',`Selection cannot change from ${current.state}`);
+  }
+  const nextSelection=validateBookingSelectionSnapshot(selection);
+  const nextOfferId=str(selectedOfferId);
+  let nextQuote;
+  let nextDraft;
+  let state=nextOfferId?'OFFER_SELECTED':'SHOPPING';
+
+  if(quote!==undefined&&quote!==null){
+    nextQuote=validateQuote(quote);
+    if(nextQuote.transactionId!==current.transactionId){
+      contractIssue('BookingTransaction','quote_transaction_mismatch','quote.transactionId','Quote must belong to this transaction');
+    }
+    if(!nextOfferId||nextQuote.offerId!==nextOfferId){
+      contractIssue('BookingTransaction','quote_offer_mismatch','quote.offerId','Quote must target the selected offer');
+    }
+    if(draft!==undefined&&draft!==null){
+      nextDraft=validateBookingDraft(draft);
+      if(nextDraft.quoteId!==nextQuote.quoteId||nextDraft.quoteRevision!==nextQuote.revision){
+        contractIssue('BookingTransaction','draft_quote_mismatch','draft','BookingDraft must target the synchronized Quote revision');
+      }
+    }
+    state=nextQuote.readyToBook
+      ? (nextDraft?'READY_FOR_APPROVAL':'QUOTED')
+      : 'COLLECTING_REQUIRED_DATA';
+  }else if(draft!==undefined&&draft!==null){
+    contractIssue('BookingTransaction','quote_required','draft','BookingDraft cannot exist without Quote');
+  }
+
+  return validateBookingTransaction({
+    ...current,
+    selection:nextSelection,
+    state,
+    ...(nextOfferId?{selectedOfferId:nextOfferId}:{selectedOfferId:undefined}),
+    ...(nextQuote?{quote:nextQuote}:{quote:undefined}),
+    ...(nextDraft?{draft:nextDraft}:{draft:undefined}),
+    approval:undefined,
+    mutation:undefined,
+    providerBooking:undefined,
     revision:current.revision+1,
     updatedAt:iso(now),
   });
