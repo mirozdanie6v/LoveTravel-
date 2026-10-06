@@ -305,10 +305,14 @@ async function translateChunk(env, locale, fields) {
     .filter(([key,value]) => allowed.has(key) && typeof value === 'string' && value.trim())
     .map(([key,value]) => [key,value.trim()]));
 
-  if (!Object.keys(translated).length && fields.length > 1) {
-    const recovered = {};
-    for (const field of fields) Object.assign(recovered, await translateChunk(env, locale, [field]));
-    return recovered;
+  const missingFields=fields.filter(field=>!translated[field.key]);
+  if (missingFields.length && fields.length > 1) {
+    if (missingFields.length === fields.length) {
+      const recovered = {};
+      for (const field of fields) Object.assign(recovered, await translateChunk(env, locale, [field]));
+      return recovered;
+    }
+    Object.assign(translated, await translateChunk(env, locale, missingFields));
   }
   return translated;
 }
