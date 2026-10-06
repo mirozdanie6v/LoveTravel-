@@ -203,3 +203,40 @@ test('booking UI copy comes from semantic keys instead of locale conditionals',(
   assert.match(js,/booking\.timeCount/);
   assert.equal(/[А-Яа-яЁё\u4E00-\u9FFF\uAC00-\uD7AF]/.test(js),false);
 });
+
+
+test('BookingConfigurator writes selection only through the session-bound BookingTransaction API',()=>{
+  assert.match(js,/\/api\/travel-commerce\/transaction/);
+  assert.match(js,/function syncTransactionSelection\(/);
+  assert.match(js,/transactionAction\('SYNC_SELECTION'/);
+  assert.match(js,/expectedRevision:Number\(transactionSnapshot\.revision\)/);
+  assert.match(js,/transaction:\(\)=>transactionSnapshot/);
+  assert.match(js,/revision:\(\)=>Number\(transactionSnapshot\?\.revision\|\|0\)/);
+});
+
+test('calendar lookup remains read-only while authoritative selection writes are transaction-backed',()=>{
+  assert.match(js,/function refreshCalendar\([\s\S]*\/api\/bokun\/booking-selection\/resolve/);
+  const authoritativeResolve=js.slice(js.indexOf('async function resolve(productId'),js.indexOf('function formatDate'));
+  assert.match(authoritativeResolve,/syncTransactionSelection\(productId\)/);
+  assert.doesNotMatch(authoritativeResolve,/\/api\/bokun\/booking-selection\/resolve/);
+});
+
+test('demo booking requires exact Quote approval and reserve through BookingSession transaction state',()=>{
+  assert.match(js,/transactionAction\('APPROVE'/);
+  assert.match(js,/quoteId:current\.quote\.quoteId/);
+  assert.match(js,/quoteRevision:current\.quote\.revision/);
+  assert.match(js,/transactionAction\('RESERVE'/);
+  assert.doesNotMatch(js,/\/api\/bokun\/client-demo\/submit/);
+});
+
+test('stale visual transaction writes perform one snapshot refresh and one safe retry',()=>{
+  assert.match(js,/if\(retryStale&&Number\(error\.status\)===409\)/);
+  assert.match(js,/await loadTransaction\(\{applySelection:false\}\)/);
+  assert.match(js,/syncTransactionSelection\(productId,\{retryStale:false\}\)/);
+});
+
+test('structured handoff API exposes transaction snapshot and applySelection without DOM button orchestration',()=>{
+  assert.match(js,/refreshTransaction:\(\)=>loadTransaction\(\)/);
+  assert.match(js,/applySelection:async next=>/);
+  assert.match(js,/return resolve\(productId,\{quiet:true\}\)/);
+});

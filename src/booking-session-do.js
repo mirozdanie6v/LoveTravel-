@@ -127,6 +127,15 @@ export class BookingSession {
       await this.state.storage.put('last-known-transaction',result.transaction);
       return result;
     }
+    if(action==='SYNC_SELECTION'){
+      const result=await runtime.syncSelection({
+        transactionId,
+        expectedRevision:Number(body?.expectedRevision),
+        selection:body?.selection,
+      });
+      await this.state.storage.put('last-known-transaction',result.transaction);
+      return result;
+    }
     if(action==='RESERVE'){
       const result=await runtime.reserve({
         transactionId,

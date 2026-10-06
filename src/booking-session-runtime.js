@@ -8,8 +8,11 @@ import {
   applyProviderOutcome,
   executeTransactionCommand,
   reconcileTransactionConfirmed,
+  syncTransactionSelectionState,
 } from './travel-commerce-transaction.js';
 import {
+  createFirstClassQuote,
+  refreshFirstClassQuote,
   selectionFingerprint,
 } from './travel-commerce-quote.js';
 import {
@@ -17,6 +20,8 @@ import {
   ProviderUpstreamError,
   bokunProviderRef,
   bokunSelectionFromTransaction,
+  canonicalBookingDraftFromSelection,
+  canonicalBookingSelectionFromBokun,
 } from './bokun-provider.js';
 import {
   createDeterministicTransactionCommand,
@@ -24,6 +29,20 @@ import {
 } from './booking-session-identity.js';
 
 const str=value=>String(value??'').trim();
+
+function vietnamTodayIso(now=new Date()){
+  const parts=new Intl.DateTimeFormat('en-CA',{
+    timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit',
+  }).formatToParts(now);
+  const map=Object.fromEntries(parts.map(part=>[part.type,part.value]));
+  return `${map.year}-${map.month}-${map.day}`;
+}
+
+function addIsoDays(iso,days){
+  const date=new Date(`${iso}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate()+Number(days||0));
+  return date.toISOString().slice(0,10);
+}
 
 export class BookingSessionRuntimeError extends Error {
   constructor(code,message,status=409){
@@ -217,6 +236,83 @@ export function createBookingSessionRuntime({
     return {...persisted,command};
   }
 
+  async function syncSelection({
+    transactionId,
+    expectedRevision,
+    selection,
+  }={}){
+    const before=await current(transactionId);
+    if(before.revision!==expectedRevision){
+      fail('stale_revision',`Expected transaction revision ${before.revision}, received ${expectedRevision}`);
+    }
+    if(!selection||typeof selection!=='object'||Array.isArray(selection)){
+      fail('selection_required','SYNC_SELECTION requires a selection',400);
+    }
+
+    const today=vietnamTodayIso(now());
+    const start=selection.date||today;
+    const end=selection.date||addIsoDays(today,30);
+    const resolved=await provider.resolveOffer({
+      selection,
+      start,
+      end,
+      currency:'USD',
+      includePickupPlaces:
+        String(selection?.pickup?.mode||'').toUpperCase()==='PICKUP'
+        ||String(selection?.dropoff?.mode||'').toUpperCase()==='DROPOFF',
+    });
+    const canonicalSelection=canonicalBookingSelectionFromBokun(
+      resolved.domain,
+      resolved.resolution?.selection||selection,
+      {vendorId:provider.vendorId},
+    );
+
+    let quote;
+    let draft;
+    let evidence=[];
+    let selectedOfferId='';
+    if(resolved.offer&&resolved.resolution?.readyToQuote){
+      const quoted=before.quote
+        ? await refreshFirstClassQuote({
+            previousQuote:before.quote,
+            offer:resolved.offer,
+            resolution:resolved.resolution,
+            now:now(),
+            sourceFetchedAt:resolved.offer.generatedAt,
+          })
+        : await createFirstClassQuote({
+            transactionId:before.transactionId,
+            revision:1,
+            offer:resolved.offer,
+            resolution:resolved.resolution,
+            now:now(),
+            sourceFetchedAt:resolved.offer.generatedAt,
+          });
+      quote=quoted.quote;
+      evidence=quoted.evidence;
+      selectedOfferId=resolved.offer.offerId;
+      draft=canonicalBookingDraftFromSelection(canonicalSelection,quote);
+    }
+
+    const after=syncTransactionSelectionState(before,{
+      selection:canonicalSelection,
+      selectedOfferId,
+      quote,
+      draft,
+    },{now:now()});
+    const persisted=await store.commitSystemTransition({
+      before,
+      after,
+      evidence,
+      eventType:'SELECTION_SYNCED',
+    });
+    return {
+      transaction:persisted,
+      resolution:resolved.resolution,
+      evidence,
+    };
+  }
+
   async function reconcileCurrent(transaction,{demoToken}={}){
     let tx=validateBookingTransaction(transaction);
     if(tx.state==='RESERVING'){
@@ -404,6 +500,7 @@ export function createBookingSessionRuntime({
   return Object.freeze({
     current,
     dispatch,
+    syncSelection,
     reserve,
     reconcile,
   });
