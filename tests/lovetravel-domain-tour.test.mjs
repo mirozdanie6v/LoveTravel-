@@ -134,14 +134,17 @@ test('meeting point display names pass through provider localization while addre
 });
 
 
-test('Bókun tours bypass the legacy openTour renderer and open the domain screen immediately',()=>{
-  const start=js.indexOf('function installOpenTour()');
+test('Bókun tours bypass legacy openTour and legacy renderTour completely',()=>{
+  const start=js.indexOf('function activateDomainTourScreen()');
   const end=js.indexOf('function repairLegacyOverwrite()');
   const block=js.slice(start,end);
-  assert.match(block,/if\(PRODUCT_IDS\.has\(productId\)\)\{/);
-  assert.match(block,/showScreen==='function'\) showScreen\('tour'\)/);
+  assert.match(block,/function activateDomainTourScreen\(\)/);
+  assert.match(block,/document\.querySelectorAll\('\.screen'\)/);
+  assert.match(block,/document\.getElementById\('tourScreen'\)/);
+  assert.match(block,/activateDomainTourScreen\(\)/);
   assert.match(block,/void renderProduct\(productId\)/);
   const bokunBranch=block.slice(block.indexOf('if(PRODUCT_IDS.has(productId))'),block.indexOf('return previous.call'));
   assert.doesNotMatch(bokunBranch,/previous\.call/);
+  assert.doesNotMatch(bokunBranch,/showScreen\('tour'\)/);
   assert.match(block,/return previous\.call\(this,id,\.\.\.args\)/);
 });
