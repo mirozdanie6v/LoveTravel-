@@ -120,6 +120,28 @@ jobs:
           NODE
           npx wrangler deploy --config wrangler.release.jsonc
 
+      - name: Warm native Bókun translations
+        shell: bash
+        run: |
+          set -euo pipefail
+          for locale in ru vi zh ko; do
+            ready=0
+            for attempt in $(seq 1 20); do
+              curl -fsS "https://lovetravel.viiversion.com/api/bokun/tours?locale=$locale" > "/tmp/warm-$locale.json"
+              if jq -e '
+                .ok == true
+                and (.tours | length == 2)
+                and ([.tours[].localization.pendingFields // 999] | all(. == 0))
+                and ([.tours[].localization.source // ""] | all(. == "viiversion-cache"))
+              ' "/tmp/warm-$locale.json" >/dev/null; then
+                ready=1
+                break
+              fi
+              sleep 6
+            done
+            test "$ready" = 1
+          done
+
       - name: Verify live client release
         shell: bash
         run: |
