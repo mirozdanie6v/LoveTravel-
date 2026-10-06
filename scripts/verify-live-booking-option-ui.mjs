@@ -7,6 +7,11 @@ function invariant(value,message){
   if(!value) throw new Error(message);
 }
 
+const watchdog=setTimeout(()=>{
+  console.error('booking option smoke exceeded 150s');
+  process.exit(124);
+},150000);
+
 const browser=await chromium.launch({headless:true});
 try{
   const context=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:1});
@@ -27,22 +32,40 @@ try{
     null,{timeout:60000}
   );
 
+  console.log('catalog-ready');
+
   await page.waitForFunction(()=>
-    typeof openTour==='function' && openTour.__loveTravelDomain===true,
-    null,{timeout:15000}
+    typeof openTour==='function' &&
+    openTour.__loveTravelDomain===true &&
+    Boolean(globalThis.LoveTravelBookingConfigurator),
+    null,{timeout:20000}
   );
+
+  const tx=await page.evaluate(async()=>{
+    const response=await fetch('/api/travel-commerce/transaction',{
+      method:'GET',
+      cache:'no-store',
+      credentials:'same-origin',
+      headers:{accept:'application/json'},
+    });
+    const data=await response.json().catch(()=>null);
+    if(!response.ok||!data?.ok||!data?.transaction) throw new Error('transaction bootstrap failed');
+    return {transactionId:data.transaction.transactionId,state:data.transaction.state};
+  });
+  console.log(JSON.stringify({stage:'transaction-ready',...tx}));
 
   await page.evaluate(id=>{
     if(typeof openTour!=='function' || openTour.__loveTravelDomain!==true) throw new Error('LoveTravel domain openTour is unavailable');
     void openTour(id);
   },productId);
+  console.log('tour-open-requested');
 
   await page.waitForFunction(id=>{
     const screen=document.querySelector('#tourScreen.lt-domain-tour');
     return screen?.dataset.ltDomainProduct===id &&
-      Boolean(screen.querySelector('.lt-booking-config')) &&
-      Boolean(globalThis.LoveTravelBookingConfigurator?.resolution?.());
-  },productId,{timeout:30000});
+      Boolean(screen.querySelector('.lt-booking-config [data-lt-step="option"]'));
+  },productId,{timeout:40000});
+  console.log('booking-config-ready');
 
   const steps=await page.locator('#tourScreen .lt-booking-config [data-lt-step]').evaluateAll(nodes=>
     nodes.map(node=>String(node.getAttribute('data-lt-step')||''))
@@ -83,5 +106,6 @@ try{
   }));
   await context.close();
 } finally {
+  clearTimeout(watchdog);
   await browser.close();
 }
