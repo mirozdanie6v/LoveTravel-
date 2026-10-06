@@ -3,3 +3,4 @@ Purpose: create one real transaction-backed demo booking and capture the NHA con
 retry-after-existing-demo-contract-rewire
 post-production-deploy-live-gate
 post-bound-d1-bootstrap-live-gate
+live-ai-payload-diagnostic
