@@ -83,18 +83,22 @@ function offer(overrides={}) {
 }
 
 function quote(overrides={}) {
+  const resolvedOffer=offer();
   return {
     schemaVersion:CONTRACT_SCHEMA_VERSIONS.Quote,
     quoteId:'quote-1',
     transactionId:'txn-1',
     revision:1,
     offerId:'offer-1',
+    offer:resolvedOffer,
     providerRef:providerRef('ACTIVITY','1287580'),
     selectionFingerprint:hash('a'),
     price:{amount:98,currency:'USD'},
     availabilityStatus:'AVAILABLE',
     requiredFieldCodes:[],
     providerEvidenceRefs:['evidence-availability-1','evidence-price-1'],
+    freshness:{policy:'REVALIDATE_BEFORE_MUTATION',ttlMs:120000},
+    issues:{errors:[],warnings:[],bookingDataIssues:[]},
     createdAt:at,
     refreshedAt:at,
     expiresAt:'2026-10-06T10:10:00.000Z',
@@ -284,6 +288,21 @@ test('semantic preference and reason identifiers are language-neutral', () => {
       type:'ABANDON_TRANSACTION',issuedAt:at,payload:{reasonCode:'передумал'},
     }),
     error => error instanceof ContractError && error.issues.some(item => item.code==='invalid_reason_code'),
+  );
+});
+
+test('first-class Quote keeps embedded Offer, price and availability synchronized', () => {
+  assert.throws(
+    () => validateQuote(quote({offerId:'offer-other'})),
+    error => error instanceof ContractError && error.issues.some(item => item.code==='quote_offer_id_mismatch'),
+  );
+  assert.throws(
+    () => validateQuote(quote({price:{amount:99,currency:'USD'}})),
+    error => error instanceof ContractError && error.issues.some(item => item.code==='quote_price_mismatch'),
+  );
+  assert.throws(
+    () => validateQuote(quote({providerEvidenceRefs:[]})),
+    error => error instanceof ContractError && error.issues.some(item => item.code==='provider_evidence_required'),
   );
 });
 
