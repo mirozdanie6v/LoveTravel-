@@ -175,6 +175,7 @@
           </div>
           <div class="lt-hero__actions">
             <button class="lt-hero__action lt-hero__action--primary" type="button" data-lt-action="catalog">${c.tours} →</button>
+            <button class="lt-hero__action lt-hero__action--secondary" type="button" data-lt-action="ai">${c.ai} →</button>
           </div>
         </div>
       </div>`;

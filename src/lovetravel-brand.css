@@ -548,7 +548,7 @@ html.love-travel-branded #aiScreen .ai-message.user{
 
 /* 2026-09-29 focused booking UX */
 html.love-travel-branded .lt-hero__actions{
-  grid-template-columns:1fr!important;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;
 }
 html.love-travel-branded .lt-card-action{
   background:linear-gradient(135deg,var(--lt-orange-deep) 0%,var(--lt-orange) 48%,var(--lt-gold) 100%)!important;
@@ -576,6 +576,9 @@ html.love-travel-branded .bottom-nav .nav-btn.active::before{
   background:rgba(255,90,31,.10)!important;
 }
 @media(max-width:420px){
+  html.love-travel-branded .lt-hero__actions{
+    grid-template-columns:1fr!important;
+  }
   html.love-travel-branded #catalogScreen .wide-card .img-wrap{
     min-height:190px!important;
     height:190px!important;
@@ -596,7 +599,8 @@ html.love-travel-branded .bottom-nav .nav-btn.active::before{
 html.love-travel-branded #homeScreen,
 html.love-travel-branded #catalogScreen,
 html.love-travel-branded #tourScreen,
-html.love-travel-branded #bookingScreen{
+html.love-travel-branded #bookingScreen,
+html.love-travel-branded #aiScreen{
   background:
     radial-gradient(circle at 10% 3%,rgba(246,182,50,.20),transparent 30%),
     radial-gradient(circle at 92% 12%,rgba(54,131,232,.17),transparent 32%),
