@@ -12,6 +12,7 @@
   let activeProductId = null;
   let requestSeq = 0;
   let sheet = null;
+  let transactionSnapshot = null;
 
   function clientDemoToken(){
     try{
@@ -27,6 +28,59 @@
     }catch(_){ return ''; }
   }
   function clientDemoEnabled(){ return Boolean(clientDemoToken()); }
+
+  async function loadTransaction({applySelection=true}={}){
+    const response=await fetch('/api/travel-commerce/transaction',{
+      method:'GET',
+      cache:'no-store',
+      credentials:'same-origin',
+      headers:{'accept':'application/json'},
+    });
+    const data=await response.json().catch(()=>null);
+    if(!response.ok||!data?.ok||!data?.transaction) throw new Error(data?.error||'transaction snapshot unavailable');
+    transactionSnapshot=data.transaction;
+    const txSelection=data.selection;
+    const productId=String(txSelection?.productId||'');
+    if(applySelection&&PRODUCT_IDS.has(productId)) saveSelection(productId,txSelection);
+    return data;
+  }
+
+  async function transactionAction(action,payload={}){
+    const response=await fetch('/api/travel-commerce/transaction',{
+      method:'POST',
+      headers:{'content-type':'application/json','accept':'application/json'},
+      cache:'no-store',
+      credentials:'same-origin',
+      body:JSON.stringify({action,...payload}),
+    });
+    const data=await response.json().catch(()=>null);
+    if(!response.ok||!data?.ok){
+      const error=new Error(data?.message||data?.error||('transaction '+action+' failed'));
+      error.status=response.status;
+      error.code=data?.error||'transaction_action_failed';
+      throw error;
+    }
+    if(data.transaction) transactionSnapshot=data.transaction;
+    return data;
+  }
+
+  async function syncTransactionSelection(productId,{retryStale=true}={}){
+    if(!transactionSnapshot) await loadTransaction({applySelection:false});
+    try{
+      const data=await transactionAction('SYNC_SELECTION',{
+        expectedRevision:Number(transactionSnapshot.revision),
+        selection:selection(productId),
+      });
+      if(data.selection) saveSelection(productId,data.selection);
+      return data;
+    }catch(error){
+      if(retryStale&&Number(error.status)===409){
+        await loadTransaction({applySelection:false});
+        return syncTransactionSelection(productId,{retryStale:false});
+      }
+      throw error;
+    }
+  }
   function i18n(){ return globalThis.LoveTravelI18n || null; }
   function locale(){ return i18n()?.locale?.() || 'ru'; }
   const UI_FALLBACK=new Proxy(Object.create(null),{get:(_target,key)=>String(key)});
@@ -162,16 +216,12 @@
     const card=document.querySelector('[data-lt-config="'+CSS.escape(productId)+'"]');
     if(card && !quiet) card.classList.add('is-updating');
     try{
-      const response=await fetch('/api/bokun/booking-selection/resolve',{
-        method:'POST',headers:{'content-type':'application/json'},cache:'no-store',credentials:'same-origin',
-        body:JSON.stringify({selection:selection(productId),locale:locale()})
-      });
-      if(!response.ok) throw new Error('resolve HTTP '+response.status);
-      const data=await response.json();
-      if(!data?.ok || data?.schemaVersion!=='lovetravel.booking-selection-resolution.v1') throw new Error('invalid resolution');
+      const txData=await syncTransactionSelection(productId);
+      const data=txData?.resolution;
+      if(!data || typeof data!=='object') throw new Error('invalid transaction resolution');
       if(seq!==requestSeq || activeProductId!==productId) return data;
       resolutionByProduct.set(productId,data);
-      saveSelection(productId,data.selection);
+      saveSelection(productId,data.selection||selection(productId));
       if(!data.selection?.date) storeCalendar(productId,data);
       render(productId);
       return data;
@@ -1074,6 +1124,10 @@
       );
       return root;
     }
+    const tx=transactionSnapshot;
+    if(!tx?.quote || !['READY_FOR_APPROVAL','USER_APPROVED'].includes(tx.state)){
+      return openContactSheet(productId);
+    }
     const body='<div class="lt-sheet-scroll">'+
       '<div class="lt-form-section"><span class="lt-form-caption">'+esc(t().total)+'</span><strong class="lt-demo-total">'+esc(quoteSummary(r))+'</strong><p class="lt-booking-note">'+esc(t().demoNote)+'</p></div>'+
       '<div class="lt-sheet-action"><button type="button" class="lt-sheet-primary" data-lt-demo-submit>'+esc(t().demoCreate)+'</button></div>'+
@@ -1086,22 +1140,37 @@
       button.textContent=t().demoCreating;
       if(errorNode) errorNode.hidden=true;
       try{
-        const response=await fetch('/api/bokun/client-demo/submit',{
-          method:'POST',
-          headers:{'content-type':'application/json'},
-          cache:'no-store',
-          credentials:'same-origin',
-          body:JSON.stringify({selection:selection(productId),locale:locale(),demoToken:clientDemoToken()}),
+        let current=transactionSnapshot || (await loadTransaction({applySelection:false})).transaction;
+        if(current.state==='READY_FOR_APPROVAL'){
+          const approved=await transactionAction('APPROVE',{
+            expectedRevision:current.revision,
+            quoteId:current.quote.quoteId,
+            quoteRevision:current.quote.revision,
+          });
+          current=approved.transaction;
+        }
+        if(current.state!=='USER_APPROVED') throw new Error('transaction is not approval-ready');
+        const reserved=await transactionAction('RESERVE',{
+          expectedRevision:current.revision,
+          quoteId:current.quote.quoteId,
+          quoteRevision:current.quote.revision,
+          demoToken:clientDemoToken(),
         });
-        const data=await response.json().catch(()=>null);
-        if(!response.ok || !data?.ok || !data?.confirmationCode) throw new Error(data?.error||'demo submit failed');
+        current=reserved.transaction;
+        const confirmationCode=String(current?.providerBooking?.confirmationCode||reserved?.providerResult?.confirmationCode||'');
+        if(!confirmationCode || current.state!=='CONFIRMED') throw new Error('booking confirmation unavailable');
+        const data={
+          confirmationCode,
+          status:current.providerBooking?.status||'CONFIRMED',
+          paymentType:reserved?.providerResult?.paymentType||'NOT_PAID',
+        };
         demoBookingByProduct.set(productId,data);
         const content=root.closest('.lt-booking-sheet')?.querySelector('.lt-booking-sheet__content')||root;
         content.innerHTML='<header class="lt-booking-sheet__header"><div><h3>'+esc(t().demoSuccessTitle)+'</h3></div><button type="button" data-lt-sheet-close data-lt-sheet-close-button aria-label="'+esc(t().close)+'">×</button></header>'+
           '<div class="lt-sheet-scroll"><div class="lt-form-section"><p class="lt-booking-note">'+esc(t().demoSuccess)+' <strong>'+esc(data.confirmationCode)+'</strong></p><p class="lt-booking-note">'+esc(String(data.status||'CONFIRMED'))+' · '+esc(String(data.paymentType||'NOT_PAID'))+'</p></div></div>';
         render(productId);
       }catch(error){
-        console.error('[LoveTravel] client demo booking failed',error);
+        console.error('[LoveTravel] transaction demo booking failed',error);
         button.disabled=false;
         button.textContent=t().demoCreate;
         if(errorNode){errorNode.textContent=t().demoFailure;errorNode.hidden=false;}
@@ -1136,6 +1205,14 @@
     activeProductId=productId;
     selection(productId);
     try{
+      try{
+        const snapshot=await loadTransaction();
+        if(String(snapshot?.selection?.productId||'')!==String(productId)){
+          selection(productId);
+        }
+      }catch(error){
+        console.warn('[LoveTravel] transaction bootstrap unavailable',error?.message||error);
+      }
       let r=await resolve(productId,{quiet:true});
       if(activeProductId!==productId) return;
       const current=selection(productId);
@@ -1178,6 +1255,16 @@
     resolve:()=>activeProductId?resolve(activeProductId):Promise.resolve(null),
     selection:()=>activeProductId?selection(activeProductId):null,
     resolution:()=>activeProductId?resolutionByProduct.get(activeProductId)||null:null,
+    transaction:()=>transactionSnapshot,
+    revision:()=>Number(transactionSnapshot?.revision||0),
+    refreshTransaction:()=>loadTransaction(),
+    applySelection:async next=>{
+      const productId=String(next?.productId||activeProductId||'');
+      if(!PRODUCT_IDS.has(productId)) throw new Error('unsupported product');
+      activeProductId=productId;
+      saveSelection(productId,{...selection(productId),...next,productId});
+      return resolve(productId,{quiet:true});
+    },
     calendar:()=>activeProductId?calendarFor(activeProductId):null,
     refreshCalendar:()=>activeProductId?refreshCalendar(activeProductId,{force:true}):Promise.resolve(null),
     open:step=>activeProductId&&openSheet(activeProductId,step||firstBlockingStep(resolutionByProduct.get(activeProductId))),
