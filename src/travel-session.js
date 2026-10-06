@@ -4,7 +4,10 @@ import {
 } from './booking-session-client.js';
 import {
   createBookingTransaction,
+  createShoppingSession,
 } from './travel-commerce-transaction.js';
+import { createTravelCommerceStore } from './travel-commerce-store.js';
+import { createInitialTravelIntent } from './travel-sales-intelligence.js';
 
 const str=(value,max=180)=>String(value??'').trim().slice(0,max);
 
@@ -51,11 +54,31 @@ export function transactionIdForSalesSession(sessionId){
   return `txn-${str(sessionId)}`;
 }
 
-export async function ensureCommerceTransaction(env,sessionId,{now=new Date()}={}){
+export async function ensureCommerceTransaction(env,sessionId,{now=new Date(),locale='ru'}={}){
+  const shoppingSessionId=shoppingSessionIdForSalesSession(sessionId);
+  const store=createTravelCommerceStore(env.DB);
+  let shopping=await store.getShoppingSession(shoppingSessionId);
+  if(!shopping){
+    shopping=createShoppingSession({
+      sessionId:shoppingSessionId,
+      intent:createInitialTravelIntent(locale),
+      candidateOfferIds:[],
+      now,
+    });
+    try{
+      await store.createShoppingSession(shopping,{ownerSessionId:sessionId});
+    }catch(error){
+      // Concurrent AI/UI bootstrap may race to create the same ShoppingSession.
+      // Re-read after a failed insert and continue only if the canonical row exists.
+      shopping=await store.getShoppingSession(shoppingSessionId);
+      if(!shopping) throw error;
+    }
+  }
+
   const transactionId=transactionIdForSalesSession(sessionId);
   const transaction=createBookingTransaction({
     transactionId,
-    shoppingSessionId:shoppingSessionIdForSalesSession(sessionId),
+    shoppingSessionId,
     now,
   });
   const initialized=await initializeBookingSession(env,transaction);
