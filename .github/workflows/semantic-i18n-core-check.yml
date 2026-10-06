@@ -9,6 +9,7 @@ on:
       - fix-complete-zh-localization
       - zh-stale-cache-swr
       - fix-zh-partial-translation-retry
+      - fix-zh-meeting-point-name
   workflow_dispatch:
 
 jobs:
