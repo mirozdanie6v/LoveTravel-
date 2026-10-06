@@ -11,7 +11,10 @@ const TRANSLATION_PROVIDER_V4 = 'workers-ai:gemma-4-26b-a4b-it:v4-native-travel'
 const TRANSLATION_PROVIDER_V5 = 'workers-ai:gemma-4-26b-a4b-it:v5-complete-locale';
 
 function translationProvider(locale) {
-  return normalizeContentLocale(locale) === 'ru' ? TRANSLATION_PROVIDER_V3 : TRANSLATION_PROVIDER_V5;
+  const normalized=normalizeContentLocale(locale);
+  if (normalized === 'ru') return TRANSLATION_PROVIDER_V3;
+  if (normalized === 'zh') return TRANSLATION_PROVIDER_V5;
+  return TRANSLATION_PROVIDER_V4;
 }
 
 function acceptedTranslationProvider(locale, provider) {
@@ -19,7 +22,8 @@ function acceptedTranslationProvider(locale, provider) {
   if (normalizeContentLocale(locale) === 'ru') {
     return value === TRANSLATION_PROVIDER_V3 || value === TRANSLATION_PROVIDER_V4;
   }
-  return value === TRANSLATION_PROVIDER_V5;
+  if (normalizeContentLocale(locale) === 'zh') return value === TRANSLATION_PROVIDER_V5;
+  return value === TRANSLATION_PROVIDER_V4;
 }
 
 let tableReadyPromise = null;
