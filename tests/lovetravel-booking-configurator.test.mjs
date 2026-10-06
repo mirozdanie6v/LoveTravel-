@@ -248,7 +248,7 @@ test('option sheet reuses the visual Bókun tour cards instead of a dry rate lis
   assert.match(js,/cloneNode\(true\)/);
   assert.match(js,/classList\.add\('lt-booking-option-card'\)/);
   assert.match(js,/data-lt-rate/);
-  assert.match(js,/button\.dataset\.ltRate/);
+  assert.match(js,/btn\.dataset\.ltRate/);
   assert.doesNotMatch(js,/class="lt-option-card /);
   assert.match(css,/\.lt-booking-option-grid/);
   assert.match(css,/\.lt-booking-option-card \.lt-domain-rate__media/);
