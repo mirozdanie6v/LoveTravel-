@@ -199,7 +199,7 @@ export function attachTransactionQuote(transaction,quote,{now=new Date()}={}){
   if(!current.selectedOfferId){
     contractIssue('BookingTransaction','selected_offer_required','selectedOfferId','Select an offer before attaching a Quote');
   }
-  if(['USER_APPROVED','RESERVING','FAILED_NEEDS_RECONCILIATION','CONFIRMED','ABANDONED'].includes(current.state)){
+  if(['RESERVING','FAILED_NEEDS_RECONCILIATION','CONFIRMED','ABANDONED'].includes(current.state)){
     contractIssue('BookingTransaction','quote_refresh_not_allowed','state',`Quote cannot be replaced from ${current.state}`);
   }
   const nextQuote=validateQuote(quote);
