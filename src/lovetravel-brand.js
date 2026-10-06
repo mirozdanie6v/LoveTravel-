@@ -169,9 +169,9 @@
           <div class="lt-hero__kicker">${c.kicker}</div>
           <h1>${c.title}</h1>
           <p class="lt-hero__lead">${c.lead}</p>
-          <div class="lt-hero__chips" aria-label="Featured tours">
-            <span class="lt-hero__chip">Robinson Beach</span>
-            <span class="lt-hero__chip">Hòn Mun Marine Park</span>
+          <div class="lt-hero__chips" aria-label="${c.featuredLabel}">
+            <span class="lt-hero__chip">${c.chips[0]}</span>
+            <span class="lt-hero__chip">${c.chips[1]}</span>
           </div>
           <div class="lt-hero__actions">
             <button class="lt-hero__action lt-hero__action--primary" type="button" data-lt-action="catalog">${c.tours} →</button>
