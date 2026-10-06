@@ -8,6 +8,7 @@ on:
       - linguistic-qa-cache-warm
       - fix-complete-zh-localization
       - zh-stale-cache-swr
+      - fix-zh-partial-translation-retry
   workflow_dispatch:
 
 jobs:
