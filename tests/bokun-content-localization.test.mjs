@@ -221,3 +221,41 @@ test('native profile upgrade preserves stable caches and requires v5 only for ZH
   assert.equal(_localizationTest.acceptedTranslationProvider('zh',v4),false);
   assert.equal(_localizationTest.acceptedTranslationProvider('zh',v5),true);
 });
+
+
+test('serves the last complete same-source locale while a new translation profile refreshes', async () => {
+  const DB=new FakeDB();
+  const AI={
+    async run(_model,input){
+      const payload=JSON.parse(input.messages.at(-1).content);
+      return {response:JSON.stringify(Object.fromEntries(
+        Object.entries(payload).map(([key,value])=>[key,'ZH:'+value])
+      ))};
+    }
+  };
+  const env={DB,AI,BOKUN_TRANSLATION_MODEL:'test-model'};
+  const domain=sampleDomain();
+
+  await syncDomainTranslations(domain,env,'zh');
+  for(const row of DB.rows.values()){
+    if(row.locale==='zh') row.provider='workers-ai:gemma-4-26b-a4b-it:v4-native-travel';
+  }
+
+  const background=[];
+  const localized=await localizeDomainFromCache(domain,env,'zh',{
+    waitUntil(promise){ background.push(promise); }
+  });
+
+  assert.equal(localized.localization.source,'viiversion-cache-stale');
+  assert.equal(localized.localization.staleWhileRevalidate,true);
+  assert.ok(localized.localization.pendingFields>0);
+  assert.equal(localized.localization.translatedFields,collectTranslatableFields(domain).length);
+  assert.equal(localized.experience.title,'ZH:English title');
+  assert.equal(localized.experience.description,'ZH:English description');
+  assert.equal(background.length,1);
+
+  await Promise.all(background);
+  const refreshed=await localizeDomainFromCache(domain,env,'zh');
+  assert.equal(refreshed.localization.source,'viiversion-cache');
+  assert.equal(refreshed.localization.pendingFields,0);
+});
