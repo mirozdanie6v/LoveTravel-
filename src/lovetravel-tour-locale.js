@@ -30,6 +30,7 @@
     'Private transfer':'provider.privateTransfer',
     'Bring sunscreen':'provider.bringSunscreen',
     'Nha Trang hotels':'provider.nhaTrangHotels',
+    'Nha Trang':'provider.nhaTrang',
     'required':'provider.required',
     'WALKING':'provider.walking',
     'индивидуальный':'provider.format.private',
@@ -147,6 +148,7 @@
     const next={
       ...tour,
       duration:tour.duration?duration({text:tour.duration}):tour.duration,
+      city:tour.city?providerText(tour.city):tour.city,
       activity:tour.activity?difficulty(tour.activity):tour.activity,
       languages:Array.isArray(tour.languages)?tour.languages.map(languageName):tour.languages,
       included:Array.isArray(tour.included)?tour.included.map(providerText):tour.included,
