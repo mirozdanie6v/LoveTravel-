@@ -120,3 +120,9 @@ test('semantic i18n core loads before provider localization and domain rendering
   assert.ok(core>=0 && provider>core && domain>provider);
   assert.match(build,/copyFile\(resolve\(root, 'src\/lovetravel-i18n\.js'/);
 });
+
+
+test('provider boolean artifacts never render as customer list items',()=>{
+  assert.match(js,/typeof v!=='boolean'/);
+  assert.match(js,/true\|false/);
+});

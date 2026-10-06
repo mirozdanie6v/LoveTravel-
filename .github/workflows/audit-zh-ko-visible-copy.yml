@@ -54,6 +54,19 @@ jobs:
               hanInKo:locale==='ko'?uniq.filter(x=>/[\u3400-\u9FFF]/.test(x)):[],
               foreignScriptInVi:locale==='vi'?uniq.filter(x=>/[А-Яа-яЁё\u3400-\u9FFF가-힣]/.test(x)):[],
               foreignScriptInEn:locale==='en'?uniq.filter(x=>/[А-Яа-яЁё\u3400-\u9FFF가-힣]/.test(x)):[],
+              incompleteZh:locale==='zh'?uniq.filter(x=>{
+                if(/^(?:true|false)$/i.test(x)) return true;
+                if(/\bEmail\b/i.test(x)) return true;
+                if(/\bNHA TRANG\b/.test(x)) return true;
+                if(/\b(?:Marine Park|Marine Protected Area|Robinson Island|Tranh Beach|Soi Beach)\b/i.test(x)) return true;
+                if(/\bNha Trang\b/i.test(x) && !/Nha Trang Love Travel/.test(x) && !/^\d.*Nha Trang/i.test(x)) return true;
+                if(/\bHon Mun\b(?!\s*(?:海洋|岛))/i.test(x)) return true;
+                if(/\bHon Mieu\b(?!\s*岛)/i.test(x)) return true;
+                if(/\bHon Tam\b(?!\s*岛)/i.test(x)) return true;
+                if(/\bBai Tranh\b(?!\s*海滩)/i.test(x)) return true;
+                if(/\bBai Soi\b(?!\s*海滩)/i.test(x)) return true;
+                return false;
+              }):[],
               suspiciousEnglish:uniq.filter(x=>{
                 const pattern=locale==='vi'
                   ? /\b(?:Book|Booking|Price|Total|Date|Guests|Contact|Available|Live|Choose|Select|Pickup|Meeting|Included|Excluded|Cancellation|Duration|Start|Finish|Adult|Child|Infant|Group|Private|Required|Room|Hotel|Language|Difficulty|Confirmation|Program|Information)\b/i
@@ -115,6 +128,7 @@ jobs:
             enForeignScript:[...new Set(collect(report.en,'foreignScriptInEn'))],
             viSuspiciousEnglish:[...new Set(collect(report.vi,'suspiciousEnglish'))],
             zhSuspiciousEnglish:[...new Set(collect(report.zh,'suspiciousEnglish'))],
+            zhIncomplete:[...new Set(collect(report.zh,'incompleteZh'))],
             koSuspiciousEnglish:[...new Set(collect(report.ko,'suspiciousEnglish'))],
           };
           console.log(JSON.stringify({report,violations},null,2));
@@ -122,7 +136,7 @@ jobs:
             violations.zhCyrillic.length||violations.koCyrillic.length||
             violations.zhHangul.length||violations.koHan.length||
             violations.viForeignScript.length||violations.enForeignScript.length||
-            violations.viSuspiciousEnglish.length||violations.zhSuspiciousEnglish.length||
+            violations.viSuspiciousEnglish.length||violations.zhSuspiciousEnglish.length||violations.zhIncomplete.length||
             violations.koSuspiciousEnglish.length
           ){
             throw new Error('Visible cross-language leakage: '+JSON.stringify(violations));

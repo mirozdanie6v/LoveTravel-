@@ -21,7 +21,9 @@
       catalogHint:'2 тура',
       catalogIntro:'Выберите одну из двух программ',
       catalogText:'Фото, программа, цены и свободные даты загружаются из системы туроператора.',
-      card:'Открыть тур'
+      card:'Открыть тур',
+      featuredLabel:'Рекомендуемые экскурсии',
+      chips:['Robinson Beach','Морской заповедник Hòn Mun']
     },
     vi:{
       badge:'Nhà điều hành tour địa phương',
@@ -38,7 +40,9 @@
       catalogHint:'2 tour',
       catalogIntro:'Chọn một trong hai chương trình',
       catalogText:'Hình ảnh, lịch trình, giá và chỗ trống được cập nhật từ hệ thống của nhà điều hành.',
-      card:'Xem tour'
+      card:'Xem tour',
+      featuredLabel:'Tour nổi bật',
+      chips:['Robinson Beach','Khu bảo tồn biển Hòn Mun']
     },
     en:{
       badge:'Local Nha Trang operator',
@@ -55,12 +59,14 @@
       catalogHint:'2 tours',
       catalogIntro:'Choose your island experience',
       catalogText:'Photos, itinerary, pricing and available departures are kept current from the operator system.',
-      card:'View tour'
+      card:'View tour',
+      featuredLabel:'Featured tours',
+      chips:['Robinson Beach','Hòn Mun Marine Park']
     },
     zh:{
       badge:'芽庄当地旅行社',
       live:'实时可订',
-      kicker:'NHA TRANG · 海岛体验',
+      kicker:'芽庄 · 海岛体验',
       title:'跟随当地团队<strong>探索芽庄</strong>',
       lead:'Robinson Beach 与 Hòn Mun 提供实时日期、当前价格和顺畅的一站式预订流程。',
       tours:'查看行程',
@@ -72,7 +78,9 @@
       catalogHint:'2 条行程',
       catalogIntro:'请选择两条行程中的一条',
       catalogText:'照片、行程说明、价格和可订日期均实时来自旅行社系统。',
-      card:'查看行程'
+      card:'查看行程',
+      featuredLabel:'推荐行程',
+      chips:['Robinson Beach','Hòn Mun 海洋保护区']
     },
     ko:{
       badge:'나트랑 현지 투어 운영사',
@@ -89,7 +97,9 @@
       catalogHint:'투어 2개',
       catalogIntro:'두 가지 섬 투어 중 선택하세요',
       catalogText:'사진, 일정, 가격 및 출발 가능 정보가 운영 시스템에서 최신 상태로 제공됩니다.',
-      card:'투어 보기'
+      card:'투어 보기',
+      featuredLabel:'추천 투어',
+      chips:['Robinson Beach','Hòn Mun 해양보호구역']
     }
   };
 
@@ -159,9 +169,9 @@
           <div class="lt-hero__kicker">${c.kicker}</div>
           <h1>${c.title}</h1>
           <p class="lt-hero__lead">${c.lead}</p>
-          <div class="lt-hero__chips" aria-label="Featured tours">
-            <span class="lt-hero__chip">Robinson Beach</span>
-            <span class="lt-hero__chip">Hòn Mun Marine Park</span>
+          <div class="lt-hero__chips" aria-label="${c.featuredLabel}">
+            <span class="lt-hero__chip">${c.chips[0]}</span>
+            <span class="lt-hero__chip">${c.chips[1]}</span>
           </div>
           <div class="lt-hero__actions">
             <button class="lt-hero__action lt-hero__action--primary" type="button" data-lt-action="catalog">${c.tours} →</button>

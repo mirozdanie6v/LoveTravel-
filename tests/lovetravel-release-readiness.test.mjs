@@ -6,7 +6,7 @@ import { resolve } from 'node:path';
 const root = resolve(import.meta.dirname, '..');
 const read = path => readFile(resolve(root, path), 'utf8');
 
-const [worker, workerR2, locale, booking, i18n, semanticI18n, build, bokunLocalization, ai] = await Promise.all([
+const [worker, workerR2, locale, booking, i18n, semanticI18n, build, bokunLocalization, ai, brand] = await Promise.all([
   read('src/worker.js'),
   read('src/worker-r2.js'),
   read('src/lovetravel-tour-locale.js'),
@@ -16,6 +16,7 @@ const [worker, workerR2, locale, booking, i18n, semanticI18n, build, bokunLocali
   read('build.mjs'),
   read('src/bokun-content-localization.js'),
   read('src/ai-consultant-v5.js'),
+  read('src/lovetravel-brand.js'),
 ]);
 
 test('first release is fixed to the two Love Travel Bókun products', () => {
@@ -46,6 +47,9 @@ test('Simplified Chinese is wired across UI, booking, Bókun localization and AI
   assert.match(ai, /\['vi','en','ko','zh'\]/);
   assert.match(ai, /'zh-CN'/);
   assert.match(worker, /Simplified Chinese/);
+  assert.match(brand, /kicker:'芽庄 · 海岛体验'/);
+  assert.match(brand, /chips:\['Robinson Beach','Hòn Mun 海洋保护区'\]/);
+  assert.match(brand, /\$\{c\.chips\[1\]\}/);
 });
 
 test('booking path remains resolver-backed and covers pickup, customer and questions', () => {

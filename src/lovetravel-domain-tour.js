@@ -265,7 +265,10 @@
       '</div></section>';
   }
   function listSection(title,items,variant=''){
-    const clean=arr(items).map(v=>typeof v==='string'?v:(v?.title||v?.description||v?.code||v?.currencyCode||v?.id||'')).map(textFromHtml).map(providerText).filter(Boolean);
+    const clean=arr(items)
+      .filter(v=>typeof v!=='boolean' && !/^(?:true|false)$/i.test(String(v??'').trim()))
+      .map(v=>typeof v==='string'?v:(v?.title||v?.description||v?.code||v?.currencyCode||v?.id||''))
+      .map(textFromHtml).map(providerText).filter(Boolean);
     if(!clean.length) return '';
     const modifier=variant?' lt-domain-section--'+variant:'';
     return '<section class="lt-domain-section'+modifier+'"><div class="lt-domain-section__head"><span class="lt-domain-eyebrow">'+esc(title)+'</span></div><ul class="lt-domain-list">'+clean.map(item=>'<li>'+esc(item)+'</li>').join('')+'</ul></section>';

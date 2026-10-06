@@ -240,7 +240,8 @@
       "few": "{count} минуты",
       "many": "{count} минут",
       "other": "{count} минуты"
-    }
+    },
+    "provider.nhaTrang": "Нячанг"
   },
   "vi": {
     "tour.back": "Quay lại danh sách tour",
@@ -465,7 +466,8 @@
     },
     "provider.duration.minute": {
       "other": "{count} phút"
-    }
+    },
+    "provider.nhaTrang": "Nha Trang"
   },
   "en": {
     "tour.back": "Back to tours",
@@ -694,7 +696,8 @@
     "provider.duration.minute": {
       "one": "{count} minute",
       "other": "{count} minutes"
-    }
+    },
+    "provider.nhaTrang": "Nha Trang"
   },
   "ko": {
     "tour.back": "투어 목록으로",
@@ -919,7 +922,8 @@
     },
     "provider.duration.minute": {
       "other": "{count}분"
-    }
+    },
+    "provider.nhaTrang": "나트랑"
   },
   "zh": {
     "tour.back": "返回行程列表",
@@ -1036,7 +1040,7 @@
     "booking.firstName": "名字",
     "booking.lastName": "姓氏",
     "booking.phoneNumber": "电话",
-    "booking.email": "Email",
+    "booking.email": "电子邮箱",
     "booking.verify": "核对",
     "booking.verified": "信息已核对",
     "booking.noPlaces": "未找到结果",
@@ -1101,7 +1105,7 @@
     "common.firstName": "名字",
     "common.lastName": "姓氏",
     "common.phoneNumber": "电话",
-    "common.email": "Email",
+    "common.email": "电子邮箱",
     "booking.timeCount": {
       "other": "{count} 个可选时间"
     },
@@ -1144,7 +1148,8 @@
     },
     "provider.duration.minute": {
       "other": "{count}分钟"
-    }
+    },
+    "provider.nhaTrang": "芽庄"
   }
 });
 

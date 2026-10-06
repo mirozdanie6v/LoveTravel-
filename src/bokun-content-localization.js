@@ -8,9 +8,13 @@ const TARGET_NAMES = Object.freeze({
 });
 const TRANSLATION_PROVIDER_V3 = 'workers-ai:gemma-4-26b-a4b-it:v3';
 const TRANSLATION_PROVIDER_V4 = 'workers-ai:gemma-4-26b-a4b-it:v4-native-travel';
+const TRANSLATION_PROVIDER_V5 = 'workers-ai:gemma-4-26b-a4b-it:v5-complete-locale';
 
 function translationProvider(locale) {
-  return normalizeContentLocale(locale) === 'ru' ? TRANSLATION_PROVIDER_V3 : TRANSLATION_PROVIDER_V4;
+  const normalized=normalizeContentLocale(locale);
+  if (normalized === 'ru') return TRANSLATION_PROVIDER_V3;
+  if (normalized === 'zh') return TRANSLATION_PROVIDER_V5;
+  return TRANSLATION_PROVIDER_V4;
 }
 
 function acceptedTranslationProvider(locale, provider) {
@@ -18,6 +22,7 @@ function acceptedTranslationProvider(locale, provider) {
   if (normalizeContentLocale(locale) === 'ru') {
     return value === TRANSLATION_PROVIDER_V3 || value === TRANSLATION_PROVIDER_V4;
   }
+  if (normalizeContentLocale(locale) === 'zh') return value === TRANSLATION_PROVIDER_V5;
   return value === TRANSLATION_PROVIDER_V4;
 }
 
@@ -281,6 +286,7 @@ async function translateChunk(env, locale, fields) {
     'For Vietnamese, write natural Vietnam travel-booking copy. Prefer “tour ghép” for shared group tours, “tour riêng” for private tours, “đón tại khách sạn” for hotel pickup, and natural customer wording instead of literal system terminology.',
     'For Korean, use contemporary South Korean consumer travel terminology. Prefer “예약 가능 여부” for availability, “호텔 픽업”, “개별 이동” or “미팅 포인트” where appropriate. Avoid “좌석” for tour availability and avoid technical words such as “구성” when the user is simply checking booking details.',
     'For Simplified Chinese, use fluent Mainland consumer travel terminology. Prefer “旅行社” or “旅游供应商” for a tour operator, “可订情况” for availability, “集合地点” for meeting point and “酒店接送” for hotel pickup. Never use telecom-style “运营商” for a travel operator, and avoid technical “配置” when referring to booking details.',
+    'For Simplified Chinese, keep the unique proper-name core when needed, but translate generic geographic and travel nouns around it: Marine Park/Marine Protected Area -> 海洋保护区, Island -> 岛, Beach -> 海滩, Aquarium -> 水族馆. Use 芽庄 for Nha Trang in ordinary customer copy; preserve the original only inside the official company name “Nha Trang Love Travel” or a literal street/address string. Do not leave mixed generic English such as “Tranh Beach”, “Soi Beach”, “Robinson Island” or “Hòn Mun Marine Park” in a Chinese sentence.',
     'Translate generic English travel terms such as language names, accessibility notes, pickup instructions and booking labels. Keep only genuine proper names such as Hòn Mun, Hòn Tằm, Bích Đầm, Robinson Beach, hotel names, streets, brands and people; transliterate proper names only when natural for the target language.',
     'Do not leave source-language fragments mixed into the target sentence unless they are genuine proper names.',
     'Do not add, remove, summarize, reinterpret or invent facts.',
