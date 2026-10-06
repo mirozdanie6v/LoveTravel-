@@ -237,7 +237,8 @@ function normalizedText(value){
   return str(value,2400)
     .toLocaleLowerCase()
     .normalize('NFKD')
-    .replace(/[\u0300-\u036f]/g,'');
+    .replace(/[\u0300-\u036f]/g,'')
+    .normalize('NFKC');
 }
 
 function explicitAdultCount(message){
