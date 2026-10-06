@@ -533,24 +533,32 @@
     if (attempt < 12) setTimeout(() => continueToBooking(intent, attempt + 1), 120);
   }
 
-  function startBooking(item, root) {
+  async function startBooking(item, root) {
     if (!item?.tour?.id) return;
     state.selectedTourId = item.tour.id;
-    const intent = bookingIntent(item);
-    try { sessionStorage.setItem(BOOKING_INTENT_KEY, JSON.stringify(intent)); } catch (_) {}
     persist();
     add('bot', localeText(
-      `Открываю бронирование «${item.tour.title}». Дату и состав группы, которые вы уже назвали, перенесу в оформление.`,
-      `Đang mở đặt tour “${item.tour.title}”. Tôi sẽ chuyển ngày và số khách bạn đã cung cấp sang bước đặt tour.`,
-      `Opening booking for “${item.tour.title}”. I will carry the date and party details you already provided into the booking form.`,
-      `“${item.tour.title}” 예약을 열고 있습니다. 말씀해 주신 날짜와 인원 정보를 예약 단계로 이어서 입력하겠습니다.`,
-      `正在打开“${item.tour.title}”的预订。您已经提供的日期和出行人数会自动带入预订流程。`
+      `Открываю бронирование «${item.tour.title}». Уже выбранные параметры беру из текущей транзакции.`,
+      `Đang mở đặt tour “${item.tour.title}”. Các thông tin đã chọn được lấy từ giao dịch hiện tại.`,
+      `Opening booking for “${item.tour.title}”. Your selected details are coming from the current booking transaction.`,
+      `“${item.tour.title}” 예약을 열고 있습니다. 선택한 정보는 현재 예약 트랜잭션에서 불러옵니다.`,
+      `正在打开“${item.tour.title}”的预订。已选择的信息将从当前预订事务中读取。`
     ));
     render(root, { scrollToEnd:true });
     try {
       if (typeof openTour === 'function') openTour(item.tour.id);
-      setTimeout(() => continueToBooking(intent), 100);
-    } catch (_) {}
+      const configurator=globalThis.LoveTravelBookingConfigurator;
+      if(!configurator) return;
+      const snapshot=await configurator.refreshTransaction?.();
+      if(snapshot?.selection&&String(snapshot.selection.productId||'')===String(item.tour.id)){
+        await configurator.applySelection?.(snapshot.selection);
+      }else{
+        await configurator.resolve?.();
+      }
+      configurator.open?.();
+    } catch (error) {
+      console.warn('[LoveTravel AI] transaction booking handoff failed:',error?.message||error);
+    }
   }
 
   function renderRecommendations() {
@@ -641,11 +649,6 @@
     };
   }
 
-  const observer = new MutationObserver(() => {
-    let intent = null; try { intent = JSON.parse(sessionStorage.getItem(BOOKING_INTENT_KEY) || 'null'); } catch (_) {}
-    if (intent?.tourId) prefillBooking(intent);
-  });
-  try { observer.observe(document.documentElement, { childList:true, subtree:true }); } catch (_) {}
 
   globalThis.MaxTourAI = {
     mount,
