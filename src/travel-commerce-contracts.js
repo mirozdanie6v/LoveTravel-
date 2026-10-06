@@ -85,7 +85,7 @@ const TOP_LEVEL_KEYS = Object.freeze({
   ],
   BookingTransaction: [
     'schemaVersion', 'transactionId', 'revision', 'shoppingSessionId', 'state',
-    'selectedOfferId', 'quote', 'draft', 'approval', 'mutation', 'providerBooking',
+    'selection', 'selectedOfferId', 'quote', 'draft', 'approval', 'mutation', 'providerBooking',
     'createdAt', 'updatedAt',
   ],
   ProviderEvidence: [
@@ -303,6 +303,48 @@ function validateTransportChoice(value, path, issues, modes) {
   if (value.placeRef !== undefined) validateProviderRef(value.placeRef, `${path}.placeRef`, issues);
   optionalString(value.customLocation, `${path}.customLocation`, issues);
   if (value.placeRef !== undefined && value.customLocation !== undefined) issue(issues, 'incompatible_fields', path, 'cannot include both placeRef and customLocation');
+}
+
+function validateSelectionParticipantMix(value, path, issues) {
+  if (!Array.isArray(value)) {
+    issue(issues, 'array_required', path, 'must be an array');
+    return;
+  }
+  value.forEach((item, index) => {
+    const itemPath = `${path}.${index}`;
+    if (!exactObject(item, itemPath, ['role', 'count', 'providerCategoryRef'], issues)) return;
+    if (!PARTICIPANT_ROLES.includes(item.role)) issue(issues, 'invalid_participant_role', `${itemPath}.role`, 'must be ADULT, CHILD or INFANT');
+    if (!isInteger(item.count) || item.count < 1 || item.count > 50) issue(issues, 'invalid_participant_count', `${itemPath}.count`, 'must be an integer between 1 and 50');
+    if (item.providerCategoryRef !== undefined) validateProviderRef(item.providerCategoryRef, `${itemPath}.providerCategoryRef`, issues);
+  });
+}
+
+function validateBookingSelectionSnapshotInternal(value, path, issues) {
+  const keys = [
+    'productRef', 'date', 'rateRef', 'startTimeRef', 'slotRef', 'participants',
+    'pickup', 'dropoff', 'customer', 'travellers', 'answers', 'extras',
+  ];
+  if (!exactObject(value, path, keys, issues)) return;
+  validateProviderRef(value.productRef, `${path}productRef`, issues);
+  if (value.date !== undefined && value.date !== null && value.date !== '' && !isIsoDate(value.date)) issue(issues, 'invalid_date', `${path}date`, 'must be YYYY-MM-DD');
+  if (value.rateRef !== undefined) validateProviderRef(value.rateRef, `${path}rateRef`, issues);
+  if (value.startTimeRef !== undefined) validateProviderRef(value.startTimeRef, `${path}startTimeRef`, issues);
+  if (value.slotRef !== undefined) validateProviderRef(value.slotRef, `${path}slotRef`, issues);
+  validateSelectionParticipantMix(value.participants, `${path}participants`, issues);
+  if (value.pickup !== undefined) validateTransportChoice(value.pickup, `${path}pickup`, issues, PICKUP_MODES);
+  if (value.dropoff !== undefined) validateTransportChoice(value.dropoff, `${path}dropoff`, issues, DROPOFF_MODES);
+  if (value.customer !== undefined) validateCustomer(value.customer, `${path}customer`, issues);
+  if (!Array.isArray(value.travellers)) issue(issues, 'array_required', `${path}travellers`, 'must be an array');
+  else value.travellers.forEach((traveller, index) => validateTraveller(traveller, `${path}travellers.${index}`, issues));
+  if (value.answers !== undefined) validateAnswers(value.answers, `${path}answers`, issues);
+  if (value.extras !== undefined) {
+    if (!Array.isArray(value.extras)) issue(issues, 'array_required', `${path}extras`, 'must be an array');
+    else value.extras.forEach((extra, index) => validateExtraSelection(extra, `${path}extras.${index}`, issues));
+  }
+}
+
+export function validateBookingSelectionSnapshot(value) {
+  return assertValid('BookingSelectionSnapshot', value, validateBookingSelectionSnapshotInternal);
 }
 
 function validateAvailability(value, path, issues) {
@@ -550,6 +592,10 @@ export function validateBookingTransaction(value) {
     requiredString(item.transactionId, 'transactionId', issues, { safe: true });
     requiredRevision(item.revision, 'revision', issues);
     optionalString(item.shoppingSessionId, 'shoppingSessionId', issues);
+    if (item.selection !== undefined) {
+      try { validateBookingSelectionSnapshot(item.selection); }
+      catch (error) { if (error instanceof ContractError) error.issues.forEach(entry => issue(issues, entry.code, `selection.${entry.path}`, entry.message)); else throw error; }
+    }
     if (!BOOKING_TRANSACTION_STATES.includes(item.state)) issue(issues, 'invalid_transaction_state', 'state', `must be one of ${BOOKING_TRANSACTION_STATES.join(', ')}`);
     optionalString(item.selectedOfferId, 'selectedOfferId', issues);
     if (!['SHOPPING', 'ABANDONED'].includes(item.state) && !item.selectedOfferId) issue(issues, 'selected_offer_required', 'selectedOfferId', `${item.state} requires selectedOfferId`);
@@ -559,6 +605,10 @@ export function validateBookingTransaction(value) {
       catch (error) { if (error instanceof ContractError) error.issues.forEach(entry => issue(issues, entry.code, `quote.${entry.path}`, entry.message)); else throw error; }
       if (item.quote?.transactionId !== item.transactionId) issue(issues, 'quote_transaction_mismatch', 'quote.transactionId', 'must match transactionId');
       if (item.selectedOfferId && item.quote?.offerId !== item.selectedOfferId) issue(issues, 'quote_offer_mismatch', 'quote.offerId', 'must match selectedOfferId');
+      if (item.selection?.productRef && JSON.stringify(item.selection.productRef) !== JSON.stringify(item.quote?.offer?.providerRef)) issue(issues, 'selection_product_mismatch', 'selection.productRef', 'must match Quote Offer providerRef');
+      if (item.selection?.date && item.quote?.offer?.date && item.selection.date !== item.quote.offer.date) issue(issues, 'selection_date_mismatch', 'selection.date', 'must match Quote Offer date');
+      if (item.selection?.rateRef && item.quote?.offer?.rateRef && JSON.stringify(item.selection.rateRef) !== JSON.stringify(item.quote.offer.rateRef)) issue(issues, 'selection_rate_mismatch', 'selection.rateRef', 'must match Quote Offer rateRef');
+      if (item.selection?.startTimeRef && item.quote?.offer?.startTimeRef && JSON.stringify(item.selection.startTimeRef) !== JSON.stringify(item.quote.offer.startTimeRef)) issue(issues, 'selection_start_time_mismatch', 'selection.startTimeRef', 'must match Quote Offer startTimeRef');
     } else if (txStateAtLeastQuote(item.state)) {
       issue(issues, 'quote_required', 'quote', `${item.state} requires a Quote`);
     }
