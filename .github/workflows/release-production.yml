@@ -8,6 +8,15 @@ on:
         required: true
         type: boolean
         default: true
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'source/**'
+      - 'migrations/**'
+      - 'build.mjs'
+      - 'package.json'
+      - 'wrangler.jsonc'
 
 concurrency:
   group: lovetravel-release-production
@@ -27,7 +36,7 @@ jobs:
     secrets: inherit
 
   booking-ui:
-    if: ${{ inputs.run_booking_ui_smoke }}
+    if: ${{ github.event_name == 'push' || inputs.run_booking_ui_smoke }}
     needs: post-deploy
     uses: ./.github/workflows/booking-ui-browser.yml
     secrets: inherit
