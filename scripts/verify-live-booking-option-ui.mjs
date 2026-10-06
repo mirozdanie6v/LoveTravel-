@@ -8,9 +8,9 @@ function invariant(value,message){
 }
 
 const watchdog=setTimeout(()=>{
-  console.error('booking option smoke exceeded 150s');
+  console.error('booking option smoke exceeded 60s');
   process.exit(124);
-},150000);
+},60000);
 
 const browser=await chromium.launch({headless:true});
 try{
@@ -76,7 +76,7 @@ try{
     const id=String(screen?.dataset.ltDomainProduct||'');
     return allowed.includes(id) &&
       Boolean(screen.querySelector('.lt-booking-config [data-lt-step="option"]'));
-  },[...allowedProducts],{timeout:50000});
+  },[...allowedProducts],{timeout:20000});
 
   const productId=String(await page.locator('#tourScreen').getAttribute('data-lt-domain-product')||'');
   invariant(allowedProducts.has(productId),'Unexpected product opened: '+productId);
