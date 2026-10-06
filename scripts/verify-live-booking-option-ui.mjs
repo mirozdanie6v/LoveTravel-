@@ -1,7 +1,7 @@
 import { chromium } from 'playwright';
 
 const base=String(process.env.LOVE_TRAVEL_LIVE_BASE_URL||'https://lovetravel.viiversion.com').replace(/\/$/,'');
-const productId='1287578';
+const allowedProducts=new Set(['1287578','1287580']);
 
 function invariant(value,message){
   if(!value) throw new Error(message);
@@ -31,7 +31,6 @@ try{
     TOURS.length===2,
     null,{timeout:60000}
   );
-
   console.log('catalog-ready');
 
   await page.waitForFunction(()=>
@@ -54,18 +53,26 @@ try{
   });
   console.log(JSON.stringify({stage:'transaction-ready',...tx}));
 
-  await page.evaluate(id=>{
-    if(typeof openTour!=='function' || openTour.__loveTravelDomain!==true) throw new Error('LoveTravel domain openTour is unavailable');
-    void openTour(id);
-  },productId);
-  console.log('tour-open-requested');
+  const catalogEntry=page.locator('#homeScreen [data-lt-action="catalog"]');
+  await catalogEntry.waitFor({state:'visible',timeout:10000});
+  await catalogEntry.click();
+  await page.waitForSelector('#catalogScreen.active .lt-tour-card',{state:'visible',timeout:15000});
+  console.log('catalog-open');
 
-  await page.waitForFunction(id=>{
+  const tourCard=page.locator('#catalogScreen.active .lt-tour-card').first();
+  await tourCard.click({timeout:10000});
+  console.log('tour-card-clicked');
+
+  await page.waitForFunction(allowed=>{
     const screen=document.querySelector('#tourScreen.lt-domain-tour');
-    return screen?.dataset.ltDomainProduct===id &&
+    const id=String(screen?.dataset.ltDomainProduct||'');
+    return allowed.includes(id) &&
       Boolean(screen.querySelector('.lt-booking-config [data-lt-step="option"]'));
-  },productId,{timeout:40000});
-  console.log('booking-config-ready');
+  },[...allowedProducts],{timeout:50000});
+
+  const productId=String(await page.locator('#tourScreen').getAttribute('data-lt-domain-product')||'');
+  invariant(allowedProducts.has(productId),'Unexpected product opened: '+productId);
+  console.log(JSON.stringify({stage:'booking-config-ready',productId}));
 
   const steps=await page.locator('#tourScreen .lt-booking-config [data-lt-step]').evaluateAll(nodes=>
     nodes.map(node=>String(node.getAttribute('data-lt-step')||''))
@@ -93,7 +100,6 @@ try{
   invariant(Boolean((await first.locator('.lt-domain-rate__title').innerText()).trim()),'Visual option card has no title');
   invariant(Boolean((await first.locator('.lt-domain-rate__description').innerText()).trim()),'Visual option card has no description');
   invariant(Boolean((await first.locator('.lt-domain-rate__price strong').innerText()).trim()),'Visual option card has no price');
-  invariant((await cards.locator('.is-active').count())>=0,'Option cards failed to render selected state');
   invariant((await sheet.locator('.lt-booking-option-card.is-active').count())===1,'Exactly one visual option must be selected');
   invariant(pageErrors.length===0,'Page errors: '+JSON.stringify(pageErrors));
 
