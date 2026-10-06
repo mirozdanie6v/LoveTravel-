@@ -146,10 +146,10 @@
 
   function currentCatalogLocale(){
     const localized=globalThis.LoveTravelTourLocale?.locale?.();
-    if(['ru','vi','en','ko'].includes(localized)) return localized;
+    if(['ru','vi','en','ko','zh'].includes(localized)) return localized;
     try {
       const stored=String(localStorage.getItem('max-tour-locale-v1')||'').toLowerCase();
-      if(['ru','vi','en','ko'].includes(stored)) return stored;
+      if(['ru','vi','en','ko','zh'].includes(stored)) return stored;
     } catch (_) {}
     return 'ru';
   }
