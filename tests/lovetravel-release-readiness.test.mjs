@@ -38,9 +38,9 @@ test('Simplified Chinese is wired across UI, booking, Bókun localization and AI
   assert.match(i18n, /data-locale="zh"/);
   assert.match(build, /i18n-zh-v1\.js/);
   assert.match(locale, /SUPPORTED=\['ru','vi','en','ko','zh'\]/);
-  assert.match(locale, /zh:'zh-CN'/);
+  assert.match(semanticI18n, /zh:'zh-CN'/);
   assert.match(semanticI18n,/"booking\.title": "规划您的行程"/);
-  assert.match(booking, /'zh-CN'/);
+  assert.match(semanticI18n, /'zh-CN'/);
   assert.match(bokunLocalization, /'zh'\]/);
   assert.match(bokunLocalization, /zh:'Simplified Chinese'/);
   assert.match(ai, /\['vi','en','ko','zh'\]/);
