@@ -134,6 +134,7 @@ export async function handleTravelTransactionApi(request,env,url=new URL(request
         expectedRevision:revision,
         quoteId,
         quoteRevision,
+        demoToken:String(body.demoToken||'').trim(),
       });
       return withSalesSession(json({
         ok:true,
@@ -152,6 +153,7 @@ export async function handleTravelTransactionApi(request,env,url=new URL(request
       result=await executeBookingSession(env,transaction.transactionId,{
         action:'RECONCILE',
         expectedRevision:revision,
+        demoToken:String(body.demoToken||'').trim(),
       });
       return withSalesSession(json({
         ok:true,

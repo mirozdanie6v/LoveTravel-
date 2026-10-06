@@ -51,16 +51,35 @@ test('BookingSession identity is bound to exactly one BookingTransaction',async(
   );
 });
 
-test('BookingSession provider credential comes from Worker env, never request payload',()=>{
-  const configured=new BookingSession(fakeState('txn-a'),{
-    LOVE_TRAVEL_CLIENT_DEMO_TOKEN:'server-secret',
+test('BookingSession accepts only the already-validated demo token forwarded by the transaction API',async()=>{
+  const session=new BookingSession(fakeState('txn-a'),{});
+  let seenToken='';
+  session.runtime=()=>({
+    async reserve(args){
+      seenToken=args.demoToken;
+      return {transaction:{transactionId:'txn-a'}};
+    },
   });
-  assert.equal(configured.demoToken(),'server-secret');
 
-  const missing=new BookingSession(fakeState('txn-a'),{});
-  assert.throws(
-    ()=>missing.demoToken(),
-    error=>error.code==='demo_provider_credential_missing'&&error.status===503,
+  await session.perform({
+    action:'RESERVE',
+    transactionId:'txn-a',
+    expectedRevision:3,
+    quoteId:'quote-a',
+    quoteRevision:1,
+    demoToken:'validated-one-time-token',
+  });
+  assert.equal(seenToken,'validated-one-time-token');
+
+  await assert.rejects(
+    ()=>session.perform({
+      action:'RESERVE',
+      transactionId:'txn-a',
+      expectedRevision:3,
+      quoteId:'quote-a',
+      quoteRevision:1,
+    }),
+    error=>error.code==='demo_token_required'&&error.status===403,
   );
 });
 

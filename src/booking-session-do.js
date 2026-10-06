@@ -72,12 +72,12 @@ export class BookingSession {
     return bound;
   }
 
-  demoToken(){
-    const token=String(this.env.LOVE_TRAVEL_CLIENT_DEMO_TOKEN||'').trim();
+  requireDemoToken(value){
+    const token=String(value||'').trim();
     if(!token){
-      const error=new Error('LoveTravel client demo provider credential is not configured');
-      error.code='demo_provider_credential_missing';
-      error.status=503;
+      const error=new Error('Validated LoveTravel demo token is required');
+      error.code='demo_token_required';
+      error.status=403;
       throw error;
     }
     return token;
@@ -142,7 +142,7 @@ export class BookingSession {
         expectedRevision:Number(body?.expectedRevision),
         quoteId:String(body?.quoteId||''),
         quoteRevision:Number(body?.quoteRevision),
-        demoToken:this.demoToken(),
+        demoToken:this.requireDemoToken(body?.demoToken),
       });
       await this.state.storage.put('last-known-transaction',result.transaction);
       return result;
@@ -151,7 +151,7 @@ export class BookingSession {
       const result=await runtime.reconcile({
         transactionId,
         expectedRevision:Number(body?.expectedRevision),
-        demoToken:this.demoToken(),
+        demoToken:this.requireDemoToken(body?.demoToken),
       });
       await this.state.storage.put('last-known-transaction',result.transaction);
       return result;
