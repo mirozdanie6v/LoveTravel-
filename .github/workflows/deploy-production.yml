@@ -1,28 +1,12 @@
 name: Deploy LoveTravel production
-# visual-booking-options production release 2026-10-06T19:08Z
-# recovery single-demo-credential release 2026-10-06
-# VII-119 Hangul normalization release 2026-10-06
-# VII-119 explicit-intent fallback release 2026-10-06
-# VII-119 bound-D1 bootstrap retry 2026-10-06
-# VII-119 production release 2026-10-06
-# zh-pier-chinese-only release 2026-10-06
-# meeting-point-render-localization release 2026-10-06
-# final-zh-meeting-point release 2026-10-06
-# retry-partial-zh-json production release 2026-10-06
-# deploy stale-locale SWR protection 2026-10-06
-# complete-zh-localization production release 2026-10-06
-# zh catalog locale hotfix release 2026-10-06
-# semantic i18n core release 2026-10-06
-# nonblocking translation release 2026-10-05T15:56Z
-# multilingual production release 2026-10-05T15:20Z
-# localization quality release v2
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/deploy-production.yml'
+  workflow_call:
+
+concurrency:
+  group: lovetravel-production-deploy
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -30,7 +14,7 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 12
     env:
       CF_TOKEN_1: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CF_TOKEN_2: ${{ secrets.CF_API_TOKEN }}
@@ -43,21 +27,18 @@ jobs:
       CF_ACCOUNT_3: ${{ secrets.VIIVERSION_CLOUDFLARE_ACCOUNT_ID }}
       CF_ACCOUNT_4: ${{ secrets.CLOUDFLARE_PROD_ACCOUNT_ID }}
     steps:
-      - name: Checkout LoveTravel
-        uses: actions/checkout@v5
-        with:
-          path: lovetravel
-
-      - name: Checkout integration service
-        uses: actions/checkout@v5
-        with:
-          repository: mirozdanie6v/viiversion
-          ref: main
-          path: viiversion
+      - uses: actions/checkout@v5
 
       - uses: actions/setup-node@v5
         with:
           node-version: '22'
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: npm-${{ runner.os }}-${{ hashFiles('package.json') }}
+          restore-keys: |
+            npm-${{ runner.os }}-
 
       - name: Resolve Cloudflare credential
         shell: bash
@@ -68,38 +49,35 @@ jobs:
             value="${!name:-}"
             [ -n "$value" ] || continue
             echo "::add-mask::$value"
-            code="$(curl -sS -o /tmp/cf-verify.json -w '%{http_code}'               'https://api.cloudflare.com/client/v4/user/tokens/verify'               -H "Authorization: Bearer $value"               -H 'Content-Type: application/json' || true)"
+            code="$(curl --silent --show-error --max-time 15 -o /tmp/cf-verify.json -w '%{http_code}'               https://api.cloudflare.com/client/v4/user/tokens/verify               -H "Authorization: Bearer $value"               -H 'Content-Type: application/json' || true)"
             status="$(jq -r '.result.status // ""' /tmp/cf-verify.json 2>/dev/null || true)"
             if [ "$code" = "200" ] && [ "$status" = "active" ]; then
               chosen="$value"
-              echo "Selected a valid Cloudflare token from LoveTravel repository secrets."
               break
             fi
           done
           test -n "$chosen"
 
-          zone="$(curl -fsS             'https://api.cloudflare.com/client/v4/zones?name=viiversion.com'             -H "Authorization: Bearer $chosen"             -H 'Content-Type: application/json')"
+          zone="$(curl --fail --silent --show-error --max-time 15             'https://api.cloudflare.com/client/v4/zones?name=viiversion.com'             -H "Authorization: Bearer $chosen"             -H 'Content-Type: application/json')"
           account_id="$(echo "$zone" | jq -r '.result[]? | select(.name=="viiversion.com") | .account.id' | head -n1)"
-          zone_id="$(echo "$zone" | jq -r '.result[]? | select(.name=="viiversion.com") | .id' | head -n1)"
           test -n "$account_id"
-          test -n "$zone_id"
 
           echo "::add-mask::$chosen"
           {
             echo "CLOUDFLARE_API_TOKEN=$chosen"
             echo "CLOUDFLARE_ACCOUNT_ID=$account_id"
-            echo "VIIVERSION_ZONE_ID=$zone_id"
           } >> "$GITHUB_ENV"
-          echo "Resolved Cloudflare account and viiversion.com zone from LoveTravel secrets."
 
-      - name: Deploy integration service first
-        working-directory: viiversion/integration-service
+      - name: Install dependencies
+        run: npm install --no-fund --no-audit
+
+      - name: Build release
+        run: npm run build
+
+      - name: Deploy LoveTravel only
         shell: bash
         run: |
           set -euo pipefail
-          npm install --no-fund --no-audit
-          npm run typecheck
-          npm test
           node <<'NODE'
           const fs=require('fs');
           const cfg=JSON.parse(fs.readFileSync('wrangler.jsonc','utf8'));
@@ -107,82 +85,3 @@ jobs:
           fs.writeFileSync('wrangler.release.jsonc',JSON.stringify(cfg,null,2)+'\n');
           NODE
           npx wrangler deploy --config wrangler.release.jsonc
-
-      - name: Verify integration
-        shell: bash
-        run: |
-          set -euo pipefail
-          curl -fsS 'https://integration.viiversion.com/api/bokun/status?vendorId=137689' > /tmp/status.json
-          jq -e '.ok == true and .oauthConnected == true and .restCredentialsReady == true and .vendorId == "137689"' /tmp/status.json >/dev/null
-          code="$(curl -sS -o /tmp/no-token.txt -w '%{http_code}' -X POST             'https://integration.viiversion.com/internal/lovetravel/bokun/demo-submit?vendorId=137689&currency=USD'             -H 'content-type: application/json' --data '{}')"
-          test "$code" = 401
-
-      - name: Deploy LoveTravel
-        working-directory: lovetravel
-        shell: bash
-        run: |
-          set -euo pipefail
-          npm install --no-fund --no-audit
-          npm run check
-          node <<'NODE'
-          const fs=require('fs');
-          const cfg=JSON.parse(fs.readFileSync('wrangler.jsonc','utf8'));
-          delete cfg.routes;
-          fs.writeFileSync('wrangler.release.jsonc',JSON.stringify(cfg,null,2)+'\n');
-          NODE
-          npx wrangler deploy --config wrangler.release.jsonc
-
-      - name: Warm native Bókun translations
-        shell: bash
-        run: |
-          set -euo pipefail
-          locales=(vi zh ko)
-
-          # Trigger all target locales first so translation work can progress
-          # while the workflow polls readiness.
-          for locale in "${locales[@]}"; do
-            curl -fsS "https://lovetravel.viiversion.com/api/bokun/tours?locale=$locale" > "/tmp/warm-$locale.json"
-          done
-
-          ready=0
-          for attempt in $(seq 1 80); do
-            all_ready=1
-            echo "Localization warm-up attempt $attempt"
-            for locale in "${locales[@]}"; do
-              curl -fsS "https://lovetravel.viiversion.com/api/bokun/tours?locale=$locale" > "/tmp/warm-$locale.json"
-              echo -n "$locale "
-              jq -c '[.tours[] | {id,source:.localization.source,pending:.localization.pendingFields}]' "/tmp/warm-$locale.json"
-              if ! jq -e '
-                .ok == true
-                and (.tours | length == 2)
-                and ([.tours[].localization.pendingFields // 999] | all(. == 0))
-                and ([.tours[].localization.source // ""] | all(. == "viiversion-cache"))
-              ' "/tmp/warm-$locale.json" >/dev/null; then
-                all_ready=0
-              fi
-            done
-            if [ "$all_ready" = 1 ]; then
-              ready=1
-              break
-            fi
-            sleep 6
-          done
-          test "$ready" = 1
-
-      - name: Verify live client release
-        shell: bash
-        run: |
-          set -euo pipefail
-          for locale in ru en vi zh ko; do
-            curl -fsS "https://lovetravel.viiversion.com/api/bokun/tours?locale=$locale" > "/tmp/tours-$locale.json"
-            jq -e '.ok == true and .source == "bokun" and .vendorId == "137689" and ([.tours[].id]|sort) == ["1287578","1287580"]' "/tmp/tours-$locale.json" >/dev/null
-          done
-          curl -fsS -X POST 'https://lovetravel.viiversion.com/api/ai/chat' \
-            -H 'content-type: application/json' \
-            -H 'x-max-tour-locale: en' \
-            --data '{"locale":"en","message":"Two adults, tomorrow, snorkeling, pickup from Oceanus."}' \
-            > /tmp/travel-commerce-ai.json
-          jq -e '.ok == true and .agent.version == "travel-commerce-sales-v1" and .agent.mutationExecuted == false' /tmp/travel-commerce-ai.json >/dev/null
-
-          code="$(curl -sS -o /tmp/app-no-token.json -w '%{http_code}' -X POST             'https://lovetravel.viiversion.com/api/bokun/client-demo/submit'             -H 'content-type: application/json' --data '{}')"
-          test "$code" = 403

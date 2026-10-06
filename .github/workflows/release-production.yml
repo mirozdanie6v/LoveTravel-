@@ -1,0 +1,33 @@
+name: Release LoveTravel production
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_booking_ui_smoke:
+        description: Run the read-only booking UI browser smoke after deployment
+        required: true
+        type: boolean
+        default: true
+
+concurrency:
+  group: lovetravel-release-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    uses: ./.github/workflows/deploy-production.yml
+    secrets: inherit
+
+  post-deploy:
+    needs: deploy
+    uses: ./.github/workflows/post-deploy-smoke.yml
+    secrets: inherit
+
+  booking-ui:
+    if: ${{ inputs.run_booking_ui_smoke }}
+    needs: post-deploy
+    uses: ./.github/workflows/booking-ui-browser.yml
+    secrets: inherit

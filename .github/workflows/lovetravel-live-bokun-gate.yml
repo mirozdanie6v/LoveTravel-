@@ -7,17 +7,23 @@ on:
         description: Deployed LoveTravel base URL
         required: true
         default: https://lovetravel.viiversion.com
-  push:
-    branches:
-      - 'mirozdanie6v/vii-119-build-multilingual-transactional-e2e-and-real-bokun-demo'
-    paths:
-      - '.github/LIVE_BOKUN_GATE'
+        type: string
+      confirm_real_booking:
+        description: I understand this creates exactly one real Bókun booking
+        required: true
+        default: false
+        type: boolean
+
+concurrency:
+  group: lovetravel-real-bokun-booking
+  cancel-in-progress: false
 
 permissions:
   contents: read
 
 jobs:
   live-bokun-gate:
+    if: ${{ inputs.confirm_real_booking }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
