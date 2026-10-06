@@ -7,6 +7,11 @@ on:
         description: Deployed LoveTravel base URL
         required: true
         default: https://lovetravel.viiversion.com
+  push:
+    branches:
+      - 'mirozdanie6v/vii-119-build-multilingual-transactional-e2e-and-real-bokun-demo'
+    paths:
+      - '.github/LIVE_BOKUN_GATE'
 
 permissions:
   contents: read
@@ -15,7 +20,6 @@ jobs:
   live-bokun-gate:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    environment: lovetravel-demo
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -23,7 +27,7 @@ jobs:
           node-version: '22'
       - name: Run one real transaction-backed Bókun demo booking
         env:
-          LOVE_TRAVEL_LIVE_BASE_URL: ${{ inputs.base_url }}
+          LOVE_TRAVEL_LIVE_BASE_URL: ${{ inputs.base_url || 'https://lovetravel.viiversion.com' }}
           LOVE_TRAVEL_DEMO_TOKEN: ${{ secrets.LOVE_TRAVEL_DEMO_TOKEN }}
           LIVE_BOKUN_WRITE: '1'
         run: node scripts/verify-live-travel-commerce.mjs
