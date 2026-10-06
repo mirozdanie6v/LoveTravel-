@@ -1,3 +1,4 @@
+# retry after hero DOM assertion fix 2026-10-06
 name: Resume LoveTravel client AI acceptance
 
 on:
