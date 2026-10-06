@@ -18,6 +18,7 @@ import {
   syncAllDomainLocales,
 } from './bokun-content-localization.js';
 import { createBokunProvider } from './bokun-provider.js';
+import { handleLoveTravelSalesAgent } from './travel-sales-orchestrator.js';
 
 const CONTENT_TYPES = {
   jpg: 'image/jpeg',
@@ -626,13 +627,11 @@ export default {
     if (bookingSelectionResponse) return bookingSelectionResponse;
     const bokunToursResponse = await handleLoveTravelBokunTours(request, env, url, ctx);
     if (bokunToursResponse) return bokunToursResponse;
-    // LoveTravel AI must use exactly the same two live Bókun products as the
-    // public catalogue in every language. Bypass the legacy MAX TOUR
-    // fast-path/orchestrator stack so no static demo catalogue can leak into
-    // customer recommendations.
-    if (url.pathname === '/api/ai/chat' && request.method === 'POST') {
-      return baseWorker.fetch(request, env, ctx);
-    }
+    // LoveTravel customer AI is now the typed Travel Commerce Sales Agent.
+    // It receives verified capability evidence and cannot invoke provider
+    // mutations from model authority.
+    const salesAgentResponse = await handleLoveTravelSalesAgent(request, env, url);
+    if (salesAgentResponse) return salesAgentResponse;
     const orchestrated = await orchestrateAiRequest(request, env, url);
     if (orchestrated) return orchestrated;
     const selectionResponse = await selectionFastPath(request, url);
