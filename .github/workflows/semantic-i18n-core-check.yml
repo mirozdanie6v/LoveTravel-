@@ -10,6 +10,7 @@ on:
       - zh-stale-cache-swr
       - fix-zh-partial-translation-retry
       - fix-zh-meeting-point-name
+      - fix-meeting-point-render-localization
   workflow_dispatch:
 
 jobs:
