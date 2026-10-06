@@ -156,6 +156,30 @@ test('invalid Conversation Intelligence output falls back to explicit non-mutati
   assert.deepEqual(result.patch,{locale:'en'});
 });
 
+test('Conversation Intelligence fails soft when Workers AI exceeds its time budget',async()=>{
+  const env={
+    TRAVEL_INTENT_AI_TIMEOUT_MS:'5',
+    AI:{run(){return new Promise(()=>{});}},
+  };
+  const started=Date.now();
+  const result=await extractConversationIntent({
+    env,
+    message:'Two adults, tomorrow, snorkeling, pickup from Oceanus. We want to book it.',
+    currentIntent:createInitialTravelIntent('en'),
+    locale:'en',
+    products:[{
+      product:{productId:'love-travel-hon-mun',title:'Hòn Mun Marine Park Snorkeling'},
+    }],
+    now:new Date('2026-10-06T12:00:00.000Z'),
+  });
+  assert.ok(Date.now()-started<500);
+  assert.equal(result.source,'deterministic-explicit');
+  assert.equal(result.patch.dateConstraint.exact,'2026-10-07');
+  assert.equal(result.patch.party.adults,2);
+  assert.equal(result.patch.hotel,'Oceanus');
+  assert.equal(result.bookingRequested,true);
+});
+
 const explicitFallbackCases=[
   {
     locale:'en',
@@ -279,6 +303,31 @@ test('grounded Sales Intelligence may quote exactly the verified Offer price',as
   assert.equal(plan.source,'workers-ai-grounded-sales');
   assert.equal(plan.recommendedProductId,'love-travel-hon-mun');
   assert.match(plan.reply,/\$98/);
+});
+
+test('grounded Sales Intelligence fails soft when response generation exceeds its time budget',async()=>{
+  const evidence=[productEvidence(),offerEvidence(98)];
+  const env={
+    TRAVEL_SALES_AI_TIMEOUT_MS:'5',
+    AI:{run(){return new Promise(()=>{});}},
+  };
+  const intent=mergeIntentPatch(createInitialTravelIntent('en'),{
+    dateConstraint:{kind:'EXACT',exact:'2026-10-07'},
+    party:{adults:2},
+  });
+  const started=Date.now();
+  const plan=await composeGroundedSalesPlan({
+    env,
+    message:'What would you recommend?',
+    locale:'en',
+    intent,
+    evidence,
+    goal:'DISCOVER',
+  });
+  assert.ok(Date.now()-started<500);
+  assert.equal(plan.source,'deterministic-grounded-fallback');
+  assert.equal(plan.selectedOfferId,'offer-1');
+  assert.match(plan.reply,/98 USD/);
 });
 
 test('ungrounded Sales Intelligence output is replaced by deterministic verified fallback',async()=>{
