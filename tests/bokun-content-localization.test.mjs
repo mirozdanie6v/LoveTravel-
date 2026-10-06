@@ -203,3 +203,17 @@ test('translation prompt enforces native tourism terminology', async () => {
   assert.match(koreanSystem,/Avoid “좌석”/);
   assert.match(koreanSystem,/avoid technical words such as “구성”/);
 });
+
+
+test('native profile upgrade preserves stable Russian cache while requiring v4 for VI ZH KO', () => {
+  const v3='workers-ai:gemma-4-26b-a4b-it:v3';
+  const v4='workers-ai:gemma-4-26b-a4b-it:v4-native-travel';
+  assert.equal(_localizationTest.translationProvider('ru'),v3);
+  assert.equal(_localizationTest.translationProvider('vi'),v4);
+  assert.equal(_localizationTest.translationProvider('zh'),v4);
+  assert.equal(_localizationTest.translationProvider('ko'),v4);
+  assert.equal(_localizationTest.acceptedTranslationProvider('ru',v3),true);
+  assert.equal(_localizationTest.acceptedTranslationProvider('ru',v4),true);
+  assert.equal(_localizationTest.acceptedTranslationProvider('zh',v3),false);
+  assert.equal(_localizationTest.acceptedTranslationProvider('zh',v4),true);
+});
