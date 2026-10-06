@@ -463,6 +463,9 @@ export async function composeGroundedSalesPlan({
   goal='GENERAL',
 }={}){
   const fallback=deterministicSalesFallback({locale,intent,evidence});
+  if(['ASK_DATE','ASK_PARTY'].includes(fallback.action)){
+    return {...fallback,source:'deterministic-grounded-fallback'};
+  }
   if(!env?.AI||!str(message,1200)||!evidence.length) return {...fallback,source:'deterministic-grounded-fallback'};
 
   const evidenceView=evidence.map(packet=>({
