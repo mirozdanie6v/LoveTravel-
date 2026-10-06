@@ -188,6 +188,8 @@ test('translation prompt enforces native tourism terminology', async () => {
   assert.match(system,/旅行社/);
   assert.match(system,/可订情况/);
   assert.match(system,/Never use telecom-style “运营商”/);
+  assert.match(system,/Marine Park\/Marine Protected Area -> 海洋保护区/);
+  assert.match(system,/Use 芽庄 for Nha Trang/);
 
   const DB2=new FakeDB();
   let koreanSystem='';
@@ -205,15 +207,17 @@ test('translation prompt enforces native tourism terminology', async () => {
 });
 
 
-test('native profile upgrade preserves stable Russian cache while requiring v4 for VI ZH KO', () => {
+test('native profile upgrade preserves stable caches and requires v5 only for ZH', () => {
   const v3='workers-ai:gemma-4-26b-a4b-it:v3';
   const v4='workers-ai:gemma-4-26b-a4b-it:v4-native-travel';
+  const v5='workers-ai:gemma-4-26b-a4b-it:v5-complete-locale';
   assert.equal(_localizationTest.translationProvider('ru'),v3);
   assert.equal(_localizationTest.translationProvider('vi'),v4);
-  assert.equal(_localizationTest.translationProvider('zh'),v4);
+  assert.equal(_localizationTest.translationProvider('zh'),v5);
   assert.equal(_localizationTest.translationProvider('ko'),v4);
   assert.equal(_localizationTest.acceptedTranslationProvider('ru',v3),true);
   assert.equal(_localizationTest.acceptedTranslationProvider('ru',v4),true);
   assert.equal(_localizationTest.acceptedTranslationProvider('zh',v3),false);
-  assert.equal(_localizationTest.acceptedTranslationProvider('zh',v4),true);
+  assert.equal(_localizationTest.acceptedTranslationProvider('zh',v4),false);
+  assert.equal(_localizationTest.acceptedTranslationProvider('zh',v5),true);
 });
