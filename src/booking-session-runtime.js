@@ -1,6 +1,8 @@
 import {
+  CONTRACT_SCHEMA_VERSIONS,
   ContractError,
   validateBookingTransaction,
+  validateCommandReceipt,
 } from './travel-commerce-contracts.js';
 import {
   applyProviderOutcome,
@@ -62,7 +64,7 @@ function canonicalProviderBooking(raw,now=new Date()){
     providerRef:bokunProviderRef('BOOKING',confirmationCode),
     confirmationCode,
     status,
-    confirmedAt:(now instanceof Date?now:new Date(now)).toISOString(),
+    ...(status==='CONFIRMED'?{confirmedAt:(now instanceof Date?now:new Date(now)).toISOString()}:{}),
   };
 }
 
@@ -74,6 +76,22 @@ function classifySubmitFailure(error){
   }
   if(error instanceof BookingSessionRuntimeError && error.status<500) return 'FAILED';
   return 'AMBIGUOUS';
+}
+
+function rejectedReceipt(command,transaction,errorCode,now=new Date()){
+  const tx=validateBookingTransaction(transaction);
+  const instant=now instanceof Date?now:new Date(now);
+  return validateCommandReceipt({
+    schemaVersion:CONTRACT_SCHEMA_VERSIONS.CommandReceipt,
+    commandId:command.commandId,
+    transactionId:tx.transactionId,
+    revisionBefore:tx.revision,
+    revisionAfter:tx.revision,
+    status:'REJECTED',
+    providerEvidenceRefs:[],
+    errorCode:str(errorCode)||'command_rejected',
+    createdAt:instant.toISOString(),
+  });
 }
 
 async function assertFreshApprovedCommerce(transaction,provider){
@@ -274,11 +292,12 @@ export function createBookingSessionRuntime({
     try{
       prepared=await prepareProviderReservation(before,provider,reference);
     }catch(error){
-      const rejected=executeTransactionCommand(before,command,{now:now()});
-      const receipt={
-        ...rejected.receipt,
-        errorCode:error?.code||'provider_revalidation_failed',
-      };
+      const receipt=rejectedReceipt(
+        command,
+        before,
+        error?.code||'provider_revalidation_failed',
+        now(),
+      );
       const persisted=await store.persistRejectedCommand({
         transaction:before,
         receipt,
