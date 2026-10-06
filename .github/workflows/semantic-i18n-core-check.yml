@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - semantic-i18n-core
+      - linguistic-qa-native-copy
   workflow_dispatch:
 
 jobs:

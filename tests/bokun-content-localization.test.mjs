@@ -171,3 +171,35 @@ test('background translation jobs are serialized to avoid Workers AI contention'
   await Promise.all([first,second]);
   assert.deepEqual(order,['first:start','first:end','second:start','second:end']);
 });
+
+
+test('translation prompt enforces native tourism terminology', async () => {
+  let system='';
+  const DB=new FakeDB();
+  const AI={
+    async run(_model,input){
+      system=String(input.messages?.[0]?.content||'');
+      const payload=JSON.parse(input.messages.at(-1).content);
+      return {response:JSON.stringify(Object.fromEntries(Object.keys(payload).map(key=>[key,'translated'])))};
+    }
+  };
+  await syncDomainTranslations(sampleDomain(),{DB,AI,BOKUN_TRANSLATION_MODEL:'test-model'},'zh');
+  assert.match(system,/consumer travel-platform language/);
+  assert.match(system,/旅行社/);
+  assert.match(system,/可订情况/);
+  assert.match(system,/Never use telecom-style “运营商”/);
+
+  const DB2=new FakeDB();
+  let koreanSystem='';
+  const AI2={
+    async run(_model,input){
+      koreanSystem=String(input.messages?.[0]?.content||'');
+      const payload=JSON.parse(input.messages.at(-1).content);
+      return {response:JSON.stringify(Object.fromEntries(Object.keys(payload).map(key=>[key,'번역'])))};
+    }
+  };
+  await syncDomainTranslations(sampleDomain(),{DB:DB2,AI:AI2,BOKUN_TRANSLATION_MODEL:'test-model'},'ko');
+  assert.match(koreanSystem,/예약 가능 여부/);
+  assert.match(koreanSystem,/Avoid “좌석”/);
+  assert.match(koreanSystem,/avoid technical words such as “구성”/);
+});

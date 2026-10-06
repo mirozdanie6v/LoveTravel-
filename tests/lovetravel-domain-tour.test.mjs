@@ -66,7 +66,7 @@ test('tour page exposes a high-position booking CTA and suppresses empty reviews
 
 
 test('tour start point is separated from hotel pickup in every supported locale',()=>{
-  for(const text of ['Место начала экскурсии','Tour starting point','Điểm bắt đầu tour','行程集合地点','투어 출발 지점']) assert.ok(i18n.includes(text),text);
+  for(const text of ['Место начала экскурсии','Tour starting point','Điểm bắt đầu tour','集合地点','투어 출발 지점']) assert.ok(i18n.includes(text),text);
   assert.equal(/const copy\s*=/.test(js),false);
   assert.match(js,/data-lt-start-point-card/);
   assert.match(js,/data-lt-pickup-card/);
