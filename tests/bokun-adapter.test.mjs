@@ -178,3 +178,26 @@ test('domain fetch includes pickup places only when explicitly requested', async
   assert.equal(domains[0].experience.pickup.places[0].title,'Thien Anh Hotel');
   assert.equal(domains[0].experience.pickup.places[0].askForRoomNumber,true);
 });
+
+
+test('provider reads are aborted when the integration exceeds the configured budget', async () => {
+  const fakeFetch = async (_url, init = {}) => new Promise((resolve, reject) => {
+    if (init.signal?.aborted) {
+      reject(new DOMException('Aborted','AbortError'));
+      return;
+    }
+    init.signal?.addEventListener('abort', () => reject(new DOMException('Aborted','AbortError')), { once:true });
+  });
+
+  await assert.rejects(
+    fetchLoveTravelBokunDomains({
+      fetchImpl:fakeFetch,
+      baseUrl:'https://integration.example',
+      productIds:['1287578'],
+      start:'2026-10-07',
+      end:'2026-10-07',
+      requestTimeoutMs:5,
+    }),
+    error => error?.code === 'bokun_integration_timeout'
+  );
+});

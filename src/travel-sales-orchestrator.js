@@ -190,7 +190,9 @@ export function createLoveTravelSalesOrchestrator({
       start:date||undefined,
       end:date||undefined,
       lang:'EN',
-      includePickupPlaces:true,
+      // Product discovery does not need the ~900-place pickup directory.
+      // Load pickup places only once we have a concrete dated offer to resolve.
+      includePickupPlaces:false,
     },{principal:'ORCHESTRATOR'});
 
     const extracted=await extractConversationIntent({

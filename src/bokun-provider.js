@@ -476,6 +476,7 @@ export function createBokunProvider({
   productIds=LOVE_TRAVEL_BOKUN_PRODUCT_IDS,
   canonicalProductIds=LOVE_TRAVEL_CANONICAL_PRODUCT_IDS,
   bookingTestToken='',
+  readTimeoutMs=20000,
   now=()=>new Date(),
 }={}){
   if(typeof fetchImpl!=='function') throw new TypeError('fetch implementation is required');
@@ -498,6 +499,7 @@ export function createBokunProvider({
       currency:options.currency||'USD',
       lang:options.lang||'EN',
       includePickupPlaces:Boolean(options.includePickupPlaces),
+      requestTimeoutMs:readTimeoutMs,
     });
   }
 
