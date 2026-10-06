@@ -464,6 +464,8 @@ export async function syncAllDomainLocales(domains, env) {
 
 export const _localizationTest = {
   cleanLocale,
+  translationProvider,
+  acceptedTranslationProvider,
   pathSet,
   parseJsonObject,
   chunks,
