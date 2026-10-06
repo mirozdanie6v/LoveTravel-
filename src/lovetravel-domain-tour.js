@@ -240,7 +240,7 @@
       (points.length||meetingType?'<div class="lt-domain-info" data-lt-start-point-card><span class="lt-domain-eyebrow">'+esc(t().meeting)+'</span>'+
         '<p class="lt-domain-transport-note">'+esc(t().meetingNote)+'</p>'+
         (!points.length&&meetingType?'<div class="lt-domain-info__row"><b>'+esc(meetingType)+'</b></div>':'')+
-        points.map(point=>'<div class="lt-domain-info__row"><b>'+esc(point.title || point.addressLine1 || '')+'</b><span>'+esc([point.addressLine1,point.city,point.state].filter(Boolean).join(', '))+'</span></div>').join('')+'</div>':'')+
+        points.map(point=>'<div class="lt-domain-info__row"><b>'+esc(providerText(point.title || point.addressLine1 || ''))+'</b><span>'+esc([point.addressLine1,point.city,point.state].filter(Boolean).join(', '))+'</span></div>').join('')+'</div>':'')+
       (pickup?'<div class="lt-domain-info" data-lt-pickup-card><span class="lt-domain-eyebrow">'+esc(t().pickup)+'</span><div class="lt-domain-info__row"><b>'+esc(pickup)+'</b></div>'+
         '<div class="lt-domain-info__row lt-domain-selected-pickup" data-lt-selected-pickup hidden><span>'+esc(t().selectedPickup)+'</span><b data-lt-selected-pickup-value></b></div>'+
         (pickupTiming?'<div class="lt-domain-info__row"><span>'+esc(t().pickupTiming)+'</span><b>'+esc(pickupTiming)+'</b></div>':'')+
