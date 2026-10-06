@@ -67,7 +67,7 @@ jobs:
               return {
                 title:document.title,
                 logo:logo?.src || '',
-                heroText:hero?.innerText || '',
+                heroText:hero?.textContent || '',
                 heroImage:getComputedStyle(hero).backgroundImage,
                 branded:document.documentElement.classList.contains('love-travel-branded'),
               };
