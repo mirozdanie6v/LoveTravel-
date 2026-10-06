@@ -241,7 +241,8 @@
       "many": "{count} минут",
       "other": "{count} минуты"
     },
-    "provider.nhaTrang": "Нячанг"
+    "provider.nhaTrang": "Нячанг",
+    "provider.nhaTrangTouristPier": "Туристический причал Нячанга (Bến Tàu Du Lịch Nha Trang)"
   },
   "vi": {
     "tour.back": "Quay lại danh sách tour",
@@ -467,7 +468,8 @@
     "provider.duration.minute": {
       "other": "{count} phút"
     },
-    "provider.nhaTrang": "Nha Trang"
+    "provider.nhaTrang": "Nha Trang",
+    "provider.nhaTrangTouristPier": "Bến Tàu Du Lịch Nha Trang"
   },
   "en": {
     "tour.back": "Back to tours",
@@ -697,7 +699,8 @@
       "one": "{count} minute",
       "other": "{count} minutes"
     },
-    "provider.nhaTrang": "Nha Trang"
+    "provider.nhaTrang": "Nha Trang",
+    "provider.nhaTrangTouristPier": "Nha Trang Tourist Pier (Bến Tàu Du Lịch Nha Trang)"
   },
   "ko": {
     "tour.back": "투어 목록으로",
@@ -923,7 +926,8 @@
     "provider.duration.minute": {
       "other": "{count}분"
     },
-    "provider.nhaTrang": "나트랑"
+    "provider.nhaTrang": "나트랑",
+    "provider.nhaTrangTouristPier": "나트랑 관광 선착장 (Bến Tàu Du Lịch Nha Trang)"
   },
   "zh": {
     "tour.back": "返回行程列表",
@@ -1149,7 +1153,8 @@
     "provider.duration.minute": {
       "other": "{count}分钟"
     },
-    "provider.nhaTrang": "芽庄"
+    "provider.nhaTrang": "芽庄",
+    "provider.nhaTrangTouristPier": "芽庄旅游码头（Bến Tàu Du Lịch Nha Trang）"
   }
 });
 
