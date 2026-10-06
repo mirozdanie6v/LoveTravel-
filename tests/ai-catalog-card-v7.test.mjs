@@ -70,3 +70,15 @@ test('observer is idempotent and avoids character-data render loops', () => {
   assert.doesNotMatch(v7, /characterData:true/);
   assert.match(v7, /\.ai-recommendation\.ai-sales-card\[data-tour-id\]/);
 });
+
+
+test('compatibility layer does not rewrite authoritative server AI replies', () => {
+  assert.doesNotMatch(v7, /__maxTourSalesFinalizerV23/);
+  assert.doesNotMatch(v7, /new Response\(JSON\.stringify\(\{ \.\.\.data, reply/);
+});
+
+test('upgraded booking CTA is localized from the active LoveTravel locale', () => {
+  assert.match(v7, /max-tour-locale-v1/);
+  assert.match(v7, /en:'Book'/);
+  assert.match(v7, /button\.textContent = bookLabel\(\)/);
+});
