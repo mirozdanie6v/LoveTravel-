@@ -7,6 +7,7 @@ on:
       - linguistic-qa-native-copy
       - linguistic-qa-cache-warm
       - fix-complete-zh-localization
+      - zh-stale-cache-swr
   workflow_dispatch:
 
 jobs:
