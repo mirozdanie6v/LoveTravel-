@@ -183,7 +183,10 @@ finally:
 
 health_req = urllib.request.Request(
     processor_url + "/health",
-    headers={"Authorization": "Bearer " + runtime["PROCESSOR_ADMIN_KEY"]},
+    headers={
+        "Authorization": "Bearer " + runtime["PROCESSOR_ADMIN_KEY"],
+        "User-Agent": "Mozilla/5.0 (compatible; VIIVERSION-Showreel/1.0; +https://viiversion.com)",
+    },
 )
 try:
     with urllib.request.urlopen(health_req, timeout=120) as response:
