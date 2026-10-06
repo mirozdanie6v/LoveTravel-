@@ -60,7 +60,7 @@ try{
   console.log('catalog-open');
 
   const tourCard=page.locator('#catalogScreen.active .lt-tour-card').first();
-  await tourCard.click({timeout:10000});
+  await tourCard.evaluate(node=>setTimeout(()=>node.click(),0));
   console.log('tour-card-clicked');
 
   await page.waitForFunction(allowed=>{
