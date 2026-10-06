@@ -1154,7 +1154,7 @@
       "other": "{count}分钟"
     },
     "provider.nhaTrang": "芽庄",
-    "provider.nhaTrangTouristPier": "芽庄旅游码头（Bến Tàu Du Lịch Nha Trang）"
+    "provider.nhaTrangTouristPier": "芽庄旅游码头"
   }
 });
 
