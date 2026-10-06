@@ -17,6 +17,7 @@ import {
   setShoppingIntent,
 } from './travel-commerce-transaction.js';
 import { createTravelCommerceStore } from './travel-commerce-store.js';
+import { ensureTravelCommerceRuntimeSchema } from './travel-commerce-migration.js';
 import {
   ensureCommerceTransaction,
   ensureSalesSession,
@@ -181,6 +182,7 @@ export function createLoveTravelSalesOrchestrator({
   });
 
   async function turn({sessionId,locale,message,context={}}={}){
+    await ensureTravelCommerceRuntimeSchema(env.DB);
     let shopping=await ensureShopping(store,sessionId,locale,now());
 
     const date=exactDate(shopping.intent);
