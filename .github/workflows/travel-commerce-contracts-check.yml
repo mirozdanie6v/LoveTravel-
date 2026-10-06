@@ -11,6 +11,8 @@ on:
       - 'src/booking-session-client.js'
       - 'src/travel-sales-orchestrator.js'
       - 'src/ai-consultant-v5.js'
+      - 'src/lovetravel-brand.js'
+      - 'src/lovetravel-brand.css'
       - 'src/ai-booking-bridge-v25.js'
       - 'src/lovetravel-booking-configurator.js'
       - 'src/travel-transaction-api.js'
@@ -41,6 +43,7 @@ on:
       - 'tests/travel-capability-broker.test.mjs'
       - 'tests/booking-session-runtime.test.mjs'
       - 'tests/bokun-worker.test.mjs'
+      - 'tests/lovetravel-release-readiness.test.mjs'
       - '.github/workflows/travel-commerce-contracts-check.yml'
   push:
     branches: [main]
