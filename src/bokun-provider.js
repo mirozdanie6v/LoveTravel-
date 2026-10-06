@@ -7,6 +7,8 @@ import { resolveBookingSelection } from './booking-selection-engine.js';
 import { buildBokunBookingDraft } from './bokun-booking-draft.js';
 import {
   CONTRACT_SCHEMA_VERSIONS,
+  validateBookingDraft,
+  validateBookingSelectionSnapshot,
   validateBookingTransaction,
   validateOffer,
   validateProduct,
@@ -261,6 +263,144 @@ export function provisionalBookingRequest(resolution,externalBookingReference){
   };
 }
 
+function canonicalExtraList(extras={},vendorId=LOVE_TRAVEL_BOKUN_VENDOR_ID){
+  return Object.entries(extras||{}).flatMap(([extraId,raw])=>{
+    const item=typeof raw==='number'?{quantity:raw}:(raw||{});
+    const quantity=Math.max(0,Math.floor(Number(item.quantity)||0));
+    if(!quantity) return [];
+    return [{
+      extraRef:bokunProviderRef('EXTRA',extraId,vendorId),
+      quantity,
+      ...(item.answers&&typeof item.answers==='object'?{answers:structuredClone(item.answers)}:{}),
+    }];
+  });
+}
+
+function travellerList(domain,selection,vendorId=LOVE_TRAVEL_BOKUN_VENDOR_ID){
+  const categories=new Map(arr(domain?.participants).map(item=>[String(item.id),item]));
+  const explicit=arr(selection?.passengers);
+  const travellers=[];
+  for(const [categoryId,countRaw] of Object.entries(selection?.participants||{})){
+    const count=Math.max(0,Math.floor(Number(countRaw)||0));
+    const category=categories.get(String(categoryId));
+    const role=participantRole(category);
+    if(!role) continue;
+    const matches=explicit.filter(item=>String(item?.categoryId||'')===String(categoryId));
+    for(let index=0;index<count;index+=1){
+      const person=matches[index]||{};
+      travellers.push({
+        participantRole:role,
+        providerCategoryRef:bokunProviderRef('PRICING_CATEGORY',categoryId,vendorId),
+        ...(person.firstName?{firstName:String(person.firstName)}:{}),
+        ...(person.lastName?{lastName:String(person.lastName)}:{}),
+        ...(person.dateOfBirth?{dateOfBirth:String(person.dateOfBirth)}:{}),
+        ...(person.passportId?{passportId:String(person.passportId)}:{}),
+        ...(person.nationality?{nationality:String(person.nationality)}:{}),
+        answers:structuredClone(person.answers||{}),
+        extras:canonicalExtraList(person.extras||{},vendorId),
+      });
+    }
+  }
+  return travellers;
+}
+
+export function canonicalBookingSelectionFromBokun(domain,selection,{
+  vendorId=LOVE_TRAVEL_BOKUN_VENDOR_ID,
+}={}){
+  const resolved=selection||{};
+  const participants=Object.entries(resolved.participants||{}).flatMap(([categoryId,countRaw])=>{
+    const category=arr(domain?.participants).find(item=>String(item?.id)===String(categoryId));
+    const role=participantRole(category);
+    const count=Math.max(0,Math.floor(Number(countRaw)||0));
+    if(!role||count<1) return [];
+    return [{
+      role,
+      count,
+      providerCategoryRef:bokunProviderRef('PRICING_CATEGORY',categoryId,vendorId),
+    }];
+  });
+  return validateBookingSelectionSnapshot({
+    productRef:bokunProviderRef('ACTIVITY',resolved.productId||domain?.experience?.id||domain?.provider?.productId,vendorId),
+    ...(resolved.date?{date:String(resolved.date)}:{}),
+    ...(resolved.rateId?{rateRef:bokunProviderRef('RATE',resolved.rateId,vendorId)}:{}),
+    ...(resolved.startTimeId?{startTimeRef:bokunProviderRef('START_TIME',resolved.startTimeId,vendorId)}:{}),
+    ...(resolved.slotId?{slotRef:bokunProviderRef('AVAILABILITY_SLOT',resolved.slotId,vendorId)}:{}),
+    participants,
+    pickup:transportChoice(resolved.pickup,'PICKUP_PLACE',vendorId),
+    ...(resolved?.pickup?.roomNumber?{pickupRoomNumber:String(resolved.pickup.roomNumber)}:{}),
+    ...(resolved?.pickup?.answers&&typeof resolved.pickup.answers==='object'?{pickupAnswers:structuredClone(resolved.pickup.answers)}:{}),
+    dropoff:transportChoice(resolved.dropoff,'DROPOFF_PLACE',vendorId),
+    customer:structuredClone(resolved.customer||{}),
+    travellers:travellerList(domain,resolved,vendorId),
+    answers:structuredClone(resolved.answers||{}),
+    extras:canonicalExtraList(resolved.extras||{},vendorId),
+  });
+}
+
+export function canonicalBookingDraftFromSelection(snapshot,quote){
+  const selection=validateBookingSelectionSnapshot(snapshot);
+  return validateBookingDraft({
+    schemaVersion:CONTRACT_SCHEMA_VERSIONS.BookingDraft,
+    quoteId:quote.quoteId,
+    quoteRevision:quote.revision,
+    customer:structuredClone(selection.customer||{}),
+    travellers:structuredClone(selection.travellers||[]),
+    pickup:structuredClone(selection.pickup||{mode:'UNKNOWN'}),
+    dropoff:structuredClone(selection.dropoff||{mode:'UNKNOWN'}),
+    answers:structuredClone(selection.answers||{}),
+    extras:structuredClone(selection.extras||[]),
+    paymentChoice:'RESERVE_FOR_EXTERNAL_PAYMENT',
+    specialRequests:[],
+  });
+}
+
+function rawExtraMap(extras=[]){
+  return Object.fromEntries(arr(extras).map(item=>[
+    String(item?.extraRef?.externalId||''),
+    {
+      quantity:Math.max(0,Math.floor(Number(item?.quantity)||0)),
+      answers:structuredClone(item?.answers||{}),
+    },
+  ]).filter(([id,item])=>id&&item.quantity>0));
+}
+
+export function bokunSelectionFromCanonicalSelection(snapshot){
+  const selection=validateBookingSelectionSnapshot(snapshot);
+  const participants={};
+  for(const item of selection.participants||[]){
+    const categoryId=str(item?.providerCategoryRef?.externalId);
+    if(categoryId) participants[categoryId]=(participants[categoryId]||0)+Number(item.count||0);
+  }
+  const passengers=(selection.travellers||[]).map(traveller=>({
+    categoryId:str(traveller?.providerCategoryRef?.externalId),
+    ...(traveller.firstName?{firstName:traveller.firstName}:{}),
+    ...(traveller.lastName?{lastName:traveller.lastName}:{}),
+    ...(traveller.dateOfBirth?{dateOfBirth:traveller.dateOfBirth}:{}),
+    ...(traveller.passportId?{passportId:traveller.passportId}:{}),
+    ...(traveller.nationality?{nationality:traveller.nationality}:{}),
+    answers:structuredClone(traveller.answers||{}),
+    extras:rawExtraMap(traveller.extras||[]),
+  }));
+  return {
+    productId:str(selection.productRef?.externalId),
+    ...(selection.date?{date:selection.date}:{}),
+    ...(selection.rateRef?.externalId?{rateId:str(selection.rateRef.externalId)}:{}),
+    ...(selection.startTimeRef?.externalId?{startTimeId:str(selection.startTimeRef.externalId)}:{}),
+    ...(selection.slotRef?.externalId?{slotId:str(selection.slotRef.externalId)}:{}),
+    participants,
+    passengers,
+    pickup:{
+      ...canonicalTransportSelection(selection.pickup),
+      ...(selection.pickupRoomNumber?{roomNumber:selection.pickupRoomNumber}:{}),
+      ...(selection.pickupAnswers?{answers:structuredClone(selection.pickupAnswers)}:{}),
+    },
+    dropoff:canonicalTransportSelection(selection.dropoff),
+    customer:structuredClone(selection.customer||{}),
+    answers:structuredClone(selection.answers||{}),
+    extras:rawExtraMap(selection.extras||[]),
+  };
+}
+
 function canonicalExtraMap(extras=[]){
   return Object.fromEntries(arr(extras).map(item=>[
     String(item?.extraRef?.externalId||''),
@@ -281,37 +421,25 @@ function canonicalTransportSelection(value={}){
 
 export function bokunSelectionFromTransaction(transaction){
   const tx=validateBookingTransaction(transaction);
-  if(!tx.quote?.offer||!tx.draft) throw new ProviderCapabilityError('transaction_not_booking_ready','Transaction requires Quote and BookingDraft');
-  const offer=tx.quote.offer;
-  const participants={};
-  const passengers=arr(tx.draft.travellers).map(traveller=>{
-    const categoryId=str(traveller?.providerCategoryRef?.externalId);
-    if(!categoryId) throw new ProviderCapabilityError('participant_category_missing','Traveller provider category is required');
-    participants[categoryId]=(participants[categoryId]||0)+1;
-    return {
-      categoryId,
-      ...(traveller.firstName?{firstName:traveller.firstName}:{}),
-      ...(traveller.lastName?{lastName:traveller.lastName}:{}),
-      ...(traveller.dateOfBirth?{dateOfBirth:traveller.dateOfBirth}:{}),
-      ...(traveller.passportId?{passportId:traveller.passportId}:{}),
-      ...(traveller.nationality?{nationality:traveller.nationality}:{}),
-      answers:structuredClone(traveller.answers||{}),
-      extras:canonicalExtraMap(traveller.extras||[]),
-    };
-  });
-  return {
-    productId:str(offer.providerRef?.externalId),
-    date:str(offer.date),
-    rateId:str(offer.rateRef?.externalId),
-    startTimeId:str(offer.startTimeRef?.externalId),
-    participants,
-    passengers,
+  if(tx.selection) return bokunSelectionFromCanonicalSelection(tx.selection);
+  if(!tx.quote?.offer||!tx.draft) throw new ProviderCapabilityError('transaction_not_booking_ready','Transaction requires canonical selection or Quote and BookingDraft');
+  const fallback=canonicalBookingSelectionFromBokun({
+    experience:{id:tx.quote.offer.providerRef.externalId},
+    participants:[],
+  },{
+    productId:tx.quote.offer.providerRef.externalId,
+    date:tx.quote.offer.date,
+    rateId:tx.quote.offer.rateRef?.externalId,
+    startTimeId:tx.quote.offer.startTimeRef?.externalId,
+    participants:{},
     pickup:canonicalTransportSelection(tx.draft.pickup),
     dropoff:canonicalTransportSelection(tx.draft.dropoff),
-    customer:structuredClone(tx.draft.customer||{}),
-    answers:structuredClone(tx.draft.answers||{}),
+    customer:tx.draft.customer||{},
+    answers:tx.draft.answers||{},
+    passengers:[],
     extras:canonicalExtraMap(tx.draft.extras||[]),
-  };
+  });
+  return bokunSelectionFromCanonicalSelection(fallback);
 }
 
 function buildUrl(baseUrl,path,params={}){
