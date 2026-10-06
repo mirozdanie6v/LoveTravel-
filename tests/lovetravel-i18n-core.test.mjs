@@ -39,7 +39,7 @@ test('semantic keys resolve customer UI copy without source-language lookup',()=
   assert.equal(zh.t('booking.email'),'电子邮箱');
   assert.equal(zh.t('common.email'),'电子邮箱');
   assert.equal(zh.t('provider.nhaTrang'),'芽庄');
-  assert.equal(zh.t('provider.nhaTrangTouristPier'),'芽庄旅游码头（Bến Tàu Du Lịch Nha Trang）');
+  assert.equal(zh.t('provider.nhaTrangTouristPier'),'芽庄旅游码头');
   assert.equal(zh.t('booking.timeCount',{count:2}),'2 个可选时间');
   const ko=load('ko');
   assert.equal(ko.t('tour.bookNow'),'지금 예약');
