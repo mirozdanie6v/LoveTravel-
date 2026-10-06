@@ -1,4 +1,7 @@
-import { createBokunProvider } from './bokun-provider.js';
+import {
+  bokunSelectionFromCanonicalSelection,
+  createBokunProvider,
+} from './bokun-provider.js';
 import { executeBookingSession } from './booking-session-client.js';
 import { createTravelCapabilityBroker } from './travel-capability-broker.js';
 import {
@@ -14,6 +17,12 @@ import {
   setShoppingIntent,
 } from './travel-commerce-transaction.js';
 import { createTravelCommerceStore } from './travel-commerce-store.js';
+import {
+  ensureCommerceTransaction,
+  ensureSalesSession,
+  shoppingSessionIdForSalesSession,
+  withSalesSession,
+} from './travel-session.js';
 
 const str=(value,max=1600)=>String(value??'').trim().slice(0,max);
 
@@ -29,40 +38,6 @@ function json(data,status=200,headers={}){
   });
 }
 
-function parseCookie(header=''){
-  return Object.fromEntries(String(header).split(';').map(value=>value.trim()).filter(Boolean).map(part=>{
-    const index=part.indexOf('=');
-    return index<0?[part,'']:[part.slice(0,index),decodeURIComponent(part.slice(index+1))];
-  }));
-}
-
-function validSessionId(value){
-  return /^[A-Za-z0-9._:-]{20,160}$/.test(String(value||''));
-}
-
-async function ensureSalesSession(request,env){
-  const cookies=parseCookie(request.headers.get('cookie')||'');
-  const existing=validSessionId(cookies.lt_sales_sid)?cookies.lt_sales_sid:'';
-  const id=existing||crypto.randomUUID();
-  await env.DB.prepare(
-    'INSERT INTO sessions(id) VALUES(?) ON CONFLICT(id) DO UPDATE SET updated_at=CURRENT_TIMESTAMP'
-  ).bind(id).run();
-  return {id,fresh:!existing};
-}
-
-function withSalesSession(response,session){
-  if(!session?.fresh) return response;
-  const headers=new Headers(response.headers);
-  headers.append(
-    'set-cookie',
-    `lt_sales_sid=${encodeURIComponent(session.id)}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=2592000`,
-  );
-  return new Response(response.body,{
-    status:response.status,
-    statusText:response.statusText,
-    headers,
-  });
-}
 
 function localeFrom(request,body){
   const header=str(request.headers.get('x-max-tour-locale'),8).toLowerCase();
@@ -98,8 +73,43 @@ function externalTourId(packet,canonicalId){
   return String(row?.product?.providerRef?.externalId||'');
 }
 
-function shoppingSessionId(sessionId){
-  return `shopping-${sessionId}`;
+function commercialPatch(patch={}){
+  return ['dateConstraint','party','hotel','pickupPreference','selectedProductId']
+    .some(key=>Object.prototype.hasOwnProperty.call(patch,key));
+}
+
+function trimPassengersForParticipants(passengers=[],participants={}){
+  const remaining=Object.fromEntries(Object.entries(participants||{}).map(([key,value])=>[
+    String(key),Math.max(0,Math.floor(Number(value)||0)),
+  ]));
+  const out=[];
+  for(const passenger of Array.isArray(passengers)?passengers:[]){
+    const id=String(passenger?.categoryId||'');
+    if(!id||!remaining[id]) continue;
+    out.push(structuredClone(passenger));
+    remaining[id]-=1;
+  }
+  return out;
+}
+
+function mergeChatSelection(transaction,incoming){
+  if(!transaction?.selection) return structuredClone(incoming);
+  const current=bokunSelectionFromCanonicalSelection(transaction.selection);
+  return {
+    ...structuredClone(incoming),
+    customer:structuredClone(current.customer||{}),
+    answers:structuredClone(current.answers||{}),
+    extras:structuredClone(current.extras||{}),
+    passengers:trimPassengersForParticipants(current.passengers,incoming.participants),
+    pickup:{
+      ...(current.pickup||{}),
+      ...(incoming.pickup||{}),
+    },
+    dropoff:{
+      ...(current.dropoff||{}),
+      ...(incoming.dropoff||{}),
+    },
+  };
 }
 
 async function loadConversationMemory(env,sessionId){
@@ -142,7 +152,7 @@ function appendTurns(memory,message,reply){
 }
 
 async function ensureShopping(store,sessionId,locale,now){
-  const id=shoppingSessionId(sessionId);
+  const id=shoppingSessionIdForSalesSession(sessionId);
   const existing=await store.getShoppingSession(id);
   if(existing) return existing;
   const created=createShoppingSession({
@@ -239,6 +249,33 @@ export function createLoveTravelSalesOrchestrator({
       shopping=next;
     }
 
+    let bookingTransaction=null;
+    let bookingSelection=null;
+    const selectedRow=offersPacket?.data?.find(item=>item?.offer?.offerId===plan.selectedOfferId)||null;
+    if(selectedRow?.selection&&plan.selectedOfferId){
+      try{
+        let currentTx=await ensureCommerceTransaction(env,sessionId,{now:now()});
+        const needsSync=
+          !currentTx.selection
+          ||currentTx.selectedOfferId!==plan.selectedOfferId
+          ||commercialPatch(extracted.patch);
+        if(needsSync&&!['RESERVING','FAILED_NEEDS_RECONCILIATION','CONFIRMED','ABANDONED'].includes(currentTx.state)){
+          const synced=await executeBookingSession(env,currentTx.transactionId,{
+            action:'SYNC_SELECTION',
+            expectedRevision:currentTx.revision,
+            selection:mergeChatSelection(currentTx,selectedRow.selection),
+          });
+          currentTx=synced.transaction;
+          bookingSelection=synced.resolution?.selection||selectedRow.selection;
+        }else if(currentTx.selection){
+          bookingSelection=bokunSelectionFromCanonicalSelection(currentTx.selection);
+        }
+        bookingTransaction=currentTx;
+      }catch(error){
+        console.warn('Sales transaction handoff unavailable',error?.message||error);
+      }
+    }
+
     const memory=await loadConversationMemory(env,sessionId);
     await saveConversationMemory(env,sessionId,appendTurns(memory,message,plan.reply));
 
@@ -258,6 +295,15 @@ export function createLoveTravelSalesOrchestrator({
         bookingRequested:extracted.bookingRequested,
         mutationExecuted:false,
       },
+      transaction:bookingTransaction ? {
+        transactionId:bookingTransaction.transactionId,
+        revision:bookingTransaction.revision,
+        state:bookingTransaction.state,
+        selectedOfferId:bookingTransaction.selectedOfferId||'',
+        quote:bookingTransaction.quote||null,
+        draft:bookingTransaction.draft||null,
+      } : null,
+      bookingSelection,
       shoppingSession:{
         id:shopping.sessionId,
         revision:shopping.revision,
