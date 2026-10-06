@@ -159,8 +159,31 @@ subprocess.run(
     cwd=directory,
     check=True,
 )
+listed = subprocess.run(
+    [wrangler, "secret", "list", "--config", "wrangler.json"],
+    cwd=directory,
+    check=True,
+    capture_output=True,
+    text=True,
+)
+try:
+    secret_names = {
+        item.get("name") for item in json.loads(listed.stdout)
+        if isinstance(item, dict)
+    }
+except (ValueError, TypeError):
+    raise RuntimeError("Could not safely inspect deployed Worker secret names") from None
+for legacy_name in ("CLOUDFLARE_AI_TOKEN", "CLOUDFLARE_AI_URL"):
+    if legacy_name in secret_names:
+        subprocess.run(
+            [wrangler, "secret", "delete", legacy_name, "--config", "wrangler.json"],
+            cwd=directory,
+            input="y\n",
+            text=True,
+            check=True,
+        )
 subprocess.run(
-    ["npx", "wrangler", "secret", "bulk", str(secret_path), "--config", "wrangler.json"],
+    [wrangler, "secret", "bulk", str(secret_path), "--config", "wrangler.json"],
     cwd=directory,
     check=True,
 )
