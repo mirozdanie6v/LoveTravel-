@@ -1,0 +1,28 @@
+name: Recovery VII-119 CI
+
+on:
+  push:
+    branches:
+      - 'recovery/vii-119-stabilization'
+    paths:
+      - 'src/travel-transaction-api.js'
+      - 'src/booking-session-do.js'
+      - 'tests/booking-session-do.test.mjs'
+      - '.github/workflows/recovery-vii119-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - run: npm install --no-fund --no-audit
+      - run: npm test
+      - run: npm run build
