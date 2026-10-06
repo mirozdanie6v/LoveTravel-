@@ -2,7 +2,7 @@
   'use strict';
 
   const PRODUCT_IDS = new Set(['1287578','1287580']);
-  const RELEASE_ID = '2026-09-30-full-tour-localization-v4-bokun-unbounded-coverage-v5';
+  const RELEASE_ID = '2026-10-06-semantic-i18n-core-v1';
   const CHECKOUT_REQUIRED_CUSTOMER_FIELDS = ['firstName','lastName','email','phoneNumber'];
   const stateByProduct = new Map();
   const resolutionByProduct = new Map();
@@ -12,119 +12,6 @@
   let activeProductId = null;
   let requestSeq = 0;
   let sheet = null;
-
-  const copy = {
-    ru:{
-      title:'Соберите поездку', live:'Актуальные места и цены из системы туроператора',
-      date:'Дата и время', dateEmpty:'Выберите дату', option:'Вариант', optionEmpty:'Выберите вариант',
-      guests:'Участники', guestsEmpty:'Добавьте участников', pickup:'Трансфер / прибытие', pickupEmpty:'Выберите способ', pickupHotelLabel:'Трансфер из отеля', startPointLabel:'Самостоятельно',
-      meet:'Самостоятельно к месту начала', pickupMode:'Забрать из отеля', included:'включено в цену',
-      meetNote:'Вы сами приезжаете к указанной точке начала экскурсии. Трансфер из отеля не нужен.', pickupModeNote:'Машина заберёт вас у выбранного отеля или точки посадки. Самостоятельно ехать к месту начала не нужно.',
-      total:'Итого', from:'от', continue:'Продолжить', check:'Проверить данные', ready:'Конфигурация проверена',
-      unavailable:'Комбинация недоступна', updating:'Проверяем актуальные данные…',
-      chooseDate:'Выберите дату', chooseTime:'Выберите время', chooseOption:'Выберите вариант экскурсии',
-      chooseGuests:'Укажите участников', choosePickup:'Как вы хотите добраться?',
-      available:'мест доступно', spots:'мест', adult:'Взрослый', child:'Ребёнок', infant:'Младенец',
-      years:'лет', close:'Закрыть', searchHotel:'Введите название отеля', searchHint:'Начните вводить отель — покажем доступные точки посадки.',
-      pickupPlace:'Отель или точка посадки', chooseHotel:'Откуда вас забрать', enterRoom:'Укажите номер комнаты', roomNeeded:'Для этой точки Bókun запрашивает номер комнаты на этапе оформления.', fillContact:'Заполнить данные',
-      contact:'Контактные данные', firstName:'Имя', lastName:'Фамилия', phoneNumber:'Телефон', email:'Email',
-      verify:'Проверить', verified:'Данные проверены', noPlaces:'Ничего не найдено',
-      select:'Выбрать', selected:'Выбрано', pricePerPerson:'за человека', liveQuote:'Цена проверена сейчас', onRequest:'Требуется подтверждение туроператора',
-      refreshError:'Не удалось обновить доступность. Попробуйте ещё раз.', moreDates:'Показать следующие даты',
-      minGuests:'Минимум', maxGuests:'Максимум', noExtra:'Дополнительных услуг сейчас нет', extras:'Дополнительно', extrasEmpty:'Без дополнений', chooseExtras:'Дополнительные услуги', extrasRequired:'Выберите обязательную услугу', passengerDetails:'Данные участников', passenger:'Участник', questions:'Вопросы для бронирования', additionalInfo:'Дополнительные данные', roomNumber:'Номер комнаты', save:'Сохранить', customPickup:'Другой адрес', customPickupAddress:'Адрес для посадки',
-      bookingNotSent:'Бронирование пока не отправляется в Bókun — на этом этапе проверяется конфигурация.', demoCreate:'Создать тестовую бронь', demoCreating:'Создаём тестовую бронь…', demoNote:'Клиентский тест: будет создана реальная тестовая бронь в Bókun без оплаты и без уведомления туристу.', demoSuccessTitle:'Тестовая бронь создана', demoSuccess:'Бронь появилась в Bókun. Код', demoFailure:'Не удалось создать тестовую бронь. Данные не отправлены повторно.',
-      selectDateFirst:'Сначала выберите дату', selectOptionFirst:'Выберите вариант', selectGuestsFirst:'Добавьте участников',
-      pickupRequired:'Нужно выбрать способ трансфера или самостоятельный приезд', dropoff:'Обратный трансфер', dropoffEmpty:'Выберите способ', dropoffMode:'Довезти после экскурсии', noDropoff:'Без обратного трансфера', chooseDropoff:'Нужен обратный трансфер?', chooseDropoffPlace:'Куда вас отвезти', dropoffPlace:'Место высадки', searchDropoff:'Введите отель или адрес', customDropoff:'Другой адрес высадки', customDropoffAddress:'Адрес высадки', dropoffRequired:'Нужно выбрать обратный трансфер или отказаться от него', contactRequired:'Нужно заполнить контактные данные', yes:'Да', no:'Нет'
-    },
-    en:{
-      title:'Build your trip', live:'Live availability and pricing from the operator system',
-      date:'Date & time', dateEmpty:'Choose a date', option:'Option', optionEmpty:'Choose an option',
-      guests:'Guests', guestsEmpty:'Add guests', pickup:'Transfer / arrival', pickupEmpty:'Choose a method', pickupHotelLabel:'Hotel pickup', startPointLabel:'Arrive independently',
-      meet:'Go to the starting point yourself', pickupMode:'Hotel pickup', included:'included in price',
-      meetNote:'You travel to the stated tour starting point yourself. No hotel pickup is needed.', pickupModeNote:'A vehicle will collect you from the selected hotel or pickup point. You do not need to travel to the tour start yourself.',
-      total:'Total', from:'from', continue:'Continue', check:'Check details', ready:'Configuration checked',
-      unavailable:'Combination unavailable', updating:'Checking live data…',
-      chooseDate:'Choose a date', chooseTime:'Choose a time', chooseOption:'Choose a tour option',
-      chooseGuests:'Add guests', choosePickup:'How would you like to get there?',
-      available:'spots available', spots:'spots', adult:'Adult', child:'Child', infant:'Infant',
-      years:'years', close:'Close', searchHotel:'Enter your hotel name', searchHint:'Start typing a hotel to see available pickup points.',
-      pickupPlace:'Hotel or pickup point', chooseHotel:'Where should we pick you up?', enterRoom:'Enter room number', roomNeeded:'Bókun asks for a room number for this pickup point during checkout.', fillContact:'Add contact details',
-      contact:'Contact details', firstName:'First name', lastName:'Last name', phoneNumber:'Phone', email:'Email',
-      verify:'Check', verified:'Details checked', noPlaces:'No matches',
-      select:'Select', selected:'Selected', pricePerPerson:'per person', liveQuote:'Price checked live', onRequest:'Operator confirmation required',
-      refreshError:'Could not refresh availability. Try again.', moreDates:'Show later dates',
-      minGuests:'Minimum', maxGuests:'Maximum', noExtra:'No extras are currently configured', extras:'Extras', extrasEmpty:'No extras', chooseExtras:'Additional services', extrasRequired:'Choose the required extra', passengerDetails:'Guest details', passenger:'Guest', questions:'Booking questions', additionalInfo:'Additional details', roomNumber:'Room number', save:'Save', customPickup:'Other address', customPickupAddress:'Pickup address',
-      bookingNotSent:'The booking is not sent to Bókun yet — this stage validates the configuration.', demoCreate:'Create test booking', demoCreating:'Creating test booking…', demoNote:'Client test: this creates a real test booking in Bókun with no payment and no customer notification.', demoSuccessTitle:'Test booking created', demoSuccess:'The booking is now visible in Bókun. Code', demoFailure:'The test booking could not be created. It was not submitted again.',
-      selectDateFirst:'Choose a date first', selectOptionFirst:'Choose an option', selectGuestsFirst:'Add guests',
-      pickupRequired:'Choose hotel pickup or independent arrival', dropoff:'Return transfer', dropoffEmpty:'Choose a method', dropoffMode:'Drop me off after the tour', noDropoff:'No return transfer', chooseDropoff:'Do you need a return transfer?', chooseDropoffPlace:'Where should we drop you off?', dropoffPlace:'Drop-off place', searchDropoff:'Enter a hotel or address', customDropoff:'Other drop-off address', customDropoffAddress:'Drop-off address', dropoffRequired:'Choose return transfer or no return transfer', contactRequired:'Complete the contact details', yes:'Yes', no:'No'
-    },
-    vi:{
-      title:'Tạo chuyến đi', live:'Giá và chỗ trống trực tiếp từ hệ thống điều hành',
-      date:'Ngày & giờ', dateEmpty:'Chọn ngày', option:'Lựa chọn', optionEmpty:'Chọn chương trình',
-      guests:'Khách', guestsEmpty:'Thêm khách', pickup:'Đưa đón / tự đến', pickupEmpty:'Chọn cách di chuyển', pickupHotelLabel:'Đón tại khách sạn', startPointLabel:'Tự đến',
-      meet:'Tự đến điểm khởi hành', pickupMode:'Đón tại khách sạn', included:'đã gồm trong giá',
-      meetNote:'Bạn tự đến điểm bắt đầu tour đã ghi. Không cần xe đón tại khách sạn.', pickupModeNote:'Xe sẽ đón bạn tại khách sạn hoặc điểm đón đã chọn. Bạn không cần tự đi đến điểm bắt đầu tour.',
-      total:'Tổng', from:'từ', continue:'Tiếp tục', check:'Kiểm tra thông tin', ready:'Đã kiểm tra cấu hình',
-      unavailable:'Lựa chọn không khả dụng', updating:'Đang kiểm tra dữ liệu mới nhất…',
-      chooseDate:'Chọn ngày', chooseTime:'Chọn giờ', chooseOption:'Chọn chương trình',
-      chooseGuests:'Chọn số khách', choosePickup:'Bạn muốn di chuyển như thế nào?',
-      available:'chỗ còn trống', spots:'chỗ', adult:'Người lớn', child:'Trẻ em', infant:'Em bé',
-      years:'tuổi', close:'Đóng', searchHotel:'Nhập tên khách sạn', searchHint:'Bắt đầu nhập khách sạn để xem các điểm đón có sẵn.',
-      pickupPlace:'Khách sạn hoặc điểm đón', chooseHotel:'Bạn muốn được đón ở đâu?', enterRoom:'Nhập số phòng', roomNeeded:'Bókun yêu cầu số phòng cho điểm đón này trong bước thanh toán.', fillContact:'Điền thông tin liên hệ',
-      contact:'Thông tin liên hệ', firstName:'Tên', lastName:'Họ', phoneNumber:'Điện thoại', email:'Email',
-      verify:'Kiểm tra', verified:'Đã kiểm tra', noPlaces:'Không có kết quả',
-      select:'Chọn', selected:'Đã chọn', pricePerPerson:'mỗi người', liveQuote:'Giá vừa được kiểm tra', onRequest:'Cần nhà điều hành xác nhận',
-      refreshError:'Không thể cập nhật chỗ trống. Vui lòng thử lại.', moreDates:'Xem các ngày tiếp theo',
-      minGuests:'Tối thiểu', maxGuests:'Tối đa', noExtra:'Hiện không có dịch vụ bổ sung', extras:'Dịch vụ thêm', extrasEmpty:'Không chọn thêm', chooseExtras:'Dịch vụ bổ sung', extrasRequired:'Chọn dịch vụ bắt buộc', passengerDetails:'Thông tin hành khách', passenger:'Hành khách', questions:'Câu hỏi đặt chỗ', additionalInfo:'Thông tin bổ sung', roomNumber:'Số phòng', save:'Lưu', customPickup:'Địa chỉ khác', customPickupAddress:'Địa chỉ đón',
-      bookingNotSent:'Đặt chỗ chưa được gửi tới Bókun — bước này chỉ xác thực cấu hình.', demoCreate:'Tạo đặt chỗ thử', demoCreating:'Đang tạo đặt chỗ thử…', demoNote:'Bản thử cho khách hàng: hệ thống sẽ tạo một đặt chỗ thử thật trong Bókun, không thanh toán và không gửi thông báo cho khách du lịch.', demoSuccessTitle:'Đã tạo đặt chỗ thử', demoSuccess:'Đặt chỗ đã xuất hiện trong Bókun. Mã', demoFailure:'Không thể tạo đặt chỗ thử. Hệ thống không gửi lại lần nữa.',
-      selectDateFirst:'Hãy chọn ngày trước', selectOptionFirst:'Chọn chương trình', selectGuestsFirst:'Thêm khách',
-      pickupRequired:'Chọn đón tại khách sạn hoặc tự đến', dropoff:'Đưa về sau tour', dropoffEmpty:'Chọn cách', dropoffMode:'Đưa tôi về sau tour', noDropoff:'Không cần đưa về', chooseDropoff:'Bạn có cần đưa về không?', chooseDropoffPlace:'Bạn muốn được đưa đến đâu?', dropoffPlace:'Điểm trả khách', searchDropoff:'Nhập khách sạn hoặc địa chỉ', customDropoff:'Địa chỉ trả khác', customDropoffAddress:'Địa chỉ trả khách', dropoffRequired:'Chọn đưa về hoặc không cần đưa về', contactRequired:'Điền thông tin liên hệ', yes:'Có', no:'Không'
-    },
-    zh:{
-      title:'规划您的行程', live:'实时名额与价格来自运营商系统',
-      date:'日期和时间', dateEmpty:'选择日期', option:'方案', optionEmpty:'选择方案',
-      guests:'出行人', guestsEmpty:'添加出行人', pickup:'接送 / 自行前往', pickupEmpty:'选择方式', pickupHotelLabel:'酒店接送', startPointLabel:'自行前往',
-      meet:'自行前往出发点', pickupMode:'酒店接送', included:'已包含在价格中',
-      meetNote:'您需要自行前往指定的行程出发点，无需酒店接送。', pickupModeNote:'车辆会到您选择的酒店或上车点接您，无需自行前往出发点。',
-      total:'合计', from:'起', continue:'继续', check:'核对信息', ready:'配置已核对',
-      unavailable:'该组合不可用', updating:'正在检查实时数据…',
-      chooseDate:'选择日期', chooseTime:'选择时间', chooseOption:'选择行程方案',
-      chooseGuests:'添加出行人', choosePickup:'您希望如何前往？',
-      available:'个名额可用', spots:'个名额', adult:'成人', child:'儿童', infant:'婴儿',
-      years:'岁', close:'关闭', searchHotel:'输入酒店名称', searchHint:'开始输入酒店名称，我们会显示可用的接送点。',
-      pickupPlace:'酒店或接送点', chooseHotel:'请选择接送地点', enterRoom:'输入房间号', roomNeeded:'Bókun 在预订此接送点时要求填写房间号。', fillContact:'填写联系信息',
-      contact:'联系信息', firstName:'名字', lastName:'姓氏', phoneNumber:'电话', email:'Email',
-      verify:'核对', verified:'信息已核对', noPlaces:'未找到结果',
-      select:'选择', selected:'已选择', pricePerPerson:'每人', liveQuote:'价格已实时核对', onRequest:'需要运营商确认',
-      refreshError:'无法更新可用情况，请重试。', moreDates:'显示更多日期',
-      minGuests:'最少', maxGuests:'最多', noExtra:'目前没有附加服务', extras:'附加服务', extrasEmpty:'不添加', chooseExtras:'附加服务', extrasRequired:'请选择必选服务', passengerDetails:'出行人信息', passenger:'出行人', questions:'预订问题', additionalInfo:'补充信息', roomNumber:'房间号', save:'保存', customPickup:'其他地址', customPickupAddress:'接送地址',
-      bookingNotSent:'目前尚未向 Bókun 提交预订，此步骤用于核对配置。', demoCreate:'创建测试预订', demoCreating:'正在创建测试预订…', demoNote:'客户测试模式：将在 Bókun 中创建一条真实的测试预订，不付款，也不会向游客发送通知。', demoSuccessTitle:'测试预订已创建', demoSuccess:'该预订已出现在 Bókun 中。编号', demoFailure:'无法创建测试预订，系统不会自动重复提交。',
-      selectDateFirst:'请先选择日期', selectOptionFirst:'请选择方案', selectGuestsFirst:'请添加出行人',
-      pickupRequired:'请选择酒店接送或自行前往', dropoff:'返程接送', dropoffEmpty:'选择方式', dropoffMode:'行程结束后送我回去', noDropoff:'无需返程接送', chooseDropoff:'需要返程接送吗？', chooseDropoffPlace:'请选择送达地点', dropoffPlace:'下车地点', searchDropoff:'输入酒店或地址', customDropoff:'其他下车地址', customDropoffAddress:'下车地址', dropoffRequired:'请选择返程接送或无需接送', contactRequired:'请填写联系信息', yes:'是', no:'否'
-    },
-    ko:{
-      title:'여행 구성하기', live:'운영사 시스템의 실시간 좌석 및 가격',
-      date:'날짜 및 시간', dateEmpty:'날짜 선택', option:'옵션', optionEmpty:'옵션 선택',
-      guests:'인원', guestsEmpty:'인원 추가', pickup:'픽업 / 직접 이동', pickupEmpty:'이동 방법 선택', pickupHotelLabel:'호텔 픽업', startPointLabel:'직접 이동',
-      meet:'출발지로 직접 이동', pickupMode:'호텔 픽업', included:'가격 포함',
-      meetNote:'안내된 투어 출발지로 직접 이동합니다. 호텔 픽업은 필요하지 않습니다.', pickupModeNote:'선택한 호텔 또는 픽업 지점으로 차량이 옵니다. 투어 출발지까지 직접 이동할 필요가 없습니다.',
-      total:'합계', from:'최저', continue:'계속', check:'정보 확인', ready:'구성 확인 완료',
-      unavailable:'선택 불가', updating:'실시간 정보를 확인 중…',
-      chooseDate:'날짜 선택', chooseTime:'시간 선택', chooseOption:'투어 옵션 선택',
-      chooseGuests:'인원 선택', choosePickup:'어떻게 이동하시겠어요?',
-      available:'자리 남음', spots:'자리', adult:'성인', child:'아동', infant:'유아',
-      years:'세', close:'닫기', searchHotel:'호텔 이름을 입력하세요', searchHint:'호텔 이름을 입력하면 이용 가능한 픽업 지점을 보여드립니다.',
-      pickupPlace:'호텔 또는 픽업 지점', chooseHotel:'어디에서 픽업할까요?', enterRoom:'객실 번호 입력', roomNeeded:'이 픽업 장소는 결제 단계에서 객실 번호가 필요합니다.', fillContact:'연락처 입력',
-      contact:'연락처 정보', firstName:'이름', lastName:'성', phoneNumber:'전화번호', email:'이메일',
-      verify:'확인', verified:'확인 완료', noPlaces:'검색 결과 없음',
-      select:'선택', selected:'선택됨', pricePerPerson:'1인당', liveQuote:'실시간 가격 확인됨', onRequest:'운영사 확인 필요',
-      refreshError:'예약 가능 여부를 업데이트하지 못했습니다. 다시 시도해 주세요.', moreDates:'이후 날짜 보기',
-      minGuests:'최소', maxGuests:'최대', noExtra:'현재 추가 옵션이 없습니다', extras:'추가 옵션', extrasEmpty:'추가 옵션 없음', chooseExtras:'추가 서비스', extrasRequired:'필수 추가 서비스를 선택하세요', passengerDetails:'참가자 정보', passenger:'참가자', questions:'예약 질문', additionalInfo:'추가 정보', roomNumber:'객실 번호', save:'저장', customPickup:'다른 주소', customPickupAddress:'픽업 주소',
-      bookingNotSent:'아직 Bókun에 예약을 전송하지 않습니다. 이 단계에서는 구성을 검증합니다.', demoCreate:'테스트 예약 만들기', demoCreating:'테스트 예약 생성 중…', demoNote:'고객 테스트 모드: 결제 및 고객 알림 없이 Bókun에 실제 테스트 예약을 생성합니다.', demoSuccessTitle:'테스트 예약 생성 완료', demoSuccess:'예약이 Bókun에 표시됩니다. 코드', demoFailure:'테스트 예약을 만들 수 없습니다. 자동으로 다시 제출하지 않습니다.',
-      selectDateFirst:'먼저 날짜를 선택하세요', selectOptionFirst:'옵션 선택', selectGuestsFirst:'인원 추가',
-      pickupRequired:'호텔 픽업 또는 직접 이동을 선택하세요', dropoff:'귀환 이동', dropoffEmpty:'방법 선택', dropoffMode:'투어 후 내려주세요', noDropoff:'귀환 이동 없음', chooseDropoff:'귀환 이동이 필요하신가요?', chooseDropoffPlace:'어디에 내려드릴까요?', dropoffPlace:'하차 지점', searchDropoff:'호텔 또는 주소 입력', customDropoff:'다른 하차 주소', customDropoffAddress:'하차 주소', dropoffRequired:'귀환 이동 여부를 선택하세요', contactRequired:'연락처 정보를 입력하세요', yes:'예', no:'아니요'
-    }
-  };
 
   function clientDemoToken(){
     try{
@@ -140,22 +27,14 @@
     }catch(_){ return ''; }
   }
   function clientDemoEnabled(){ return Boolean(clientDemoToken()); }
-  function locale(){
-    const localized=globalThis.LoveTravelTourLocale?.locale?.();
-    if(localized&&copy[localized]) return localized;
-    const stored=String(localStorage.getItem('max-tour-locale-v1')||'').toLowerCase();
-    if(copy[stored]) return stored;
-    const html=String(document.documentElement.lang||'').toLowerCase();
-    return copy[html]?html:'ru';
-  }
-  function t(){ return copy[locale()]; }
+  function i18n(){ return globalThis.LoveTravelI18n || null; }
+  function locale(){ return i18n()?.locale?.() || 'ru'; }
+  const UI_FALLBACK=new Proxy(Object.create(null),{get:(_target,key)=>String(key)});
+  function t(){ return i18n()?.scope?.('booking') || UI_FALLBACK; }
   function l10n(){ return globalThis.LoveTravelTourLocale || null; }
   function providerText(value){ return l10n()?.providerText?.(value) ?? String(value ?? ''); }
-  function localizedRateTitle(productId,rate,localization=null){
-    if(localization?.locale===locale()&&localization?.source==='bokun-native'){
-      return String(rate?.title||rate?.code||rate?.id||'');
-    }
-    return l10n()?.rateTitle?.(productId,rate?.id,rate?.title||rate?.code||rate?.id||'') ?? String(rate?.title||rate?.code||rate?.id||'');
+  function localizedRateTitle(_productId,rate,_localization=null){
+    return String(rate?.title||rate?.code||rate?.id||'');
   }
   function arr(v){ return Array.isArray(v) ? v : []; }
   function esc(v){ return String(v ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
@@ -576,7 +455,7 @@
       return '<div class="lt-date-group"><h4>'+esc(formatDate(first,{month:'long',year:'numeric'}))+'</h4><div class="lt-date-grid">'+
         items.map(item=>{
           const active=item.date===s.date;
-          return '<button type="button" class="lt-date-chip '+(active?'is-active':'')+'" aria-pressed="'+(active?'true':'false')+'" '+(active?'aria-current="date" ':'')+'data-lt-date="'+esc(item.date)+'"><small>'+esc(formatDate(item.date,{weekday:'short'}))+'</small><b>'+esc(formatDate(item.date,{day:'numeric'}))+'</b><span>'+esc(Number(item.slots)===1 ? (locale()==='ru'?'1 время':locale()==='vi'?'1 giờ':locale()==='ko'?'시간 1개':locale()==='zh'?'1 个时间':'1 time') : String(item.slots)+' '+(locale()==='ru'?'времени':locale()==='vi'?'giờ':locale()==='ko'?'시간':locale()==='zh'?'个时间':'times'))+'</span></button>';
+          return '<button type="button" class="lt-date-chip '+(active?'is-active':'')+'" aria-pressed="'+(active?'true':'false')+'" '+(active?'aria-current="date" ':'')+'data-lt-date="'+esc(item.date)+'"><small>'+esc(formatDate(item.date,{weekday:'short'}))+'</small><b>'+esc(formatDate(item.date,{day:'numeric'}))+'</b><span>'+esc(i18n()?.t?.('booking.timeCount',{count:Number(item.slots)}) || String(item.slots))+'</span></button>';
         }).join('')+'</div></div>';
     }).join('');
     const times=s.date?'<div class="lt-time-block"><h4>'+esc(t().chooseTime)+'</h4><div class="lt-time-grid">'+

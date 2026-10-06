@@ -84,15 +84,16 @@ class FakeDB {
   }
 }
 
-test('normalizes UI locales into Bókun language parameters without inventing a native locale', () => {
+test('uses one canonical English Bókun content source for every target locale', () => {
   assert.equal(normalizeContentLocale('ko-KR'),'ko');
-  assert.equal(bokunLanguage('vi'),'VI');
+  for(const locale of ['ru','vi','en','ko','zh']) assert.equal(bokunLanguage(locale),'EN');
+  assert.equal(hasNativeBokunLocale(sampleDomain(),'en'),true);
   assert.equal(hasNativeBokunLocale(sampleDomain(),'ru'),false);
   assert.equal(hasNativeBokunLocale(sampleDomain(),'ko'),false);
 
-  const native=sampleDomain();
-  native.experience.languages.raw.push('KO_KR');
-  assert.equal(hasNativeBokunLocale(native,'ko'),true);
+  const advertised=sampleDomain();
+  advertised.experience.languages.raw.push('KO_KR');
+  assert.equal(hasNativeBokunLocale(advertised,'ko'),false);
 });
 
 test('extracts stable semantic keys for customer-visible Bókun text', () => {
@@ -142,8 +143,10 @@ test('translates only cache misses and invalidates a field when its Bókun sourc
   const stale=await localizeDomainFromCache(changed,env,'ko',{waitUntil(promise){background.push(promise);}});
   assert.equal(stale.experience.title,'Updated English title');
   assert.ok(stale.localization.pendingFields>=1);
-  assert.equal(stale.localization.source,'viiversion-cache-partial');
-  assert.equal(stale.experience.description,'KO:English description');
+  assert.equal(stale.localization.source,'source');
+  assert.equal(stale.localization.atomic,true);
+  assert.equal(stale.localization.translatedFields,0);
+  assert.equal(stale.experience.description,'English description');
   assert.equal(background.length,1);
 
   await Promise.all(background);

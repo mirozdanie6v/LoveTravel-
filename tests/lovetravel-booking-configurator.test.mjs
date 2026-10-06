@@ -8,6 +8,7 @@ const js=await readFile(resolve(root,'src/lovetravel-booking-configurator.js'),'
 const css=await readFile(resolve(root,'src/lovetravel-booking-configurator.css'),'utf8');
 const build=await readFile(resolve(root,'build.mjs'),'utf8');
 const worker=await readFile(resolve(root,'src/worker-r2.js'),'utf8');
+const i18n=await readFile(resolve(root,'src/lovetravel-i18n.js'),'utf8');
 
 test('booking configurator is syntactically valid and resolver-backed',()=>{
   assert.doesNotThrow(()=>new Function(js));
@@ -171,8 +172,9 @@ test('booking choices expose unmistakable selected state and accessible pressed 
 });
 
 test('pickup semantics and mobile keyboard behavior are explicit in the booking sheet',()=>{
-  assert.match(js,/meetNote:/);
-  assert.match(js,/pickupModeNote:/);
+  assert.match(i18n,/"booking\.meetNote":/);
+  assert.match(i18n,/"booking\.pickupModeNote":/);
+  assert.equal(/const copy\s*=/.test(js),false);
   assert.match(js,/pickupNote=/);
   assert.match(js,/syncVisualViewport/);
   assert.match(js,/window\.visualViewport/);
@@ -192,4 +194,12 @@ test('hotel pickup hides the independent start point and labels transport contex
   assert.match(js,/pickupCard\.hidden=mode==='MEET_ON_LOCATION'/);
   assert.match(js,/data-lt-selected-pickup-value/);
   assert.match(js,/stepButton\('pickup',pickupStepLabel\(r\),pickupSummary\(r\)/);
+});
+
+
+test('booking UI copy comes from semantic keys instead of locale conditionals',()=>{
+  assert.match(js,/LoveTravelI18n/);
+  assert.match(js,/scope\?\.\('booking'\)/);
+  assert.match(js,/booking\.timeCount/);
+  assert.equal(/[А-Яа-яЁё\u4E00-\u9FFF\uAC00-\uD7AF]/.test(js),false);
 });

@@ -93,7 +93,7 @@ test('LoveTravel worker exposes only the two agreed Bókun products in read-only
       calls.filter(url=>url.pathname.endsWith('/product')).map(url=>url.searchParams.get('productId')).sort(),
       ['1287578','1287580'],
     );
-    assert.ok(calls.filter(url=>url.pathname.endsWith('/product')).every(url=>url.searchParams.get('lang')==='RU'));
+    assert.ok(calls.filter(url=>url.pathname.endsWith('/product')).every(url=>url.searchParams.get('lang')==='EN'));
     assert.equal(body.locale,'ru');
     assert.equal(response.headers.get('cache-control'),'no-store, max-age=0');
   } finally {
@@ -101,7 +101,7 @@ test('LoveTravel worker exposes only the two agreed Bókun products in read-only
   }
 });
 
-test('LoveTravel forwards the active locale to Bókun product reads', async () => {
+test('LoveTravel keeps the customer locale while Bókun content reads stay canonical English', async () => {
   const originalFetch=globalThis.fetch;
   const calls=[];
   globalThis.fetch=async input => {
