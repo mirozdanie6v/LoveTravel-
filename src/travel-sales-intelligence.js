@@ -226,6 +226,164 @@ function modelProductList(products=[]){
   })).filter(item=>item.productId&&item.title);
 }
 
+
+function addIsoDays(iso,days){
+  const date=new Date(`${iso}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate()+Number(days||0));
+  return date.toISOString().slice(0,10);
+}
+
+function normalizedText(value){
+  return str(value,2400)
+    .toLocaleLowerCase()
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g,'');
+}
+
+function explicitAdultCount(message){
+  const text=normalizedText(message);
+  const digitPatterns=[
+    /\b(\d{1,2})\s+adults?\b/i,
+    /(\d{1,2})\s*(?:взросл(?:ых|ые|ый)|người lớn|位成人|个成人|個成人|명)/iu,
+  ];
+  for(const pattern of digitPatterns){
+    const match=text.match(pattern);
+    if(match){
+      const count=Number(match[1]);
+      if(Number.isInteger(count)&&count>=1&&count<=30) return count;
+    }
+  }
+  const phrases=[
+    [2,/\b(?:two adults|two grown-ups)\b/i],
+    [2,/(?:двое|два)\s+взросл/iu],
+    [2,/hai\s+người\s+lớn/iu],
+    [2,/(?:两|兩)\s*(?:位|个|個)?\s*成人/u],
+    [2,/성인\s*두\s*명/u],
+    [1,/\b(?:one adult|a single adult)\b/i],
+    [1,/(?:один|одна)\s+взросл/iu],
+    [1,/một\s+người\s+lớn/iu],
+    [1,/一\s*(?:位|个|個)?\s*成人/u],
+    [1,/성인\s*한\s*명/u],
+  ];
+  for(const [count,pattern] of phrases){
+    if(pattern.test(text)) return count;
+  }
+  return null;
+}
+
+function explicitDateConstraint(message,now){
+  const text=normalizedText(message);
+  const today=todayVietnam(now);
+  if(/\btomorrow\b/i.test(text)||/завтра/iu.test(text)||/ngày\s+mai/iu.test(text)||/明天/u.test(text)||/내일/u.test(text)){
+    return {kind:'EXACT',exact:addIsoDays(today,1)};
+  }
+  if(/\btoday\b/i.test(text)||/сегодня/iu.test(text)||/hôm\s+nay/iu.test(text)||/今天/u.test(text)||/오늘/u.test(text)){
+    return {kind:'EXACT',exact:today};
+  }
+  return null;
+}
+
+function explicitPickupHotel(message,products=[]){
+  const raw=str(message,1200);
+  const normalized=normalizedText(raw);
+  for(const row of arr(products)){
+    for(const place of arr(row?.facts?.pickup?.places)){
+      const title=str(place?.title||place?.name,160);
+      if(title&&normalized.includes(normalizedText(title))){
+        return title;
+      }
+    }
+  }
+  const patterns=[
+    /(?:pickup|pick\s*up|collect)(?:\s+us)?(?:\s+(?:from|at))?\s+([^,.;!?]{2,80})/i,
+    /(?:заберите|забрать|трансфер)(?:\s+нас)?(?:\s+(?:из|от))?\s+([^,.;!?]{2,80})/iu,
+    /(?:đón)(?:\s+(?:tại|ở))?\s+([^,.;!?]{2,80})/iu,
+    /(?:从|從)\s*([^，。！？]{2,40}?)\s*(?:接|接我们|接我們)/u,
+    /([^,.!?]{2,60}?)에서\s*픽업/u,
+  ];
+  for(const pattern of patterns){
+    const match=raw.match(pattern);
+    if(match?.[1]){
+      const value=str(match[1],160)
+        .replace(/\b(?:please|we want to book it|book it)\b.*$/i,'')
+        .trim();
+      if(value) return value;
+    }
+  }
+  return '';
+}
+
+function explicitProductId(message,products=[]){
+  const text=normalizedText(message);
+  for(const row of arr(products)){
+    const id=str(row?.product?.productId,120);
+    const title=str(row?.product?.title,200);
+    if(id&&title&&normalizedText(title).length>=4&&text.includes(normalizedText(title))){
+      return id;
+    }
+  }
+  return null;
+}
+
+export function deterministicExplicitIntentPatch({
+  message,
+  locale='ru',
+  products=[],
+  now=new Date(),
+}={}){
+  const text=normalizedText(message);
+  const patch={
+    locale:SUPPORTED_LOCALES.includes(locale)?locale:'ru',
+  };
+  const dateConstraint=explicitDateConstraint(message,now);
+  if(dateConstraint) patch.dateConstraint=dateConstraint;
+
+  const adults=explicitAdultCount(message);
+  if(adults!==null) patch.party={adults};
+
+  const preferenceAdds=[];
+  if(/snorkel/i.test(text)||/снорк/iu.test(text)||/lặn\s+ngắm\s+san\s+hô/iu.test(text)||/浮潜|浮潛/u.test(text)||/스노클/u.test(text)){
+    preferenceAdds.push('SNORKELING');
+  }
+  if(preferenceAdds.length) patch.preferenceAdds=preferenceAdds;
+
+  const hotel=explicitPickupHotel(message,products);
+  const pickupCue=/pickup|pick\s*up|collect\s+us/i.test(text)
+    ||/заберите|забрать|трансфер/iu.test(text)
+    ||/đón/iu.test(text)
+    ||/(?:接我们|接我們|接送|从|從)/u.test(text)
+    ||/픽업/u.test(text);
+  if(hotel) patch.hotel=hotel;
+  if(hotel||pickupCue) patch.pickupPreference='PICKUP';
+
+  const selectedProductId=explicitProductId(message,products);
+  if(selectedProductId) patch.selectedProductId=selectedProductId;
+
+  const bookingRequested=/\b(?:book|booking|reserve)\b/i.test(text)
+    ||/заброн|брони/iu.test(text)
+    ||/đặt\s*(?:chỗ|tour)?/iu.test(text)
+    ||/预订|預訂|预约|預約/u.test(text)
+    ||/예약/u.test(text);
+  if(bookingRequested){
+    patch.goal='BOOK';
+    patch.bookingRequested=true;
+  }
+  return validateIntentPatch(patch);
+}
+
+function mergeExplicitOverModel(modelPatch,explicitPatch){
+  const combined={...modelPatch,...explicitPatch};
+  if(modelPatch?.party||explicitPatch?.party){
+    combined.party={...(modelPatch?.party||{}),...(explicitPatch?.party||{})};
+  }
+  const adds=[...new Set([
+    ...arr(modelPatch?.preferenceAdds),
+    ...arr(explicitPatch?.preferenceAdds),
+  ])];
+  if(adds.length) combined.preferenceAdds=adds;
+  return validateIntentPatch(combined);
+}
+
 export async function extractConversationIntent({
   env,
   message,
@@ -235,12 +393,18 @@ export async function extractConversationIntent({
   context={},
   now=new Date(),
 }={}){
+  const explicitPatch=deterministicExplicitIntentPatch({
+    message,
+    locale,
+    products,
+    now,
+  });
   const fallback={
-    patch:{locale:SUPPORTED_LOCALES.includes(locale)?locale:'ru'},
-    selectedProductId:null,
-    goal:'GENERAL',
-    bookingRequested:false,
-    source:'deterministic-empty',
+    patch:explicitPatch,
+    selectedProductId:explicitPatch.selectedProductId??null,
+    goal:explicitPatch.goal||'GENERAL',
+    bookingRequested:Boolean(explicitPatch.bookingRequested),
+    source:'deterministic-explicit',
   };
   if(!env?.AI||!str(message,1200)) return fallback;
 
@@ -275,7 +439,8 @@ export async function extractConversationIntent({
     });
     const parsed=parseJson(responseText(result));
     const rawPatch=isObject(parsed?.intentPatch)?parsed.intentPatch:{};
-    const patch=validateIntentPatch(rawPatch);
+    const modelPatch=validateIntentPatch(rawPatch);
+    const patch=mergeExplicitOverModel(modelPatch,explicitPatch);
     return {
       patch,
       selectedProductId:patch.selectedProductId??null,
