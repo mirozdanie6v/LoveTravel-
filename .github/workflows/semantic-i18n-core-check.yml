@@ -5,6 +5,7 @@ on:
     branches:
       - semantic-i18n-core
       - linguistic-qa-native-copy
+      - linguistic-qa-cache-warm
   workflow_dispatch:
 
 jobs:
