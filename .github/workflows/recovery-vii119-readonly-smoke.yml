@@ -63,7 +63,7 @@ jobs:
             }
           });
           if(ai.agent?.mutationExecuted!==false) throw new Error('AI mutation guard failed');
-          if(ai.intent?.bookingRequested!==true) throw new Error('bookingRequested was not preserved');
+          if(ai.agent?.bookingRequested!==true) throw new Error('agent bookingRequested was not preserved');
           if(Number(ai.intent?.party?.adults)!==2) throw new Error('adult count was not preserved');
           if(ai.intent?.dateConstraint?.kind!=='EXACT'||!ai.intent?.dateConstraint?.exact) throw new Error('exact date missing');
           if(!ai.agent?.selectedOfferId) throw new Error('no provider-verified offer selected');
@@ -78,7 +78,7 @@ jobs:
           console.log(JSON.stringify({
             ok:true,
             mutationExecuted:ai.agent.mutationExecuted,
-            bookingRequested:ai.intent.bookingRequested,
+            bookingRequested:ai.agent.bookingRequested,
             selectedOfferId:ai.agent.selectedOfferId,
             state:tx.state,
             quoteReady:Boolean(tx.quote?.readyToBook)
