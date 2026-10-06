@@ -46,6 +46,8 @@ on:
       - 'tests/bokun-worker.test.mjs'
       - 'tests/ai-network-departure-guards.test.mjs'
       - 'tests/lovetravel-release-readiness.test.mjs'
+      - 'scripts/verify-live-client-ai-browser.mjs'
+      - '.github/workflows/client-ai-browser-e2e.yml'
       - '.github/workflows/travel-commerce-contracts-check.yml'
   push:
     branches: [main]

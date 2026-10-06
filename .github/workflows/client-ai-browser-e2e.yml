@@ -6,6 +6,7 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/client-ai-browser-e2e.yml'
+      - 'scripts/verify-live-client-ai-browser.mjs'
 
 permissions:
   contents: read
