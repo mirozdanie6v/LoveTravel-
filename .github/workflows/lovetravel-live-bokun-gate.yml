@@ -1,0 +1,29 @@
+name: LoveTravel live Bókun release gate
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: Deployed LoveTravel base URL
+        required: true
+        default: https://lovetravel.viiversion.com
+
+permissions:
+  contents: read
+
+jobs:
+  live-bokun-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: lovetravel-demo
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - name: Run one real transaction-backed Bókun demo booking
+        env:
+          LOVE_TRAVEL_LIVE_BASE_URL: ${{ inputs.base_url }}
+          LOVE_TRAVEL_DEMO_TOKEN: ${{ secrets.LOVE_TRAVEL_DEMO_TOKEN }}
+          LIVE_BOKUN_WRITE: '1'
+        run: node scripts/verify-live-travel-commerce.mjs
