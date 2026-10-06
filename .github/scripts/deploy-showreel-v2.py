@@ -49,6 +49,10 @@ assert hashlib.sha256(raw).hexdigest() == release["sha256"]
 payload = json.loads(raw)
 assert payload["source_commit"] == release["source_commit"]
 runtime = payload["secrets"]
+# The processor talks only to the private AI relay. Old direct-provider
+# credentials/routes from historical encrypted releases must not override it.
+runtime.pop("CLOUDFLARE_AI_TOKEN", None)
+runtime.pop("CLOUDFLARE_AI_URL", None)
 runtime["CLOUDFLARE_ACCOUNT_ID"] = account
 for value in runtime.values():
     if value:
