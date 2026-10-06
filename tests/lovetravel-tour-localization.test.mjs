@@ -79,7 +79,7 @@ test('tour detail renderer never trusts provider localizedDate or raw product me
 });
 
 test('booking sheets localize rates dynamic questions extras and custom fields',()=>{
-  assert.match(bookingJs,/full-tour-localization-v4/);
+  assert.match(bookingJs,/semantic-i18n-core-v1/);
   assert.match(bookingJs,/localizedRateTitle\(productId,rate,localization=null\)/);
   assert.match(bookingJs,/localizeQuestion/);
   assert.match(bookingJs,/providerText\(item\.title\|\|item\.code\|\|id\)/);
