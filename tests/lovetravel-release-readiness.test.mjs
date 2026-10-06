@@ -65,5 +65,5 @@ test('client demo booking is hidden behind a hashed invite and integration-side 
   assert.match(booking, /clientDemoEnabled\(\)/);
   assert.match(booking, /\/api\/bokun\/client-demo\/submit/);
   assert.match(semanticI18n,/"booking\.demoCreate": "Создать тестовую бронь"/);
-  assert.match(booking, /demoCreate:'创建测试预订'/);
+  assert.match(semanticI18n,/"booking\.demoCreate": "创建测试预订"/);
 });
