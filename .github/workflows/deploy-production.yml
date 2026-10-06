@@ -118,6 +118,8 @@ jobs:
         run: |
           set -euo pipefail
           npm install --no-fund --no-audit
+          npx wrangler d1 migrations list love-travel-v28-db --remote --config wrangler.jsonc
+          npx wrangler d1 migrations apply love-travel-v28-db --remote --config wrangler.jsonc
           npm run check
           node <<'NODE'
           const fs=require('fs');
