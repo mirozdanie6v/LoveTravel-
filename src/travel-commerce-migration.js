@@ -1,4 +1,4 @@
-const SCHEMA_VERSION='0008_travel_commerce_runtime';
+export const TRAVEL_COMMERCE_SCHEMA_VERSION='0008_travel_commerce_runtime';
 
 const STATEMENTS=Object.freeze([
   `CREATE TABLE IF NOT EXISTS travel_shopping_sessions (
@@ -73,33 +73,7 @@ const STATEMENTS=Object.freeze([
     ON travel_provider_evidence(quote_id, retrieved_at DESC)`,
 ]);
 
-async function sha256Hex(value){
-  const bytes=await crypto.subtle.digest(
-    'SHA-256',
-    new TextEncoder().encode(String(value||'')),
-  );
-  return [...new Uint8Array(bytes)]
-    .map(byte=>byte.toString(16).padStart(2,'0'))
-    .join('');
-}
-
-function json(data,status=200,headers={}){
-  return new Response(JSON.stringify(data),{
-    status,
-    headers:{
-      'content-type':'application/json; charset=utf-8',
-      'cache-control':'no-store',
-      ...headers,
-    },
-  });
-}
-
-async function authorized(request,env){
-  const expected=String(env?.LOVE_TRAVEL_MIGRATION_TOKEN_SHA256||'').trim();
-  const token=String(request.headers.get('x-viiversion-migration-token')||'').trim();
-  if(!expected||!token) return false;
-  return await sha256Hex(token)===expected;
-}
+const readiness=new WeakMap();
 
 export async function applyTravelCommerceRuntimeSchema(db){
   if(!db||typeof db.prepare!=='function'||typeof db.batch!=='function'){
@@ -108,28 +82,21 @@ export async function applyTravelCommerceRuntimeSchema(db){
   const statements=STATEMENTS.map(sql=>db.prepare(sql));
   await db.batch(statements);
   return {
-    schemaVersion:SCHEMA_VERSION,
+    schemaVersion:TRAVEL_COMMERCE_SCHEMA_VERSION,
     statementCount:STATEMENTS.length,
   };
 }
 
-export async function handleTravelCommerceMigration(request,env,url=new URL(request.url)){
-  if(url.pathname!=='/internal/travel-commerce/migrate') return null;
-  if(request.method!=='POST'){
-    return json({ok:false,error:'method_not_allowed'},405,{allow:'POST'});
+export async function ensureTravelCommerceRuntimeSchema(db){
+  if(!db||typeof db!=='object'){
+    throw new TypeError('D1 database binding is required');
   }
-  if(!env?.DB) return json({ok:false,error:'d1_unavailable'},503);
-  if(!await authorized(request,env)){
-    return json({ok:false,error:'migration_access_denied'},403);
-  }
-
-  try{
-    const result=await applyTravelCommerceRuntimeSchema(env.DB);
-    return json({ok:true,...result});
-  }catch(error){
-    console.error('Travel Commerce schema migration failed',error?.message||error);
-    return json({ok:false,error:'travel_commerce_migration_failed'},500);
-  }
+  const existing=readiness.get(db);
+  if(existing) return existing;
+  const pending=applyTravelCommerceRuntimeSchema(db).catch(error=>{
+    readiness.delete(db);
+    throw error;
+  });
+  readiness.set(db,pending);
+  return pending;
 }
-
-export const TRAVEL_COMMERCE_SCHEMA_VERSION=SCHEMA_VERSION;
