@@ -175,6 +175,7 @@ export function createTravelCommerceStore(envOrDb){
     before,
     after,
     receipt,
+    idempotencyKey,
     evidence=[],
     eventType='COMMAND_APPLIED',
   }={}){
@@ -191,19 +192,14 @@ export function createTravelCommerceStore(envOrDb){
       throw new ContractError('CommandReceipt',[{code:'revision_mismatch',path:'revisionAfter',message:'Receipt and transaction revisions must advance exactly once'}]);
     }
 
-    const duplicate=await getReceiptByIdempotencyKey(
-      // idempotency key is persisted from transaction mutation when available;
-      // callers may also pass it explicitly through the private receipt metadata argument below.
-      next.mutation?.commandId===commandReceipt.commandId
-        ? next.mutation.idempotencyKey
-        : commandReceipt.commandId
-    );
+    const key=str(idempotencyKey);
+    if(!key){
+      throw new ContractError('TransactionCommand',[{code:'idempotency_key_required',path:'idempotencyKey',message:'commitCommand requires the original command idempotencyKey'}]);
+    }
+    const duplicate=await getReceiptByIdempotencyKey(key);
     if(duplicate) return {transaction:previous,receipt:duplicate,replayed:true};
 
     const snapshot=json(next);
-    const idempotencyKey=next.mutation?.commandId===commandReceipt.commandId
-      ? next.mutation.idempotencyKey
-      : commandReceipt.commandId;
     const statements=[
       db.prepare(`UPDATE travel_booking_transactions
         SET revision=?,state=?,shopping_session_id=?,snapshot_json=?,updated_at=?
@@ -218,7 +214,7 @@ export function createTravelCommerceStore(envOrDb){
       SELECT ?,?,?,?,?
       WHERE (SELECT snapshot_json FROM travel_booking_transactions WHERE transaction_id=?)=?`)
         .bind(
-          commandReceipt.commandId,next.transactionId,idempotencyKey,json(commandReceipt),commandReceipt.createdAt,
+          commandReceipt.commandId,next.transactionId,key,json(commandReceipt),commandReceipt.createdAt,
           next.transactionId,snapshot,
         ),
       db.prepare(`INSERT INTO travel_transaction_audit(
