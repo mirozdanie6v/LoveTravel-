@@ -6,6 +6,7 @@ on:
       - semantic-i18n-core
       - linguistic-qa-native-copy
       - linguistic-qa-cache-warm
+      - fix-complete-zh-localization
   workflow_dispatch:
 
 jobs:
