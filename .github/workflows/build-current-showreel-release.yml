@@ -1,0 +1,47 @@
+name: Build current encrypted showreel release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - name: Checkout release harness
+        uses: actions/checkout@v5
+
+      - name: Checkout encrypted release bridge
+        uses: actions/checkout@v5
+        with:
+          repository: mirozdanie6v/uniq-smart-rent
+          ref: codex/showreel-deploy
+          path: bridge
+
+      - name: Checkout current showreel source
+        uses: actions/checkout@v5
+        with:
+          repository: mirozdanie6v/EventVideoHumanEditor
+          ref: codex/showreel-prototype
+          path: editor
+
+      - name: Build encrypted release from exact current commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --quiet cryptography==46.0.5
+          python .github/scripts/build-current-showreel-release.py
+
+      - name: Upload encrypted release only
+        uses: actions/upload-artifact@v4
+        with:
+          name: showreel-release-v2-current
+          path: |
+            release-v2-current.enc.json
+            release-v2-current-report.json
+          retention-days: 1
