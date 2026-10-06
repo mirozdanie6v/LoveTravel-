@@ -1,0 +1,30 @@
+name: LoveTravel client AI browser E2E
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/client-ai-browser-e2e.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  client-ai:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - name: Install browser runtime
+        run: |
+          npm install --no-fund --no-audit
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Verify public AI journey in RU and EN
+        env:
+          LOVE_TRAVEL_LIVE_BASE_URL: https://lovetravel.viiversion.com
+        run: node scripts/verify-live-client-ai-browser.mjs
