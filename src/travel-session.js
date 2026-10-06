@@ -8,6 +8,7 @@ import {
 } from './travel-commerce-transaction.js';
 import { createTravelCommerceStore } from './travel-commerce-store.js';
 import { createInitialTravelIntent } from './travel-sales-intelligence.js';
+import { ensureTravelCommerceRuntimeSchema } from './travel-commerce-migration.js';
 
 const str=(value,max=180)=>String(value??'').trim().slice(0,max);
 
@@ -55,6 +56,7 @@ export function transactionIdForSalesSession(sessionId){
 }
 
 export async function ensureCommerceTransaction(env,sessionId,{now=new Date(),locale='ru'}={}){
+  await ensureTravelCommerceRuntimeSchema(env.DB);
   const shoppingSessionId=shoppingSessionIdForSalesSession(sessionId);
   const store=createTravelCommerceStore(env.DB);
   let shopping=await store.getShoppingSession(shoppingSessionId);
