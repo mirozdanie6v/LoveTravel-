@@ -10,6 +10,10 @@ import {
   validateOffer,
   validateProduct,
 } from './travel-commerce-contracts.js';
+import {
+  createFirstClassQuote,
+  refreshFirstClassQuote,
+} from './travel-commerce-quote.js';
 
 const DEFAULT_BASE_URL='https://integration.viiversion.com';
 
@@ -338,6 +342,40 @@ export function createBokunProvider({
     return structuredClone(resolution?.constraints?.bookingRequirements||null);
   }
 
+  async function quoteSelection({
+    transactionId,
+    previousQuote=null,
+    selection,
+    domain,
+    ttlMs,
+    ...options
+  }={}){
+    const resolved=await resolveOffer({selection,domain,...options});
+    if(!resolved.offer||!resolved.resolution?.readyToQuote){
+      throw new ProviderCapabilityError('selection_not_quote_ready','Selection cannot produce a first-class Quote');
+    }
+    const sourceFetchedAt=resolved.offer.generatedAt;
+    const quoted=previousQuote
+      ? await refreshFirstClassQuote({
+          previousQuote,
+          offer:resolved.offer,
+          resolution:resolved.resolution,
+          now:now(),
+          ttlMs,
+          sourceFetchedAt,
+        })
+      : await createFirstClassQuote({
+          transactionId,
+          revision:1,
+          offer:resolved.offer,
+          resolution:resolved.resolution,
+          now:now(),
+          ttlMs,
+          sourceFetchedAt,
+        });
+    return {...resolved,...quoted};
+  }
+
   async function getCheckoutContract({resolution,externalBookingReference,currency='USD'}={}){
     if(!resolution?.readyToQuote) throw new ProviderCapabilityError('selection_not_quote_ready','Selection is not ready for checkout options');
     const provisional=provisionalBookingRequest(resolution,externalBookingReference);
@@ -424,6 +462,7 @@ export function createBokunProvider({
     getDomain,
     listProducts,
     resolveOffer,
+    quoteSelection,
     getBookingRequirements,
     getCheckoutContract,
     createBookingDraft,
