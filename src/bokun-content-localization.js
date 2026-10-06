@@ -27,12 +27,11 @@ export function normalizeContentLocale(value) {
   return SUPPORTED_LOCALES.includes(locale) ? locale : 'ru';
 }
 
-export function bokunLanguage(locale) {
-  const normalized = normalizeContentLocale(locale);
-  // Chinese and Korean are normalized from one stable English Bókun source.
-  // The customer-facing copy is then translated through our own verified cache
-  // so a partially localized Bókun payload can never leak mixed languages.
-  return normalized === 'zh' || normalized === 'ko' ? 'EN' : normalized.toUpperCase();
+export function bokunLanguage(_locale) {
+  // Always translate from one canonical Bókun source. The product's advertised
+  // guide languages are not evidence that Bókun content fields are localized.
+  // A stable EN source also makes field hashes deterministic across locales.
+  return 'EN';
 }
 
 function text(value) {
@@ -43,15 +42,11 @@ function asArray(value) {
   return Array.isArray(value) ? value : [];
 }
 
-function nativeLanguageTokens(domain = {}) {
-  return [
-    domain?.experience?.languages?.base,
-    ...asArray(domain?.experience?.languages?.raw),
-  ].map(value => cleanLocale(value)).filter(Boolean);
-}
-
-export function hasNativeBokunLocale(domain, locale) {
-  return nativeLanguageTokens(domain).includes(normalizeContentLocale(locale));
+export function hasNativeBokunLocale(_domain, locale) {
+  // We currently have no provider metadata proving that an individual content
+  // field was returned in a requested locale. Treat only the canonical English
+  // source as native; all customer target locales use the controlled cache.
+  return normalizeContentLocale(locale) === 'en';
 }
 
 function pathSet(target, path, value) {
@@ -334,8 +329,7 @@ function enqueueBackgroundSync(task) {
 export async function syncDomainTranslations(domain, env, requestedLocale) {
   const locale = normalizeContentLocale(requestedLocale);
   const productId = String(domain?.experience?.id || domain?.provider?.productId || '');
-  const strictLocale = locale === 'zh' || locale === 'ko';
-  if (!productId || locale === 'en' || (!strictLocale && hasNativeBokunLocale(domain, locale)) || !env?.DB || !env?.AI) {
+  if (!productId || locale === 'en' || !env?.DB || !env?.AI) {
     return {ok:true, productId, locale, translated:0, skipped:true};
   }
 
@@ -369,8 +363,7 @@ export async function localizeDomainFromCache(domain, env, requestedLocale, ctx 
   const clone = structuredClone(domain);
   const productId = String(clone?.experience?.id || clone?.provider?.productId || '');
 
-  const strictLocale = locale === 'zh' || locale === 'ko';
-  if (locale === 'en' || (!strictLocale && hasNativeBokunLocale(clone, locale))) {
+  if (locale === 'en') {
     clone.localization = {
       locale,
       source:'bokun-native',
@@ -384,41 +377,46 @@ export async function localizeDomainFromCache(domain, env, requestedLocale, ctx 
   let rows = [];
   try {
     rows = await cachedRows(env, productId, locale);
-    // Never block a customer request on AI translation. Existing cache rows,
-    // including rows from an earlier translation-provider version, are safe to
-    // serve immediately when their source hash still matches. Any missing or
-    // older-provider fields are refreshed below with ctx.waitUntil().
-
   } catch (error) {
     console.warn('Bókun localization cache unavailable', error?.message || error);
   }
-  const cache = new Map(rows.map(row => [String(row.field_key), row]));
-  let translatedFields = 0;
-  let pendingFields = 0;
 
+  const cache = new Map(rows.map(row => [String(row.field_key), row]));
+  const ready = new Map();
   for (const field of fields) {
     const row = cache.get(field.key);
-    if (row && String(row.source_hash) === field.sourceHash && text(row.translated_text)) {
-      pathSet(clone, field.path, row.translated_text);
-      translatedFields += 1;
-      if (String(row.provider || '') !== TRANSLATION_PROVIDER) pendingFields += 1;
-    } else {
-      pendingFields += 1;
+    if (
+      row &&
+      String(row.source_hash) === field.sourceHash &&
+      text(row.translated_text) &&
+      String(row.provider || '') === TRANSLATION_PROVIDER
+    ) {
+      ready.set(field.key,row);
+    }
+  }
+
+  const pendingFields = Math.max(0, fields.length - ready.size);
+  const complete = fields.length === 0 || pendingFields === 0;
+
+  // Apply translated Bókun content atomically. A customer sees either the
+  // complete requested locale or the untouched canonical source while the
+  // cache refreshes; never a mixed-language partial payload.
+  if (complete) {
+    for (const field of fields) {
+      const row = ready.get(field.key);
+      if (row) pathSet(clone, field.path, row.translated_text);
     }
   }
 
   clone.localization = {
     locale,
-    source:translatedFields && pendingFields === 0
-      ? 'viiversion-cache'
-      : translatedFields
-        ? 'viiversion-cache-partial'
-        : 'source',
-    translatedFields,
+    source:complete ? 'viiversion-cache' : 'source',
+    translatedFields:complete ? fields.length : 0,
     pendingFields,
+    atomic:true,
   };
 
-  if (pendingFields && env?.AI && env?.DB && ctx?.waitUntil) {
+  if (!complete && env?.AI && env?.DB && ctx?.waitUntil) {
     ctx.waitUntil(enqueueBackgroundSync(() => syncDomainTranslations(domain, env, locale)).catch(error => {
       console.warn('Bókun localization background sync failed', error?.message || error);
     }));
