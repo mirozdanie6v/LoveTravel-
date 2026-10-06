@@ -33,7 +33,7 @@ jobs:
           const browser=await chromium.launch({headless:true});
           const page=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
           const base='https://lovetravel.viiversion.com';
-          const locales=['zh','ko'];
+          const locales=['vi','en','zh','ko'];
           const products=['1287578','1287580'];
           const report={};
 
@@ -51,6 +51,8 @@ jobs:
               cyrillic:uniq.filter(x=>/[А-Яа-яЁё]/.test(x)),
               hangulInZh:locale==='zh'?uniq.filter(x=>/[가-힣]/.test(x)):[],
               hanInKo:locale==='ko'?uniq.filter(x=>/[\u3400-\u9FFF]/.test(x)):[],
+              foreignScriptInVi:locale==='vi'?uniq.filter(x=>/[А-Яа-яЁё\u3400-\u9FFF가-힣]/.test(x)):[],
+              foreignScriptInEn:locale==='en'?uniq.filter(x=>/[А-Яа-яЁё\u3400-\u9FFF가-힣]/.test(x)):[],
               suspiciousEnglish:uniq.filter(x=>/\b(?:Book|Booking|Tour|Price|Total|Date|Guests|Contact|Available|Live|Choose|Select|Pickup|Meeting|Included|Excluded|Cancellation|Duration|From|Start|Finish|Adult|Child|Infant|Group|Private|Required|Room|Hotel|Language|Difficulty|Confirmation|Program|Information)\b/i.test(x)),
             };
           };
@@ -103,9 +105,20 @@ jobs:
             koCyrillic:[...new Set(collect(report.ko,'cyrillic'))],
             zhHangul:[...new Set(collect(report.zh,'hangulInZh'))],
             koHan:[...new Set(collect(report.ko,'hanInKo'))],
+            viForeignScript:[...new Set(collect(report.vi,'foreignScriptInVi'))],
+            enForeignScript:[...new Set(collect(report.en,'foreignScriptInEn'))],
+            viSuspiciousEnglish:[...new Set(collect(report.vi,'suspiciousEnglish'))],
+            zhSuspiciousEnglish:[...new Set(collect(report.zh,'suspiciousEnglish'))],
+            koSuspiciousEnglish:[...new Set(collect(report.ko,'suspiciousEnglish'))],
           };
           console.log(JSON.stringify({report,violations},null,2));
-          if(violations.zhCyrillic.length||violations.koCyrillic.length||violations.zhHangul.length||violations.koHan.length){
+          if(
+            violations.zhCyrillic.length||violations.koCyrillic.length||
+            violations.zhHangul.length||violations.koHan.length||
+            violations.viForeignScript.length||violations.enForeignScript.length||
+            violations.viSuspiciousEnglish.length||violations.zhSuspiciousEnglish.length||
+            violations.koSuspiciousEnglish.length
+          ){
             throw new Error('Visible cross-language leakage: '+JSON.stringify(violations));
           }
           await browser.close();
