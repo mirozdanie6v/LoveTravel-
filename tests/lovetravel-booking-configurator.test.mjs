@@ -208,7 +208,7 @@ test('booking UI copy comes from semantic keys instead of locale conditionals',(
 test('BookingConfigurator writes selection only through the session-bound BookingTransaction API',()=>{
   assert.match(js,/\/api\/travel-commerce\/transaction/);
   assert.match(js,/function syncTransactionSelection\(/);
-  assert.match(js,/action:'SYNC_SELECTION'/);
+  assert.match(js,/transactionAction\('SYNC_SELECTION'/);
   assert.match(js,/expectedRevision:Number\(transactionSnapshot\.revision\)/);
   assert.match(js,/transaction:\(\)=>transactionSnapshot/);
   assert.match(js,/revision:\(\)=>Number\(transactionSnapshot\?\.revision\|\|0\)/);
