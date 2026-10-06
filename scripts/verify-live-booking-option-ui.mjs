@@ -29,7 +29,7 @@ try{
 
   await page.evaluate(id=>{
     if(typeof openTour!=='function') throw new Error('openTour is unavailable');
-    openTour(id);
+    void openTour(id);
   },productId);
 
   await page.waitForFunction(id=>{
