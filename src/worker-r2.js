@@ -19,6 +19,7 @@ import {
 } from './bokun-content-localization.js';
 import { createBokunProvider } from './bokun-provider.js';
 import { handleLoveTravelSalesAgent } from './travel-sales-orchestrator.js';
+import { handleTravelTransactionApi } from './travel-transaction-api.js';
 
 const CONTENT_TYPES = {
   jpg: 'image/jpeg',
@@ -621,7 +622,9 @@ export default {
     if (url.pathname.startsWith('/tour-media/')) {
       return serveTourMedia(request, env, url.pathname);
     }
-    const demoBookingResponse = await handleLoveTravelClientDemoBooking(request, env, url);
+    const transactionResponse = await handleTravelTransactionApi(request, env, url);
+    if (transactionResponse) return transactionResponse;
+        const demoBookingResponse = await handleLoveTravelClientDemoBooking(request, env, url);
     if (demoBookingResponse) return demoBookingResponse;
     const bookingSelectionResponse = await handleLoveTravelBookingSelection(request, env, url, ctx);
     if (bookingSelectionResponse) return bookingSelectionResponse;
