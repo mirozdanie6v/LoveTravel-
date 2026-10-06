@@ -36,6 +36,7 @@ on:
       - 'tests/lovetravel-booking-configurator.test.mjs'
       - 'tests/ai-booking-date-handoff.test.mjs'
       - 'tests/travel-transaction-unification.test.mjs'
+      - 'tests/travel-commerce-e2e-gate.test.mjs'
       - 'tests/travel-sales-intelligence.test.mjs'
       - 'tests/travel-capability-broker.test.mjs'
       - 'tests/booking-session-runtime.test.mjs'
