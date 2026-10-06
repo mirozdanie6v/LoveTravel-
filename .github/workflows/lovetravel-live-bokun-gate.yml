@@ -65,5 +65,5 @@ jobs:
         shell: bash
         run: |
           set +e
-          yes | npx wrangler secret delete LOVE_TRAVEL_CLIENT_DEMO_INVITE_SHA256 --name love-travel-v28
-          yes | npx wrangler secret delete LOVE_TRAVEL_CLIENT_DEMO_TOKEN_SHA256 --name viiversion-integration
+          yes | npx wrangler secret delete LOVE_TRAVEL_CLIENT_DEMO_INVITE_SHA256 --name love-travel-v28 || true
+          yes | npx wrangler secret delete LOVE_TRAVEL_CLIENT_DEMO_TOKEN_SHA256 --name viiversion-integration || true
