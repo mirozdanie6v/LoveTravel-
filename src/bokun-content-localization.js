@@ -6,7 +6,7 @@ const TARGET_NAMES = Object.freeze({
   ko:'Korean',
   zh:'Simplified Chinese',
 });
-const TRANSLATION_PROVIDER = 'workers-ai:gemma-4-26b-a4b-it:v3';
+const TRANSLATION_PROVIDER = 'workers-ai:gemma-4-26b-a4b-it:v4-native-travel';
 
 let tableReadyPromise = null;
 const inFlightSync = new Map();
@@ -264,7 +264,10 @@ async function translateChunk(env, locale, fields) {
     'Return one valid JSON object with exactly the same keys and no commentary or markdown.',
     'Preserve HTML tags, URLs, IDs, numbers, currencies and formatting.',
     'Write natural customer-facing travel language that a native speaker would expect in a professional tour-booking app; do not translate word-for-word when a natural equivalent exists.',
-    'For Korean, use standard contemporary South Korean travel and booking terminology. For Simplified Chinese, use fluent Mainland Simplified Chinese travel and booking terminology.',
+    'Use consumer travel-platform language, not software, telecom, logistics or developer jargon.',
+    'For Vietnamese, write natural Vietnam travel-booking copy. Prefer “tour ghép” for shared group tours, “tour riêng” for private tours, “đón tại khách sạn” for hotel pickup, and natural customer wording instead of literal system terminology.',
+    'For Korean, use contemporary South Korean consumer travel terminology. Prefer “예약 가능 여부” for availability, “호텔 픽업”, “개별 이동” or “미팅 포인트” where appropriate. Avoid “좌석” for tour availability and avoid technical words such as “구성” when the user is simply checking booking details.',
+    'For Simplified Chinese, use fluent Mainland consumer travel terminology. Prefer “旅行社” or “旅游供应商” for a tour operator, “可订情况” for availability, “集合地点” for meeting point and “酒店接送” for hotel pickup. Never use telecom-style “运营商” for a travel operator, and avoid technical “配置” when referring to booking details.',
     'Translate generic English travel terms such as language names, accessibility notes, pickup instructions and booking labels. Keep only genuine proper names such as Hòn Mun, Hòn Tằm, Bích Đầm, Robinson Beach, hotel names, streets, brands and people; transliterate proper names only when natural for the target language.',
     'Do not leave source-language fragments mixed into the target sentence unless they are genuine proper names.',
     'Do not add, remove, summarize, reinterpret or invent facts.',
