@@ -244,7 +244,7 @@ function explicitAdultCount(message){
   const text=normalizedText(message);
   const digitPatterns=[
     /\b(\d{1,2})\s+adults?\b/i,
-    /(\d{1,2})\s*(?:взросл(?:ых|ые|ый)|người lớn|位成人|个成人|個成人|명)/iu,
+    /(\d{1,2})\s*(?:взросл(?:ых|ые|ый)|nguoi lon|位成人|个成人|個成人|명)/iu,
   ];
   for(const pattern of digitPatterns){
     const match=text.match(pattern);
@@ -256,12 +256,12 @@ function explicitAdultCount(message){
   const phrases=[
     [2,/\b(?:two adults|two grown-ups)\b/i],
     [2,/(?:двое|два)\s+взросл/iu],
-    [2,/hai\s+người\s+lớn/iu],
+    [2,/hai\s+nguoi\s+lon/iu],
     [2,/(?:两|兩)\s*(?:位|个|個)?\s*成人/u],
     [2,/성인\s*두\s*명/u],
     [1,/\b(?:one adult|a single adult)\b/i],
     [1,/(?:один|одна)\s+взросл/iu],
-    [1,/một\s+người\s+lớn/iu],
+    [1,/mot\s+nguoi\s+lon/iu],
     [1,/一\s*(?:位|个|個)?\s*成人/u],
     [1,/성인\s*한\s*명/u],
   ];
@@ -274,10 +274,10 @@ function explicitAdultCount(message){
 function explicitDateConstraint(message,now){
   const text=normalizedText(message);
   const today=todayVietnam(now);
-  if(/\btomorrow\b/i.test(text)||/завтра/iu.test(text)||/ngày\s+mai/iu.test(text)||/明天/u.test(text)||/내일/u.test(text)){
+  if(/\btomorrow\b/i.test(text)||/завтра/iu.test(text)||/ngay\s+mai/iu.test(text)||/明天/u.test(text)||/내일/u.test(text)){
     return {kind:'EXACT',exact:addIsoDays(today,1)};
   }
-  if(/\btoday\b/i.test(text)||/сегодня/iu.test(text)||/hôm\s+nay/iu.test(text)||/今天/u.test(text)||/오늘/u.test(text)){
+  if(/\btoday\b/i.test(text)||/сегодня/iu.test(text)||/hom\s+nay/iu.test(text)||/今天/u.test(text)||/오늘/u.test(text)){
     return {kind:'EXACT',exact:today};
   }
   return null;
@@ -342,7 +342,7 @@ export function deterministicExplicitIntentPatch({
   if(adults!==null) patch.party={adults};
 
   const preferenceAdds=[];
-  if(/snorkel/i.test(text)||/снорк/iu.test(text)||/lặn\s+ngắm\s+san\s+hô/iu.test(text)||/浮潜|浮潛/u.test(text)||/스노클/u.test(text)){
+  if(/snorkel/i.test(text)||/снорк/iu.test(text)||/lan\s+ngam\s+san\s+ho/iu.test(text)||/浮潜|浮潛/u.test(text)||/스노클/u.test(text)){
     preferenceAdds.push('SNORKELING');
   }
   if(preferenceAdds.length) patch.preferenceAdds=preferenceAdds;
@@ -350,7 +350,7 @@ export function deterministicExplicitIntentPatch({
   const hotel=explicitPickupHotel(message,products);
   const pickupCue=/pickup|pick\s*up|collect\s+us/i.test(text)
     ||/заберите|забрать|трансфер/iu.test(text)
-    ||/đón/iu.test(text)
+    ||/đon/iu.test(text)
     ||/(?:接我们|接我們|接送|从|從)/u.test(text)
     ||/픽업/u.test(text);
   if(hotel) patch.hotel=hotel;
@@ -361,7 +361,7 @@ export function deterministicExplicitIntentPatch({
 
   const bookingRequested=/\b(?:book|booking|reserve)\b/i.test(text)
     ||/заброн|брони/iu.test(text)
-    ||/đặt\s*(?:chỗ|tour)?/iu.test(text)
+    ||/đat\s*(?:cho|tour)?/iu.test(text)
     ||/预订|預訂|预约|預約/u.test(text)
     ||/예약/u.test(text);
   if(bookingRequested){
