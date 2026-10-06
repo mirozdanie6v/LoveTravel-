@@ -656,7 +656,14 @@
     return translated === trimmed ? raw : leading + translated + trailing;
   }
 
+  const SEMANTIC_I18N_SELECTOR='.lt-domain-shell,.lt-booking-config,.lt-booking-sheet';
+  function semanticOwned(node) {
+    const el=node?.nodeType===Node.ELEMENT_NODE ? node : node?.parentElement;
+    return Boolean(el?.closest?.(SEMANTIC_I18N_SELECTOR));
+  }
+
   function translateAttr(el, name) {
+    if (semanticOwned(el)) return;
     const value = el.getAttribute(name);
     if (!value) return;
     const next = tr(value);
@@ -670,6 +677,7 @@
     while (walker.nextNode()) nodes.push(walker.currentNode);
     nodes.forEach(node => {
       if (node.parentElement && /^(SCRIPT|STYLE|NOSCRIPT)$/i.test(node.parentElement.tagName)) return;
+      if (semanticOwned(node)) return;
       if (!/[А-Яа-яЁё]/.test(node.nodeValue || '')) return;
       node.nodeValue = tr(node.nodeValue);
     });
@@ -844,7 +852,7 @@
       records.forEach(record => {
         if (record.type === 'characterData') {
           const node = record.target;
-          if (node?.nodeType === Node.TEXT_NODE && /[А-Яа-яЁё]/.test(node.nodeValue || '')) {
+          if (node?.nodeType === Node.TEXT_NODE && !semanticOwned(node) && /[А-Яа-яЁё]/.test(node.nodeValue || '')) {
             const next = tr(node.nodeValue);
             if (next !== node.nodeValue) node.nodeValue = next;
           }
@@ -852,7 +860,7 @@
         }
         record.addedNodes.forEach(node => {
           if (node.nodeType === Node.ELEMENT_NODE) translateNode(node);
-          else if (node.nodeType === Node.TEXT_NODE && /[А-Яа-яЁё]/.test(node.nodeValue || '')) node.nodeValue = tr(node.nodeValue);
+          else if (node.nodeType === Node.TEXT_NODE && !semanticOwned(node) && /[А-Яа-яЁё]/.test(node.nodeValue || '')) node.nodeValue = tr(node.nodeValue);
         });
       });
       renderSwitcher();
