@@ -34,9 +34,9 @@ test('semantic i18n core has complete key parity for every supported locale',()=
 
 test('semantic keys resolve customer UI copy without source-language lookup',()=>{
   const zh=load('zh');
-  assert.equal(zh.t('tour.meeting'),'行程集合地点');
+  assert.equal(zh.t('tour.meeting'),'集合地点');
   assert.equal(zh.t('booking.title'),'规划您的行程');
-  assert.equal(zh.t('booking.timeCount',{count:2}),'2 个时间');
+  assert.equal(zh.t('booking.timeCount',{count:2}),'2 个可选时间');
   const ko=load('ko');
   assert.equal(ko.t('tour.bookNow'),'지금 예약');
   assert.equal(ko.t('booking.pickupHotelLabel'),'호텔 픽업');
@@ -57,4 +57,29 @@ test('legacy DOM translator excludes semantic surfaces',()=>{
   assert.match(legacy,/SEMANTIC_I18N_SELECTOR/);
   assert.match(legacy,/\.lt-domain-shell,\.lt-booking-config,\.lt-booking-sheet/);
   assert.match(legacy,/semanticOwned\(node\)/);
+});
+
+
+test('native travel terminology avoids technical and cross-domain jargon',()=>{
+  const vi=load('vi');
+  const ko=load('ko');
+  const zh=load('zh');
+  const en=load('en');
+
+  assert.equal(vi.t('provider.format.group'),'tour ghép');
+  assert.equal(vi.t('booking.title'),'Lên kế hoạch chuyến đi');
+  assert.doesNotMatch(vi.t('booking.bookingNotSent'),/cấu hình/i);
+
+  assert.equal(ko.t('booking.live'),'실시간 예약 가능 여부 및 가격');
+  assert.equal(ko.t('booking.ready'),'예약 정보 확인 완료');
+  assert.doesNotMatch(ko.t('booking.live'),/좌석/);
+  assert.doesNotMatch(ko.t('booking.bookingNotSent'),/구성/);
+
+  assert.equal(zh.t('booking.live'),'实时可订情况与价格来自旅行社系统');
+  assert.equal(zh.t('booking.ready'),'预订信息已核对');
+  assert.doesNotMatch(zh.t('booking.live'),/运营商/);
+  assert.doesNotMatch(zh.t('booking.bookingNotSent'),/配置/);
+
+  assert.equal(en.t('booking.title'),'Plan your trip');
+  assert.doesNotMatch(en.t('booking.bookingNotSent'),/configuration/i);
 });
