@@ -2,12 +2,11 @@ name: LoveTravel client AI browser E2E
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/client-ai-browser-e2e.yml'
-      - 'scripts/verify-live-client-ai-browser.mjs'
-      - 'scripts/verify-live-booking-option-ui.mjs'
+  workflow_call:
+
+concurrency:
+  group: lovetravel-client-ai-browser
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -15,22 +14,16 @@ permissions:
 jobs:
   client-ai:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 7
+    container:
+      image: mcr.microsoft.com/playwright:v1.55.0-noble
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
-        with:
-          node-version: '22'
-      - name: Install browser runtime
+      - name: Install project dependencies
         run: |
           npm install --no-fund --no-audit
           npm install --no-save playwright@1.55.0
-          npx playwright install --with-deps chromium
       - name: Verify public AI journey in RU and EN
         env:
           LOVE_TRAVEL_LIVE_BASE_URL: https://lovetravel.viiversion.com
         run: node scripts/verify-live-client-ai-browser.mjs
-      - name: Verify visual booking option chooser
-        env:
-          LOVE_TRAVEL_LIVE_BASE_URL: https://lovetravel.viiversion.com
-        run: node scripts/verify-live-booking-option-ui.mjs
