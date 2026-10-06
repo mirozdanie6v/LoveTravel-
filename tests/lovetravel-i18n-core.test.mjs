@@ -8,6 +8,7 @@ const root=resolve(import.meta.dirname,'..');
 const source=await readFile(resolve(root,'src/lovetravel-i18n.js'),'utf8');
 const domain=await readFile(resolve(root,'src/lovetravel-domain-tour.js'),'utf8');
 const booking=await readFile(resolve(root,'src/lovetravel-booking-configurator.js'),'utf8');
+const legacy=await readFile(resolve(root,'src/i18n-v1.js'),'utf8');
 
 function load(selected){
   const context={
@@ -49,4 +50,11 @@ test('LoveTravel domain and booking modules are language-neutral',()=>{
   assert.equal(/[А-Яа-яЁё\u4E00-\u9FFF\uAC00-\uD7AF]/.test(booking),false);
   assert.match(domain,/scope\?\.\('tour'\)/);
   assert.match(booking,/scope\?\.\('booking'\)/);
+});
+
+
+test('legacy DOM translator excludes semantic surfaces',()=>{
+  assert.match(legacy,/SEMANTIC_I18N_SELECTOR/);
+  assert.match(legacy,/\.lt-domain-shell,\.lt-booking-config,\.lt-booking-sheet/);
+  assert.match(legacy,/semanticOwned\(node\)/);
 });
