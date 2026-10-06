@@ -404,38 +404,45 @@ export async function localizeDomainFromCache(domain, env, requestedLocale, ctx 
   }
 
   const cache = new Map(rows.map(row => [String(row.field_key), row]));
-  const ready = new Map();
+  const currentReady = new Map();
+  const sameSourceReady = new Map();
   for (const field of fields) {
     const row = cache.get(field.key);
     if (
       row &&
       String(row.source_hash) === field.sourceHash &&
-      text(row.translated_text) &&
-      acceptedTranslationProvider(locale, row.provider)
+      text(row.translated_text)
     ) {
-      ready.set(field.key,row);
+      sameSourceReady.set(field.key,row);
+      if (acceptedTranslationProvider(locale, row.provider)) {
+        currentReady.set(field.key,row);
+      }
     }
   }
 
-  const pendingFields = Math.max(0, fields.length - ready.size);
+  const pendingFields = Math.max(0, fields.length - currentReady.size);
   const complete = fields.length === 0 || pendingFields === 0;
+  const staleComplete = !complete && fields.length > 0 && sameSourceReady.size === fields.length;
+  const applied = complete ? currentReady : staleComplete ? sameSourceReady : null;
 
-  // Apply translated Bókun content atomically. A customer sees either the
-  // complete requested locale or the untouched canonical source while the
-  // cache refreshes; never a mixed-language partial payload.
-  if (complete) {
+  // Apply one complete locale atomically. During a translation-profile upgrade,
+  // keep serving the last complete translation for the same source hashes while
+  // the new cache is rebuilt. Never expose canonical English merely because the
+  // translation provider version changed, and never mix old/new locale fields.
+  if (applied) {
     for (const field of fields) {
-      const row = ready.get(field.key);
+      const row = applied.get(field.key);
       if (row) pathSet(clone, field.path, row.translated_text);
     }
   }
 
   clone.localization = {
     locale,
-    source:complete ? 'viiversion-cache' : 'source',
-    translatedFields:complete ? fields.length : 0,
+    source:complete ? 'viiversion-cache' : staleComplete ? 'viiversion-cache-stale' : 'source',
+    translatedFields:applied ? fields.length : 0,
     pendingFields,
     atomic:true,
+    staleWhileRevalidate:staleComplete,
   };
 
   if (!complete && env?.AI && env?.DB && ctx?.waitUntil) {
