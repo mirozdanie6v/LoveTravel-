@@ -507,6 +507,19 @@
       return false;
     }
   }
+  function activateDomainTourScreen(){
+    try{
+      if(typeof state!=='undefined' && state) state.screen='tour';
+    }catch(_){}
+    document.querySelectorAll('.screen').forEach(node=>node.classList.remove('active'));
+    const screen=document.getElementById('tourScreen');
+    if(screen) screen.classList.add('active');
+    try{
+      if(typeof setNavActive==='function') setNavActive('tour');
+    }catch(_){}
+    const content=document.getElementById('content');
+    if(content) content.scrollTop=0;
+  }
   function installOpenTour(){
     if(typeof globalThis.openTour!=='function') return false;
     if(globalThis.openTour.__loveTravelDomain) return true;
@@ -514,7 +527,7 @@
     const wrapped=function(id,...args){
       const productId=String(id ?? '');
       if(PRODUCT_IDS.has(productId)){
-        if(typeof showScreen==='function') showScreen('tour');
+        activateDomainTourScreen();
         void renderProduct(productId);
         return;
       }
