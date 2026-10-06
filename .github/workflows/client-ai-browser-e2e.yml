@@ -7,6 +7,7 @@ on:
     paths:
       - '.github/workflows/client-ai-browser-e2e.yml'
       - 'scripts/verify-live-client-ai-browser.mjs'
+      - 'scripts/verify-live-booking-option-ui.mjs'
 
 permissions:
   contents: read
@@ -29,3 +30,7 @@ jobs:
         env:
           LOVE_TRAVEL_LIVE_BASE_URL: https://lovetravel.viiversion.com
         run: node scripts/verify-live-client-ai-browser.mjs
+      - name: Verify visual booking option chooser
+        env:
+          LOVE_TRAVEL_LIVE_BASE_URL: https://lovetravel.viiversion.com
+        run: node scripts/verify-live-booking-option-ui.mjs
