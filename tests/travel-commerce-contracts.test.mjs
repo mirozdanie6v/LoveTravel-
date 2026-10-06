@@ -320,6 +320,21 @@ test('transaction state rejects missing Quote, Draft, approval and provider conf
   );
 });
 
+test('approved and mutation states reject an active Quote that is not ready to book', () => {
+  for (const state of ['USER_APPROVED','RESERVING','CONFIRMED','FAILED_NEEDS_RECONCILIATION']) {
+    const base=transaction({
+      state,
+      quote:quote({readyToBook:false}),
+      providerBooking:state==='CONFIRMED' ? transaction().providerBooking : undefined,
+      mutation:state==='USER_APPROVED' ? undefined : state==='FAILED_NEEDS_RECONCILIATION' ? mutation({status:'AMBIGUOUS',completedAt:undefined}) : mutation(),
+    });
+    assert.throws(
+      () => validateBookingTransaction(base),
+      error => error instanceof ContractError && error.issues.some(item => item.code==='quote_not_ready'),
+    );
+  }
+});
+
 test('approval is bound to the exact current Quote revision', () => {
   assert.throws(
     () => validateBookingTransaction(transaction({approval:approval({quoteRevision:0})})),
