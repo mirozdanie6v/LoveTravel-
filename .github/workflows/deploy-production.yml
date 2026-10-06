@@ -118,8 +118,6 @@ jobs:
         run: |
           set -euo pipefail
           npm install --no-fund --no-audit
-          npx wrangler d1 migrations list love-travel-v28-db --remote --config wrangler.jsonc
-          npx wrangler d1 migrations apply love-travel-v28-db --remote --config wrangler.jsonc
           npm run check
           node <<'NODE'
           const fs=require('fs');
@@ -174,5 +172,12 @@ jobs:
             curl -fsS "https://lovetravel.viiversion.com/api/bokun/tours?locale=$locale" > "/tmp/tours-$locale.json"
             jq -e '.ok == true and .source == "bokun" and .vendorId == "137689" and ([.tours[].id]|sort) == ["1287578","1287580"]' "/tmp/tours-$locale.json" >/dev/null
           done
+          curl -fsS -X POST 'https://lovetravel.viiversion.com/api/ai/chat' \
+            -H 'content-type: application/json' \
+            -H 'x-max-tour-locale: en' \
+            --data '{"locale":"en","message":"Two adults, tomorrow, snorkeling, pickup from Oceanus."}' \
+            > /tmp/travel-commerce-ai.json
+          jq -e '.ok == true and .agent.version == "travel-commerce-sales-v1" and .agent.mutationExecuted == false' /tmp/travel-commerce-ai.json >/dev/null
+
           code="$(curl -sS -o /tmp/app-no-token.json -w '%{http_code}' -X POST             'https://lovetravel.viiversion.com/api/bokun/client-demo/submit'             -H 'content-type: application/json' --data '{}')"
           test "$code" = 403
