@@ -423,23 +423,36 @@ export function bokunSelectionFromTransaction(transaction){
   const tx=validateBookingTransaction(transaction);
   if(tx.selection) return bokunSelectionFromCanonicalSelection(tx.selection);
   if(!tx.quote?.offer||!tx.draft) throw new ProviderCapabilityError('transaction_not_booking_ready','Transaction requires canonical selection or Quote and BookingDraft');
-  const fallback=canonicalBookingSelectionFromBokun({
-    experience:{id:tx.quote.offer.providerRef.externalId},
-    participants:[],
-  },{
-    productId:tx.quote.offer.providerRef.externalId,
-    date:tx.quote.offer.date,
-    rateId:tx.quote.offer.rateRef?.externalId,
-    startTimeId:tx.quote.offer.startTimeRef?.externalId,
-    participants:{},
+  const offer=tx.quote.offer;
+  const participants={};
+  const passengers=arr(tx.draft.travellers).map(traveller=>{
+    const categoryId=str(traveller?.providerCategoryRef?.externalId);
+    if(!categoryId) throw new ProviderCapabilityError('participant_category_missing','Traveller provider category is required');
+    participants[categoryId]=(participants[categoryId]||0)+1;
+    return {
+      categoryId,
+      ...(traveller.firstName?{firstName:traveller.firstName}:{}),
+      ...(traveller.lastName?{lastName:traveller.lastName}:{}),
+      ...(traveller.dateOfBirth?{dateOfBirth:traveller.dateOfBirth}:{}),
+      ...(traveller.passportId?{passportId:traveller.passportId}:{}),
+      ...(traveller.nationality?{nationality:traveller.nationality}:{}),
+      answers:structuredClone(traveller.answers||{}),
+      extras:canonicalExtraMap(traveller.extras||[]),
+    };
+  });
+  return {
+    productId:str(offer.providerRef?.externalId),
+    date:str(offer.date),
+    rateId:str(offer.rateRef?.externalId),
+    startTimeId:str(offer.startTimeRef?.externalId),
+    participants,
+    passengers,
     pickup:canonicalTransportSelection(tx.draft.pickup),
     dropoff:canonicalTransportSelection(tx.draft.dropoff),
-    customer:tx.draft.customer||{},
-    answers:tx.draft.answers||{},
-    passengers:[],
+    customer:structuredClone(tx.draft.customer||{}),
+    answers:structuredClone(tx.draft.answers||{}),
     extras:canonicalExtraMap(tx.draft.extras||[]),
-  });
-  return bokunSelectionFromCanonicalSelection(fallback);
+  };
 }
 
 function buildUrl(baseUrl,path,params={}){
