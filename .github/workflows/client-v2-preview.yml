@@ -87,6 +87,7 @@ jobs:
           grep -q 'Love Travel — Client v2 Preview' /tmp/client-v2.html
 
           curl --fail --silent --show-error --max-time 45 "$PREVIEW_URL/api/tours" > /tmp/client-v2-tours.json
+          jq '{ok,source,vendorId,productIds,domainCount:(.domains|length),domainIds:[.domains[]? | (.provider.productId // .experience.id // "")]}' /tmp/client-v2-tours.json
           jq -e '
             .ok == true
             and .source == "production-bokun-read-only"
