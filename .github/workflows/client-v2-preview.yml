@@ -218,6 +218,12 @@ jobs:
                   cancellationPolicyType:text(domain.cancellationPolicy?.policyType),
                   cancellationSimpleCutoffHours:domain.cancellationPolicy?.simpleCutoffHours??null,
                   cancellationPenaltyRules:arr(domain.cancellationPolicy?.penaltyRules).length,
+                  cancellationPenaltyRuleData:arr(domain.cancellationPolicy?.penaltyRules).map(rule=>({
+                    cutoffHours:rule?.cutoffHours??null,
+                    charge:rule?.charge??null,
+                    chargeType:text(rule?.chargeType),
+                    percentage:rule?.percentage??null,
+                  })),
                 },
                 normalizedRates:arr(domain.rates).map(rate=>({
                   id:String(rate.id??''),
@@ -323,6 +329,10 @@ jobs:
 
           const tabs=page.locator('.tour-tab');
           if(await tabs.count()!==4) throw new Error('Expected Overview / Program / Included / Photos tabs');
+          const overviewText=(await page.locator('#tour-content').innerText()).toLowerCase();
+          if(!overviewText.includes('трансфер доступен')) throw new Error('Bókun pickup availability is missing from Overview');
+          if(!overviewText.includes('условия отмены')&&!overviewText.includes('при отмене')) throw new Error('Bókun cancellation policy is missing from Overview');
+
           const bodyText=(await page.locator('body').innerText()).toLowerCase();
           for(const forbidden of ['client v2','bókun live','day_tour_or_activity','read-only preview']){
             if(bodyText.includes(forbidden)) throw new Error('Technical label leaked into customer UI: '+forbidden);
