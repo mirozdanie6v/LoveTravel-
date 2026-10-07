@@ -147,7 +147,7 @@ test('tour flow is departure first and renders semantic customer sections',async
   await expect(page.getByTestId('tour-included')).toContainText('Lunch');
   await expect(page.getByTestId('tour-included')).toContainText('Personal expenses');
 
-  await page.getByRole('button',{name:'Фото'}).click();
+  await page.getByTestId('tour-tabs').getByRole('button',{name:'Фото',exact:true}).click();
   await expect(page.getByTestId('tour-photos')).toBeVisible();
   await expect(page.locator('.photo-thumb')).toHaveCount(2);
 
