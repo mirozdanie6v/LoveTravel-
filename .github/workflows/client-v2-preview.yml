@@ -7,6 +7,9 @@ on:
     paths:
       - 'preview/client-v2/**'
       - 'src/bokun-domain.js'
+      - 'tests/e2e/client-v2-live-smoke.spec.mjs'
+      - 'package.json'
+      - 'playwright.config.mjs'
       - '.github/workflows/client-v2-preview.yml'
 
 concurrency:
@@ -62,11 +65,11 @@ jobs:
             echo "CLOUDFLARE_ACCOUNT_ID=$account_id"
           } >> "$GITHUB_ENV"
 
-      - name: Install Wrangler
+      - name: Install dependencies
         run: npm install --no-fund --no-audit
 
-      - name: Verify isolated Client v2
-        run: node --test tests/client-v2-stage2.test.mjs tests/bokun-rate-media.test.mjs
+      - name: Verify isolated Client v2 contracts
+        run: npm test
 
       - name: Build preview
         run: node preview/client-v2/build.mjs
@@ -77,315 +80,47 @@ jobs:
           set -euo pipefail
           npx wrangler deploy --config preview/client-v2/wrangler.jsonc
 
-
-      - name: Verify live preview API and page
+      - name: Verify live Bókun API contract
         shell: bash
         env:
           PREVIEW_URL: https://love-travel-client-v2-preview.viiversion.workers.dev
         run: |
           set -euo pipefail
-          for locale in ru vi en zh ko; do
-            curl --fail --silent --show-error --max-time 45 "$PREVIEW_URL/api/tours?locale=$locale" > "/tmp/client-v2-tours-$locale.json"
-            jq -e '
-              .ok == true
-              and .source == "production-bokun-read-only"
-              and .vendorId == "137689"
-              and (.productIds | sort) == ["1287578","1287580"]
-              and (.domains | length) == 2
-            ' "/tmp/client-v2-tours-$locale.json" >/dev/null
-          done
+          curl --fail --silent --show-error --max-time 45 "$PREVIEW_URL/api/tours?locale=ru" > /tmp/client-v2-live.json
+          jq -e '
+            .ok == true
+            and .source == "production-bokun-read-only"
+            and .vendorId == "137689"
+            and (.productIds | sort) == ["1287578","1287580"]
+            and (.domains | length) == 2
+            and ([.domains[] | (.provider.productId // .experience.id | tostring)] | sort) == ["1287578","1287580"]
+            and all(.domains[];
+              ((.experience.title // "") | length) > 0
+              and ((.experience.media.photos // []) | length) > 0
+              and ((.rates // []) | length) > 0
+              and ((.availabilitySlots // []) | length) > 0
+            )
+          ' /tmp/client-v2-live.json >/dev/null
 
-      - name: Audit live Bókun content coverage
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p preview-artifacts
-          node --input-type=module <<'NODE'
-          import fs from 'node:fs';
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
 
-          const payload=JSON.parse(fs.readFileSync('/tmp/client-v2-tours-en.json','utf8'));
-          const arr=value=>Array.isArray(value)?value:[];
-          const text=value=>String(value??'').trim();
-          const mediaKeys=value=>value&&typeof value==='object'
-            ?Object.keys(value).filter(key=>/photo|image|media|video/i.test(key)).sort()
-            :[];
-          const mediaCount=value=>{
-            if(Array.isArray(value)) return value.length;
-            if(value&&typeof value==='object') return Object.keys(value).length;
-            return value?1:0;
-          };
-          const productIds=['1287578','1287580'];
-          const today=new Date();
-          const iso=date=>date.toISOString().slice(0,10);
-          const end=new Date(today.getTime()+30*86400000);
-          const rawProviderProducts=[];
-          for(const productId of productIds){
-            const productResponse=await fetch('https://integration.viiversion.com/api/bokun/product?vendorId=137689&productId='+encodeURIComponent(productId)+'&lang=EN');
-            if(!productResponse.ok) throw new Error('Raw Bókun product fetch failed for '+productId+': '+productResponse.status);
-            const productPayload=await productResponse.json();
-            const rawProduct=productPayload?.product||productPayload?.result||productPayload;
-            const availabilityResponse=await fetch(
-              'https://integration.viiversion.com/api/bokun/availability?vendorId=137689&productId='+encodeURIComponent(productId)
-              +'&start='+encodeURIComponent(iso(today))+'&end='+encodeURIComponent(iso(end))+'&currency=USD'
-            );
-            if(!availabilityResponse.ok) throw new Error('Raw Bókun availability fetch failed for '+productId+': '+availabilityResponse.status);
-            const availabilityPayload=await availabilityResponse.json();
-            const rawAvailability=Array.isArray(availabilityPayload)
-              ?availabilityPayload
-              :Array.isArray(availabilityPayload?.availability)
-                ?availabilityPayload.availability
-                :Array.isArray(availabilityPayload?.items)
-                  ?availabilityPayload.items
-                  :Array.isArray(availabilityPayload?.results)
-                    ?availabilityPayload.results
-                    :[];
-            const rawRates=arr(rawProduct?.rates);
-            const embeddedRates=rawAvailability.flatMap(slot=>arr(slot?.rates));
-            rawProviderProducts.push({
-              productId,
-              rawProductMediaKeys:mediaKeys(rawProduct),
-              rawProductMediaCounts:Object.fromEntries(mediaKeys(rawProduct).map(key=>[key,mediaCount(rawProduct?.[key])])),
-              rates:rawRates.map(rate=>({
-                id:String(rate?.id??''),
-                title:text(rate?.title),
-                descriptionChars:text(rate?.description).length,
-                detailsCount:arr(rate?.details).length,
-                textItemsCount:arr(rate?.textItems).length,
-                mediaKeys:mediaKeys(rate),
-                mediaCounts:Object.fromEntries(mediaKeys(rate).map(key=>[key,mediaCount(rate?.[key])])),
-              })),
-              availabilityEmbeddedRates:[...new Map(embeddedRates.map(rate=>[String(rate?.id??rate?.activityRateId??''),rate])).values()]
-                .filter(rate=>String(rate?.id??rate?.activityRateId??''))
-                .map(rate=>({
-                  id:String(rate?.id??rate?.activityRateId??''),
-                  title:text(rate?.title),
-                  descriptionChars:text(rate?.description).length,
-                  detailsCount:arr(rate?.details).length,
-                  textItemsCount:arr(rate?.textItems).length,
-                  mediaKeys:mediaKeys(rate),
-                  mediaCounts:Object.fromEntries(mediaKeys(rate).map(key=>[key,mediaCount(rate?.[key])])),
-                })),
-            });
-          }
-
-          const report={
-            generatedAt:new Date().toISOString(),
-            vendorId:payload.vendorId,
-            rawProviderProducts,
-            products:arr(payload.domains).map(domain=>{
-              const experience=domain.experience||{};
-              const content=experience.content||{};
-              const rawProduct=domain.providerRaw?.product||{};
-              const rawRates=arr(rawProduct.rates);
-              return {
-                productId:String(domain.provider?.productId||experience.id||''),
-                title:text(experience.title),
-                productPhotos:arr(experience.media?.photos).length,
-                productVideos:arr(experience.media?.videos).length,
-                itineraryItems:arr(experience.itinerary).length,
-                meetingPoints:arr(experience.meeting?.startPoints).length,
-                content:{
-                  descriptionChars:text(experience.description).length,
-                  excerptChars:text(experience.excerpt).length,
-                  included:Boolean(text(content.included)||arr(content.inclusions).length),
-                  excluded:Boolean(text(content.excluded)||arr(content.exclusions).length),
-                  requirements:Boolean(text(content.requirements)),
-                  attention:Boolean(text(content.attention)),
-                  dressCode:Boolean(text(content.dressCode)),
-                  knowBeforeCount:arr(content.knowBeforeYouGoItems).length,
-                  accessibilityCount:arr(experience.accessibility).length,
-                  ticketMessageChars:text(experience.ticket?.message).length,
-                  cancellationTitleChars:text(domain.cancellationPolicy?.title).length,
-                },
-                bookingStage:{
-                  participantCategories:arr(domain.participants).length,
-                  extras:arr(domain.extras).length,
-                  offers:arr(domain.offers).length,
-                  bookingQuestions:arr(domain.bookingRequirements?.questions).length,
-                  requiredCustomerFields:arr(domain.bookingRequirements?.requiredCustomerFields).length,
-                  mainContactFields:arr(domain.bookingRequirements?.mainContactFields).length,
-                  passengerFields:arr(domain.bookingRequirements?.passengerFields).length,
-                  pickupEnabled:Boolean(experience.pickup?.enabled),
-                  pickupPlaces:arr(experience.pickup?.places).length,
-                  dropoffEnabled:Boolean(experience.dropoff?.enabled),
-                  dropoffPlaces:arr(experience.dropoff?.places).length,
-                },
-                commercialAndPolicy:{
-                  reviewCount:Number(experience.reviews?.count||0),
-                  reviewRating:Number(experience.reviews?.rating||0),
-                  passportRequired:Boolean(experience.passportRequired),
-                  paymentCurrencies:arr(experience.paymentCurrencies),
-                  cancellationPolicyType:text(domain.cancellationPolicy?.policyType),
-                  cancellationSimpleCutoffHours:domain.cancellationPolicy?.simpleCutoffHours??null,
-                  cancellationPenaltyRules:arr(domain.cancellationPolicy?.penaltyRules).length,
-                  cancellationPenaltyRuleData:arr(domain.cancellationPolicy?.penaltyRules).map(rule=>({
-                    cutoffHours:rule?.cutoffHours??null,
-                    charge:rule?.charge??null,
-                    chargeType:text(rule?.chargeType),
-                    percentage:rule?.percentage??null,
-                  })),
-                },
-                normalizedRates:arr(domain.rates).map(rate=>({
-                  id:String(rate.id??''),
-                  title:text(rate.title),
-                  descriptionChars:text(rate.description).length,
-                  detailsCount:arr(rate.details).length,
-                  textItemsCount:arr(rate.textItems).length,
-                  normalizedPhotoCount:arr(rate.media?.photos).length,
-                  providerMediaKeys:mediaKeys(rate.providerData),
-                  providerMediaCounts:Object.fromEntries(mediaKeys(rate.providerData).map(key=>[key,mediaCount(rate.providerData?.[key])])),
-                })),
-                rawRates:rawRates.map(rate=>({
-                  id:String(rate.id??''),
-                  mediaKeys:mediaKeys(rate),
-                  mediaCounts:Object.fromEntries(mediaKeys(rate).map(key=>[key,mediaCount(rate?.[key])])),
-                })),
-                rawProductMediaKeys:mediaKeys(rawProduct),
-                rawProductMediaCounts:Object.fromEntries(mediaKeys(rawProduct).map(key=>[key,mediaCount(rawProduct?.[key])])),
-                nonEmptyUnmappedTopLevelFields:arr(domain.coverage?.product?.nonEmptyUnmappedTopLevelFields),
-              };
-            }),
-          };
-          fs.writeFileSync('preview-artifacts/client-v2-content-coverage.json',JSON.stringify(report,null,2));
-          console.log(JSON.stringify(report,null,2));
-          NODE
-
-      - name: Install preview browser
-        run: |
-          npm install --no-save playwright@1.55.0
-          npx playwright install --with-deps chromium
-
-      - name: Capture Client v2 acceptance screenshots
+      - name: Run short live Client v2 smoke
         env:
-          PREVIEW_URL: https://love-travel-client-v2-preview.viiversion.workers.dev
+          CLIENT_V2_LIVE_URL: https://love-travel-client-v2-preview.viiversion.workers.dev
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p preview-artifacts
-          node --input-type=module <<'NODE'
-          import { chromium } from 'playwright';
-
-          const base=process.env.PREVIEW_URL;
-          const browser=await chromium.launch();
-          const page=await browser.newPage({
-            viewport:{width:390,height:844},
-            deviceScaleFactor:1,
-            isMobile:true,
-            hasTouch:true,
-          });
-          const pageErrors=[];
-          page.on('pageerror',error=>pageErrors.push(String(error)));
-
-          await page.goto(base+'/v2/',{waitUntil:'networkidle',timeout:60000});
-          await page.waitForSelector('.tour-card',{timeout:30000});
-          const nav=page.locator('.bottom-nav__item');
-          if(await nav.count()!==4) throw new Error('Expected 4 bottom navigation tabs');
-
-          const cards=page.locator('.tour-card');
-          const count=await cards.count();
-          if(count!==2) throw new Error('Expected exactly 2 live tour cards, received '+count);
-
-          const titles=await cards.locator('.card-title').allTextContents();
-          if(titles.some(title=>!title.trim())) throw new Error('Every tour card must have a title');
-
-          await page.screenshot({
-            path:'preview-artifacts/client-v2-home-mobile.png',
-            fullPage:true,
-          });
-
-          const trustFont=Number.parseFloat(await page.locator('.trust-row b').first().evaluate(el=>getComputedStyle(el).fontSize));
-          const trustSubFont=Number.parseFloat(await page.locator('.trust-row small').first().evaluate(el=>getComputedStyle(el).fontSize));
-          const heroCtaFont=Number.parseFloat(await page.locator('.hero-cta').first().evaluate(el=>getComputedStyle(el).fontSize));
-          if(trustFont<11) throw new Error('Trust-row primary copy is still too small: '+trustFont);
-          if(trustSubFont<9.5) throw new Error('Trust-row secondary copy is still too small: '+trustSubFont);
-          if(heroCtaFont<13) throw new Error('Hero CTA copy is still too small: '+heroCtaFont);
-
-          await page.locator('[data-language-trigger]').click();
-          await page.locator('[data-locale="en"]').click();
-          await page.waitForLoadState('networkidle');
-          await page.waitForSelector('.bottom-nav__item');
-          if(!(await page.locator('.bottom-nav').innerText()).includes('Home')) throw new Error('Locale switch did not update mini-app shell');
-          await page.locator('[data-language-trigger]').click();
-          await page.locator('[data-locale="ru"]').click();
-          await page.waitForLoadState('networkidle');
-          await page.waitForSelector('.tour-card');
-
-          await page.locator('.tour-card').first().click();
-          await page.waitForSelector('.detail-hero h1',{timeout:15000});
-          const detailTitle=(await page.locator('.detail-hero h1').textContent()||'').trim();
-          if(!detailTitle) throw new Error('Tour detail title is missing');
-          if(!page.url().includes('#tour/')) throw new Error('Tour detail route was not activated');
-
-          if(await page.locator('.departure-day').count()<1) throw new Error('Departure calendar is missing');
-          if(await page.locator('.rate-option').count()<1) throw new Error('Tour options are missing');
-          if(await page.locator('.rate-description').count()<1) throw new Error('Bókun departure-specific rate text is not rendered');
-
-          const orderOk=await page.evaluate(()=>{
-            const dates=document.querySelector('.selection-section--dates');
-            const rates=document.querySelector('.selection-section--rates');
-            return Boolean(dates&&rates&&(dates.compareDocumentPosition(rates)&Node.DOCUMENT_POSITION_FOLLOWING));
-          });
-          if(!orderOk) throw new Error('Departure calendar must appear before tour options');
-
-          const tabs=page.locator('.tour-tab');
-          if(await tabs.count()!==4) throw new Error('Expected Overview / Program / Included / Photos tabs');
-          const overviewText=(await page.locator('#tour-content').innerText()).toLowerCase();
-          if(!overviewText.includes('трансфер доступен')) throw new Error('Bókun pickup availability is missing from Overview');
-          if(!overviewText.includes('условия отмены')&&!overviewText.includes('при отмене')) throw new Error('Bókun cancellation policy is missing from Overview');
-
-          const bodyText=(await page.locator('body').innerText()).toLowerCase();
-          for(const forbidden of ['client v2','bókun live','day_tour_or_activity','read-only preview']){
-            if(bodyText.includes(forbidden)) throw new Error('Technical label leaked into customer UI: '+forbidden);
-          }
-
-          await page.screenshot({
-            path:'preview-artifacts/client-v2-tour-mobile.png',
-            fullPage:true,
-          });
-
-          await page.locator('[data-detail-hero-image]').evaluate(el=>{el.dataset.preserveProbe='hero';});
-          const renderCountBefore=await page.evaluate(()=>window.__loveTravelRenderCount||0);
-          const alternateDeparture=page.locator('.departure-day:not(.is-disabled):not(.is-active)').first();
-          if(await alternateDeparture.count()) await alternateDeparture.click();
-          else await page.locator('.departure-day:not(.is-disabled)').first().click();
-          if(await page.locator('.departure-day.is-active').count()!==1) throw new Error('Visual departure selection is not unique');
-          const renderCountAfter=await page.evaluate(()=>window.__loveTravelRenderCount||0);
-          if(renderCountAfter!==renderCountBefore) throw new Error('Selecting a departure triggered a full app render: '+renderCountBefore+' -> '+renderCountAfter);
-          const heroProbe=await page.locator('[data-detail-hero-image]').getAttribute('data-preserve-probe');
-          if(heroProbe!=='hero') throw new Error('Selecting a departure replaced the hero DOM node');
-          if(await page.locator('.rate-option').count()<1) throw new Error('Selected departure has no rendered rate options');
-
-          await page.locator('[data-tab="photos"]').click();
-          await page.waitForSelector('.photo-grid',{timeout:10000});
-          if(await page.locator('.photo-thumb').count()<1) throw new Error('Photos tab has no Bókun photos');
-          await page.screenshot({
-            path:'preview-artifacts/client-v2-photos-mobile.png',
-            fullPage:true,
-          });
-
-          await page.locator('[data-tab="itinerary"]').click();
-          await page.waitForSelector('.timeline',{timeout:10000});
-          await page.screenshot({
-            path:'preview-artifacts/client-v2-program-mobile.png',
-            fullPage:true,
-          });
-
-          await page.locator('[data-app-tab="assistant"]').last().click();
-          await page.waitForSelector('.assistant-shell',{timeout:10000});
-          await page.screenshot({
-            path:'preview-artifacts/client-v2-ai-shell-mobile.png',
-            fullPage:true,
-          });
-
-          if(pageErrors.length) throw new Error('Page errors: '+pageErrors.join(' | '));
-          console.log(JSON.stringify({ok:true,count,titles,detailTitle,tabs:await tabs.allTextContents(),bottomNav:await nav.allTextContents(),url:page.url()},null,2));
-          await browser.close();
-          NODE
+          npm run test:client-v2:live
 
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: lovetravel-client-v2-stage2-screenshots
-          path: preview-artifacts/*
-          if-no-files-found: error
+          name: lovetravel-client-v2-live-smoke
+          path: |
+            preview-artifacts/**
+            test-results/**
+            playwright-report/**
+          if-no-files-found: ignore
           retention-days: 7
