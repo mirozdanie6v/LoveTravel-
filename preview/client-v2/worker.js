@@ -64,7 +64,7 @@ async function storeCachedPayload(cache,key,payload,ctx){
   else await work;
 }
 
-async function brandLogo(){
+async function brandLogo(ctx=null){
   const cache=cacheApi();
   const key=new Request('https://love-travel-client-v2-preview-cache.invalid/brand-logo');
   if(cache){
@@ -81,8 +81,9 @@ async function brandLogo(){
   headers.set('x-content-type-options','nosniff');
   const response=new Response(upstream.body,{status:upstream.status,headers});
   if(cache){
-    const stored=response.clone();
-    await cache.put(key,stored);
+    const work=cache.put(key,response.clone());
+    if(ctx?.waitUntil) ctx.waitUntil(work);
+    else void work.catch(()=>{});
   }
   return response;
 }
@@ -176,7 +177,7 @@ export default {
 
     if(url.pathname==='/brand-logo'){
       if(request.method!=='GET'&&request.method!=='HEAD') return json({ok:false,error:'method_not_allowed'},405,{allow:'GET, HEAD'});
-      return brandLogo();
+      return brandLogo(ctx);
     }
 
     if(url.pathname==='/api/tours'){
