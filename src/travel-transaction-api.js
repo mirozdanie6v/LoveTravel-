@@ -20,39 +20,6 @@ const json=(data,status=200,headers={})=>new Response(JSON.stringify(data),{
   },
 });
 
-async function sha256Hex(value){
-  const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(String(value||'')));
-  return [...new Uint8Array(digest)].map(byte=>byte.toString(16).padStart(2,'0')).join('');
-}
-
-function view(transaction,resolution=null){
-  return {
-    transaction,
-    revision:transaction.revision,
-    state:transaction.state,
-    selection:transaction.selection
-      ? bokunSelectionFromCanonicalSelection(transaction.selection)
-      : null,
-    quote:transaction.quote||null,
-    draft:transaction.draft||null,
-    approval:transaction.approval||null,
-    providerBooking:transaction.providerBooking||null,
-    requirements:transaction.quote ? {
-      requiredFieldCodes:transaction.quote.requiredFieldCodes||[],
-      issues:transaction.quote.issues||{errors:[],warnings:[],bookingDataIssues:[]},
-      readyToBook:Boolean(transaction.quote.readyToBook),
-    } : null,
-    ...(resolution?{resolution}:{}),
-  };
-}
-
-async function demoInviteAllowed(body,env){
-  const token=String(body?.demoToken||'').trim();
-  if(!token) return false;
-  const expected=String(env?.LOVE_TRAVEL_CLIENT_DEMO_INVITE_SHA256||'').trim();
-  return Boolean(expected)&&await sha256Hex(token)===expected;
-}
-
 function expectedRevision(body){
   const revision=Number(body?.expectedRevision);
   return Number.isInteger(revision)&&revision>=1?revision:null;
