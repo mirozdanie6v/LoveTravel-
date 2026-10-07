@@ -79,7 +79,7 @@ test('Stage 2B is a mini-app shell, not a landing page',()=>{
   assert.match(css,/\.language-menu/);
   assert.match(css,/\.rate-option/);
   assert.match(css,/\.departure-day/);
-  assert.match(client,/data-tab="photos"/);
+  assert.match(client,/\['photos',t\(\)\.photosTab\]/);
   assert.match(client,/function photosPanel/);
   assert.match(client,/datesMarkup\(tour\)\+optionsMarkup\(tour\)/);
   assert.match(client,/providerPhotoUrls/);
