@@ -85,6 +85,9 @@ test('Stage 2B is a mini-app shell, not a landing page',()=>{
   assert.match(client,/datesMarkup\(tour\)\+optionsMarkup\(tour\)/);
   assert.match(client,/providerPhotoUrls/);
   assert.match(client,/bindSelectionInteractions/);
+  assert.match(client,/function rateForSlot/);
+  assert.match(client,/function ratesForSlot/);
+  assert.match(client,/mergeRateLists\(base\?\.textItems,live\?\.textItems\)/);
 });
 
 test('Stage 2C live gate audits raw provider rates and checks readable home typography',()=>{
