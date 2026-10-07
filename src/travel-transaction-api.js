@@ -1,4 +1,4 @@
-// LoveTravel transaction API: provider mutations intentionally disabled while UI restoration is validated.
+// LoveTravel transaction API: provider mutations intentionally disabled while the restored pre-regression UI is validated.
 import {
   bokunSelectionFromCanonicalSelection,
 } from './bokun-provider.js';
