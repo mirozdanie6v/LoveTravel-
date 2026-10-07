@@ -66,7 +66,7 @@ jobs:
         run: npm install --no-fund --no-audit
 
       - name: Verify isolated Client v2
-        run: node --test tests/client-v2-stage2.test.mjs
+        run: node --test tests/client-v2-stage2.test.mjs tests/bokun-rate-media.test.mjs
 
       - name: Build preview
         run: node preview/client-v2/build.mjs
