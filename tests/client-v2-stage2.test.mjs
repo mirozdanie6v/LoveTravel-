@@ -34,7 +34,7 @@ test('Client v2 stage 2 is isolated from legacy DOM, booking and AI',()=>{
 test('preview worker exposes only read-only tour API and static Client v2 assets',async()=>{
   const originalFetch=globalThis.fetch;
   globalThis.fetch=async input=>{
-    const url=new URL(typeof input==='string'?input:input.url);
+    const url=input instanceof URL ? input : new URL(typeof input==='string'?input:input.url);
     assert.equal(url.origin,'https://lovetravel.viiversion.com');
     assert.equal(url.pathname,'/api/bokun/domain');
     return new Response(JSON.stringify({
