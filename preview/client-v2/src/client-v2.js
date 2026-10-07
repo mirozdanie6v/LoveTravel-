@@ -479,25 +479,26 @@ function optionsMarkup(tour){
   const rates=ratesForSlot(tour,slot);
   if(!rates.length) return '';
   return '<section class="selection-section selection-section--rates" data-testid="tour-options" aria-labelledby="tour-options-title"><div class="selection-head"><div><span id="tour-options-title">'+esc(t().options)+'</span><p>'+esc(t().optionsHint)+'</p></div></div>'
-    +'<div class="rate-options">'+rates.map((rate,index)=>{
+    +'<div class="rate-options rate-options--compact">'+rates.map((rate,index)=>{
       const active=String(rate.id)===String(choice.rateId);
       const price=money(priceFor(tour,slot,rate.id));
       const description=rateDescription(rate);
       const ownPhotos=arr(rate.optionPhotos);
-      const fallbackPhoto=!ownPhotos.length&&tour.photos.length?tour.photos[index%tour.photos.length]:'';
-      const photo=ownPhotos[0]||fallbackPhoto;
-      const fallback=Boolean(photo&&!ownPhotos[0]);
+      const photo=ownPhotos[0]||'';
       const priceLines=participantPriceLines(tour,slot,rate.id);
       const title=plainText(rate.title||rate.code||rate.id);
-      return '<article class="rate-card '+(active?'is-active':'')+'">'
-        +'<button type="button" class="rate-option" data-preview-rate="'+esc(rate.id)+'" aria-expanded="'+(active?'true':'false')+'">'
-        +(photo?'<span class="rate-photo">'+media(photo,title||tour.title)+(fallback?'<em>'+esc(t().tourPhotoFallback)+'</em>':'')+'</span>':'')
-        +'<span class="rate-summary"><span class="rate-marker">'+(active?'✓':String(index+1))+'</span><span class="rate-summary__copy"><b>'+esc(title)+'</b><small>'+esc(t().optionDetails)+'</small></span>'
-        +(price?'<strong>'+esc(price)+'</strong>':'')+'<span class="rate-chevron">⌄</span></span></button>'
-        +(active?'<div class="rate-expanded" data-rate-expanded="'+esc(rate.id)+'">'
+      return '<article class="rate-card rate-card--compact '+(active?'is-active':'')+'">'
+        +'<button type="button" class="rate-option rate-option--compact" data-preview-rate="'+esc(rate.id)+'" aria-expanded="'+(active?'true':'false')+'">'
+        +(photo?'<span class="rate-thumb">'+media(photo,title||tour.title)+'</span>':'')
+        +'<span class="rate-summary rate-summary--compact">'
+        +'<span class="rate-marker">'+(active?'✓':String(index+1))+'</span>'
+        +'<span class="rate-summary__copy"><b>'+esc(title)+'</b></span>'
+        +(price?'<strong>'+esc(price)+'</strong>':'')
+        +'<span class="rate-chevron">⌄</span></span></button>'
+        +(active?'<div class="rate-expanded rate-expanded--compact" data-rate-expanded="'+esc(rate.id)+'">'
           +(description?'<p class="rate-description">'+esc(description)+'</p>':'')
           +(priceLines.length?'<div class="rate-price-lines">'+priceLines.map(line=>'<small>'+esc(line)+'</small>').join('')+'</div>':'')
-          +'<span class="rate-action">'+esc(t().selected)+'</span></div>':'')
+          +'</div>':'')
         +'</article>';
     }).join('')+'</div></section>';
 }
