@@ -560,9 +560,17 @@ function bindInteractions(){
     button.addEventListener('click',async()=>{
       const locale=button.dataset.locale;
       if(!SUPPORTED_LOCALES.includes(locale)||locale===state.locale){ state.languageOpen=false; render(); return; }
+      const previousLocale=state.locale;
       state.locale=locale; state.languageOpen=false; localStorage.setItem(LOCALE_STORAGE_KEY,locale);
       document.documentElement.lang=locale;
-      await loadTours({preserveRoute:true});
+      render();
+      const ok=await loadTours({preserveRoute:true,silent:true});
+      if(!ok){
+        state.locale=previousLocale;
+        localStorage.setItem(LOCALE_STORAGE_KEY,previousLocale);
+        document.documentElement.lang=previousLocale;
+        render();
+      }
     });
   });
 
@@ -637,19 +645,30 @@ function routeFromHash(){
   if(['home','catalog','assistant','trips'].includes(tab)) state.appTab=tab;
 }
 
-async function loadTours({preserveRoute=false}={}){
-  state.status='loading';state.error='';render();
+async function loadTours({preserveRoute=false,silent=false}={}){
+  if(!silent){
+    state.status='loading';
+    state.error='';
+    render();
+  }
   try{
     const response=await fetch('/api/tours?locale='+encodeURIComponent(state.locale),{headers:{accept:'application/json'}});
     const payload=await response.json().catch(()=>null);
     if(!response.ok||!payload?.ok||!Array.isArray(payload.domains)) throw new Error(payload?.error||'Love Travel');
     const tours=payload.domains.map(normalizeTour).filter(tour=>PRODUCT_IDS.has(tour.id));
     if(tours.length!==2||new Set(tours.map(tour=>tour.id)).size!==2) throw new Error('Love Travel');
-    state.tours=tours;state.status='ready';
+    state.tours=tours;
+    state.status='ready';
+    state.error='';
     if(!preserveRoute) routeFromHash();
     render();
+    return true;
   }catch(error){
-    state.status='error';state.error=String(error?.message||error||'Love Travel');render();
+    if(silent) return false;
+    state.status='error';
+    state.error=String(error?.message||error||'Love Travel');
+    render();
+    return false;
   }
 }
 
