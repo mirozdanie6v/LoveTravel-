@@ -7,12 +7,13 @@ import previewWorker from '../preview/client-v2/worker.js';
 const root=resolve(import.meta.dirname,'..');
 const read=path=>readFile(resolve(root,path),'utf8');
 
-const [client,html,css,worker,wrangler]=await Promise.all([
+const [client,html,css,worker,wrangler,previewWorkflow]=await Promise.all([
   read('preview/client-v2/src/client-v2.js'),
   read('preview/client-v2/src/index.html'),
   read('preview/client-v2/src/client-v2.css'),
   read('preview/client-v2/worker.js'),
   read('preview/client-v2/wrangler.jsonc'),
+  read('.github/workflows/client-v2-preview.yml'),
 ]);
 
 test('Client v2 stage 2 is isolated from legacy DOM, booking and AI',()=>{
@@ -84,6 +85,17 @@ test('Stage 2B is a mini-app shell, not a landing page',()=>{
   assert.match(client,/datesMarkup\(tour\)\+optionsMarkup\(tour\)/);
   assert.match(client,/providerPhotoUrls/);
   assert.match(client,/bindSelectionInteractions/);
+});
+
+test('Stage 2C live gate audits raw provider rates and checks readable home typography',()=>{
+  assert.match(previewWorkflow,/integration\.viiversion\.com\/api\/bokun\/product/);
+  assert.match(previewWorkflow,/integration\.viiversion\.com\/api\/bokun\/availability/);
+  assert.match(previewWorkflow,/rawProviderProducts/);
+  assert.match(previewWorkflow,/trustSubFont<9\.5/);
+  assert.match(previewWorkflow,/heroCtaFont<13/);
+  const fontCheck=previewWorkflow.indexOf('const trustFont=');
+  const firstLocaleClick=previewWorkflow.indexOf("page.locator('[data-language-trigger]').click()");
+  assert.ok(fontCheck>0 && firstLocaleClick>fontCheck,'typography must be checked on Home before navigation');
 });
 
 test('preview worker exposes only read-only tour API and static Client v2 assets',async()=>{
