@@ -118,47 +118,12 @@ export async function handleTravelTransactionApi(request,env,url=new URL(request
       return withSalesSession(json({ok:true,...view(result.transaction),receipt:result.receipt||null}),session);
     }
 
-    if(action==='RESERVE'){
-      if(!await demoInviteAllowed(body,env)){
-        return withSalesSession(json({ok:false,error:'demo_access_denied'},403),session);
-      }
-      const quoteId=String(body.quoteId||'').trim();
-      const quoteRevision=Number(body.quoteRevision);
-      if(!quoteId||!Number.isInteger(quoteRevision)||quoteRevision<1){
-        return withSalesSession(json({ok:false,error:'quote_revision_required'},400),session);
-      }
-      result=await executeBookingSession(env,transaction.transactionId,{
-        action:'RESERVE',
-        expectedRevision:revision,
-        quoteId,
-        quoteRevision,
-        demoToken:String(body.demoToken||'').trim(),
-      });
+    if(action==='RESERVE'||action==='RECONCILE'){
       return withSalesSession(json({
-        ok:true,
-        ...view(result.transaction),
-        receipt:result.receipt||null,
-        replayed:Boolean(result.replayed),
-        providerResult:result.providerResult||null,
-        reconciliation:result.reconciliation||null,
-      }),session);
-    }
-
-    if(action==='RECONCILE'){
-      if(!await demoInviteAllowed(body,env)){
-        return withSalesSession(json({ok:false,error:'demo_access_denied'},403),session);
-      }
-      result=await executeBookingSession(env,transaction.transactionId,{
-        action:'RECONCILE',
-        expectedRevision:revision,
-        demoToken:String(body.demoToken||'').trim(),
-      });
-      return withSalesSession(json({
-        ok:true,
-        ...view(result.transaction),
-        reconciled:Boolean(result.reconciled),
-        found:Boolean(result.found),
-      }),session);
+        ok:false,
+        error:'booking_mutations_disabled',
+        message:'Real Bókun booking mutations are disabled for the LoveTravel client while the interface is being restored.',
+      },423),session);
     }
 
     return withSalesSession(json({ok:false,error:'unsupported_action'},400),session);
