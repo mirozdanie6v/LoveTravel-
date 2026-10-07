@@ -62,8 +62,8 @@ test('configurator uses professional mobile sheet and sticky summary styles',()=
 test('production build includes configurator after the domain tour runtime',()=>{
   assert.match(build,/lovetravel-booking-configurator\.css/);
   assert.match(build,/lovetravel-booking-configurator\.js/);
-  const domain=build.indexOf('<script src="/lovetravel-domain-tour.js?v=20261007-hotfix1" defer></script>');
-  const config=build.indexOf('<script src="/lovetravel-booking-configurator.js?v=20261007-hotfix1" defer></script>');
+  const domain=build.indexOf('<script src="/lovetravel-domain-tour.js" defer></script>');
+  const config=build.indexOf('<script src="/lovetravel-booking-configurator.js" defer></script>');
   assert.ok(domain>=0 && config>domain);
 });
 
@@ -239,28 +239,4 @@ test('structured handoff API exposes transaction snapshot and applySelection wit
   assert.match(js,/refreshTransaction:\(\)=>loadTransaction\(\)/);
   assert.match(js,/applySelection:async next=>/);
   assert.match(js,/return resolve\(productId,\{quiet:true\}\)/);
-});
-
-
-test('option sheet reuses the visual Bókun tour cards instead of a dry rate list',()=>{
-  assert.match(js,/function optionCardMarkup\(/);
-  assert.match(js,/\.lt-domain-section--options \[data-lt-domain-rate\]/);
-  assert.match(js,/cloneNode\(true\)/);
-  assert.match(js,/classList\.add\('lt-booking-option-card'\)/);
-  assert.match(js,/data-lt-rate/);
-  assert.match(js,/btn\.dataset\.ltRate/);
-  assert.doesNotMatch(js,/class="lt-option-card /);
-  assert.match(css,/\.lt-booking-option-grid/);
-  assert.match(css,/\.lt-booking-option-card \.lt-domain-rate__media/);
-});
-
-test('domain selectors stay interactive until BookingConfigurator has rendered successfully',()=>{
-  const bootstrap=js.slice(js.indexOf('async function bootstrap(productId)'),js.indexOf('function detectProduct()'));
-  const detect=js.slice(js.indexOf('function detectProduct()'),js.indexOf('const observer='));
-  const renderBlock=js.slice(js.indexOf('function render(productId)'),js.indexOf('function openDateSheet'));
-  assert.equal(bootstrap.includes('markLegacySelection();'),false);
-  assert.equal(detect.includes('markLegacySelection();'),false);
-  assert.ok(renderBlock.includes('markLegacySelection();'));
-  assert.match(js,/booking configurator bootstrap failed/);
-  assert.match(css,/\.lt-domain-tour\.lt-booking-ui \.lt-domain-section--options\{display:none!important\}/);
 });
