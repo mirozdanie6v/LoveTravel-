@@ -23,15 +23,41 @@ function id(value) {
 }
 
 function photoUrl(photo = {}) {
+  if (typeof photo === 'string') return text(photo, 2000);
   const derived = asArray(photo.derived);
   return text(
     derived.find(item => item?.name === 'large')?.cleanUrl
       || derived.find(item => item?.name === 'large')?.url
       || derived.find(item => item?.name === 'preview')?.cleanUrl
       || derived.find(item => item?.name === 'preview')?.url
+      || photo.cleanUrl
+      || photo.url
       || photo.originalUrl,
     2000,
   );
+}
+
+function mediaPhotos(entity = {}) {
+  const media = entity?.media && typeof entity.media === 'object' ? entity.media : {};
+  const candidates = [
+    entity.keyPhoto,
+    entity.photo,
+    entity.image,
+    ...asArray(entity.photos),
+    ...asArray(entity.images),
+    ...asArray(media.photos),
+    ...asArray(media.images),
+  ].filter(Boolean);
+  const seen = new Set();
+  return candidates.map(photo => ({
+    url:photoUrl(photo),
+    alt:text(typeof photo === 'object' ? (photo.alt || photo.title || photo.name) : '', 300),
+    providerData:photo,
+  })).filter(item => {
+    if (!item.url || seen.has(item.url)) return false;
+    seen.add(item.url);
+    return true;
+  });
 }
 
 function inferIsoDate(entry = {}) {
@@ -291,6 +317,10 @@ function rateEntity(rate = {}) {
     extraConfigs:asArray(rate.extraConfigs).map(rateExtraConfig),
     details:asArray(rate.details).map(genericProviderEntity),
     textItems:asArray(rate.textItems).map(genericProviderEntity),
+    media:{
+      photos:mediaPhotos(rate),
+      videos:asArray(rate.videos || rate.media?.videos).map(videoEntity),
+    },
     fixedPassExpiryDate:rate.fixedPassExpiryDate ?? null,
     passValidForDays:numeric(rate.passValidForDays),
     providerData:rate,
@@ -428,14 +458,7 @@ export function buildBokunDomain(product = {}, availability = [], { vendorId = n
 
   const participantCategories = asArray(product.pricingCategories).map(participantCategory);
   const rates = asArray(product.rates).map(rateEntity);
-  const mediaPhotos = [product.keyPhoto, ...asArray(product.photos)]
-    .filter(Boolean)
-    .map(photo => ({
-      url:photoUrl(photo),
-      alt:text(photo.alt || photo.title, 300),
-      providerData:photo,
-    }))
-    .filter(item => item.url);
+  const productMediaPhotos = mediaPhotos(product);
 
   const schemaCoverage = coverage(product, availability);
   const providerExtensions = Object.fromEntries(
@@ -498,7 +521,7 @@ export function buildBokunDomain(product = {}, availability = [], { vendorId = n
         providerData:item,
       })),
       media:{
-        photos:mediaPhotos,
+        photos:productMediaPhotos,
         videos:asArray(product.videos).map(videoEntity),
       },
       booking:{
