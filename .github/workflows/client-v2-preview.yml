@@ -114,9 +114,64 @@ jobs:
             if(value&&typeof value==='object') return Object.keys(value).length;
             return value?1:0;
           };
+          const productIds=['1287578','1287580'];
+          const today=new Date();
+          const iso=date=>date.toISOString().slice(0,10);
+          const end=new Date(today.getTime()+30*86400000);
+          const rawProviderProducts=[];
+          for(const productId of productIds){
+            const productResponse=await fetch('https://integration.viiversion.com/api/bokun/product?vendorId=137689&productId='+encodeURIComponent(productId)+'&lang=EN');
+            if(!productResponse.ok) throw new Error('Raw Bókun product fetch failed for '+productId+': '+productResponse.status);
+            const productPayload=await productResponse.json();
+            const rawProduct=productPayload?.product||productPayload?.result||productPayload;
+            const availabilityResponse=await fetch(
+              'https://integration.viiversion.com/api/bokun/availability?vendorId=137689&productId='+encodeURIComponent(productId)
+              +'&start='+encodeURIComponent(iso(today))+'&end='+encodeURIComponent(iso(end))+'&currency=USD'
+            );
+            if(!availabilityResponse.ok) throw new Error('Raw Bókun availability fetch failed for '+productId+': '+availabilityResponse.status);
+            const availabilityPayload=await availabilityResponse.json();
+            const rawAvailability=Array.isArray(availabilityPayload)
+              ?availabilityPayload
+              :Array.isArray(availabilityPayload?.availability)
+                ?availabilityPayload.availability
+                :Array.isArray(availabilityPayload?.items)
+                  ?availabilityPayload.items
+                  :Array.isArray(availabilityPayload?.results)
+                    ?availabilityPayload.results
+                    :[];
+            const rawRates=arr(rawProduct?.rates);
+            const embeddedRates=rawAvailability.flatMap(slot=>arr(slot?.rates));
+            rawProviderProducts.push({
+              productId,
+              rawProductMediaKeys:mediaKeys(rawProduct),
+              rawProductMediaCounts:Object.fromEntries(mediaKeys(rawProduct).map(key=>[key,mediaCount(rawProduct?.[key])])),
+              rates:rawRates.map(rate=>({
+                id:String(rate?.id??''),
+                title:text(rate?.title),
+                descriptionChars:text(rate?.description).length,
+                detailsCount:arr(rate?.details).length,
+                textItemsCount:arr(rate?.textItems).length,
+                mediaKeys:mediaKeys(rate),
+                mediaCounts:Object.fromEntries(mediaKeys(rate).map(key=>[key,mediaCount(rate?.[key])])),
+              })),
+              availabilityEmbeddedRates:[...new Map(embeddedRates.map(rate=>[String(rate?.id??rate?.activityRateId??''),rate])).values()]
+                .filter(rate=>String(rate?.id??rate?.activityRateId??''))
+                .map(rate=>({
+                  id:String(rate?.id??rate?.activityRateId??''),
+                  title:text(rate?.title),
+                  descriptionChars:text(rate?.description).length,
+                  detailsCount:arr(rate?.details).length,
+                  textItemsCount:arr(rate?.textItems).length,
+                  mediaKeys:mediaKeys(rate),
+                  mediaCounts:Object.fromEntries(mediaKeys(rate).map(key=>[key,mediaCount(rate?.[key])])),
+                })),
+            });
+          }
+
           const report={
             generatedAt:new Date().toISOString(),
             vendorId:payload.vendorId,
+            rawProviderProducts,
             products:arr(payload.domains).map(domain=>{
               const experience=domain.experience||{};
               const content=experience.content||{};
@@ -210,6 +265,13 @@ jobs:
             fullPage:true,
           });
 
+          const trustFont=Number.parseFloat(await page.locator('.trust-row b').first().evaluate(el=>getComputedStyle(el).fontSize));
+          const trustSubFont=Number.parseFloat(await page.locator('.trust-row small').first().evaluate(el=>getComputedStyle(el).fontSize));
+          const heroCtaFont=Number.parseFloat(await page.locator('.hero-cta').first().evaluate(el=>getComputedStyle(el).fontSize));
+          if(trustFont<11) throw new Error('Trust-row primary copy is still too small: '+trustFont);
+          if(trustSubFont<9.5) throw new Error('Trust-row secondary copy is still too small: '+trustSubFont);
+          if(heroCtaFont<13) throw new Error('Hero CTA copy is still too small: '+heroCtaFont);
+
           await page.locator('[data-language-trigger]').click();
           await page.locator('[data-locale="en"]').click();
           await page.waitForLoadState('networkidle');
@@ -278,11 +340,6 @@ jobs:
             path:'preview-artifacts/client-v2-ai-shell-mobile.png',
             fullPage:true,
           });
-
-          const trustFont=Number.parseFloat(await page.locator('.trust-row b').first().evaluate(el=>getComputedStyle(el).fontSize));
-          const heroCtaFont=Number.parseFloat(await page.locator('.hero-cta').first().evaluate(el=>getComputedStyle(el).fontSize));
-          if(trustFont<11) throw new Error('Trust-row copy is still too small');
-          if(heroCtaFont<13) throw new Error('Hero CTA copy is still too small');
 
           if(pageErrors.length) throw new Error('Page errors: '+pageErrors.join(' | '));
           console.log(JSON.stringify({ok:true,count,titles,detailTitle,tabs:await tabs.allTextContents(),bottomNav:await nav.allTextContents(),url:page.url()},null,2));
