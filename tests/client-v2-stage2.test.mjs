@@ -18,7 +18,7 @@ const [client,html,css,worker,wrangler]=await Promise.all([
 test('Client v2 stage 2 is isolated from legacy DOM, booking and AI',()=>{
   assert.match(client,/const state=\{/);
   assert.match(client,/function render\(\)/);
-  assert.match(client,/fetch\\('\\/api\\/tours\\?locale='/);
+  assert.match(client,/fetch\('\/api\/tours\?locale='/);
   assert.doesNotMatch(client,/MutationObserver/);
   assert.doesNotMatch(client,/selectionByProduct/);
   assert.doesNotMatch(client,/\/api\/travel-commerce\/transaction/);
