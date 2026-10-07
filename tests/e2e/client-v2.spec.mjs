@@ -118,11 +118,26 @@ test('tour flow is departure first and renders semantic customer sections',async
   await expect(pickup).toBeInViewport();
   await expect(pickup).toBeVisible();
 
+  const dateTrigger=page.locator('[data-date-picker-trigger]');
+  await expect(dateTrigger).toContainText('Выбрать дату');
+  await expect(page.locator('[data-preview-slot]')).toHaveCount(0);
+
+  await dateTrigger.click();
   const departures=page.locator('[data-preview-slot]');
   await expect(departures).toHaveCount(2);
   await departures.nth(1).click();
-  await expect(departures.nth(1)).toHaveClass(/is-active/);
+
+  await expect(dateTrigger).toHaveAttribute('aria-expanded','false');
+  await expect(page.locator('.date-picker-trigger__copy strong')).not.toHaveText('Выберите дату');
   await expect(page.locator('.rate-option')).toHaveCount(1);
+
+  const option=page.locator('.rate-option').first();
+  await expect(option.locator('.rate-photo img')).toBeVisible();
+  await expect(option.locator('.rate-photo em')).toHaveText('Фото экскурсии');
+  await expect(page.locator('.rate-description')).toHaveCount(0);
+
+  await option.click();
+  await expect(option).toHaveAttribute('aria-expanded','true');
   await expect(page.locator('.rate-description')).toContainText('Bích Đầm fishing village extension');
 
   await page.getByRole('button',{name:'Программа'}).click();
@@ -197,9 +212,11 @@ test('performance audit records render boundaries and content-visibility geometr
     },selector);
   };
 
+  await page.locator('[data-date-picker-trigger]').click();
   const departureInteraction=await measureClick('[data-preview-slot]');
   const departureRenderAfter=departureInteraction?.afterRender??null;
 
+  await page.locator('[data-date-picker-trigger]').click();
   const firstDeparture=page.locator('[data-preview-slot]').first();
   await firstDeparture.click();
   await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
