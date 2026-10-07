@@ -29,13 +29,20 @@ function addIsoDays(iso,days){
 
 async function sampleRequest(request,url,count=3){
   const samples=[];
+  const cacheStates=[];
   let bytes=0;
   let status=0;
   for(let i=0;i<count;i+=1){
     const started=performance.now();
     const response=await request.get(url,{timeout:60_000});
     const body=await response.body();
+    const headers=response.headers();
     samples.push(performance.now()-started);
+    cacheStates.push({
+      client:headers['x-client-v2-cache']||null,
+      cloudflare:headers['cf-cache-status']||null,
+      age:headers.age||null,
+    });
     bytes=body.byteLength;
     status=response.status();
     expect(response.ok()).toBeTruthy();
@@ -44,6 +51,7 @@ async function sampleRequest(request,url,count=3){
     url,
     status,
     samplesMs:samples,
+    cacheStates,
     medianMs:median(samples),
     minMs:Math.min(...samples),
     maxMs:Math.max(...samples),
