@@ -6,7 +6,7 @@ import { resolve } from 'node:path';
 const root = resolve(import.meta.dirname, '..');
 const read = path => readFile(resolve(root, path), 'utf8');
 
-const [worker, workerR2, bokunProvider, locale, booking, i18n, semanticI18n, build, bokunLocalization, ai, brand] = await Promise.all([
+const [worker, workerR2, bokunProvider, locale, booking, i18n, semanticI18n, build, bokunLocalization, ai, brand, transactionApi, postDeploySmoke, liveBokunGate] = await Promise.all([
   read('src/worker.js'),
   read('src/worker-r2.js'),
   read('src/bokun-provider.js'),
@@ -18,6 +18,9 @@ const [worker, workerR2, bokunProvider, locale, booking, i18n, semanticI18n, bui
   read('src/bokun-content-localization.js'),
   read('src/ai-consultant-v5.js'),
   read('src/lovetravel-brand.js'),
+  read('src/travel-transaction-api.js'),
+  read('.github/workflows/post-deploy-smoke.yml'),
+  read('.github/workflows/lovetravel-live-bokun-gate.yml'),
 ]);
 
 test('first release is fixed to the two Love Travel Bókun products', () => {
@@ -67,18 +70,31 @@ test('booking path remains resolver-backed and covers pickup, customer and quest
   assert.match(booking, /CHECKOUT_REQUIRED_CUSTOMER_FIELDS = \['firstName','lastName','email','phoneNumber'\]/);
 });
 
-test('client demo booking is hidden behind a hashed invite and integration-side idempotency', () => {
-  assert.match(workerR2, /LOVE_TRAVEL_CLIENT_DEMO_TOKEN_SHA256/);
-  assert.match(workerR2, /demoTokenHash\(demoToken\)/);
-  assert.match(workerR2, /LT-TEST-CLIENT-/);
+test('customer Bókun mutation has one transaction-backed, fail-closed path', () => {
+  assert.doesNotMatch(workerR2, /\/api\/bokun\/client-demo\/submit/);
+  assert.doesNotMatch(workerR2, /handleLoveTravelClientDemoBooking/);
+  assert.doesNotMatch(workerR2, /LOVE_TRAVEL_CLIENT_DEMO_TOKEN_SHA256/);
+  assert.match(workerR2, /handleTravelTransactionApi/);
+
+  assert.match(transactionApi, /LOVE_TRAVEL_CLIENT_DEMO_INVITE_SHA256/);
+  assert.doesNotMatch(transactionApi, /DEMO_INVITE_SHA256_FALLBACK/);
+  assert.doesNotMatch(transactionApi, /LOVE_TRAVEL_CLIENT_DEMO_TOKEN_SHA256/);
+  assert.match(transactionApi, /action==='RESERVE'/);
+  assert.match(transactionApi, /action==='RECONCILE'/);
+  assert.match(transactionApi, /demo_access_denied/);
+
   assert.match(bokunProvider, /x-love-travel-demo-token/);
   assert.match(bokunProvider, /SUBMIT_LOVE_TRAVEL_CLIENT_DEMO_BOOKING/);
-  assert.match(workerR2, /createBokunProvider/);
-  assert.match(booking, /clientDemoEnabled\(\)/);
   assert.match(booking, /\/api\/travel-commerce\/transaction/);
   assert.match(booking, /transactionAction\('APPROVE'/);
   assert.match(booking, /transactionAction\('RESERVE'/);
   assert.doesNotMatch(booking, /\/api\/bokun\/client-demo\/submit/);
+
+  assert.match(postDeploySmoke, /404\|410/);
+  assert.doesNotMatch(postDeploySmoke, /test "\$code" = "403"/);
+  assert.match(liveBokunGate, /Verify the one-time contract is disarmed/);
+  assert.match(liveBokunGate, /demo_access_denied/);
+
   assert.match(semanticI18n,/"booking\.demoCreate": "Создать тестовую бронь"/);
   assert.match(semanticI18n,/"booking\.demoCreate": "创建测试预订"/);
 });
