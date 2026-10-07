@@ -132,8 +132,8 @@ test('tour flow is departure first and renders semantic customer sections',async
   await expect(page.locator('.rate-option')).toHaveCount(1);
 
   const option=page.locator('.rate-option').first();
-  await expect(option.locator('.rate-photo img')).toBeVisible();
-  await expect(option.locator('.rate-photo em')).toHaveText('Фото экскурсии');
+  await expect(option.locator('.rate-thumb')).toHaveCount(0);
+  await expect(page.locator('.rate-photo em')).toHaveCount(0);
   await expect(page.locator('.rate-description')).toHaveCount(0);
 
   await option.click();
