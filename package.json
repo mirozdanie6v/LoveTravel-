@@ -11,7 +11,8 @@
     "check": "npm test && npm run build",
     "deploy": "wrangler deploy --config wrangler.jsonc",
     "test:client-v2:e2e": "playwright test tests/e2e/client-v2.spec.mjs --config=playwright.config.mjs",
-    "test:client-v2:live": "playwright test tests/e2e/client-v2-live-smoke.spec.mjs --config=playwright.config.mjs"
+    "test:client-v2:live": "playwright test tests/e2e/client-v2-live-smoke.spec.mjs --config=playwright.config.mjs",
+    "test:client-v2:live-performance": "playwright test tests/e2e/client-v2-live-performance.spec.mjs --config=playwright.config.mjs"
   },
   "devDependencies": {
     "wrangler": "^4.40.0",
