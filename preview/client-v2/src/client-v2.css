@@ -406,6 +406,8 @@ img{display:block;max-width:100%}
   display:grid;grid-template-columns:31px minmax(0,1fr) auto;grid-template-areas:"marker copy price" "marker action action";
   gap:5px 9px;text-align:left;background:#f8fbfd;color:#18374b;cursor:pointer
 }
+.rate-option--orange{border-left:4px solid var(--orange)}
+.rate-option--blue{border-left:4px solid var(--blue)}
 .rate-option.is-active{border-color:rgba(239,111,26,.42);background:linear-gradient(135deg,#fff7ec,#fff);box-shadow:0 0 0 2px rgba(245,138,36,.08)}
 .rate-marker{grid-area:marker;width:31px;height:31px;border-radius:11px;display:grid;place-items:center;background:#edf7ff;color:var(--blue-deep);font-size:11px;font-weight:950}
 .rate-option.is-active .rate-marker{color:#fff;background:linear-gradient(135deg,var(--orange-deep),var(--orange))}
