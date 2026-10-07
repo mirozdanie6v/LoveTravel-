@@ -47,8 +47,8 @@ test('semantic core and provider formatter load before runtime tour renderer and
   const core=build.indexOf('<script src="/lovetravel-i18n.js" defer></script>');
   const l10n=build.indexOf('<script src="/lovetravel-tour-locale.js" defer></script>');
   const runtime=build.indexOf('<script src="/runtime-api.js" defer></script>');
-  const domain=build.indexOf('<script src="/lovetravel-domain-tour.js" defer></script>');
-  const booking=build.indexOf('<script src="/lovetravel-booking-configurator.js" defer></script>');
+  const domain=build.indexOf('<script src="/lovetravel-domain-tour.js?v=20261007-hotfix1" defer></script>');
+  const booking=build.indexOf('<script src="/lovetravel-booking-configurator.js?v=20261007-hotfix1" defer></script>');
   assert.ok(core>=0 && l10n>core && runtime>l10n && domain>runtime && booking>domain);
 });
 
