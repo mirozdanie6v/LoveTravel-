@@ -1,3 +1,17 @@
+import {
+  normalizeTourDomain,
+  plainText as modelPlainText,
+  money as modelMoney,
+  quoteFor as modelQuoteFor,
+  rateAvailable as modelRateAvailable,
+  priceFor as modelPriceFor,
+  ratesForSlot as modelRatesForSlot,
+  rateDescription as modelRateDescription,
+  participantPriceLines as modelParticipantPriceLines,
+  cancellationLines as modelCancellationLines,
+  pickupLines as modelPickupLines,
+} from './client-v2-model.js';
+
 const app=document.querySelector('#app');
 
 const SUPPORTED_LOCALES=['ru','vi','en','zh','ko'];
@@ -165,13 +179,7 @@ const esc=value=>String(value??'')
 
 function arr(value){ return Array.isArray(value)?value:[]; }
 
-function plainText(value){
-  if(Array.isArray(value)) return value.map(plainText).filter(Boolean);
-  const source=String(value??'');
-  if(!source) return '';
-  const doc=new DOMParser().parseFromString(source,'text/html');
-  return (doc.body.textContent||'').replace(/\s+/g,' ').trim();
-}
+function plainText(value){ return modelPlainText(value); }
 
 function photoUrls(domain){
   return [...new Set(arr(domain?.experience?.media?.photos)
@@ -234,32 +242,17 @@ function amountValue(value){
   return Number.isFinite(number)?number:null;
 }
 
-function money(value){
-  const amount=amountValue(value);
-  if(amount===null) return '';
-  const currency=String(value?.currency||value?.amount?.currency||'USD');
-  const formatted=Number.isInteger(amount)?String(amount):amount.toFixed(2).replace(/\.00$/,'');
-  return currency==='USD'?'$'+formatted:formatted+' '+currency;
-}
+function money(value){ return modelMoney(value); }
 
-function quoteFor(slot,rateId){
-  return arr(slot?.priceQuotesByRate).find(item=>String(item?.rateId)===String(rateId))||null;
-}
+function quoteFor(slot,rateId){ return modelQuoteFor(slot,rateId); }
 
-function rateAvailable(slot,rateId){
-  return Boolean(quoteFor(slot,rateId))||arr(slot?.rates).some(rate=>String(rate?.id)===String(rateId));
-}
+function rateAvailable(slot,rateId){ return modelRateAvailable(slot,rateId); }
 
 function firstAdult(tour){
   return arr(tour.participants).find(item=>String(item?.ticketCategory||'').toUpperCase()==='ADULT')||arr(tour.participants)[0]||null;
 }
 
-function priceFor(tour,slot,rateId){
-  const adult=firstAdult(tour);
-  const quote=quoteFor(slot,rateId);
-  const price=arr(quote?.participantPrices).find(item=>String(item?.categoryId)===String(adult?.id))||arr(quote?.participantPrices)[0];
-  return price?.amount||null;
-}
+function priceFor(tour,slot,rateId){ return modelPriceFor(tour,slot,rateId); }
 
 function priceLabel(domain){
   const tour={participants:arr(domain?.participants)};
@@ -302,55 +295,11 @@ function guidanceLanguages(experience){
 }
 
 function normalizeTour(domain){
-  const experience=domain?.experience||{};
-  const content=experience?.content||{};
-  const id=String(experience.id||domain?.provider?.productId||'');
-  const slot=nextSlot(domain);
-  const included=[...new Set([...listFrom(content.included),...listFrom(content.inclusions)])];
-  const excluded=[...new Set([...listFrom(content.excluded),...listFrom(content.exclusions)])];
-  const requirements=listFrom(content.requirements);
-  const attention=listFrom(content.attention);
-  const knowBefore=listFrom(content.knowBeforeYouGoItems);
-  const dressCode=listFrom(content.dressCode);
-  const rates=arr(domain?.rates).map(rate=>({
-    ...rate,
-    optionPhotos:[...new Set([...photoUrlsFromMedia(rate?.media),...providerPhotoUrls(rate?.providerData||{})])],
-  }));
-  return {
-    id,
-    title:plainText(experience.title)||t().tour,
-    description:plainText(experience.description||experience.excerpt),
-    excerpt:plainText(experience.excerpt),
-    city:plainText(experience?.location?.city)||t().location,
-    category:categoryLabel(experience.category),
-    duration:durationLabel(experience),
-    photos:photoUrls(domain),
-    videos:arr(experience?.media?.videos),
-    price:priceLabel(domain),
-    nextDate:formatDate(slot?.date),
-    nextTime:String(slot?.startTime||''),
-    meeting:meetingLabel(experience),
-    meetingPoints:arr(experience?.meeting?.startPoints),
-    included,
-    excluded,
-    requirements,
-    attention,
-    knowBefore,
-    dressCode,
-    languages:guidanceLanguages(experience),
-    minAge:Number.isFinite(Number(experience?.minAge))?Number(experience.minAge):null,
-    accessibility:arr(experience?.accessibility).map(plainText).filter(Boolean),
-    pickup:experience?.pickup||null,
-    ticketMessage:plainText(experience?.ticket?.message),
-    cancellationPolicy:domain?.cancellationPolicy||null,
-    itinerary:arr(experience?.itinerary).map((item,index)=>({
-      title:plainText(item?.title)||String(index+1),
-      body:plainText(item?.body),
-    })).filter(item=>item.title||item.body),
-    rates,
-    availabilitySlots:arr(domain?.availabilitySlots),
-    participants:arr(domain?.participants),
-  };
+  return normalizeTourDomain(domain,{
+    locale:state.locale,
+    labels:t(),
+    formatDate:iso=>formatDate(iso),
+  });
 }
 
 function brand(){
@@ -505,34 +454,12 @@ function rateForSlot(tour,slot,rateId){
   };
 }
 
-function ratesForSlot(tour,slot){
-  if(!slot) return [];
-  const ids=[
-    ...arr(slot?.rates).map(rate=>rate?.id),
-    ...arr(tour.rates).filter(rate=>rateAvailable(slot,rate?.id)).map(rate=>rate?.id),
-  ].filter(id=>id!==null&&id!==undefined&&id!=='');
-  return [...new Set(ids.map(String))].map(rateId=>rateForSlot(tour,slot,rateId));
-}
+function ratesForSlot(tour,slot){ return modelRatesForSlot(tour,slot); }
 
-function rateDescription(rate){
-  const parts=[
-    plainText(rate?.description),
-    ...arr(rate?.details).flatMap(item=>[plainText(item?.title),plainText(item?.description)]),
-    ...arr(rate?.textItems).flatMap(item=>[plainText(item?.title),plainText(item?.description)]),
-  ].filter(Boolean);
-  return [...new Set(parts)].join(' · ');
-}
+function rateDescription(rate){ return modelRateDescription(rate); }
 
 function participantPriceLines(tour,slot,rateId){
-  const quote=quoteFor(slot,rateId);
-  if(!quote) return [];
-  const categories=new Map(arr(tour.participants).map(item=>[String(item.id),item]));
-  return arr(quote.participantPrices).map(item=>{
-    const cat=categories.get(String(item.categoryId));
-    const label=plainText(cat?.title||cat?.ticketCategory||item.categoryId);
-    const value=money(item.amount);
-    return label&&value?label+': '+value:'';
-  }).filter(Boolean);
+  return modelParticipantPriceLines(tour,slot,rateId);
 }
 
 function optionsMarkup(tour){
@@ -594,29 +521,11 @@ function cancellationRulePercent(rule){
 }
 
 function cancellationLines(policy){
-  if(!policy) return [];
-  const lines=[];
-  const title=plainText(policy.title);
-  if(title) lines.push(title);
-  for(const rule of arr(policy.penaltyRules)){
-    const hours=Number(rule?.cutoffHours);
-    const percent=cancellationRulePercent(rule);
-    if(!Number.isFinite(hours)||percent===null) continue;
-    if(state.locale==='ru') lines.push(t().cancelLessThan+' '+hours+' ч — '+t().cancelRetention+' '+percent+'%');
-    else if(state.locale==='vi') lines.push(t().cancelLessThan+' '+hours+' giờ — '+t().cancelRetention+' '+percent+'%');
-    else if(state.locale==='zh') lines.push(t().cancelLessThan+' '+hours+' 小时内取消 — '+t().cancelRetention+' '+percent+'%');
-    else if(state.locale==='ko') lines.push(t().cancelLessThan+' '+hours+'시간 이내 취소 — '+t().cancelRetention+' '+percent+'%');
-    else lines.push(t().cancelLessThan+' '+hours+' h — '+t().cancelRetention+' '+percent+'%');
-  }
-  return [...new Set(lines)];
+  return modelCancellationLines(policy,{locale:state.locale,labels:t()});
 }
 
 function pickupLines(tour){
-  if(!tour?.pickup?.enabled) return [];
-  const lines=[t().pickupAvailable];
-  if(tour.pickup.customAllowed) lines.push(t().pickupCustom);
-  const groups=arr(tour.pickup.placeGroups).map(item=>plainText(item?.title)).filter(Boolean);
-  return [...new Set([...lines,...groups])];
+  return modelPickupLines(tour,{labels:t()});
 }
 
 function overviewPanel(tour){
