@@ -290,6 +290,7 @@ jobs:
 
           if(await page.locator('.departure-day').count()<1) throw new Error('Departure calendar is missing');
           if(await page.locator('.rate-option').count()<1) throw new Error('Tour options are missing');
+          if(await page.locator('.rate-description').count()<1) throw new Error('Bókun departure-specific rate text is not rendered');
 
           const orderOk=await page.evaluate(()=>{
             const dates=document.querySelector('.selection-section--dates');
