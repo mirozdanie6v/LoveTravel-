@@ -1,9 +1,11 @@
+// LoveTravel transaction API: provider mutations intentionally disabled while the restored pre-regression UI is validated.
 import {
   bokunSelectionFromCanonicalSelection,
 } from './bokun-provider.js';
 import {
   executeBookingSession,
 } from './booking-session-client.js';
+import { bookingMutationBlockedResponse } from './booking-mutation-policy.js';
 import {
   ensureCommerceTransaction,
   ensureSalesSession,
@@ -20,6 +22,27 @@ const json=(data,status=200,headers={})=>new Response(JSON.stringify(data),{
   },
 });
 
+function view(transaction,resolution=null){
+  return {
+    transaction,
+    revision:transaction.revision,
+    state:transaction.state,
+    selection:transaction.selection
+      ? bokunSelectionFromCanonicalSelection(transaction.selection)
+      : null,
+    quote:transaction.quote||null,
+    draft:transaction.draft||null,
+    approval:transaction.approval||null,
+    providerBooking:transaction.providerBooking||null,
+    requirements:transaction.quote ? {
+      requiredFieldCodes:transaction.quote.requiredFieldCodes||[],
+      issues:transaction.quote.issues||{errors:[],warnings:[],bookingDataIssues:[]},
+      readyToBook:Boolean(transaction.quote.readyToBook),
+    } : null,
+    ...(resolution?{resolution}:{}),
+  };
+}
+
 function expectedRevision(body){
   const revision=Number(body?.expectedRevision);
   return Number.isInteger(revision)&&revision>=1?revision:null;
@@ -27,6 +50,11 @@ function expectedRevision(body){
 
 export async function handleTravelTransactionApi(request,env,url=new URL(request.url)){
   if(url.pathname!=='/api/travel-commerce/transaction') return null;
+  const body=request.method==='POST'?await request.clone().json().catch(()=>null):null;
+  const action=String(body?.action||'').trim().toUpperCase();
+  if(action==='RESERVE'||action==='RECONCILE'){
+    return bookingMutationBlockedResponse();
+  }
   if(!env?.DB||!env?.BOOKING_SESSIONS){
     return json({ok:false,error:'transaction_runtime_unavailable'},503);
   }
@@ -43,11 +71,9 @@ export async function handleTravelTransactionApi(request,env,url=new URL(request
       return withSalesSession(json({ok:false,error:'method_not_allowed'},405,{allow:'GET, POST'}),session);
     }
 
-    const body=await request.clone().json().catch(()=>null);
     if(!body||typeof body!=='object'){
       return withSalesSession(json({ok:false,error:'invalid_json'},400),session);
     }
-    const action=String(body.action||'').trim().toUpperCase();
     const revision=expectedRevision(body);
     if(!revision){
       return withSalesSession(json({ok:false,error:'expected_revision_required'},400),session);
@@ -83,14 +109,6 @@ export async function handleTravelTransactionApi(request,env,url=new URL(request
         },
       });
       return withSalesSession(json({ok:true,...view(result.transaction),receipt:result.receipt||null}),session);
-    }
-
-    if(action==='RESERVE'||action==='RECONCILE'){
-      return withSalesSession(json({
-        ok:false,
-        error:'booking_mutations_disabled',
-        message:'Real Bókun booking mutations are disabled for the LoveTravel client while the interface is being restored.',
-      },423),session);
     }
 
     return withSalesSession(json({ok:false,error:'unsupported_action'},400),session);

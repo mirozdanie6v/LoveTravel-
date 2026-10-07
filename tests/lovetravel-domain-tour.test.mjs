@@ -41,7 +41,7 @@ test('domain tour visual layer is included after runtime in the production build
   assert.match(build,/lovetravel-domain-tour\.css/);
   assert.match(build,/lovetravel-domain-tour\.js/);
   const runtime=build.indexOf('<script src="/runtime-api.js" defer></script>');
-  const domain=build.indexOf('<script src="/lovetravel-domain-tour.js?v=20261008-restore-f2ff47f" defer></script>');
+  const domain=build.indexOf('<script src="/lovetravel-domain-tour.js?v=20261008-restored-config-v1" defer></script>');
   assert.ok(runtime>=0 && domain>runtime);
   assert.match(build,/copyFile\(resolve\(root, 'src\/lovetravel-domain-tour\.js'/);
   assert.match(css,/\.lt-domain-rate\.is-active/);
@@ -49,10 +49,11 @@ test('domain tour visual layer is included after runtime in the production build
 });
 
 
-test('domain tour repairs legacy renderer overwrites while a Bókun product is active',()=>{
-  assert.match(js,/function repairLegacyOverwrite/);
-  assert.match(js,/new MutationObserver\(repairLegacyOverwrite\)/);
-  assert.ok(js.includes("!document.querySelector('#tourScreen .lt-domain-shell')"));
+test('baseline navigation delegates Bókun rendering to one lifecycle owner',()=>{
+  assert.match(js,/globalThis\.renderTour=render/);
+  assert.match(js,/return previous\.call\(this,id,\.\.\.args\)/);
+  assert.doesNotMatch(js,/repairLegacyOverwrite|new MutationObserver|queueMicrotask/);
+  assert.match(js,/lovetravel:tour-rendered/);
 });
 
 
@@ -102,7 +103,8 @@ test('tour options are visual cards with curated descriptions and tour photos',(
 
 test('selecting a rate or date preserves the current scroll position',()=>{
   assert.match(js,/function renderDomain\(domain,\{preserveScroll=false\}=\{\}\)/);
-  assert.match(js,/renderDomain\(domain,\{preserveScroll:true\}\)/);
+  assert.match(js,/LoveTravelBookingConfigurator\?\.applySelection/);
+  assert.doesNotMatch(js,/selectionByProduct/);
 });
 
 
@@ -114,9 +116,9 @@ test('tour page keeps the existing LoveTravel layout but exposes the requested p
 
 
 test('semantic i18n core loads before provider localization and domain rendering',()=>{
-  const core=build.indexOf('<script src="/lovetravel-i18n.js" defer></script>');
+  const core=build.indexOf('<script src="/lovetravel-i18n.js?v=20261008-restored-config-v1" defer></script>');
   const provider=build.indexOf('<script src="/lovetravel-tour-locale.js" defer></script>');
-  const domain=build.indexOf('<script src="/lovetravel-domain-tour.js?v=20261008-restore-f2ff47f" defer></script>');
+  const domain=build.indexOf('<script src="/lovetravel-domain-tour.js?v=20261008-restored-config-v1" defer></script>');
   assert.ok(core>=0 && provider>core && domain>provider);
   assert.match(build,/copyFile\(resolve\(root, 'src\/lovetravel-i18n\.js'/);
 });

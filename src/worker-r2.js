@@ -20,6 +20,7 @@ import {
 import { createBokunProvider } from './bokun-provider.js';
 import { handleLoveTravelSalesAgent } from './travel-sales-orchestrator.js';
 import { handleTravelTransactionApi } from './travel-transaction-api.js';
+import { handleBlockedBookingRoute } from './booking-mutation-policy.js';
 
 const CONTENT_TYPES = {
   jpg: 'image/jpeg',
@@ -515,6 +516,8 @@ async function refreshBokunLocalizationCache(env) {
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
+    const mutationBlock=handleBlockedBookingRoute(request,url);
+    if(mutationBlock) return mutationBlock;
     const locale = await requestedLocale(request, url);
     const adminHostResponse = routeAdminHost(url);
     if (adminHostResponse) return adminHostResponse;

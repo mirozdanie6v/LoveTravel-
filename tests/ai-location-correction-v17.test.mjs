@@ -4,7 +4,7 @@ import vm from 'node:vm';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
-const source = await readFile(resolve('src/ai-explicit-tour-v16.js'), 'utf8');
+const source = (await readFile(resolve('src/ai-explicit-tour-v16.js'), 'utf8')).replace(/\r\n/g,'\n');
 const marker = '\n(() => {\n  \'use strict\';\n\n  const locationTest = globalThis.MaxTourAI?._locationTest;';
 const index = source.lastIndexOf(marker);
 assert.ok(index >= 0, 'location correction overlay must exist');

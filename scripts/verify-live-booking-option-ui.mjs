@@ -16,6 +16,18 @@ const browser=await chromium.launch({headless:true});
 try{
   const context=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:1});
   const page=await context.newPage();
+  const mutationAttempts=[];
+  await page.route('**/*',async route=>{
+    const req=route.request();
+    const path=new URL(req.url()).pathname;
+    const body=req.postDataJSON();
+    if(['RESERVE','RECONCILE'].includes(String(body?.action||'').toUpperCase())
+      ||(req.method()==='POST'&&(path==='/api/bookings'||path.includes('/demo-submit')||path.includes('/client-demo/')))){
+      mutationAttempts.push(path);
+      return route.abort();
+    }
+    return route.continue();
+  });
   const pageErrors=[];
   page.on('pageerror',error=>pageErrors.push(String(error)));
   await page.addInitScript(()=>{
@@ -48,7 +60,14 @@ try{
       headers:{accept:'application/json'},
     });
     const data=await response.json().catch(()=>null);
-    if(!response.ok||!data?.ok||!data?.transaction) throw new Error('transaction bootstrap failed');
+    if(!response.ok||!data?.ok||!data?.transaction){
+      throw new Error('transaction bootstrap failed: '+JSON.stringify({
+        status:response.status,
+        ok:Boolean(data?.ok),
+        error:data?.error||null,
+        message:data?.message||null,
+      }));
+    }
     return {transactionId:data.transaction.transactionId,state:data.transaction.state};
   });
   console.log(JSON.stringify({stage:'transaction-ready',...tx}));
@@ -82,7 +101,7 @@ try{
   }
 
   const duplicate=page.locator('#tourScreen .lt-domain-section--options');
-  invariant((await duplicate.count())>0,'Visual source option section is missing from tour renderer');
+  invariant((await duplicate.count())>0,'Domain source option section is missing from tour renderer');
   invariant(!(await duplicate.first().isVisible()),'Duplicate lower tour options section is still visible');
 
   const optionStep=page.locator('#tourScreen .lt-booking-config [data-lt-step="option"]');
@@ -90,25 +109,61 @@ try{
   const sheet=page.locator('.lt-booking-sheet.is-open');
   await sheet.waitFor({state:'visible',timeout:10000});
 
-  const cards=sheet.locator('.lt-booking-option-card[data-lt-rate]');
-  const cardCount=await cards.count();
-  invariant(cardCount>0,'Visual option chooser has no cards');
-  invariant((await sheet.locator('.lt-option-card').count())===0,'Legacy dry option list is still rendered');
+  const options=sheet.locator('.lt-option-card[data-lt-rate]');
+  const optionCount=await options.count();
+  invariant(optionCount>0,'Restored Bókun option chooser has no rates');
+  const firstOption=options.first();
+  const selectedRate=String(await firstOption.getAttribute('data-lt-rate')||'');
+  invariant(Boolean(selectedRate),'First restored option has no Bókun rate id');
+  invariant(Boolean((await firstOption.locator('b').innerText()).trim()),'First restored option has no title');
 
-  const first=cards.first();
-  invariant((await first.locator('.lt-domain-rate__media img').count())>0,'Visual option card has no tour photos');
-  invariant(Boolean((await first.locator('.lt-domain-rate__title').innerText()).trim()),'Visual option card has no title');
-  invariant(Boolean((await first.locator('.lt-domain-rate__description').innerText()).trim()),'Visual option card has no description');
-  invariant(Boolean((await first.locator('.lt-domain-rate__price strong').innerText()).trim()),'Visual option card has no price');
-  invariant((await sheet.locator('.lt-booking-option-card.is-active').count())===1,'Exactly one visual option must be selected');
+  await firstOption.click();
+  await page.waitForFunction(rateId=>
+    String(globalThis.LoveTravelBookingConfigurator?.selection?.()?.rateId||'')===String(rateId),
+    selectedRate,{timeout:20000}
+  );
+  await page.waitForFunction(()=>
+    !document.querySelector('.lt-booking-sheet')?.classList.contains('is-open'),
+    null,{timeout:10000}
+  );
+
+  const guestStep=page.locator('#tourScreen .lt-booking-config [data-lt-step="guests"]');
+  await guestStep.click();
+  await page.locator('.lt-booking-sheet.is-open').waitFor({state:'visible',timeout:10000});
+  const guestRows=page.locator('.lt-booking-sheet.is-open .lt-guest-row[data-lt-guest-row]');
+  const guestCount=await guestRows.count();
+  invariant(guestCount>0,'Restored configurator exposes no Bókun participant categories');
+  invariant((await page.locator('.lt-booking-sheet.is-open [data-lt-guest-count]').count())===guestCount,
+    'Participant rows are missing quantity controls');
+
+  const participantCategories=await page.evaluate(()=>
+    (globalThis.LoveTravelBookingConfigurator?.resolution?.()?.constraints?.participants||[]).map(item=>({
+      id:String(item?.id||''),
+      ticketCategory:String(item?.ticketCategory||''),
+      minAge:item?.minAge,
+      maxAge:item?.maxAge,
+    }))
+  );
+  invariant(participantCategories.length===guestCount,'Visible participant controls diverge from Bókun constraints');
+
+  await page.locator('.lt-booking-sheet.is-open [data-lt-sheet-close-button]').click();
+  await page.waitForFunction(()=>
+    !document.querySelector('.lt-booking-sheet')?.classList.contains('is-open'),
+    null,{timeout:10000}
+  );
+
+  invariant(mutationAttempts.length===0,'UI attempted a forbidden booking mutation');
+
   invariant(pageErrors.length===0,'Page errors: '+JSON.stringify(pageErrors));
 
   console.log(JSON.stringify({
     productId,
-    optionCards:cardCount,
+    optionCount,
+    selectedRate,
+    participantCategories,
     duplicateVisible:await duplicate.first().isVisible(),
     steps,
-    selectedRate:await sheet.locator('.lt-booking-option-card.is-active').getAttribute('data-lt-rate'),
+    mutationAttempts,
   }));
   await context.close();
 } finally {

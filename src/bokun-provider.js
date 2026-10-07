@@ -5,6 +5,7 @@ import {
 } from './bokun-adapter.js';
 import { resolveBookingSelection } from './booking-selection-engine.js';
 import { buildBokunBookingDraft } from './bokun-booking-draft.js';
+import { assertBookingMutationsAllowed } from './booking-mutation-policy.js';
 import {
   CONTRACT_SCHEMA_VERSIONS,
   validateBookingDraft,
@@ -333,7 +334,9 @@ export function canonicalBookingSelectionFromBokun(domain,selection,{
     customer:structuredClone(resolved.customer||{}),
     travellers:travellerList(domain,resolved,vendorId),
     answers:structuredClone(resolved.answers||{}),
-    extras:canonicalExtraList(resolved.extras||{},vendorId),
+    extras:canonicalExtraList(Object.fromEntries(Object.entries(resolved.extras||{}).map(([id,value])=>[
+      id,typeof value==='object'?value:{quantity:value,answers:resolved.extraAnswers?.[id]||{}},
+    ])),vendorId),
   });
 }
 
@@ -362,6 +365,14 @@ function rawExtraMap(extras=[]){
       answers:structuredClone(item?.answers||{}),
     },
   ]).filter(([id,item])=>id&&item.quantity>0));
+}
+
+function bookingExtraProjection(extras=[]){
+  const map=rawExtraMap(extras);
+  return {
+    extras:Object.fromEntries(Object.entries(map).map(([id,item])=>[id,item.quantity])),
+    extraAnswers:Object.fromEntries(Object.entries(map).filter(([,item])=>Object.keys(item.answers).length).map(([id,item])=>[id,item.answers])),
+  };
 }
 
 export function bokunSelectionFromCanonicalSelection(snapshot){
@@ -397,7 +408,7 @@ export function bokunSelectionFromCanonicalSelection(snapshot){
     dropoff:canonicalTransportSelection(selection.dropoff),
     customer:structuredClone(selection.customer||{}),
     answers:structuredClone(selection.answers||{}),
-    extras:rawExtraMap(selection.extras||[]),
+    ...bookingExtraProjection(selection.extras||[]),
   };
 }
 
@@ -451,7 +462,7 @@ export function bokunSelectionFromTransaction(transaction){
     dropoff:canonicalTransportSelection(tx.draft.dropoff),
     customer:structuredClone(tx.draft.customer||{}),
     answers:structuredClone(tx.draft.answers||{}),
-    extras:canonicalExtraMap(tx.draft.extras||[]),
+    ...bookingExtraProjection(tx.draft.extras||[]),
   };
 }
 
@@ -593,6 +604,7 @@ export function createBokunProvider({
   }
 
   async function submitClientDemoBooking({checkoutRequestTemplate,demoToken,currency='USD'}={}){
+    assertBookingMutationsAllowed();
     if(!demoToken) throw new ProviderCapabilityError('demo_token_required','Demo token is required');
     const response=await fetchImpl(buildUrl(baseUrl,'/internal/lovetravel/bokun/demo-submit',{vendorId,currency}),{
       method:'POST',
@@ -635,6 +647,7 @@ export function createBokunProvider({
     demoToken,
     bookingDate,
   }={}){
+    assertBookingMutationsAllowed();
     if(confirmationCode){
       const booking=await readBookingByConfirmationCode({confirmationCode});
       if(externalBookingReference&&str(booking?.externalBookingReference)!==str(externalBookingReference)){

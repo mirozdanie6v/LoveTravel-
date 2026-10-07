@@ -5,7 +5,7 @@
   let domainPromise = null;
   let domainLocale = null;
   let currentProductId = null;
-  const selectionByProduct = new Map();
+  let renderRevision = 0;
   const galleryIndexByProduct = new Map();
 
   function i18n(){ return globalThis.LoveTravelI18n || null; }
@@ -83,15 +83,14 @@
     return slot && adult ? priceFor(slot,rate.id,adult.id) : null;
   }
   function selectedState(domain){
-    let state=selectionByProduct.get(String(domain.experience.id));
-    if(!state){
-      const firstSlot=arr(domain.availabilitySlots).find(s=>!s.soldOut&&!s.unavailable) || arr(domain.availabilitySlots)[0] || null;
-      const rateId=firstSlot?.defaultRateId ?? arr(domain.rates)[0]?.id ?? null;
-      const slot=arr(domain.availabilitySlots).find(s=>!s.soldOut&&!s.unavailable&&rateAvailable(s,rateId)) || firstSlot;
-      state={rateId,slotId:slot?.id || null};
-      selectionByProduct.set(String(domain.experience.id),state);
+    const canonical=globalThis.LoveTravelBookingConfigurator?.selection?.();
+    if(String(canonical?.productId||'')===String(domain.experience.id)){
+      return {rateId:canonical.rateId,slotId:canonical.slotId};
     }
-    return state;
+    const firstSlot=arr(domain.availabilitySlots).find(s=>!s.soldOut&&!s.unavailable) || arr(domain.availabilitySlots)[0] || null;
+    const rateId=firstSlot?.defaultRateId ?? arr(domain.rates)[0]?.id ?? null;
+    const slot=arr(domain.availabilitySlots).find(s=>!s.soldOut&&!s.unavailable&&rateAvailable(s,rateId)) || firstSlot;
+    return {rateId,slotId:slot?.id || null};
   }
   function selectedRate(domain,state){
     return arr(domain.rates).find(rate=>String(rate.id)===String(state.rateId)) || arr(domain.rates)[0] || null;
@@ -361,6 +360,7 @@
       '</div>';
 
     wire(screen,domain);
+    document.dispatchEvent(new CustomEvent('lovetravel:tour-rendered',{detail:{productId:String(domain.experience.id)}}));
     if(!preserveScroll){
       screen.scrollTop=0;
       try { window.scrollTo({top:0,behavior:'instant'}); } catch (_) { window.scrollTo(0,0); }
@@ -446,16 +446,11 @@
     screen.querySelector('[data-lt-gallery-next]')?.addEventListener('click',()=>setGalleryIndex(screen,domain,currentGalleryIndex(domain)+1));
     screen.querySelector('[data-lt-gallery-open]')?.addEventListener('click',buttonEvent=>openGalleryLightbox(domain,buttonEvent.currentTarget.dataset.ltGalleryOpen));
     screen.querySelectorAll('[data-lt-domain-rate]').forEach(button=>button.addEventListener('click',()=>{
-      const state=selectedState(domain);
-      state.rateId=button.dataset.ltDomainRate;
-      const slot=arr(domain.availabilitySlots).find(s=>!s.soldOut&&!s.unavailable&&rateAvailable(s,state.rateId));
-      state.slotId=slot?.id || null;
-      renderDomain(domain,{preserveScroll:true});
+      globalThis.LoveTravelBookingConfigurator?.applySelection?.({productId:String(domain.experience.id),rateId:button.dataset.ltDomainRate})?.catch(console.error);
     }));
     screen.querySelectorAll('[data-lt-domain-slot]').forEach(button=>button.addEventListener('click',()=>{
-      const state=selectedState(domain);
-      state.slotId=button.dataset.ltDomainSlot;
-      renderDomain(domain,{preserveScroll:true});
+      const slot=arr(domain.availabilitySlots).find(item=>String(item.id)===button.dataset.ltDomainSlot);
+      globalThis.LoveTravelBookingConfigurator?.applySelection?.({productId:String(domain.experience.id),date:slot?.date,slotId:slot?.id,startTimeId:slot?.startTimeId})?.catch(console.error);
     }));
   }
   async function domains(force=false){
@@ -492,70 +487,65 @@
   async function renderProduct(id,force=false){
     const productId=String(id||'');
     if(!PRODUCT_IDS.has(productId)) return false;
+    const screen=document.querySelector('#tourScreen');
+    if(!force&&currentProductId===productId&&screen?.dataset.ltDomainProduct===productId&&screen.querySelector('.lt-domain-shell')) return true;
+    const revision=++renderRevision;
     currentProductId=productId;
+    if(screen) delete screen.dataset.ltDomainProduct;
     loading();
     try{
       const list=await domains(force);
-      if(currentProductId!==productId) return false;
+      if(currentProductId!==productId||revision!==renderRevision||!screen?.classList.contains('active')) return false;
       const domain=list.find(item=>String(item?.experience?.id)===productId);
       if(!domain) throw new Error('domain not found');
       renderDomain(domain);
       return true;
     }catch(error){
       console.error('[LoveTravel] Domain tour render failed',error);
-      if(currentProductId===productId) errorView(productId);
+      if(currentProductId===productId&&revision===renderRevision&&screen?.classList.contains('active')) errorView(productId);
       return false;
     }
   }
   function installOpenTour(){
-    if(typeof globalThis.openTour!=='function') return false;
+    if(typeof globalThis.openTour!=='function'||typeof globalThis.renderTour!=='function') return false;
+    // Keep baseline navigation. Its existing renderTour hook delegates the
+    // Bókun screen lifecycle to this renderer before any legacy DOM write.
+    if(!globalThis.renderTour.__loveTravelDomain){
+      const previousRender=globalThis.renderTour;
+      const render=function(...args){
+        const navigationState=typeof state!=='undefined'?state:null;
+        const productId=String(navigationState?.selectedTour?.id||'');
+        if(PRODUCT_IDS.has(productId)) return renderProduct(productId);
+        currentProductId=null;
+        renderRevision++;
+        const screen=document.querySelector('#tourScreen');
+        if(screen){delete screen.dataset.ltDomainProduct;screen.classList.remove('lt-domain-tour','lt-booking-ui');}
+        return previousRender.apply(this,args);
+      };
+      render.__loveTravelDomain=true;
+      render.__previous=previousRender;
+      globalThis.renderTour=render;
+    }
     if(globalThis.openTour.__loveTravelDomain) return true;
     const previous=globalThis.openTour;
     const wrapped=function(id,...args){
-      const result=previous.call(this,id,...args);
-      const productId=String(id ?? '');
-      if(PRODUCT_IDS.has(productId)) queueMicrotask(()=>renderProduct(productId));
-      return result;
+      return previous.call(this,id,...args);
     };
     wrapped.__loveTravelDomain=true;
     wrapped.__previous=previous;
     globalThis.openTour=wrapped;
     return true;
   }
-  let repairQueued=false;
-  function repairLegacyOverwrite(){
-    const screen=document.querySelector('#tourScreen');
-    const productId=String(screen?.dataset?.ltDomainProduct||'');
-    if(!screen?.classList.contains('active') || !PRODUCT_IDS.has(productId) || screen.querySelector('.lt-domain-shell')) return;
-    if(repairQueued) return;
-    repairQueued=true;
-    queueMicrotask(async()=>{
-      repairQueued=false;
-      try{
-        const list=await domains();
-        const domain=list.find(item=>String(item?.experience?.id)===productId);
-        if(domain && !document.querySelector('#tourScreen .lt-domain-shell')) renderDomain(domain);
-      }catch(error){
-        console.error('[LoveTravel] failed to repair legacy tour overwrite',error);
-      }
-    });
-  }
   function install(){
     if(!installOpenTour()) setTimeout(install,50);
     domains().catch(()=>{});
-    const screen=document.querySelector('#tourScreen');
-    if(screen){
-      new MutationObserver(repairLegacyOverwrite).observe(screen,{subtree:true,childList:true});
-    } else {
-      setTimeout(install,60);
-    }
   }
   document.addEventListener('click',event=>{
     if(event.target.closest?.('.mt-language-switcher button')&&currentProductId&&document.querySelector('#tourScreen')?.classList.contains('active')){
-      setTimeout(()=>domains(true).then(list=>{
-        const domain=list.find(item=>String(item?.experience?.id)===currentProductId);
-        if(domain) renderDomain(domain);
-      }).catch(()=>{}),80);
+      const productId=currentProductId;
+      setTimeout(()=>{
+        if(currentProductId===productId&&document.querySelector('#tourScreen')?.classList.contains('active')) renderProduct(productId,true);
+      },80);
     }
   },true);
   install();

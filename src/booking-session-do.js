@@ -2,6 +2,7 @@ import { createBokunProvider } from './bokun-provider.js';
 import { createBookingSessionRuntime } from './booking-session-runtime.js';
 import { createTravelCommerceStore } from './travel-commerce-store.js';
 import { validateBookingTransaction } from './travel-commerce-contracts.js';
+import { assertBookingMutationsAllowed } from './booking-mutation-policy.js';
 
 const json=(data,status=200)=>new Response(JSON.stringify(data),{
   status,
@@ -107,6 +108,10 @@ export class BookingSession {
 
   async perform(body){
     const action=String(body?.action||'').trim();
+    if(['RESERVE','RECONCILE'].includes(action.toUpperCase())
+      ||(action==='COMMAND'&&['RESERVE_BOOKING','RECONCILE_BOOKING'].includes(String(body?.type||'').toUpperCase()))){
+      assertBookingMutationsAllowed();
+    }
     const transactionId=String(body?.transactionId||'').trim();
     await this.requireBound(transactionId);
     const runtime=this.runtime();

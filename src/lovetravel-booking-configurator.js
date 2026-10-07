@@ -8,26 +8,12 @@
   const resolutionByProduct = new Map();
   const calendarByKey = new Map();
   const calendarRequestSeqByProduct = new Map();
-  const demoBookingByProduct = new Map();
   let activeProductId = null;
   let requestSeq = 0;
   let sheet = null;
   let transactionSnapshot = null;
-
-  function clientDemoToken(){
-    try{
-      const fromUrl=new URLSearchParams(location.search).get('demo');
-      if(fromUrl){
-        sessionStorage.setItem('lovetravel-client-demo-token',fromUrl);
-        const clean=new URL(location.href);
-        clean.searchParams.delete('demo');
-        history.replaceState(history.state,'',clean.pathname+clean.search+clean.hash);
-        return fromUrl;
-      }
-      return sessionStorage.getItem('lovetravel-client-demo-token')||'';
-    }catch(_){ return ''; }
-  }
-  function clientDemoEnabled(){ return Boolean(clientDemoToken()); }
+  const bootstrapping = new Set();
+  const bootstrapPromises = new Map();
 
   async function loadTransaction({applySelection=true}={}){
     const response=await fetch('/api/travel-commerce/transaction',{
@@ -223,7 +209,7 @@
       resolutionByProduct.set(productId,data);
       saveSelection(productId,data.selection||selection(productId));
       if(!data.selection?.date) storeCalendar(productId,data);
-      render(productId);
+      if(!bootstrapping.has(productId)) render(productId);
       return data;
     }catch(error){
       console.error('[LoveTravel] booking configurator resolve failed',error);
@@ -304,7 +290,7 @@
     return pending ? t().contactRequired : t().verified;
   }
   function ctaLabel(r,ready){
-    if(ready) return clientDemoEnabled() ? (demoBookingByProduct.get(activeProductId)?.confirmationCode || t().demoCreate) : t().verified;
+    if(ready) return t().reviewQuote;
     const step=firstBlockingStep(r);
     if(step==='date') return t().chooseDate;
     if(step==='option') return t().chooseOption;
@@ -423,8 +409,7 @@
     mount.querySelectorAll('[data-lt-step]').forEach(btn=>btn.addEventListener('click',()=>openSheet(productId,btn.dataset.ltStep)));
     mount.querySelector('[data-lt-config-continue]')?.addEventListener('click',()=>{
       const step=firstBlockingStep(r);
-      if(ready && clientDemoEnabled()) openDemoConfirmSheet(productId);
-      else if(ready) openSheet(productId,'contact');
+      if(ready) openQuoteSheet(productId);
       else openSheet(productId,step);
     });
   }
@@ -1094,12 +1079,12 @@
 
       const previousPassengers=selection(productId).passengers||[];
       const passengerRows=[...root.querySelectorAll('[data-lt-passenger]')];
-      const passengers=passengerRows.map((row,index)=>{
+      const passengers=passengerRows.length?passengerRows.map((row,index)=>{
         const item={...previousPassengers[index],categoryId:row.dataset.ltCategory||null,answers:{...(previousPassengers[index]?.answers||{})}};
         row.querySelectorAll('[data-lt-passenger-field]').forEach(input=>item[input.dataset.ltPassengerField]=input.value.trim());
         row.querySelectorAll('[data-lt-passenger-answer]').forEach(control=>item.answers[control.dataset.ltPassengerAnswer]=controlValue(control));
         return item;
-      });
+      }):previousPassengers;
 
       patchSelection(productId,{customer,answers,passengers});
       const next=await resolve(productId,{quiet:true});
@@ -1114,66 +1099,33 @@
   }
 
 
-  function openDemoConfirmSheet(productId){
+  function openQuoteSheet(productId){
     const r=resolutionByProduct.get(productId);
     if(!r?.readyToBook || !checkoutContactComplete(r)) return openContactSheet(productId);
-    const existing=demoBookingByProduct.get(productId);
-    if(existing?.confirmationCode){
-      const root=showSheet(t().demoSuccessTitle,
-        '<div class="lt-sheet-scroll"><div class="lt-form-section"><p class="lt-booking-note">'+esc(t().demoSuccess)+' <strong>'+esc(existing.confirmationCode)+'</strong></p></div></div>'
-      );
-      return root;
-    }
     const tx=transactionSnapshot;
     if(!tx?.quote || !['READY_FOR_APPROVAL','USER_APPROVED'].includes(tx.state)){
       return openContactSheet(productId);
     }
     const body='<div class="lt-sheet-scroll">'+
-      '<div class="lt-form-section"><span class="lt-form-caption">'+esc(t().total)+'</span><strong class="lt-demo-total">'+esc(quoteSummary(r))+'</strong><p class="lt-booking-note">'+esc(t().demoNote)+'</p></div>'+
-      '<div class="lt-sheet-action"><button type="button" class="lt-sheet-primary" data-lt-demo-submit>'+esc(t().demoCreate)+'</button></div>'+
-      '<p class="lt-booking-note" data-lt-demo-error hidden></p></div>';
-    const root=showSheet(t().demoCreate,body);
-    root.querySelector('[data-lt-demo-submit]')?.addEventListener('click',async event=>{
+      '<div class="lt-form-section"><span class="lt-form-caption">'+esc(t().total)+'</span><strong class="lt-demo-total">'+esc(money(tx.quote.price.amount,tx.quote.price.currency))+'</strong><p class="lt-booking-note">'+esc(t().bookingDisabled)+'</p></div>'+
+      '<div class="lt-sheet-action"><button type="button" class="lt-sheet-primary" data-lt-quote-approve '+(tx.state==='USER_APPROVED'?'disabled':'')+'>'+esc(tx.state==='USER_APPROVED'?t().quoteApproved:t().approveQuote)+'</button></div>'+
+      '<p class="lt-booking-note" data-lt-quote-error hidden></p></div>';
+    const root=showSheet(t().reviewQuote,body);
+    // Approval is pinned to the quote the customer has just seen.
+    const displayedQuote={quoteId:tx.quote.quoteId,quoteRevision:tx.quote.revision,expectedRevision:tx.revision};
+    root.querySelector('[data-lt-quote-approve]')?.addEventListener('click',async event=>{
       const button=event.currentTarget;
-      const errorNode=root.querySelector('[data-lt-demo-error]');
+      const errorNode=root.querySelector('[data-lt-quote-error]');
       button.disabled=true;
-      button.textContent=t().demoCreating;
       if(errorNode) errorNode.hidden=true;
       try{
-        let current=transactionSnapshot || (await loadTransaction({applySelection:false})).transaction;
-        if(current.state==='READY_FOR_APPROVAL'){
-          const approved=await transactionAction('APPROVE',{
-            expectedRevision:current.revision,
-            quoteId:current.quote.quoteId,
-            quoteRevision:current.quote.revision,
-          });
-          current=approved.transaction;
-        }
-        if(current.state!=='USER_APPROVED') throw new Error('transaction is not approval-ready');
-        const reserved=await transactionAction('RESERVE',{
-          expectedRevision:current.revision,
-          quoteId:current.quote.quoteId,
-          quoteRevision:current.quote.revision,
-          demoToken:clientDemoToken(),
-        });
-        current=reserved.transaction;
-        const confirmationCode=String(current?.providerBooking?.confirmationCode||reserved?.providerResult?.confirmationCode||'');
-        if(!confirmationCode || current.state!=='CONFIRMED') throw new Error('booking confirmation unavailable');
-        const data={
-          confirmationCode,
-          status:current.providerBooking?.status||'CONFIRMED',
-          paymentType:reserved?.providerResult?.paymentType||'NOT_PAID',
-        };
-        demoBookingByProduct.set(productId,data);
-        const content=root.closest('.lt-booking-sheet')?.querySelector('.lt-booking-sheet__content')||root;
-        content.innerHTML='<header class="lt-booking-sheet__header"><div><h3>'+esc(t().demoSuccessTitle)+'</h3></div><button type="button" data-lt-sheet-close data-lt-sheet-close-button aria-label="'+esc(t().close)+'">×</button></header>'+
-          '<div class="lt-sheet-scroll"><div class="lt-form-section"><p class="lt-booking-note">'+esc(t().demoSuccess)+' <strong>'+esc(data.confirmationCode)+'</strong></p><p class="lt-booking-note">'+esc(String(data.status||'CONFIRMED'))+' · '+esc(String(data.paymentType||'NOT_PAID'))+'</p></div></div>';
+        await transactionAction('APPROVE',displayedQuote);
+        button.textContent=t().quoteApproved;
         render(productId);
       }catch(error){
-        console.error('[LoveTravel] transaction demo booking failed',error);
+        console.error('[LoveTravel] quote approval failed',error);
         button.disabled=false;
-        button.textContent=t().demoCreate;
-        if(errorNode){errorNode.textContent=t().demoFailure;errorNode.hidden=false;}
+        if(errorNode){errorNode.textContent=t().refreshError;errorNode.hidden=false;}
       }
     });
   }
@@ -1202,6 +1154,8 @@
   function autoComplete(field){ return ({firstName:'given-name',lastName:'family-name',phoneNumber:'tel',email:'email'})[field]||'off'; }
 
   async function bootstrap(productId){
+    if(bootstrapping.has(productId)) return;
+    bootstrapping.add(productId);
     activeProductId=productId;
     selection(productId);
     try{
@@ -1213,6 +1167,7 @@
       }catch(error){
         console.warn('[LoveTravel] transaction bootstrap unavailable',error?.message||error);
       }
+      if(activeProductId!==productId) return;
       let r=await resolve(productId,{quiet:true});
       if(activeProductId!==productId) return;
       const current=selection(productId);
@@ -1224,14 +1179,29 @@
         }
       }
       render(productId);
-    }catch(_){}
+    }catch(_){}finally{
+      bootstrapping.delete(productId);
+      if(activeProductId!==productId) detectProduct();
+    }
   }
   function detectProduct(){
     const screen=document.querySelector('#tourScreen');
+    if(!screen?.classList.contains('active')){
+      if(activeProductId){activeProductId=null;requestSeq++;closeSheet();}
+      return;
+    }
     const id=String(screen?.dataset?.ltDomainProduct||'');
     if(!PRODUCT_IDS.has(id) || !screen.querySelector('.lt-domain-shell')) return;
     const mounted=Boolean(screen.querySelector('[data-lt-config="'+CSS.escape(id)+'"]'));
-    if(id!==activeProductId || !resolutionByProduct.has(id) || !mounted) bootstrap(id);
+    if(bootstrapping.has(id)) return;
+    if(id!==activeProductId || !resolutionByProduct.has(id)){
+      const pending=bootstrap(id);
+      bootstrapPromises.set(id,pending);
+      pending.finally(()=>{
+        if(bootstrapPromises.get(id)===pending) bootstrapPromises.delete(id);
+      });
+    }
+    else if(!mounted) render(id);
   }
   const observer=new MutationObserver(()=>detectProduct());
   function start(){
@@ -1244,7 +1214,8 @@
     document.addEventListener('focusin',event=>{
       if(event.target?.matches?.('.lt-booking-sheet input,.lt-booking-sheet select,.lt-booking-sheet textarea')) keepFocusedFieldVisible(event.target);
     });
-    observer.observe(screen,{subtree:true,childList:true,attributes:true,attributeFilter:['data-lt-domain-product','class']});
+    observer.observe(screen,{attributes:true,attributeFilter:['data-lt-domain-product','class']});
+    document.addEventListener('lovetravel:tour-rendered',detectProduct);
     detectProduct();
   }
   document.addEventListener('click',e=>{
@@ -1252,6 +1223,13 @@
   },true);
   start();
   globalThis.LoveTravelBookingConfigurator={
+    ready:async productId=>{
+      const id=String(productId||activeProductId||'');
+      if(!PRODUCT_IDS.has(id)) return false;
+      await globalThis.LoveTravelDomainTour?.renderProduct?.(id);
+      await bootstrapPromises.get(id);
+      return activeProductId===id&&Boolean(resolutionByProduct.get(id));
+    },
     resolve:()=>activeProductId?resolve(activeProductId):Promise.resolve(null),
     selection:()=>activeProductId?selection(activeProductId):null,
     resolution:()=>activeProductId?resolutionByProduct.get(activeProductId)||null:null,

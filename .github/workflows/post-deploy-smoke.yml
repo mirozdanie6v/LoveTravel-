@@ -41,7 +41,7 @@ jobs:
 
           code="$(curl --silent --show-error --max-time 15 -o /tmp/legacy-submit.json -w '%{http_code}'             -X POST https://lovetravel.viiversion.com/api/bokun/client-demo/submit             -H 'content-type: application/json' --data '{}')"
           case "$code" in
-            404|410) ;;
+            404|410|423) ;;
             *)
               echo "Legacy public Bókun submit route is still exposed: HTTP $code" >&2
               cat /tmp/legacy-submit.json >&2 || true

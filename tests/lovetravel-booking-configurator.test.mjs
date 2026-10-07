@@ -62,8 +62,8 @@ test('configurator uses professional mobile sheet and sticky summary styles',()=
 test('production build includes configurator after the domain tour runtime',()=>{
   assert.match(build,/lovetravel-booking-configurator\.css/);
   assert.match(build,/lovetravel-booking-configurator\.js/);
-  const domain=build.indexOf('<script src="/lovetravel-domain-tour.js?v=20261008-restore-f2ff47f" defer></script>');
-  const config=build.indexOf('<script src="/lovetravel-booking-configurator.js?v=20261008-restore-f2ff47f" defer></script>');
+  const domain=build.indexOf('<script src="/lovetravel-domain-tour.js?v=20261008-restored-config-v1" defer></script>');
+  const config=build.indexOf('<script src="/lovetravel-booking-configurator.js?v=20261008-restored-config-v1" defer></script>');
   assert.ok(domain>=0 && config>domain);
 });
 
@@ -221,11 +221,12 @@ test('calendar lookup remains read-only while authoritative selection writes are
   assert.doesNotMatch(authoritativeResolve,/\/api\/bokun\/booking-selection\/resolve/);
 });
 
-test('demo booking requires exact Quote approval and reserve through BookingSession transaction state',()=>{
+test('ready configuration exposes exact Quote approval without a reserve action',()=>{
   assert.match(js,/transactionAction\('APPROVE'/);
-  assert.match(js,/quoteId:current\.quote\.quoteId/);
-  assert.match(js,/quoteRevision:current\.quote\.revision/);
-  assert.match(js,/transactionAction\('RESERVE'/);
+  assert.match(js,/quoteId:tx\.quote\.quoteId/);
+  assert.match(js,/quoteRevision:tx\.quote\.revision/);
+  assert.doesNotMatch(js,/transactionAction\('RESERVE'/);
+  assert.doesNotMatch(js,/clientDemoToken|clientDemoEnabled|data-lt-demo-submit/);
   assert.doesNotMatch(js,/\/api\/bokun\/client-demo\/submit/);
 });
 

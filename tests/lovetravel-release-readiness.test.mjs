@@ -76,17 +76,17 @@ test('customer Bókun mutation is hard-disabled while the restored interface is 
   assert.match(workerR2, /handleTravelTransactionApi/);
 
   assert.match(transactionApi, /action==='RESERVE'\|\|action==='RECONCILE'/);
-  assert.match(transactionApi, /booking_mutations_disabled/);
-  assert.match(transactionApi, /423/);
+  assert.match(transactionApi, /bookingMutationBlockedResponse/);
   assert.doesNotMatch(transactionApi, /demo_access_denied/);
   assert.doesNotMatch(transactionApi, /LOVE_TRAVEL_CLIENT_DEMO_INVITE_SHA256/);
 
   assert.match(booking, /\/api\/travel-commerce\/transaction/);
   assert.match(booking, /transactionAction\('APPROVE'/);
-  assert.match(booking, /transactionAction\('RESERVE'/);
+  assert.doesNotMatch(booking, /transactionAction\('RESERVE'/);
   assert.doesNotMatch(booking, /\/api\/bokun\/client-demo\/submit/);
 
-  assert.match(postDeploySmoke, /404\|410/);
+  assert.match(postDeploySmoke, /404\|410\|423/);
   assert.doesNotMatch(postDeploySmoke, /test "\$code" = "403"/);
-  assert.match(liveBokunGate, /Verify the one-time contract is disarmed/);
+  assert.match(liveBokunGate, /Verify complete local configuration with zero provider writes/);
+  assert.doesNotMatch(liveBokunGate, /secret put|LIVE_BOKUN_WRITE|confirm_real_booking/);
 });

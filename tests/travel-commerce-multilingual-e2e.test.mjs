@@ -369,31 +369,17 @@ async function runLocaleVertical(locale,config){
   });
   assert.equal(approved.transaction.state,'USER_APPROVED');
 
-  const reserveRequest={
-    transactionId:transaction.transactionId,
-    expectedRevision:approved.transaction.revision,
-    quoteId:approved.transaction.quote.quoteId,
-    quoteRevision:approved.transaction.quote.revision,
-    demoToken:'demo-token',
-  };
-  const confirmed=await runtime.reserve(reserveRequest);
-  assert.equal(confirmed.transaction.state,'CONFIRMED');
-  assert.match(confirmed.transaction.providerBooking.confirmationCode,/^NHA-[0-9]+$/);
-  assert.equal(transport.state.submitCalls,1);
-  assert.ok(store.audit().includes('PROVIDER_RESERVE_CONFIRMED'));
-
-  const duplicate=await runtime.reserve(reserveRequest);
-  assert.equal(duplicate.transaction.state,'CONFIRMED');
-  assert.equal(duplicate.replayed,true);
-  assert.equal(transport.state.submitCalls,1,'duplicate submit must never write Bókun twice');
-
-  return {intent,plan,confirmed:confirmed.transaction};
+  assert.equal(transport.state.submitCalls,0);
+  assert.equal(approved.transaction.providerBooking??null,null);
+  return {intent,plan,prepared:approved.transaction};
 }
 
 for(const [locale,config] of Object.entries(localeCases)){
-  test(`multilingual transactional vertical reaches provider-confirmed booking in ${locale}`,async()=>{
+  test(`multilingual transactional vertical prepares an approved Quote without booking in ${locale}`,async()=>{
     const result=await runLocaleVertical(locale,config);
     if(locale!=='ru') assert.doesNotMatch(result.plan.reply,/[А-Яа-яЁё]/u);
-    assert.equal(result.confirmed.providerBooking.status,'CONFIRMED');
+    assert.equal(result.prepared.state,'USER_APPROVED');
+    assert.equal(result.prepared.quote.readyToBook,true);
+    assert.equal(result.prepared.providerBooking??null,null);
   });
 }
