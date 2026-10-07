@@ -1240,7 +1240,6 @@
   async function bootstrap(productId){
     activeProductId=productId;
     selection(productId);
-    markLegacySelection();
     try{
       try{
         const snapshot=await loadTransaction();
@@ -1261,13 +1260,15 @@
         }
       }
       render(productId);
-    }catch(_){}
+    }catch(error){
+      console.error('[LoveTravel] booking configurator bootstrap failed',error);
+      document.querySelector('#tourScreen')?.classList.remove('lt-booking-ui');
+    }
   }
   function detectProduct(){
     const screen=document.querySelector('#tourScreen');
     const id=String(screen?.dataset?.ltDomainProduct||'');
     if(!PRODUCT_IDS.has(id) || !screen.querySelector('.lt-domain-shell')) return;
-    markLegacySelection();
     const mounted=Boolean(screen.querySelector('[data-lt-config="'+CSS.escape(id)+'"]'));
     if(id!==activeProductId || !resolutionByProduct.has(id) || !mounted) bootstrap(id);
   }

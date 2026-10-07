@@ -41,7 +41,7 @@ test('domain tour visual layer is included after runtime in the production build
   assert.match(build,/lovetravel-domain-tour\.css/);
   assert.match(build,/lovetravel-domain-tour\.js/);
   const runtime=build.indexOf('<script src="/runtime-api.js" defer></script>');
-  const domain=build.indexOf('<script src="/lovetravel-domain-tour.js" defer></script>');
+  const domain=build.indexOf('<script src="/lovetravel-domain-tour.js?v=20261007-hotfix1" defer></script>');
   assert.ok(runtime>=0 && domain>runtime);
   assert.match(build,/copyFile\(resolve\(root, 'src\/lovetravel-domain-tour\.js'/);
   assert.match(css,/\.lt-domain-rate\.is-active/);
@@ -116,7 +116,7 @@ test('tour page keeps the existing LoveTravel layout but exposes the requested p
 test('semantic i18n core loads before provider localization and domain rendering',()=>{
   const core=build.indexOf('<script src="/lovetravel-i18n.js" defer></script>');
   const provider=build.indexOf('<script src="/lovetravel-tour-locale.js" defer></script>');
-  const domain=build.indexOf('<script src="/lovetravel-domain-tour.js" defer></script>');
+  const domain=build.indexOf('<script src="/lovetravel-domain-tour.js?v=20261007-hotfix1" defer></script>');
   assert.ok(core>=0 && provider>core && domain>provider);
   assert.match(build,/copyFile\(resolve\(root, 'src\/lovetravel-i18n\.js'/);
 });
@@ -147,4 +147,11 @@ test('Bókun tours bypass legacy openTour and legacy renderTour completely',()=>
   assert.doesNotMatch(bokunBranch,/previous\.call/);
   assert.doesNotMatch(bokunBranch,/showScreen\('tour'\)/);
   assert.match(block,/return previous\.call\(this,id,\.\.\.args\)/);
+});
+
+
+test('tour UI fails open while BookingConfigurator loads or fails',()=>{
+  assert.match(js,/screen\.classList\.remove\('lt-booking-ui'\)/);
+  assert.match(build,/lovetravel-domain-tour\.js\?v=20261007-hotfix1/);
+  assert.match(build,/lovetravel-booking-configurator\.js\?v=20261007-hotfix1/);
 });

@@ -291,6 +291,8 @@
   function renderDomain(domain,{preserveScroll=false}={}){
     const screen=document.querySelector('#tourScreen');
     if(!screen) return;
+    // Fail open: domain controls stay interactive until BookingConfigurator has mounted successfully.
+    screen.classList.remove('lt-booking-ui');
     const state=selectedState(domain);
     const rate=selectedRate(domain,state);
     const slot=selectedSlot(domain,state);
@@ -479,12 +481,14 @@
   function loading(){
     const screen=document.querySelector('#tourScreen');
     if(!screen) return;
+    screen.classList.remove('lt-booking-ui');
     screen.classList.add('lt-domain-tour');
     screen.innerHTML='<div class="lt-domain-loading"><span class="lt-domain-spinner"></span><b>'+esc(t().loading)+'</b></div>';
   }
   function errorView(id){
     const screen=document.querySelector('#tourScreen');
     if(!screen) return;
+    screen.classList.remove('lt-booking-ui');
     screen.classList.add('lt-domain-tour');
     screen.innerHTML='<div class="lt-domain-loading"><b>'+esc(t().loadError)+'</b><button type="button" data-lt-domain-retry>'+esc(t().retry)+'</button></div>';
     screen.querySelector('[data-lt-domain-retry]')?.addEventListener('click',()=>renderProduct(id,true));
