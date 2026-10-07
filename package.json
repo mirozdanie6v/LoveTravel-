@@ -8,6 +8,8 @@
     "prepare:tour-media": "node scripts/prepare-tour-media.mjs",
     "verify:tour-media": "node scripts/verify-live-tour-media.mjs",
     "test": "node --test tests/*.test.mjs",
+    "test:booking-ui": "node scripts/verify-restored-booking-ui.mjs",
+    "test:booking-ui:live-reads": "node scripts/verify-restored-booking-ui.mjs --live",
     "check": "npm test && npm run build",
     "deploy": "wrangler deploy --config wrangler.jsonc",
     "test:client-v2:e2e": "playwright test tests/e2e/client-v2.spec.mjs --config=playwright.config.mjs",

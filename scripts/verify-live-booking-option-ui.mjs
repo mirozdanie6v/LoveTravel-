@@ -16,6 +16,18 @@ const browser=await chromium.launch({headless:true});
 try{
   const context=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:1});
   const page=await context.newPage();
+  const mutationAttempts=[];
+  await page.route('**/*',async route=>{
+    const req=route.request();
+    const path=new URL(req.url()).pathname;
+    const body=req.postDataJSON();
+    if(['RESERVE','RECONCILE'].includes(String(body?.action||'').toUpperCase())
+      ||(req.method()==='POST'&&(path==='/api/bookings'||path.includes('/demo-submit')||path.includes('/client-demo/')))){
+      mutationAttempts.push(path);
+      return route.abort();
+    }
+    return route.continue();
+  });
   const pageErrors=[];
   page.on('pageerror',error=>pageErrors.push(String(error)));
   await page.addInitScript(()=>{
@@ -140,21 +152,7 @@ try{
     null,{timeout:10000}
   );
 
-  const mutationBlock=await page.evaluate(async()=>{
-    const snapshot=globalThis.LoveTravelBookingConfigurator?.transaction?.();
-    const revision=Number(snapshot?.revision||0);
-    const response=await fetch('/api/travel-commerce/transaction',{
-      method:'POST',
-      cache:'no-store',
-      credentials:'same-origin',
-      headers:{'content-type':'application/json','accept':'application/json'},
-      body:JSON.stringify({action:'RESERVE',expectedRevision:revision}),
-    });
-    const data=await response.json().catch(()=>null);
-    return {status:response.status,error:String(data?.error||'')};
-  });
-  invariant(mutationBlock.status===423 && mutationBlock.error==='booking_mutations_disabled',
-    'Provider mutation blocker is not active: '+JSON.stringify(mutationBlock));
+  invariant(mutationAttempts.length===0,'UI attempted a forbidden booking mutation');
 
   invariant(pageErrors.length===0,'Page errors: '+JSON.stringify(pageErrors));
 
@@ -165,7 +163,7 @@ try{
     participantCategories,
     duplicateVisible:await duplicate.first().isVisible(),
     steps,
-    mutationBlock,
+    mutationAttempts,
   }));
   await context.close();
 } finally {

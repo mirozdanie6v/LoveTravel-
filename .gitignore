@@ -1,2 +1,8 @@
 .tour-media/
 wrangler.viiversion-demo.jsonc
+node_modules/
+dist/
+artifacts/
+*-test-output.txt
+test-results/
+playwright-report/

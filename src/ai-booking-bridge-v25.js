@@ -14,6 +14,7 @@
 
     const configurator=globalThis.LoveTravelBookingConfigurator;
     if(!configurator) return false;
+    if(configurator.ready && !await configurator.ready(id)) return false;
 
     const snapshot=await configurator.refreshTransaction?.();
     const txSelection=snapshot?.selection||null;

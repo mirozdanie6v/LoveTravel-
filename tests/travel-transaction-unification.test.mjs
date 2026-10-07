@@ -142,7 +142,8 @@ test('canonical selection round-trips every booking-critical Bókun field',()=>{
   assert.equal(restored.pickup.answers.pickupNote,'Lobby');
   assert.equal(restored.customer.email,'guest@example.com');
   assert.equal(restored.answers.bookingQuestion,'yes');
-  assert.equal(restored.extras['701'].quantity,1);
+  assert.equal(restored.extras['701'],1);
+  assert.equal(restored.extraAnswers['701'].size,'M');
   assert.equal(restored.passengers[2].extras['702'].quantity,1);
 });
 
@@ -156,6 +157,14 @@ test('canonical BookingDraft is derived from the same transaction selection and 
   assert.equal(draft.travellers.length,3);
   assert.equal(draft.pickup.placeRef.externalId,'501');
   assert.equal(draft.answers.bookingQuestion,'yes');
+});
+
+test('numeric booking extras and their question answers survive canonical/UI round-trip',()=>{
+  const raw=rawSelection({extras:{701:2},extraAnswers:{701:{size:'M'}}});
+  const canonical=canonicalBookingSelectionFromBokun(domain,raw);
+  const restored=bokunSelectionFromCanonicalSelection(canonical);
+  assert.equal(restored.extras['701'],2);
+  assert.equal(restored.extraAnswers['701'].size,'M');
 });
 
 test('selection synchronization invalidates prior customer approval and advances one transaction revision',()=>{

@@ -241,100 +241,24 @@ test('provisional checkout request and final draft preserve the verified existin
   assert.equal(draft.readyForReserve,true);
   assert.equal(draft.checkoutRequestTemplate.directBooking.externalBookingReference,'LT-TEST-CLIENT-ABC123');
 
-  const submitted=await provider.submitClientDemoBooking({
+  await assert.rejects(()=>provider.submitClientDemoBooking({
     checkoutRequestTemplate:draft.checkoutRequestTemplate,
     demoToken:'demo-token',
-  });
-  assert.equal(submitted.confirmationCode,'NHA-123456789');
-  assert.equal(submitted.externalBookingReference,'LT-TEST-CLIENT-ABC123');
+  }),error=>error.code==='booking_mutations_disabled'&&error.status===423);
   assert.equal(calls.filter(item=>item.url.pathname.endsWith('/checkout/options')).length,1);
-  assert.equal(calls.filter(item=>item.url.pathname.endsWith('/demo-submit')).length,1);
+  assert.equal(calls.filter(item=>item.url.pathname.endsWith('/demo-submit')).length,0);
 });
 
-test('external-reference reconciliation uses the guarded integration endpoint and exact reference',async()=>{
-  const calls=[];
-  const provider=createBokunProvider({
-    baseUrl:'https://integration.example',
-    fetchImpl:async(input,init)=>{
-      const url=new URL(typeof input==='string'?input:input.url);
-      calls.push({url,init});
-      return new Response(JSON.stringify({
-        ok:true,
-        found:true,
-        booking:{
-          confirmationCode:'NHA-123456789',
-          externalBookingReference:'LT-TEST-CLIENT-ABC123',
-          status:'CONFIRMED',
-        },
-      }),{status:200,headers:{'content-type':'application/json'}});
-    },
-  });
-  const booking=await provider.reconcileBooking({
-    externalBookingReference:'LT-TEST-CLIENT-ABC123',
-    bookingDate:'2026-10-08',
-    demoToken:'demo-token',
-  });
+test('confirmation-code lookup remains a read-only provider capability',async()=>{
+  let calls=0;
+  const provider=createBokunProvider({bookingTestToken:'read-token',baseUrl:'https://integration.example',fetchImpl:async(input,init)=>{
+    calls++;
+    const url=new URL(input);
+    assert.equal(url.pathname,'/admin/bokun/pilot/booking');
+    assert.equal(init.method||'GET','GET');
+    return new Response(JSON.stringify({confirmationCode:'NHA-123456789',externalBookingReference:'LT-EXISTING',status:'CONFIRMED'}),{status:200,headers:{'content-type':'application/json'}});
+  }});
+  const booking=await provider.readBookingByConfirmationCode({confirmationCode:'NHA-123456789'});
   assert.equal(booking.confirmationCode,'NHA-123456789');
-  assert.equal(calls.length,1);
-  assert.equal(calls[0].url.pathname,'/internal/lovetravel/bokun/reconcile');
-  assert.equal(calls[0].init.headers['x-viiversion-booking-intent'],'RECONCILE_LOVE_TRAVEL_CLIENT_DEMO_BOOKING');
-  assert.equal(calls[0].init.headers['x-love-travel-demo-token'],'demo-token');
-  assert.deepEqual(JSON.parse(calls[0].init.body),{
-    externalBookingReference:'LT-TEST-CLIENT-ABC123',
-    bookingDate:'2026-10-08',
-  });
-});
-
-test('external-reference reconciliation returns null when provider search finds no booking',async()=>{
-  const provider=createBokunProvider({
-    baseUrl:'https://integration.example',
-    fetchImpl:async()=>new Response(JSON.stringify({ok:true,found:false}),{
-      status:200,headers:{'content-type':'application/json'},
-    }),
-  });
-  assert.equal(await provider.reconcileBooking({
-    externalBookingReference:'LT-TEST-CLIENT-ABC123',
-    bookingDate:'2026-10-08',
-    demoToken:'demo-token',
-  }),null);
-});
-
-test('confirmation-code reconciliation verifies the expected external booking reference',async()=>{
-  const provider=createBokunProvider({
-    bookingTestToken:'test-token',
-    baseUrl:'https://integration.example',
-    fetchImpl:async(input,init)=>{
-      const url=new URL(typeof input==='string'?input:input.url);
-      assert.equal(url.pathname,'/admin/bokun/pilot/booking');
-      assert.equal(url.searchParams.get('code'),'NHA-123456789');
-      assert.equal(init.headers['x-viiversion-booking-test-token'],'test-token');
-      return new Response(JSON.stringify({
-        confirmationCode:'NHA-123456789',
-        externalBookingReference:'LT-TEST-CLIENT-ABC123',
-        status:'CONFIRMED',
-      }),{status:200,headers:{'content-type':'application/json'}});
-    },
-  });
-  const booking=await provider.reconcileBooking({
-    externalBookingReference:'LT-TEST-CLIENT-ABC123',
-    confirmationCode:'NHA-123456789',
-  });
-  assert.equal(booking.status,'CONFIRMED');
-
-  const mismatch=createBokunProvider({
-    bookingTestToken:'test-token',
-    baseUrl:'https://integration.example',
-    fetchImpl:async()=>new Response(JSON.stringify({
-      confirmationCode:'NHA-123456789',
-      externalBookingReference:'OTHER',
-      status:'CONFIRMED',
-    }),{status:200,headers:{'content-type':'application/json'}}),
-  });
-  await assert.rejects(
-    ()=>mismatch.reconcileBooking({
-      externalBookingReference:'LT-TEST-CLIENT-ABC123',
-      confirmationCode:'NHA-123456789',
-    }),
-    error=>error.code==='external_reference_mismatch',
-  );
+  assert.equal(calls,1);
 });

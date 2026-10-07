@@ -51,7 +51,7 @@ test('BookingSession identity is bound to exactly one BookingTransaction',async(
   );
 });
 
-test('BookingSession accepts only the already-validated demo token forwarded by the transaction API',async()=>{
+test('BookingSession rejects reserve even with a previously validated demo token',async()=>{
   const session=new BookingSession(fakeState('txn-a'),{});
   let seenToken='';
   session.runtime=()=>({
@@ -61,15 +61,15 @@ test('BookingSession accepts only the already-validated demo token forwarded by 
     },
   });
 
-  await session.perform({
+  await assert.rejects(()=>session.perform({
     action:'RESERVE',
     transactionId:'txn-a',
     expectedRevision:3,
     quoteId:'quote-a',
     quoteRevision:1,
     demoToken:'validated-one-time-token',
-  });
-  assert.equal(seenToken,'validated-one-time-token');
+  }),error=>error.code==='booking_mutations_disabled'&&error.status===423);
+  assert.equal(seenToken,'');
 
   await assert.rejects(
     ()=>session.perform({
@@ -79,7 +79,7 @@ test('BookingSession accepts only the already-validated demo token forwarded by 
       quoteId:'quote-a',
       quoteRevision:1,
     }),
-    error=>error.code==='demo_token_required'&&error.status===403,
+    error=>error.code==='booking_mutations_disabled'&&error.status===423,
   );
 });
 

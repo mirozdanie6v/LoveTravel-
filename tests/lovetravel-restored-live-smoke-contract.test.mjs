@@ -11,6 +11,7 @@ test('production booking smoke validates the restored pre-regression configurato
   assert.doesNotMatch(smoke,/\.lt-booking-option-card\[data-lt-rate\]/);
   assert.match(smoke,/\.lt-guest-row\[data-lt-guest-row\]/);
   assert.match(smoke,/constraints\?\.participants/);
-  assert.match(smoke,/booking_mutations_disabled/);
-  assert.match(smoke,/mutationBlock\.status===423/);
+  assert.match(smoke,/return route\.abort\(\)/);
+  assert.match(smoke,/mutationAttempts\.length===0/);
+  assert.doesNotMatch(smoke,/body:JSON\.stringify\(\{action:'RESERVE'/);
 });

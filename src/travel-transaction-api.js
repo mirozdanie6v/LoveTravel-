@@ -5,6 +5,7 @@ import {
 import {
   executeBookingSession,
 } from './booking-session-client.js';
+import { bookingMutationBlockedResponse } from './booking-mutation-policy.js';
 import {
   ensureCommerceTransaction,
   ensureSalesSession,
@@ -49,6 +50,11 @@ function expectedRevision(body){
 
 export async function handleTravelTransactionApi(request,env,url=new URL(request.url)){
   if(url.pathname!=='/api/travel-commerce/transaction') return null;
+  const body=request.method==='POST'?await request.clone().json().catch(()=>null):null;
+  const action=String(body?.action||'').trim().toUpperCase();
+  if(action==='RESERVE'||action==='RECONCILE'){
+    return bookingMutationBlockedResponse();
+  }
   if(!env?.DB||!env?.BOOKING_SESSIONS){
     return json({ok:false,error:'transaction_runtime_unavailable'},503);
   }
@@ -65,11 +71,9 @@ export async function handleTravelTransactionApi(request,env,url=new URL(request
       return withSalesSession(json({ok:false,error:'method_not_allowed'},405,{allow:'GET, POST'}),session);
     }
 
-    const body=await request.clone().json().catch(()=>null);
     if(!body||typeof body!=='object'){
       return withSalesSession(json({ok:false,error:'invalid_json'},400),session);
     }
-    const action=String(body.action||'').trim().toUpperCase();
     const revision=expectedRevision(body);
     if(!revision){
       return withSalesSession(json({ok:false,error:'expected_revision_required'},400),session);
@@ -105,14 +109,6 @@ export async function handleTravelTransactionApi(request,env,url=new URL(request
         },
       });
       return withSalesSession(json({ok:true,...view(result.transaction),receipt:result.receipt||null}),session);
-    }
-
-    if(action==='RESERVE'||action==='RECONCILE'){
-      return withSalesSession(json({
-        ok:false,
-        error:'booking_mutations_disabled',
-        message:'Real Bókun booking mutations are disabled for the LoveTravel client while the interface is being restored.',
-      },423),session);
     }
 
     return withSalesSession(json({ok:false,error:'unsupported_action'},400),session);

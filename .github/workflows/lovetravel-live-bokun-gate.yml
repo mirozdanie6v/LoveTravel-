@@ -1,118 +1,45 @@
-name: LoveTravel live Bókun release gate
+name: LoveTravel configuration parity gate (no bookings)
 
 on:
   workflow_dispatch:
-    inputs:
-      base_url:
-        description: Deployed LoveTravel base URL
-        required: true
-        default: https://lovetravel.viiversion.com
-        type: string
-      confirm_real_booking:
-        description: I understand this creates exactly one real Bókun booking
-        required: true
-        default: false
-        type: boolean
-
-concurrency:
-  group: lovetravel-real-bokun-booking
-  cancel-in-progress: false
+  pull_request:
+    paths:
+      - 'src/lovetravel-*'
+      - 'src/booking-*'
+      - 'src/bokun-*'
+      - 'src/travel-*'
+      - 'build.mjs'
+      - 'tests/fixtures/booking-configurator-domains.mjs'
+      - 'tests/helpers/booking-ui-harness.mjs'
+      - 'scripts/verify-restored-booking-ui.mjs'
+      - '.github/workflows/lovetravel-live-bokun-gate.yml'
 
 permissions:
   contents: read
 
 jobs:
-  live-bokun-gate:
-    if: ${{ inputs.confirm_real_booking }}
+  configuration-parity:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-    env:
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v5
-
       - uses: actions/setup-node@v5
         with:
-          node-version: '22'
-
-      - name: Install
-        run: npm install --no-fund --no-audit
-
-      - name: Verify existing demo-hash bindings are free
-        shell: bash
-        run: |
-          set -euo pipefail
-          npx wrangler secret list --name love-travel-v28 --format json > /tmp/lovetravel-secrets.json
-          npx wrangler secret list --name viiversion-integration --format json > /tmp/integration-secrets.json
-          ! jq -e '.[] | select(.name=="LOVE_TRAVEL_CLIENT_DEMO_INVITE_SHA256")' /tmp/lovetravel-secrets.json >/dev/null
-          ! jq -e '.[] | select(.name=="LOVE_TRAVEL_CLIENT_DEMO_TOKEN_SHA256")' /tmp/integration-secrets.json >/dev/null
-
-      - name: Arm existing client-demo contract for this run
-        shell: bash
-        run: |
-          set -euo pipefail
-          token="$(openssl rand -hex 32)"
-          hash="$(printf '%s' "$token" | sha256sum | awk '{print $1}')"
-          echo "::add-mask::$token"
-          echo "::add-mask::$hash"
-          echo "LIVE_GATE_DEMO_TOKEN=$token" >> "$GITHUB_ENV"
-          printf '%s' "$hash" | npx wrangler secret put LOVE_TRAVEL_CLIENT_DEMO_INVITE_SHA256 --name love-travel-v28
-          printf '%s' "$hash" | npx wrangler secret put LOVE_TRAVEL_CLIENT_DEMO_TOKEN_SHA256 --name viiversion-integration
-
-      - name: Run one real transaction-backed Bókun demo booking
+          node-version: '24'
+      - run: npm install --no-fund --no-audit
+      - run: npx playwright install --with-deps chromium
+      - run: npm test
+      - run: npm run build
+      - name: Verify complete local configuration with zero provider writes
         env:
-          LOVE_TRAVEL_LIVE_BASE_URL: ${{ inputs.base_url || 'https://lovetravel.viiversion.com' }}
-          LIVE_BOKUN_WRITE: '1'
-        run: node scripts/verify-live-travel-commerce.mjs
-
-      - name: Disarm one-time client-demo contract
-        if: always()
-        shell: bash
-        run: |
-          set +e
-          yes | npx wrangler secret delete LOVE_TRAVEL_CLIENT_DEMO_INVITE_SHA256 --name love-travel-v28 || true
-          yes | npx wrangler secret delete LOVE_TRAVEL_CLIENT_DEMO_TOKEN_SHA256 --name viiversion-integration || true
-
-      - name: Verify the one-time contract is disarmed
-        if: always()
-        shell: bash
+          LOVE_TRAVEL_BROWSER_CHANNEL: chromium
+        run: node scripts/verify-restored-booking-ui.mjs
+      - name: Preserve passenger extras when passenger fields are absent
         env:
-          LOVE_TRAVEL_LIVE_BASE_URL: ${{ inputs.base_url || 'https://lovetravel.viiversion.com' }}
-        run: |
-          set -euo pipefail
-
-          npx wrangler secret list --name love-travel-v28 --format json > /tmp/lovetravel-secrets-after.json
-          npx wrangler secret list --name viiversion-integration --format json > /tmp/integration-secrets-after.json
-          ! jq -e '.[] | select(.name=="LOVE_TRAVEL_CLIENT_DEMO_INVITE_SHA256")' /tmp/lovetravel-secrets-after.json >/dev/null
-          ! jq -e '.[] | select(.name=="LOVE_TRAVEL_CLIENT_DEMO_TOKEN_SHA256")' /tmp/integration-secrets-after.json >/dev/null
-
-          if [ -z "${LIVE_GATE_DEMO_TOKEN:-}" ]; then
-            echo "No armed token was created; secret cleanup was verified."
-            exit 0
-          fi
-
-          base="${LOVE_TRAVEL_LIVE_BASE_URL%/}"
-          rm -f /tmp/disarm.cookies
-          curl --fail --silent --show-error --max-time 15             -c /tmp/disarm.cookies             "$base/api/travel-commerce/transaction"             > /tmp/disarm-transaction.json
-
-          revision="$(jq -r '.revision // .transaction.revision // empty' /tmp/disarm-transaction.json)"
-          test -n "$revision"
-
-          payload="$(jq -nc             --arg token "$LIVE_GATE_DEMO_TOKEN"             --argjson revision "$revision"             '{action:"RESERVE",expectedRevision:$revision,quoteId:"disarm-check",quoteRevision:1,demoToken:$token}')"
-
-          code=""
-          for attempt in 1 2 3 4 5 6; do
-            code="$(curl --silent --show-error --max-time 15               -b /tmp/disarm.cookies               -o /tmp/disarm-reserve.json               -w '%{http_code}'               -X POST "$base/api/travel-commerce/transaction"               -H 'content-type: application/json'               --data "$payload")"
-            if [ "$code" = "403" ]; then
-              break
-            fi
-            sleep 5
-          done
-
-          if [ "$code" != "403" ]; then
-            echo "Previously valid one-time token is still accepted after disarm: HTTP $code" >&2
-            cat /tmp/disarm-reserve.json >&2 || true
-            exit 1
-          fi
-          jq -e '.error == "demo_access_denied"' /tmp/disarm-reserve.json >/dev/null
+          LOVE_TRAVEL_BROWSER_CHANNEL: chromium
+        run: node scripts/verify-restored-booking-ui.mjs --minimal-passengers
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: booking-configuration-parity
+          path: artifacts/restoration/
