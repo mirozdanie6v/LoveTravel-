@@ -32,7 +32,7 @@ const COPY={
     sectionKicker:'ВЫБЕРИТЕ СВОЙ МАРШРУТ',sectionTitle:'Островные экскурсии',programs:'2 программы',
     liveDates:'Актуальные даты',nearest:'Ближайший выезд',from:'Стоимость от',openTour:'Открыть экскурсию',
     allTours:'Все экскурсии',overview:'Обзор',program:'Программа',included:'Включено',photosTab:'Фото',
-    about:'ОБ ЭКСКУРСИИ',duration:'Длительность',meeting:'Место встречи',important:'ВАЖНО ЗНАТЬ',requirementsLabel:'Требования',attentionLabel:'Обратите внимание',knowBefore:'Перед поездкой',notIncluded:'Не включено',languagesLabel:'Языки',minAgeLabel:'Мин. возраст',
+    about:'ОБ ЭКСКУРСИИ',duration:'Длительность',meeting:'Место встречи',important:'ВАЖНО ЗНАТЬ',requirementsLabel:'Требования',attentionLabel:'Обратите внимание',knowBefore:'Перед поездкой',notIncluded:'Не включено',languagesLabel:'Языки',minAgeLabel:'Мин. возраст',cancellationLabel:'Условия отмены',pickupLabel:'Трансфер',accessibilityLabel:'Доступность',ticketLabel:'Информация по билету',
     route:'МАРШРУТ',dayProgram:'Программа дня',inPrice:'В СТОИМОСТИ',includedTitle:'Что включено',
     options:'Варианты тура',optionsHint:'Выберите формат программы',selected:'Выбрано',select:'Выбрать',
     dates:'Выберите выезд',datesHint:'Выберите дату и время из доступных выездов',places:'мест',unlimited:'места есть',soldOut:'нет мест',
@@ -58,7 +58,7 @@ const COPY={
     sectionKicker:'CHỌN HÀNH TRÌNH',sectionTitle:'Tour biển đảo',programs:'2 chương trình',
     liveDates:'Lịch cập nhật',nearest:'Khởi hành gần nhất',from:'Giá từ',openTour:'Mở tour',
     allTours:'Tất cả tour',overview:'Tổng quan',program:'Lịch trình',included:'Bao gồm',photosTab:'Ảnh',
-    about:'VỀ TOUR',duration:'Thời lượng',meeting:'Điểm hẹn',important:'THÔNG TIN QUAN TRỌNG',requirementsLabel:'Yêu cầu',attentionLabel:'Lưu ý',knowBefore:'Trước chuyến đi',notIncluded:'Không bao gồm',languagesLabel:'Ngôn ngữ',minAgeLabel:'Tuổi tối thiểu',
+    about:'VỀ TOUR',duration:'Thời lượng',meeting:'Điểm hẹn',important:'THÔNG TIN QUAN TRỌNG',requirementsLabel:'Yêu cầu',attentionLabel:'Lưu ý',knowBefore:'Trước chuyến đi',notIncluded:'Không bao gồm',languagesLabel:'Ngôn ngữ',minAgeLabel:'Tuổi tối thiểu',cancellationLabel:'Điều kiện huỷ',pickupLabel:'Đưa đón',accessibilityLabel:'Khả năng tiếp cận',ticketLabel:'Thông tin vé',
     route:'LỊCH TRÌNH',dayProgram:'Chương trình trong ngày',inPrice:'TRONG GIÁ',includedTitle:'Bao gồm',
     options:'Các lựa chọn tour',optionsHint:'Chọn hình thức chương trình',selected:'Đã chọn',select:'Chọn',
     dates:'Chọn chuyến khởi hành',datesHint:'Chọn ngày và giờ còn chỗ',places:'chỗ',unlimited:'còn chỗ',soldOut:'hết chỗ',
@@ -84,7 +84,7 @@ const COPY={
     sectionKicker:'CHOOSE YOUR ROUTE',sectionTitle:'Island experiences',programs:'2 programs',
     liveDates:'Live dates',nearest:'Next departure',from:'From',openTour:'Open tour',
     allTours:'All tours',overview:'Overview',program:'Program',included:'Included',photosTab:'Photos',
-    about:'ABOUT THE TOUR',duration:'Duration',meeting:'Meeting point',important:'IMPORTANT',requirementsLabel:'Requirements',attentionLabel:'Please note',knowBefore:'Before you go',notIncluded:'Not included',languagesLabel:'Languages',minAgeLabel:'Min. age',
+    about:'ABOUT THE TOUR',duration:'Duration',meeting:'Meeting point',important:'IMPORTANT',requirementsLabel:'Requirements',attentionLabel:'Please note',knowBefore:'Before you go',notIncluded:'Not included',languagesLabel:'Languages',minAgeLabel:'Min. age',cancellationLabel:'Cancellation',pickupLabel:'Pickup',accessibilityLabel:'Accessibility',ticketLabel:'Ticket information',
     route:'ROUTE',dayProgram:'Day program',inPrice:'INCLUDED',includedTitle:'What is included',
     options:'Tour options',optionsHint:'Choose a program format',selected:'Selected',select:'Select',
     dates:'Choose a departure',datesHint:'Choose an available date and time',places:'places',unlimited:'available',soldOut:'sold out',
@@ -110,7 +110,7 @@ const COPY={
     sectionKicker:'选择您的路线',sectionTitle:'海岛行程',programs:'2 条线路',
     liveDates:'实时日期',nearest:'最近出发',from:'起价',openTour:'查看行程',
     allTours:'全部行程',overview:'概览',program:'行程安排',included:'包含',photosTab:'照片',
-    about:'关于行程',duration:'时长',meeting:'集合点',important:'重要信息',requirementsLabel:'要求',attentionLabel:'请注意',knowBefore:'出发前须知',notIncluded:'不包含',languagesLabel:'语言',minAgeLabel:'最低年龄',
+    about:'关于行程',duration:'时长',meeting:'集合点',important:'重要信息',requirementsLabel:'要求',attentionLabel:'请注意',knowBefore:'出发前须知',notIncluded:'不包含',languagesLabel:'语言',minAgeLabel:'最低年龄',cancellationLabel:'取消政策',pickupLabel:'接送',accessibilityLabel:'无障碍信息',ticketLabel:'票务信息',
     route:'路线',dayProgram:'当日行程',inPrice:'费用包含',includedTitle:'包含内容',
     options:'行程选项',optionsHint:'选择行程形式',selected:'已选择',select:'选择',
     dates:'选择出发日期',datesHint:'选择可订日期和时间',places:'个名额',unlimited:'可订',soldOut:'售罄',
@@ -136,7 +136,7 @@ const COPY={
     sectionKicker:'여정을 선택하세요',sectionTitle:'아일랜드 투어',programs:'2개 프로그램',
     liveDates:'실시간 일정',nearest:'가장 가까운 출발',from:'최저',openTour:'투어 열기',
     allTours:'모든 투어',overview:'개요',program:'일정',included:'포함 사항',photosTab:'사진',
-    about:'투어 소개',duration:'소요 시간',meeting:'미팅 포인트',important:'중요 정보',requirementsLabel:'요구 사항',attentionLabel:'주의 사항',knowBefore:'출발 전 안내',notIncluded:'불포함',languagesLabel:'언어',minAgeLabel:'최소 연령',
+    about:'투어 소개',duration:'소요 시간',meeting:'미팅 포인트',important:'중요 정보',requirementsLabel:'요구 사항',attentionLabel:'주의 사항',knowBefore:'출발 전 안내',notIncluded:'불포함',languagesLabel:'언어',minAgeLabel:'최소 연령',cancellationLabel:'취소 정책',pickupLabel:'픽업',accessibilityLabel:'접근성',ticketLabel:'티켓 안내',
     route:'일정',dayProgram:'하루 프로그램',inPrice:'포함 사항',includedTitle:'포함 내용',
     options:'투어 옵션',optionsHint:'프로그램 형식을 선택하세요',selected:'선택됨',select:'선택',
     dates:'출발 일정 선택',datesHint:'예약 가능한 날짜와 시간을 선택하세요',places:'자리',unlimited:'예약 가능',soldOut:'매진',
@@ -180,6 +180,28 @@ function photoUrls(domain){
 function photoUrlsFromMedia(media){
   return [...new Set(arr(media?.photos)
     .map(item=>String(item?.url||item?.cleanUrl||item?.originalUrl||'').trim()).filter(Boolean))];
+}
+
+function rawPhotoUrl(photo){
+  if(typeof photo==='string') return photo.trim();
+  const derived=arr(photo?.derived);
+  return String(
+    derived.find(item=>item?.name==='large')?.cleanUrl
+      ||derived.find(item=>item?.name==='large')?.url
+      ||derived.find(item=>item?.name==='preview')?.cleanUrl
+      ||derived.find(item=>item?.name==='preview')?.url
+      ||photo?.cleanUrl||photo?.url||photo?.originalUrl||''
+  ).trim();
+}
+
+function providerPhotoUrls(entity){
+  const media=entity?.media&&typeof entity.media==='object'?entity.media:{};
+  const values=[
+    entity?.keyPhoto,entity?.photo,entity?.image,
+    ...arr(entity?.photos),...arr(entity?.images),
+    ...arr(media?.photos),...arr(media?.images),
+  ].filter(Boolean);
+  return [...new Set(values.map(rawPhotoUrl).filter(Boolean))];
 }
 
 function durationLabel(experience){
@@ -291,7 +313,7 @@ function normalizeTour(domain){
   const dressCode=listFrom(content.dressCode);
   const rates=arr(domain?.rates).map(rate=>({
     ...rate,
-    optionPhotos:photoUrlsFromMedia(rate?.media),
+    optionPhotos:[...new Set([...photoUrlsFromMedia(rate?.media),...providerPhotoUrls(rate?.providerData||{})])],
   }));
   return {
     id,
@@ -318,6 +340,8 @@ function normalizeTour(domain){
     minAge:Number.isFinite(Number(experience?.minAge))?Number(experience.minAge):null,
     accessibility:arr(experience?.accessibility).map(plainText).filter(Boolean),
     pickup:experience?.pickup||null,
+    ticketMessage:plainText(experience?.ticket?.message),
+    cancellationPolicy:domain?.cancellationPolicy||null,
     itinerary:arr(experience?.itinerary).map((item,index)=>({
       title:plainText(item?.title)||String(index+1),
       body:plainText(item?.body),
@@ -534,6 +558,10 @@ function overviewPanel(tour){
     infoBlock(t().attentionLabel,tour.attention),
     infoBlock(t().knowBefore,tour.knowBefore),
     infoBlock(t().knowBefore,tour.dressCode),
+    infoBlock(t().accessibilityLabel,tour.accessibility),
+    infoBlock(t().ticketLabel,tour.ticketMessage?[tour.ticketMessage]:[]),
+    infoBlock(t().pickupLabel,tour.pickup?.noPickupMessage?[plainText(tour.pickup.noPickupMessage)]:[]),
+    infoBlock(t().cancellationLabel,tour.cancellationPolicy?.title?[plainText(tour.cancellationPolicy.title)]:[]),
   ].filter(Boolean).join('');
   return '<div class="tab-panel tab-panel--overview">'
     +'<article class="content-card content-card--intro"><span class="content-kicker">'+esc(t().about)+'</span><h2>'+esc(tourThemeLabel(tour))+'</h2><p>'+esc(tour.description||'')+'</p></article>'
