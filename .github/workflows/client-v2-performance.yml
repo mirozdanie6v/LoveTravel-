@@ -1,0 +1,52 @@
+name: LoveTravel Client v2 performance audit
+
+on:
+  pull_request:
+    paths:
+      - 'preview/client-v2/**'
+      - 'tests/e2e/client-v2.spec.mjs'
+      - 'tests/e2e/client-v2-live-performance.spec.mjs'
+      - 'package.json'
+      - 'playwright.config.mjs'
+      - '.github/workflows/client-v2-performance.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'preview/client-v2/**'
+      - 'tests/e2e/client-v2.spec.mjs'
+      - 'tests/e2e/client-v2-live-performance.spec.mjs'
+      - 'package.json'
+      - 'playwright.config.mjs'
+      - '.github/workflows/client-v2-performance.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  live-performance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm install --no-fund --no-audit
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Measure live Client v2
+        env:
+          CLIENT_V2_LIVE_URL: https://love-travel-client-v2-preview.viiversion.workers.dev
+        run: npm run test:client-v2:live-performance
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: client-v2-performance
+          path: |
+            performance-artifacts/**
+            test-results/**
+            playwright-report/**
+          if-no-files-found: ignore
+          retention-days: 14

@@ -34,7 +34,7 @@ const state={
 };
 
 const PRODUCT_IDS=new Set(['1287578','1287580']);
-const OFFICIAL_LOGO='https://bizweb.dktcdn.net/100/416/263/themes/809458/assets/logo.png?1787117096236';
+const OFFICIAL_LOGO='/brand-logo';
 
 const COPY={
   ru:{
@@ -305,7 +305,7 @@ function normalizeTour(domain){
 
 function brand(){
   return '<button class="brand" type="button" data-app-tab="home" aria-label="Nha Trang Love Travel">'
-    +'<span class="brand-logo-wrap"><img class="brand-logo" src="'+esc(OFFICIAL_LOGO)+'" alt="Nha Trang Love Travel"></span>'
+    +'<span class="brand-logo-wrap"><img class="brand-logo" src="'+esc(OFFICIAL_LOGO)+'" alt="Nha Trang Love Travel" decoding="async" fetchpriority="low"></span>'
     +'<span class="brand-fallback"><strong>LOVE TRAVEL</strong><small>NHA TRANG</small></span>'
     +'</button>';
 }

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import previewWorker from '../preview/client-v2/worker.js';
+import previewWorker, { _test as previewWorkerTest } from '../preview/client-v2/worker.js';
 
 const root=resolve(import.meta.dirname,'..');
 const read=path=>readFile(resolve(root,path),'utf8');
@@ -130,6 +130,43 @@ test('Stage 2 live gate stays focused on real integration smoke',()=>{
   assert.doesNotMatch(previewWorkflow,/innerText\(/);
 });
 
+test('preview Client DTO removes audit-only provider copies without losing contract fields',()=>{
+  const source={
+    provider:{productId:'1287578'},
+    providerRaw:{huge:'raw'},
+    coverage:{rawPreserved:true},
+    experience:{
+      title:'Robinson Beach',
+      media:{photos:[{url:'https://example.com/photo.jpg',providerData:{large:'duplicate'}}]},
+    },
+    rates:[{id:1,title:'Standard',providerData:{duplicate:true}}],
+    availabilitySlots:[{
+      id:'slot',
+      rates:[{id:1,title:'Standard',providerData:{duplicate:true}}],
+      priceQuotesByRate:[{rateId:1,participantPrices:[{categoryId:1,amount:{amount:30,currency:'USD'},providerData:{duplicate:true}}]}],
+    }],
+  };
+  const projected=previewWorkerTest.stripAuditOnly(source);
+  assert.equal(projected.provider.productId,'1287578');
+  assert.equal(projected.experience.media.photos[0].url,'https://example.com/photo.jpg');
+  assert.equal(projected.rates[0].title,'Standard');
+  assert.equal(projected.availabilitySlots[0].priceQuotesByRate[0].participantPrices[0].amount.amount,30);
+  assert.equal('providerRaw' in projected,false);
+  assert.equal('coverage' in projected,false);
+  assert.equal('providerData' in projected.experience.media.photos[0],false);
+  assert.equal('providerData' in projected.rates[0],false);
+});
+
+test('preview read-only catalog uses a short edge cache and same-origin official brand proxy',()=>{
+  assert.match(worker,/CLIENT_CACHE_TTL_SECONDS=20/);
+  assert.match(worker,/globalThis\.caches\?\.default/);
+  assert.match(worker,/x-client-v2-cache/);
+  assert.match(worker,/AUDIT_ONLY_KEYS/);
+  assert.match(worker,/url\.pathname==='\/brand-logo'/);
+  assert.match(client,/const OFFICIAL_LOGO='\/brand-logo'/);
+  assert.doesNotMatch(client,/bizweb\.dktcdn\.net/);
+});
+
 test('preview worker exposes only read-only tour API and static Client v2 assets',async()=>{
   const originalFetch=globalThis.fetch;
   globalThis.fetch=async input=>{
@@ -142,8 +179,8 @@ test('preview worker exposes only read-only tour API and static Client v2 assets
       productIds:['1287578','1287580'],
       fetchedAt:'2026-10-07T00:00:00.000Z',
       domains:[
-        {provider:{productId:'1287578'},experience:{id:'1287578',title:'Robinson Beach'}},
-        {provider:{productId:'1287580'},experience:{id:'1287580',title:'Hòn Mun'}},
+        {provider:{productId:'1287578'},providerRaw:{duplicate:true},experience:{id:'1287578',title:'Robinson Beach',media:{photos:[{url:'https://example.com/a.jpg',providerData:{duplicate:true}}]}}},
+        {provider:{productId:'1287580'},providerRaw:{duplicate:true},experience:{id:'1287580',title:'Hòn Mun',media:{photos:[{url:'https://example.com/b.jpg',providerData:{duplicate:true}}]}}},
       ],
     }),{status:200,headers:{'content-type':'application/json'}});
   };
@@ -161,6 +198,8 @@ test('preview worker exposes only read-only tour API and static Client v2 assets
     assert.equal(payload.schema,'lovetravel.client-v2.preview.v1');
     assert.deepEqual(payload.productIds,['1287578','1287580']);
     assert.equal(payload.domains.length,2);
+    assert.equal('providerRaw' in payload.domains[0],false);
+    assert.equal('providerData' in payload.domains[0].experience.media.photos[0],false);
 
     const write=await previewWorker.fetch(new Request('https://preview.example/api/tours',{method:'POST'}),env);
     assert.equal(write.status,405);

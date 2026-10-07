@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { createServer } from 'node:http';
-import { readFile } from 'node:fs/promises';
+import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { resolve, extname } from 'node:path';
 import { fixturePayload } from '../fixtures/client-v2-domains.mjs';
 
@@ -35,6 +35,11 @@ test.beforeAll(async()=>{
         res.end(JSON.stringify(fixturePayload(locale)));
         return;
       }
+      if(url.pathname==='/brand-logo'){
+        res.writeHead(200,{'content-type':'image/svg+xml; charset=utf-8','cache-control':'public,max-age=86400'});
+        res.end(svg('LOVE TRAVEL'));
+        return;
+      }
       if(url.pathname.startsWith('/fixture/')&&url.pathname.endsWith('.svg')){
         res.writeHead(200,{'content-type':mime['.svg'],'cache-control':'public,max-age=3600'});
         res.end(svg(url.pathname.split('/').pop().replace('.svg','')));
@@ -62,14 +67,6 @@ test.beforeAll(async()=>{
 
 test.afterAll(async()=>{
   if(server) await new Promise(resolveClose=>server.close(resolveClose));
-});
-
-test.beforeEach(async({page})=>{
-  await page.route('https://bizweb.dktcdn.net/**',route=>route.fulfill({
-    status:200,
-    contentType:'image/svg+xml',
-    body:svg('LOVE TRAVEL'),
-  }));
 });
 
 test('mini-app shell and locale switching are deterministic',async({page})=>{
@@ -147,4 +144,95 @@ test('bottom navigation exposes the AI shell without live AI dependency',async({
   await page.locator('[data-app-tab="assistant"]').last().click();
   await expect(page.getByTestId('ai-assistant-shell')).toBeVisible();
   await expect(page.getByTestId('ai-assistant-shell')).toContainText(/ИИ.консультант/);
+});
+
+
+test('performance audit records render boundaries and content-visibility geometry',async({page})=>{
+  await mkdir(resolve(root,'performance-artifacts'),{recursive:true});
+  await page.goto(baseURL+'/v2/',{waitUntil:'domcontentloaded'});
+  await expect(page.locator('.tour-card')).toHaveCount(2);
+
+  const geometry=async locator=>{
+    const before=await locator.evaluate(el=>{
+      const style=getComputedStyle(el);
+      const rect=el.getBoundingClientRect();
+      return {
+        top:rect.top,
+        height:rect.height,
+        contentVisibility:style.contentVisibility,
+        containIntrinsicSize:style.containIntrinsicSize,
+      };
+    });
+    await locator.scrollIntoViewIfNeeded();
+    await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+    const after=await locator.evaluate(el=>{
+      const rect=el.getBoundingClientRect();
+      return {top:rect.top,height:rect.height};
+    });
+    return {...before,afterHeight:after.height,heightDelta:after.height-before.height};
+  };
+
+  const secondCardGeometry=await geometry(page.locator('.tour-card').nth(1));
+
+  await page.locator('.tour-card').first().click();
+  await expect(page.getByTestId('departure-calendar')).toBeAttached();
+  await expect(page.getByTestId('tour-options')).toBeAttached();
+
+  const optionsGeometry=await geometry(page.getByTestId('tour-options'));
+
+  const measureClick=async selector=>{
+    return page.evaluate(async selectorValue=>{
+      const candidates=[...document.querySelectorAll(selectorValue)];
+      const target=candidates.find(el=>!el.classList.contains('is-active')&&!el.disabled)||candidates[0];
+      if(!target) return null;
+      const beforeRender=window.__loveTravelRenderCount||0;
+      const started=performance.now();
+      target.click();
+      await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+      return {
+        durationMs:performance.now()-started,
+        beforeRender,
+        afterRender:window.__loveTravelRenderCount||0,
+      };
+    },selector);
+  };
+
+  const departureInteraction=await measureClick('[data-preview-slot]');
+  const departureRenderAfter=departureInteraction?.afterRender??null;
+
+  const firstDeparture=page.locator('[data-preview-slot]').first();
+  await firstDeparture.click();
+  await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+  const rateInteraction=await measureClick('[data-preview-rate]');
+  const tabInteraction=await measureClick('[data-tab="itinerary"]');
+
+  const sourceBytes={};
+  for(const file of ['client-v2.js','client-v2-model.js','client-v2.css']){
+    const body=await readFile(resolve(sourceRoot,file));
+    sourceBytes[file]=body.byteLength;
+  }
+
+  const report={
+    sourceBytes,
+    fullRenderCount:await page.evaluate(()=>window.__loveTravelRenderCount||0),
+    secondCardGeometry,
+    optionsGeometry,
+    interactions:{
+      departure:departureInteraction,
+      rate:rateInteraction,
+      tab:tabInteraction,
+    },
+  };
+
+  for(const interaction of Object.values(report.interactions)){
+    if(!interaction) continue;
+    expect(interaction.afterRender).toBe(interaction.beforeRender);
+  }
+  expect(departureRenderAfter).not.toBeNull();
+
+  await writeFile(
+    resolve(root,'performance-artifacts/client-v2-deterministic.json'),
+    JSON.stringify(report,null,2)
+  );
+  console.log('CLIENT_V2_PERF_BASELINE '+JSON.stringify(report));
 });

@@ -38,6 +38,7 @@ jobs:
         with:
           name: client-v2-playwright-results
           path: |
+            performance-artifacts/**
             test-results/**
             playwright-report/**
           if-no-files-found: ignore

@@ -123,6 +123,11 @@ export async function handleLoveTravelBokunTours(request, env, url = new URL(req
       currency:'USD',
       lang:bokunLanguage(locale),
       includePickupPlaces,
+      // Browsing reads may tolerate a short snapshot. Booking/quote paths do not
+      // pass these TTLs and therefore remain authoritative/fresh.
+      productCacheTtl:300,
+      availabilityCacheTtl:15,
+      pickupPlacesCacheTtl:300,
     };
 
     const rawDomains = await fetchLoveTravelBokunDomains(common);

@@ -265,7 +265,10 @@ function buildUrl(baseUrl, path, params) {
 
 const DEFAULT_PROVIDER_READ_TIMEOUT_MS = 20000;
 
-async function jsonRequest(fetchImpl, url, { timeoutMs = DEFAULT_PROVIDER_READ_TIMEOUT_MS } = {}) {
+async function jsonRequest(fetchImpl, url, {
+  timeoutMs = DEFAULT_PROVIDER_READ_TIMEOUT_MS,
+  cacheTtl = 0,
+} = {}) {
   const controller = typeof AbortController === 'function' ? new AbortController() : null;
   let timer = null;
   if (controller && Number(timeoutMs) > 0) {
@@ -275,6 +278,12 @@ async function jsonRequest(fetchImpl, url, { timeoutMs = DEFAULT_PROVIDER_READ_T
     const response = await fetchImpl(url, {
       headers:{ accept:'application/json' },
       ...(controller ? { signal:controller.signal } : {}),
+      ...(Number(cacheTtl) > 0 ? {
+        cf:{
+          cacheEverything:true,
+          cacheTtl:Math.max(1,Math.floor(Number(cacheTtl))),
+        },
+      } : {}),
     });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(data?.error || `Bókun integration HTTP ${response.status}`);
@@ -302,6 +311,9 @@ async function fetchRawProductPair({
   lang,
   includePickupPlaces = false,
   requestTimeoutMs = DEFAULT_PROVIDER_READ_TIMEOUT_MS,
+  productCacheTtl = 0,
+  availabilityCacheTtl = 0,
+  pickupPlacesCacheTtl = 0,
 }) {
   const productUrl = buildUrl(baseUrl, '/api/bokun/product', { vendorId, productId, lang });
   const availabilityUrl = buildUrl(baseUrl, '/api/bokun/availability', {
@@ -313,10 +325,19 @@ async function fetchRawProductPair({
   });
   const pickupPlacesUrl = buildUrl(baseUrl, '/api/bokun/pickup-places', { vendorId, productId });
   const [product, availability, pickupPlaces] = await Promise.all([
-    jsonRequest(fetchImpl, productUrl, { timeoutMs:requestTimeoutMs }),
-    jsonRequest(fetchImpl, availabilityUrl, { timeoutMs:requestTimeoutMs }),
+    jsonRequest(fetchImpl, productUrl, {
+      timeoutMs:requestTimeoutMs,
+      cacheTtl:productCacheTtl,
+    }),
+    jsonRequest(fetchImpl, availabilityUrl, {
+      timeoutMs:requestTimeoutMs,
+      cacheTtl:availabilityCacheTtl,
+    }),
     includePickupPlaces
-      ? jsonRequest(fetchImpl, pickupPlacesUrl, { timeoutMs:requestTimeoutMs })
+      ? jsonRequest(fetchImpl, pickupPlacesUrl, {
+          timeoutMs:requestTimeoutMs,
+          cacheTtl:pickupPlacesCacheTtl,
+        })
       : Promise.resolve({ pickupPlaces:[], dropoffPlaces:[] }),
   ]);
   return { product, availability, pickupPlaces };
@@ -333,6 +354,9 @@ export async function fetchLoveTravelBokunDomains({
   lang = 'EN',
   includePickupPlaces = false,
   requestTimeoutMs = DEFAULT_PROVIDER_READ_TIMEOUT_MS,
+  productCacheTtl = 0,
+  availabilityCacheTtl = 0,
+  pickupPlacesCacheTtl = 0,
 } = {}) {
   if (typeof fetchImpl !== 'function') throw new Error('fetch implementation is required');
   const pairs = await Promise.all(productIds.map(productId => fetchRawProductPair({
@@ -346,6 +370,9 @@ export async function fetchLoveTravelBokunDomains({
     lang,
     includePickupPlaces,
     requestTimeoutMs,
+    productCacheTtl,
+    availabilityCacheTtl,
+    pickupPlacesCacheTtl,
   })));
   return pairs.map(({ product, availability, pickupPlaces }) => buildBokunDomain(product, availability, { vendorId, pickupPlaces }));
 }
