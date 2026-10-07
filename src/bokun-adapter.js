@@ -354,9 +354,9 @@ export async function fetchLoveTravelBokunDomains({
   lang = 'EN',
   includePickupPlaces = false,
   requestTimeoutMs = DEFAULT_PROVIDER_READ_TIMEOUT_MS,
-  productCacheTtl = 300,
-  availabilityCacheTtl = 15,
-  pickupPlacesCacheTtl = 300,
+  productCacheTtl = 0,
+  availabilityCacheTtl = 0,
+  pickupPlacesCacheTtl = 0,
 } = {}) {
   if (typeof fetchImpl !== 'function') throw new Error('fetch implementation is required');
   const pairs = await Promise.all(productIds.map(productId => fetchRawProductPair({
