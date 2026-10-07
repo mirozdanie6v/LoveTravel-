@@ -21,6 +21,27 @@ const json=(data,status=200,headers={})=>new Response(JSON.stringify(data),{
   },
 });
 
+function view(transaction,resolution=null){
+  return {
+    transaction,
+    revision:transaction.revision,
+    state:transaction.state,
+    selection:transaction.selection
+      ? bokunSelectionFromCanonicalSelection(transaction.selection)
+      : null,
+    quote:transaction.quote||null,
+    draft:transaction.draft||null,
+    approval:transaction.approval||null,
+    providerBooking:transaction.providerBooking||null,
+    requirements:transaction.quote ? {
+      requiredFieldCodes:transaction.quote.requiredFieldCodes||[],
+      issues:transaction.quote.issues||{errors:[],warnings:[],bookingDataIssues:[]},
+      readyToBook:Boolean(transaction.quote.readyToBook),
+    } : null,
+    ...(resolution?{resolution}:{}),
+  };
+}
+
 function expectedRevision(body){
   const revision=Number(body?.expectedRevision);
   return Number.isInteger(revision)&&revision>=1?revision:null;
