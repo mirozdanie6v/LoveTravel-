@@ -193,14 +193,14 @@ function render(){
       state.selectedTourId=button.dataset.tourId||'';
       history.replaceState(null,'','#tour/'+encodeURIComponent(state.selectedTourId));
       render();
-      window.scrollTo({top:0,behavior:'instant'});
+      window.scrollTo({top:0,behavior:'auto'});
     });
   });
   app.querySelector('[data-back]')?.addEventListener('click',()=>{
     state.selectedTourId='';
     history.replaceState(null,'','#catalog');
     render();
-    window.scrollTo({top:0,behavior:'instant'});
+    window.scrollTo({top:0,behavior:'auto'});
   });
 }
 
