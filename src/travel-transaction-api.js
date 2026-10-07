@@ -1,3 +1,4 @@
+// LoveTravel transaction API: provider mutations intentionally disabled while UI restoration is validated.
 import {
   bokunSelectionFromCanonicalSelection,
 } from './bokun-provider.js';
