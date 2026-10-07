@@ -31,11 +31,11 @@ const COPY={
     trustPrice:'Прозрачная цена',trustPriceSub:'до подтверждения',
     sectionKicker:'ВЫБЕРИТЕ СВОЙ МАРШРУТ',sectionTitle:'Островные экскурсии',programs:'2 программы',
     liveDates:'Актуальные даты',nearest:'Ближайший выезд',from:'Стоимость от',openTour:'Открыть экскурсию',
-    allTours:'Все экскурсии',overview:'Обзор',program:'Программа',included:'Включено',
-    about:'ОБ ЭКСКУРСИИ',duration:'Длительность',meeting:'Место встречи',highlights:'ГЛАВНОЕ',whatAwaits:'Что вас ждёт',
+    allTours:'Все экскурсии',overview:'Обзор',program:'Программа',included:'Включено',photosTab:'Фото',
+    about:'ОБ ЭКСКУРСИИ',duration:'Длительность',meeting:'Место встречи',important:'ВАЖНО ЗНАТЬ',requirementsLabel:'Требования',attentionLabel:'Обратите внимание',knowBefore:'Перед поездкой',notIncluded:'Не включено',languagesLabel:'Языки',minAgeLabel:'Мин. возраст',
     route:'МАРШРУТ',dayProgram:'Программа дня',inPrice:'В СТОИМОСТИ',includedTitle:'Что включено',
     options:'Варианты тура',optionsHint:'Выберите формат программы',selected:'Выбрано',select:'Выбрать',
-    dates:'Даты выездов',datesHint:'Ближайшие доступные даты',places:'мест',unlimited:'места есть',soldOut:'нет мест',
+    dates:'Выберите выезд',datesHint:'Выберите дату и время из доступных выездов',places:'мест',unlimited:'места есть',soldOut:'нет мест',
     chooseDate:'Выбрать дату',continue:'Продолжить',dateNotSelected:'Выберите дату',
     navHome:'Главная',navCatalog:'Каталог',navTrips:'Мои поездки',navAi:'ИИ‑Помощник',
     catalogTitle:'Все экскурсии',catalogLead:'Две актуальные программы Love Travel в Нячанге.',
@@ -57,11 +57,11 @@ const COPY={
     trustPrice:'Giá rõ ràng',trustPriceSub:'trước khi xác nhận',
     sectionKicker:'CHỌN HÀNH TRÌNH',sectionTitle:'Tour biển đảo',programs:'2 chương trình',
     liveDates:'Lịch cập nhật',nearest:'Khởi hành gần nhất',from:'Giá từ',openTour:'Mở tour',
-    allTours:'Tất cả tour',overview:'Tổng quan',program:'Lịch trình',included:'Bao gồm',
-    about:'VỀ TOUR',duration:'Thời lượng',meeting:'Điểm hẹn',highlights:'ĐIỂM NỔI BẬT',whatAwaits:'Bạn sẽ trải nghiệm',
+    allTours:'Tất cả tour',overview:'Tổng quan',program:'Lịch trình',included:'Bao gồm',photosTab:'Ảnh',
+    about:'VỀ TOUR',duration:'Thời lượng',meeting:'Điểm hẹn',important:'THÔNG TIN QUAN TRỌNG',requirementsLabel:'Yêu cầu',attentionLabel:'Lưu ý',knowBefore:'Trước chuyến đi',notIncluded:'Không bao gồm',languagesLabel:'Ngôn ngữ',minAgeLabel:'Tuổi tối thiểu',
     route:'LỊCH TRÌNH',dayProgram:'Chương trình trong ngày',inPrice:'TRONG GIÁ',includedTitle:'Bao gồm',
     options:'Các lựa chọn tour',optionsHint:'Chọn hình thức chương trình',selected:'Đã chọn',select:'Chọn',
-    dates:'Ngày khởi hành',datesHint:'Các ngày gần nhất còn chỗ',places:'chỗ',unlimited:'còn chỗ',soldOut:'hết chỗ',
+    dates:'Chọn chuyến khởi hành',datesHint:'Chọn ngày và giờ còn chỗ',places:'chỗ',unlimited:'còn chỗ',soldOut:'hết chỗ',
     chooseDate:'Chọn ngày',continue:'Tiếp tục',dateNotSelected:'Chọn ngày',
     navHome:'Trang chủ',navCatalog:'Tour',navTrips:'Chuyến đi',navAi:'Trợ lý AI',
     catalogTitle:'Tất cả tour',catalogLead:'Hai chương trình Love Travel đang hoạt động tại Nha Trang.',
@@ -83,11 +83,11 @@ const COPY={
     trustPrice:'Clear pricing',trustPriceSub:'before confirmation',
     sectionKicker:'CHOOSE YOUR ROUTE',sectionTitle:'Island experiences',programs:'2 programs',
     liveDates:'Live dates',nearest:'Next departure',from:'From',openTour:'Open tour',
-    allTours:'All tours',overview:'Overview',program:'Program',included:'Included',
-    about:'ABOUT THE TOUR',duration:'Duration',meeting:'Meeting point',highlights:'HIGHLIGHTS',whatAwaits:'What to expect',
+    allTours:'All tours',overview:'Overview',program:'Program',included:'Included',photosTab:'Photos',
+    about:'ABOUT THE TOUR',duration:'Duration',meeting:'Meeting point',important:'IMPORTANT',requirementsLabel:'Requirements',attentionLabel:'Please note',knowBefore:'Before you go',notIncluded:'Not included',languagesLabel:'Languages',minAgeLabel:'Min. age',
     route:'ROUTE',dayProgram:'Day program',inPrice:'INCLUDED',includedTitle:'What is included',
     options:'Tour options',optionsHint:'Choose a program format',selected:'Selected',select:'Select',
-    dates:'Departure dates',datesHint:'Nearest available dates',places:'places',unlimited:'available',soldOut:'sold out',
+    dates:'Choose a departure',datesHint:'Choose an available date and time',places:'places',unlimited:'available',soldOut:'sold out',
     chooseDate:'Choose date',continue:'Continue',dateNotSelected:'Choose a date',
     navHome:'Home',navCatalog:'Tours',navTrips:'My trips',navAi:'AI Assistant',
     catalogTitle:'All tours',catalogLead:'Two current Love Travel experiences in Nha Trang.',
@@ -109,11 +109,11 @@ const COPY={
     trustPrice:'价格清晰',trustPriceSub:'确认前可见',
     sectionKicker:'选择您的路线',sectionTitle:'海岛行程',programs:'2 条线路',
     liveDates:'实时日期',nearest:'最近出发',from:'起价',openTour:'查看行程',
-    allTours:'全部行程',overview:'概览',program:'行程安排',included:'包含',
-    about:'关于行程',duration:'时长',meeting:'集合点',highlights:'亮点',whatAwaits:'体验内容',
+    allTours:'全部行程',overview:'概览',program:'行程安排',included:'包含',photosTab:'照片',
+    about:'关于行程',duration:'时长',meeting:'集合点',important:'重要信息',requirementsLabel:'要求',attentionLabel:'请注意',knowBefore:'出发前须知',notIncluded:'不包含',languagesLabel:'语言',minAgeLabel:'最低年龄',
     route:'路线',dayProgram:'当日行程',inPrice:'费用包含',includedTitle:'包含内容',
     options:'行程选项',optionsHint:'选择行程形式',selected:'已选择',select:'选择',
-    dates:'出发日期',datesHint:'最近可订日期',places:'个名额',unlimited:'可订',soldOut:'售罄',
+    dates:'选择出发日期',datesHint:'选择可订日期和时间',places:'个名额',unlimited:'可订',soldOut:'售罄',
     chooseDate:'选择日期',continue:'继续',dateNotSelected:'请选择日期',
     navHome:'首页',navCatalog:'行程',navTrips:'我的行程',navAi:'AI 助手',
     catalogTitle:'全部行程',catalogLead:'Love Travel 在芽庄的两条实时线路。',
@@ -135,11 +135,11 @@ const COPY={
     trustPrice:'명확한 가격',trustPriceSub:'확정 전 확인',
     sectionKicker:'여정을 선택하세요',sectionTitle:'아일랜드 투어',programs:'2개 프로그램',
     liveDates:'실시간 일정',nearest:'가장 가까운 출발',from:'최저',openTour:'투어 열기',
-    allTours:'모든 투어',overview:'개요',program:'일정',included:'포함 사항',
-    about:'투어 소개',duration:'소요 시간',meeting:'미팅 포인트',highlights:'하이라이트',whatAwaits:'무엇을 하나요',
+    allTours:'모든 투어',overview:'개요',program:'일정',included:'포함 사항',photosTab:'사진',
+    about:'투어 소개',duration:'소요 시간',meeting:'미팅 포인트',important:'중요 정보',requirementsLabel:'요구 사항',attentionLabel:'주의 사항',knowBefore:'출발 전 안내',notIncluded:'불포함',languagesLabel:'언어',minAgeLabel:'최소 연령',
     route:'일정',dayProgram:'하루 프로그램',inPrice:'포함 사항',includedTitle:'포함 내용',
     options:'투어 옵션',optionsHint:'프로그램 형식을 선택하세요',selected:'선택됨',select:'선택',
-    dates:'출발 날짜',datesHint:'가까운 예약 가능 날짜',places:'자리',unlimited:'예약 가능',soldOut:'매진',
+    dates:'출발 일정 선택',datesHint:'예약 가능한 날짜와 시간을 선택하세요',places:'자리',unlimited:'예약 가능',soldOut:'매진',
     chooseDate:'날짜 선택',continue:'계속',dateNotSelected:'날짜를 선택하세요',
     navHome:'홈',navCatalog:'투어',navTrips:'내 여행',navAi:'AI 도우미',
     catalogTitle:'모든 투어',catalogLead:'나트랑 Love Travel의 두 가지 현재 프로그램입니다.',
@@ -174,7 +174,12 @@ function plainText(value){
 
 function photoUrls(domain){
   return [...new Set(arr(domain?.experience?.media?.photos)
-    .map(item=>String(item?.url||item?.originalUrl||'').trim()).filter(Boolean))];
+    .map(item=>String(item?.url||item?.cleanUrl||item?.originalUrl||'').trim()).filter(Boolean))];
+}
+
+function photoUrlsFromMedia(media){
+  return [...new Set(arr(media?.photos)
+    .map(item=>String(item?.url||item?.cleanUrl||item?.originalUrl||'').trim()).filter(Boolean))];
 }
 
 function durationLabel(experience){
@@ -267,30 +272,57 @@ function meetingLabel(experience){
   return plainText(first?.title||first?.name||first?.address||first?.addressLine1||'');
 }
 
+function guidanceLanguages(experience){
+  const direct=arr(experience?.languages?.raw).map(item=>plainText(item?.name||item?.title||item)).filter(Boolean);
+  const guided=arr(experience?.languages?.guidanceTypes).flatMap(item=>arr(item?.displayLanguages).map(plainText)).filter(Boolean);
+  return [...new Set([...direct,...guided])];
+}
+
 function normalizeTour(domain){
   const experience=domain?.experience||{};
+  const content=experience?.content||{};
   const id=String(experience.id||domain?.provider?.productId||'');
   const slot=nextSlot(domain);
-  const included=listFrom(experience?.content?.included||experience?.content?.inclusions);
+  const included=[...new Set([...listFrom(content.included),...listFrom(content.inclusions)])];
+  const excluded=[...new Set([...listFrom(content.excluded),...listFrom(content.exclusions)])];
+  const requirements=listFrom(content.requirements);
+  const attention=listFrom(content.attention);
+  const knowBefore=listFrom(content.knowBeforeYouGoItems);
+  const dressCode=listFrom(content.dressCode);
+  const rates=arr(domain?.rates).map(rate=>({
+    ...rate,
+    optionPhotos:photoUrlsFromMedia(rate?.media),
+  }));
   return {
     id,
     title:plainText(experience.title)||t().tour,
     description:plainText(experience.description||experience.excerpt),
+    excerpt:plainText(experience.excerpt),
     city:plainText(experience?.location?.city)||t().location,
     category:categoryLabel(experience.category),
     duration:durationLabel(experience),
     photos:photoUrls(domain),
+    videos:arr(experience?.media?.videos),
     price:priceLabel(domain),
     nextDate:formatDate(slot?.date),
     nextTime:String(slot?.startTime||''),
     meeting:meetingLabel(experience),
+    meetingPoints:arr(experience?.meeting?.startPoints),
     included,
-    highlights:included.slice(0,3),
+    excluded,
+    requirements,
+    attention,
+    knowBefore,
+    dressCode,
+    languages:guidanceLanguages(experience),
+    minAge:Number.isFinite(Number(experience?.minAge))?Number(experience.minAge):null,
+    accessibility:arr(experience?.accessibility).map(plainText).filter(Boolean),
+    pickup:experience?.pickup||null,
     itinerary:arr(experience?.itinerary).map((item,index)=>({
       title:plainText(item?.title)||String(index+1),
       body:plainText(item?.body),
     })).filter(item=>item.title||item.body),
-    rates:arr(domain?.rates),
+    rates,
     availabilitySlots:arr(domain?.availabilitySlots),
     participants:arr(domain?.participants),
   };
@@ -318,8 +350,9 @@ function topbar(extraClass=''){
 }
 
 function media(photo,title,extra=''){
+  const hero=/data-detail-hero-image/.test(extra);
   return photo
-    ? '<img '+extra+' src="'+esc(photo)+'" alt="'+esc(title)+'" loading="lazy" referrerpolicy="no-referrer">'
+    ? '<img '+extra+' src="'+esc(photo)+'" alt="'+esc(title)+'" loading="'+(hero?'eager':'lazy')+'" '+(hero?'fetchpriority="high" ':'')+'referrerpolicy="no-referrer">'
     : '<div class="media-fallback" role="img" aria-label="'+esc(title)+'"></div>';
 }
 
@@ -403,64 +436,110 @@ function galleryMarkup(tour){
 }
 
 function visualChoice(tour){
-  let choice=state.visualChoiceByTour.get(tour.id);
-  if(choice) return choice;
-  const firstSlot=arr(tour.availabilitySlots).find(slot=>!slot.soldOut&&!slot.unavailable)||tour.availabilitySlots[0]||null;
-  const rateId=firstSlot?.defaultRateId??tour.rates[0]?.id??null;
-  const slot=arr(tour.availabilitySlots).find(item=>!item.soldOut&&!item.unavailable&&rateAvailable(item,rateId))||firstSlot;
+  const slots=arr(tour.availabilitySlots);
+  let choice=state.visualChoiceByTour.get(tour.id)||{};
+  let slot=slots.find(item=>String(item.id)===String(choice.slotId))
+    ||slots.find(item=>!item?.soldOut&&!item?.unavailable)
+    ||slots[0]
+    ||null;
+  const availableRates=arr(tour.rates).filter(rate=>slot&&rateAvailable(slot,rate.id));
+  let rateId=availableRates.some(rate=>String(rate.id)===String(choice.rateId))
+    ?choice.rateId
+    :(availableRates.find(rate=>String(rate.id)===String(slot?.defaultRateId))?.id??availableRates[0]?.id??null);
   choice={rateId,slotId:slot?.id||null};
   state.visualChoiceByTour.set(tour.id,choice);
   return choice;
 }
 
 function rateDescription(rate){
-  return plainText(rate?.description||arr(rate?.details)[0]?.description||arr(rate?.textItems)[0]?.description||'');
+  const parts=[
+    plainText(rate?.description),
+    ...arr(rate?.details).flatMap(item=>[plainText(item?.title),plainText(item?.description)]),
+    ...arr(rate?.textItems).flatMap(item=>[plainText(item?.title),plainText(item?.description)]),
+  ].filter(Boolean);
+  return [...new Set(parts)].join(' · ');
+}
+
+function participantPriceLines(tour,slot,rateId){
+  const quote=quoteFor(slot,rateId);
+  if(!quote) return [];
+  const categories=new Map(arr(tour.participants).map(item=>[String(item.id),item]));
+  return arr(quote.participantPrices).map(item=>{
+    const cat=categories.get(String(item.categoryId));
+    const label=plainText(cat?.title||cat?.ticketCategory||item.categoryId);
+    const value=money(item.amount);
+    return label&&value?label+': '+value:'';
+  }).filter(Boolean);
 }
 
 function optionsMarkup(tour){
   const choice=visualChoice(tour);
-  const rates=arr(tour.rates);
+  const slot=selectedSlotForTour(tour);
+  if(!slot) return '';
+  const rates=arr(tour.rates).filter(rate=>rateAvailable(slot,rate.id));
   if(!rates.length) return '';
-  return '<section class="selection-section"><div class="selection-head"><div><span>'+esc(t().options)+'</span><p>'+esc(t().optionsHint)+'</p></div></div>'
+  return '<section class="selection-section selection-section--rates"><div class="selection-head"><div><span>'+esc(t().options)+'</span><p>'+esc(t().optionsHint)+'</p></div></div>'
     +'<div class="rate-options">'+rates.map((rate,index)=>{
       const active=String(rate.id)===String(choice.rateId);
-      const slot=arr(tour.availabilitySlots).find(item=>!item.soldOut&&!item.unavailable&&rateAvailable(item,rate.id));
-      const price=slot?money(priceFor(tour,slot,rate.id)):'';
-      const accent=index%2===0?'orange':'blue';
-      return '<button type="button" class="rate-option '+(active?'is-active ':'')+'rate-option--'+accent+'" data-preview-rate="'+esc(rate.id)+'">'
-        +'<span class="rate-marker">'+(active?'✓':String(index+1))+'</span><span class="rate-copy"><b>'+esc(plainText(rate.title||rate.code||rate.id))+'</b>'
-        +(rateDescription(rate)?'<small>'+esc(rateDescription(rate))+'</small>':'')+'</span>'
-        +(price?'<span class="rate-price"><small>'+esc(t().from)+'</small><strong>'+esc(price)+'</strong></span>':'')
-        +'<span class="rate-action">'+esc(active?t().selected:t().select)+'</span></button>';
+      const price=money(priceFor(tour,slot,rate.id));
+      const description=rateDescription(rate);
+      const photos=arr(rate.optionPhotos);
+      const priceLines=participantPriceLines(tour,slot,rate.id);
+      return '<button type="button" class="rate-option '+(active?'is-active ':'')+'" data-preview-rate="'+esc(rate.id)+'">'
+        +(photos[0]?'<span class="rate-photo">'+media(photos[0],plainText(rate.title||tour.title))+'</span>':'')
+        +'<span class="rate-main"><span class="rate-top"><span class="rate-marker">'+(active?'✓':String(index+1))+'</span><b>'+esc(plainText(rate.title||rate.code||rate.id))+'</b>'
+        +(price?'<strong>'+esc(price)+'</strong>':'')+'</span>'
+        +(description?'<span class="rate-description">'+esc(description)+'</span>':'')
+        +(priceLines.length?'<span class="rate-price-lines">'+priceLines.map(line=>'<small>'+esc(line)+'</small>').join('')+'</span>':'')
+        +'<span class="rate-action">'+esc(active?t().selected:t().select)+'</span></span></button>';
     }).join('')+'</div></section>';
 }
 
 function datesMarkup(tour){
   const choice=visualChoice(tour);
-  const slots=arr(tour.availabilitySlots).filter(slot=>rateAvailable(slot,choice.rateId)).slice(0,8);
+  const slots=arr(tour.availabilitySlots).slice(0,14);
   if(!slots.length) return '';
-  return '<section class="selection-section"><div class="selection-head"><div><span>'+esc(t().dates)+'</span><p>'+esc(t().datesHint)+'</p></div></div>'
-    +'<div class="departure-list">'+slots.map(slot=>{
+  return '<section class="selection-section selection-section--dates"><div class="selection-head"><div><span>'+esc(t().dates)+'</span><p>'+esc(t().datesHint)+'</p></div></div>'
+    +'<div class="departure-calendar">'+slots.map(slot=>{
       const active=String(slot.id)===String(choice.slotId);
       const unavailable=Boolean(slot.soldOut||slot.unavailable||(!slot.unlimitedAvailability&&Number(slot.availabilityCount)<=0));
       const count=Number(slot.availabilityCount);
       const availability=slot.unlimitedAvailability?t().unlimited:unavailable?t().soldOut:(Number.isFinite(count)?Math.max(0,count)+' '+t().places:t().unlimited);
-      const price=money(priceFor(tour,slot,choice.rateId));
-      return '<button type="button" class="departure-option '+(active?'is-active ':'')+(unavailable?'is-disabled':'')+'" data-preview-slot="'+esc(slot.id)+'" '+(unavailable?'disabled':'')+'>'
-        +'<span class="departure-date"><b>'+esc(formatDate(slot.date,true))+'</b><small>'+esc(slot.startTime||'')+'</small></span>'
-        +'<span class="departure-availability">'+esc(availability)+'</span>'
-        +(price?'<strong>'+esc(price)+'</strong>':'')+'<span class="departure-check">'+(active?'✓':'→')+'</span></button>';
+      const availableRates=arr(tour.rates).filter(rate=>rateAvailable(slot,rate.id));
+      const minPrice=availableRates.map(rate=>money(priceFor(tour,slot,rate.id))).find(Boolean)||'';
+      return '<button type="button" class="departure-day '+(active?'is-active ':'')+(unavailable?'is-disabled':'')+'" data-preview-slot="'+esc(slot.id)+'" '+(unavailable?'disabled':'')+'>'
+        +'<span class="departure-weekday">'+esc(formatDate(slot.date,true))+'</span>'
+        +'<strong>'+esc(String(slot.date||'').slice(8,10))+'</strong>'
+        +'<span class="departure-time">'+esc(slot.startTime||'')+'</span>'
+        +'<small>'+esc(availability)+'</small>'
+        +(minPrice?'<b>'+esc(minPrice)+'</b>':'')+'</button>';
     }).join('')+'</div></section>';
 }
 
+function infoBlock(label,items){
+  const list=arr(items).filter(Boolean);
+  if(!list.length) return '';
+  return '<div class="info-block"><h3>'+esc(label)+'</h3><ul>'+list.map(item=>'<li>'+esc(item)+'</li>').join('')+'</ul></div>';
+}
+
 function overviewPanel(tour){
-  const facts=[[t().duration,tour.duration||'—'],[t().nearest,slotText(tour)],[t().meeting,tour.meeting||'—']];
-  const highlights=(tour.highlights.length?tour.highlights:[tourThemeLabel(tour)]).slice(0,3)
-    .map(item=>'<li>'+esc(item)+'</li>').join('');
+  const facts=[
+    [t().duration,tour.duration||'—'],
+    [t().meeting,tour.meeting||'—'],
+    ...(tour.languages.length?[[t().languagesLabel,tour.languages.join(', ')]]:[]),
+    ...(tour.minAge!==null?[[t().minAgeLabel,String(tour.minAge)+'+']]:[]),
+  ];
+  const important=[
+    infoBlock(t().requirementsLabel,tour.requirements),
+    infoBlock(t().attentionLabel,tour.attention),
+    infoBlock(t().knowBefore,tour.knowBefore),
+    infoBlock(t().knowBefore,tour.dressCode),
+  ].filter(Boolean).join('');
   return '<div class="tab-panel tab-panel--overview">'
     +'<article class="content-card content-card--intro"><span class="content-kicker">'+esc(t().about)+'</span><h2>'+esc(tourThemeLabel(tour))+'</h2><p>'+esc(tour.description||'')+'</p></article>'
     +'<div class="fact-grid">'+facts.map(([label,value])=>'<div class="fact-card"><small>'+esc(label)+'</small><b>'+esc(value)+'</b></div>').join('')+'</div>'
-    +'<article class="content-card"><span class="content-kicker">'+esc(t().highlights)+'</span><h2>'+esc(t().whatAwaits)+'</h2><ul class="accent-list">'+highlights+'</ul></article></div>';
+    +(important?'<article class="content-card"><span class="content-kicker">'+esc(t().important)+'</span><div class="info-grid">'+important+'</div></article>':'')
+    +'</div>';
 }
 
 function itineraryPanel(tour){
@@ -470,13 +549,24 @@ function itineraryPanel(tour){
 }
 
 function includedPanel(tour){
-  const included=(tour.included.length?tour.included:['—']).slice(0,12).map(item=>'<li>'+esc(item)+'</li>').join('');
-  return '<article class="content-card"><span class="content-kicker">'+esc(t().inPrice)+'</span><h2>'+esc(t().includedTitle)+'</h2><ul class="included-list">'+included+'</ul></article>';
+  const included=(tour.included.length?tour.included:['—']).slice(0,20).map(item=>'<li>'+esc(item)+'</li>').join('');
+  const excluded=tour.excluded.slice(0,20).map(item=>'<li>'+esc(item)+'</li>').join('');
+  return '<div class="tab-panel"><article class="content-card"><span class="content-kicker">'+esc(t().inPrice)+'</span><h2>'+esc(t().includedTitle)+'</h2><ul class="included-list">'+included+'</ul></article>'
+    +(excluded?'<article class="content-card content-card--excluded"><span class="content-kicker">'+esc(t().notIncluded)+'</span><h2>'+esc(t().notIncluded)+'</h2><ul class="excluded-list">'+excluded+'</ul></article>':'')
+    +'</div>';
+}
+
+function photosPanel(tour){
+  if(!tour.photos.length) return '<article class="content-card"><p class="empty-copy">—</p></article>';
+  return '<article class="content-card"><span class="content-kicker">'+esc(t().photosTab)+'</span><h2>'+esc(t().photosTab)+'</h2><div class="photo-grid">'
+    +tour.photos.map((photo,index)=>'<button class="photo-thumb" type="button" data-photo-index="'+index+'">'+media(photo,tour.title)+'</button>').join('')
+    +'</div></article>';
 }
 
 function detailPanel(tour){
   if(state.detailTab==='itinerary') return itineraryPanel(tour);
   if(state.detailTab==='included') return includedPanel(tour);
+  if(state.detailTab==='photos') return photosPanel(tour);
   return overviewPanel(tour);
 }
 
@@ -492,21 +582,53 @@ function selectedPrice(tour){
 }
 
 function detailView(tour){
-  const choice=visualChoice(tour);
   const selectedSlot=selectedSlotForTour(tour);
   const currentPrice=selectedPrice(tour)||tour.price||'—';
   const meta=[tour.city,tour.duration,tour.category].filter(Boolean).map(value=>'<span class="hero-chip">'+esc(value)+'</span>').join('');
-  const tabs=[['overview',t().overview],['itinerary',t().program],['included',t().included]];
+  const tabs=[['overview',t().overview],['itinerary',t().program],['included',t().included],['photos',t().photosTab]];
   return '<main class="page tour-page">'+topbar('topbar--detail')
     +'<section class="detail-hero">'+galleryMarkup(tour)
     +'<div class="detail-hero__content"><div class="detail-meta">'+meta+'</div><h1>'+esc(tour.title)+'</h1><p class="detail-lead">'+esc(tour.description||'')+'</p>'
-    +'<div class="detail-purchase"><div><small>'+esc(t().from)+'</small><strong>'+esc(currentPrice)+'</strong></div><div><small>'+esc(t().nearest)+'</small><b>'+esc(selectedSlot?[formatDate(selectedSlot.date),selectedSlot.startTime].filter(Boolean).join(' · '):slotText(tour))+'</b></div></div>'
+    +'<div class="detail-purchase"><div><small>'+esc(t().from)+'</small><strong data-selected-price>'+esc(currentPrice)+'</strong></div><div><small>'+esc(t().nearest)+'</small><b data-selected-date>'+esc(selectedSlot?[formatDate(selectedSlot.date),selectedSlot.startTime].filter(Boolean).join(' · '):slotText(tour))+'</b></div></div>'
     +'</div></section>'
-    +optionsMarkup(tour)+datesMarkup(tour)
+    +'<div class="selection-flow" data-selection-flow>'+datesMarkup(tour)+optionsMarkup(tour)+'</div>'
     +'<nav class="tour-tabs" aria-label="'+esc(t().overview)+'">'+tabs.map(([id,label])=>'<button type="button" class="tour-tab '+(state.detailTab===id?'is-active':'')+'" data-tab="'+id+'">'+esc(label)+'</button>').join('')+'</nav>'
     +'<section class="tour-content" id="tour-content">'+detailPanel(tour)+'</section>'
-    +'<div class="mobile-booking-bar mobile-booking-bar--with-nav"><div><small>'+esc(t().from)+'</small><strong>'+esc(currentPrice)+'</strong></div>'
+    +'<div class="mobile-booking-bar mobile-booking-bar--with-nav"><div><small>'+esc(t().from)+'</small><strong data-selected-price>'+esc(currentPrice)+'</strong></div>'
     +'<button type="button" data-visual-booking>'+esc(selectedSlot?t().continue:t().chooseDate)+'</button></div></main>';
+}
+
+function refreshDetailSelection(tour){
+  const flow=app.querySelector('[data-selection-flow]');
+  if(flow) flow.innerHTML=datesMarkup(tour)+optionsMarkup(tour);
+  const slot=selectedSlotForTour(tour);
+  const price=selectedPrice(tour)||tour.price||'—';
+  app.querySelectorAll('[data-selected-price]').forEach(node=>node.textContent=price);
+  app.querySelectorAll('[data-selected-date]').forEach(node=>node.textContent=slot?[formatDate(slot.date),slot.startTime].filter(Boolean).join(' · '):slotText(tour));
+  bindSelectionInteractions(tour);
+}
+
+function bindSelectionInteractions(tour){
+  app.querySelectorAll('[data-preview-rate]').forEach(button=>{
+    button.addEventListener('click',()=>{
+      const choice=visualChoice(tour);
+      state.visualChoiceByTour.set(tour.id,{...choice,rateId:button.dataset.previewRate});
+      refreshDetailSelection(tour);
+    });
+  });
+  app.querySelectorAll('[data-preview-slot]').forEach(button=>{
+    button.addEventListener('click',()=>{
+      const slotId=button.dataset.previewSlot;
+      const slot=arr(tour.availabilitySlots).find(item=>String(item.id)===String(slotId));
+      const availableRates=arr(tour.rates).filter(rate=>slot&&rateAvailable(slot,rate.id));
+      const previous=visualChoice(tour);
+      const rateId=availableRates.some(rate=>String(rate.id)===String(previous.rateId))
+        ?previous.rateId
+        :(availableRates.find(rate=>String(rate.id)===String(slot?.defaultRateId))?.id??availableRates[0]?.id??null);
+      state.visualChoiceByTour.set(tour.id,{rateId,slotId});
+      refreshDetailSelection(tour);
+    });
+  });
 }
 
 function bottomNav(){
@@ -578,34 +700,32 @@ function bindInteractions(){
 
   app.querySelectorAll('[data-tab]').forEach(button=>{
     button.addEventListener('click',()=>{
-      state.detailTab=button.dataset.tab||'overview'; render();
-      app.querySelector('#tour-content')?.scrollIntoView({behavior:'auto',block:'start'});
+      state.detailTab=button.dataset.tab||'overview';
+      app.querySelectorAll('[data-tab]').forEach(tab=>tab.classList.toggle('is-active',tab.dataset.tab===state.detailTab));
+      const panel=app.querySelector('#tour-content');
+      if(panel) panel.innerHTML=detailPanel(state.tours.find(item=>item.id===state.selectedTourId));
+      bindPhotoGrid();
+      panel?.scrollIntoView({behavior:'auto',block:'start'});
     });
   });
 
   const tour=state.tours.find(item=>item.id===state.selectedTourId);
   if(tour){
-    const moveGallery=delta=>{
+    const setGalleryIndex=index=>{
       const count=tour.photos.length;if(!count)return;
-      const current=Number(state.galleryIndexByTour.get(tour.id)||0);
-      state.galleryIndexByTour.set(tour.id,(current+delta+count)%count);render();
+      const next=(index+count)%count;
+      state.galleryIndexByTour.set(tour.id,next);
+      const image=app.querySelector('[data-detail-hero-image]');
+      if(image) image.src=tour.photos[next];
+      const countNode=app.querySelector('.photo-count');
+      if(countNode) countNode.textContent=(next+1)+' / '+count;
     };
+    const moveGallery=delta=>setGalleryIndex(Number(state.galleryIndexByTour.get(tour.id)||0)+delta);
     app.querySelector('[data-gallery-prev]')?.addEventListener('click',()=>moveGallery(-1));
     app.querySelector('[data-gallery-next]')?.addEventListener('click',()=>moveGallery(1));
-
-    app.querySelectorAll('[data-preview-rate]').forEach(button=>{
-      button.addEventListener('click',()=>{
-        const rateId=button.dataset.previewRate;
-        const slot=arr(tour.availabilitySlots).find(item=>!item.soldOut&&!item.unavailable&&rateAvailable(item,rateId));
-        state.visualChoiceByTour.set(tour.id,{rateId,slotId:slot?.id||null});render();
-      });
-    });
-    app.querySelectorAll('[data-preview-slot]').forEach(button=>{
-      button.addEventListener('click',()=>{
-        const choice=visualChoice(tour);
-        state.visualChoiceByTour.set(tour.id,{...choice,slotId:button.dataset.previewSlot});render();
-      });
-    });
+    bindSelectionInteractions(tour);
+    window.__loveTravelSetGalleryIndex=setGalleryIndex;
+    bindPhotoGrid();
   }
 
   app.querySelectorAll('[data-visual-booking]').forEach(button=>button.addEventListener('click',()=>showStageNotice(t().bookingSoon)));
@@ -613,6 +733,16 @@ function bindInteractions(){
 
   const logo=app.querySelector('.brand-logo');
   if(logo) logo.addEventListener('error',()=>app.querySelector('.brand')?.classList.add('is-fallback'),{once:true});
+}
+
+function bindPhotoGrid(){
+  app.querySelectorAll('[data-photo-index]').forEach(button=>{
+    button.addEventListener('click',()=>{
+      const index=Number(button.dataset.photoIndex||0);
+      window.__loveTravelSetGalleryIndex?.(index);
+      app.querySelector('.detail-photo')?.scrollIntoView({behavior:'smooth',block:'start'});
+    });
+  });
 }
 
 function render(){
