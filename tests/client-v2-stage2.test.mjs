@@ -18,7 +18,7 @@ const [client,html,css,worker,wrangler]=await Promise.all([
 test('Client v2 stage 2 is isolated from legacy DOM, booking and AI',()=>{
   assert.match(client,/const state=\{/);
   assert.match(client,/function render\(\)/);
-  assert.match(client,/fetch\('\/api\/tours'/);
+  assert.match(client,/fetch\('\/api\/tours\?locale='/);
   assert.doesNotMatch(client,/MutationObserver/);
   assert.doesNotMatch(client,/selectionByProduct/);
   assert.doesNotMatch(client,/\/api\/travel-commerce\/transaction/);
@@ -38,7 +38,6 @@ test('Stage 2A restores customer-facing LoveTravel visual language without techn
   assert.match(client,/Обзор/);
   assert.match(client,/Программа/);
   assert.match(client,/Включено/);
-  assert.match(client,/Смотреть фото/);
   assert.match(client,/Выбрать дату/);
   assert.match(client,/categoryLabel/);
   assert.match(css,/--orange-deep:#ef6f1a/);
@@ -50,6 +49,28 @@ test('Stage 2A restores customer-facing LoveTravel visual language without techn
   assert.doesNotMatch(client,/Client v2/);
   assert.doesNotMatch(client,/read-only preview/);
   assert.doesNotMatch(client,/2 live Bókun products/);
+});
+
+
+test('Stage 2B is a mini-app shell, not a landing page',()=>{
+  assert.match(client,/navHome:'Главная'/);
+  assert.match(client,/navCatalog:'Каталог'/);
+  assert.match(client,/navTrips:'Мои поездки'/);
+  assert.match(client,/navAi:'ИИ‑Помощник'/);
+  assert.match(client,/function bottomNav\(\)/);
+  assert.match(client,/languageSwitcher/);
+  assert.match(client,/SUPPORTED_LOCALES=\['ru','vi','en','zh','ko'\]/);
+  assert.match(client,/data-preview-rate/);
+  assert.match(client,/data-preview-slot/);
+  assert.match(client,/function optionsMarkup/);
+  assert.match(client,/function datesMarkup/);
+  assert.match(client,/function assistantView/);
+  assert.match(client,/function tripsView/);
+  assert.doesNotMatch(client,/\['photos','/);
+  assert.match(css,/\.bottom-nav/);
+  assert.match(css,/\.language-menu/);
+  assert.match(css,/\.rate-option/);
+  assert.match(css,/\.departure-option/);
 });
 
 test('preview worker exposes only read-only tour API and static Client v2 assets',async()=>{

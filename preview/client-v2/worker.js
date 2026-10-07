@@ -30,11 +30,11 @@ function addIsoDays(iso,days){
   return date.toISOString().slice(0,10);
 }
 
-async function proxyTours(env){
+async function proxyTours(env,locale='ru'){
   const start=vietnamTodayIso();
   const upstream=String(env?.LOVE_TRAVEL_UPSTREAM||UPSTREAM_DEFAULT).replace(/\/+$/,'');
   const url=new URL(upstream+'/api/bokun/domain');
-  url.searchParams.set('locale','ru');
+  url.searchParams.set('locale',locale);
   url.searchParams.set('start',start);
   url.searchParams.set('end',addIsoDays(start,14));
   url.searchParams.set('includePickupPlaces','0');
@@ -82,7 +82,9 @@ export default {
       if(request.method!=='GET'){
         return json({ok:false,error:'method_not_allowed'},405,{allow:'GET'});
       }
-      return proxyTours(env);
+      const locale=String(url.searchParams.get('locale')||'ru').toLowerCase();
+      const supported=new Set(['ru','vi','en','zh','ko']);
+      return proxyTours(env,supported.has(locale)?locale:'ru');
     }
 
     if(url.pathname.startsWith('/api/')){
