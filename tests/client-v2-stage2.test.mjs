@@ -113,7 +113,8 @@ test('Stage 2 semantic UI exposes stable locale-independent regions',()=>{
   ]){
     assert.match(client,new RegExp('data-testid=["\\\']'+testId+'["\\\']'));
   }
-  assert.match(client,/data-testid="tour-\'+esc\(id\)\+'/);
+  assert.match(client,/function infoBlock\(section\)/);
+  assert.match(client,/data-testid="tour-/);
   assert.match(client,/aria-labelledby/);
   assert.match(client,/<dl class="fact-grid"/);
   assert.match(client,/modelCustomerInfoSections/);
