@@ -599,8 +599,8 @@ function detailView(tour){
     +'<div class="detail-purchase"><div><small>'+esc(t().from)+'</small><strong data-selected-price>'+esc(currentPrice)+'</strong></div><div><small>'+esc(t().nearest)+'</small><b data-selected-date>'+esc(selectedSlot?[formatDate(selectedSlot.date),selectedSlot.startTime].filter(Boolean).join(' · '):slotText(tour))+'</b></div></div>'
     +'</div></section>'
     +'<div class="selection-flow" data-selection-flow>'+datesMarkup(tour)+optionsMarkup(tour)+'</div>'
-    +'<nav class="tour-tabs" aria-label="'+esc(t().overview)+'">'+tabs.map(([id,label])=>'<button type="button" class="tour-tab '+(state.detailTab===id?'is-active':'')+'" data-tab="'+id+'">'+esc(label)+'</button>').join('')+'</nav>'
-    +'<section class="tour-content" id="tour-content">'+detailPanel(tour)+'</section>'
+    +'<nav class="tour-tabs" data-testid="tour-tabs" aria-label="'+esc(t().overview)+'">'+tabs.map(([id,label])=>'<button type="button" class="tour-tab '+(state.detailTab===id?'is-active':'')+'" data-tab="'+id+'">'+esc(label)+'</button>').join('')+'</nav>'
+    +'<section class="tour-content" id="tour-content" data-testid="tour-content" aria-live="polite">'+detailPanel(tour)+'</section>'
     +'<div class="mobile-booking-bar mobile-booking-bar--with-nav"><div><small>'+esc(t().from)+'</small><strong data-selected-price>'+esc(currentPrice)+'</strong></div>'
     +'<button type="button" data-visual-booking>'+esc(selectedSlot?t().continue:t().chooseDate)+'</button></div></main>';
 }
