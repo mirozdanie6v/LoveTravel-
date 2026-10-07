@@ -31,6 +31,27 @@ test('Client v2 stage 2 is isolated from legacy DOM, booking and AI',()=>{
   assert.match(css,/\.detail-hero/);
 });
 
+
+test('Stage 2A restores customer-facing LoveTravel visual language without technical labels',()=>{
+  assert.match(client,/Откройте Нячанг/);
+  assert.match(client,/Выбрать экскурсию/);
+  assert.match(client,/Обзор/);
+  assert.match(client,/Программа/);
+  assert.match(client,/Включено/);
+  assert.match(client,/Смотреть фото/);
+  assert.match(client,/Выбрать дату/);
+  assert.match(client,/categoryLabel/);
+  assert.match(css,/--orange-deep:#ef6f1a/);
+  assert.match(css,/--blue-deep:#2268b3/);
+  assert.match(css,/\.catalog-hero/);
+  assert.match(css,/\.tour-tabs/);
+  assert.match(css,/\.mobile-booking-bar/);
+  assert.doesNotMatch(client,/Bókun live/);
+  assert.doesNotMatch(client,/Client v2/);
+  assert.doesNotMatch(client,/read-only preview/);
+  assert.doesNotMatch(client,/2 live Bókun products/);
+});
+
 test('preview worker exposes only read-only tour API and static Client v2 assets',async()=>{
   const originalFetch=globalThis.fetch;
   globalThis.fetch=async input=>{
