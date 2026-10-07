@@ -70,21 +70,17 @@ test('booking path remains resolver-backed and covers pickup, customer and quest
   assert.match(booking, /CHECKOUT_REQUIRED_CUSTOMER_FIELDS = \['firstName','lastName','email','phoneNumber'\]/);
 });
 
-test('customer Bókun mutation has one transaction-backed, fail-closed path', () => {
+test('customer Bókun mutation is hard-disabled while the restored interface is validated', () => {
   assert.doesNotMatch(workerR2, /\/api\/bokun\/client-demo\/submit/);
   assert.doesNotMatch(workerR2, /handleLoveTravelClientDemoBooking/);
-  assert.doesNotMatch(workerR2, /LOVE_TRAVEL_CLIENT_DEMO_TOKEN_SHA256/);
   assert.match(workerR2, /handleTravelTransactionApi/);
 
-  assert.match(transactionApi, /LOVE_TRAVEL_CLIENT_DEMO_INVITE_SHA256/);
-  assert.doesNotMatch(transactionApi, /DEMO_INVITE_SHA256_FALLBACK/);
-  assert.doesNotMatch(transactionApi, /LOVE_TRAVEL_CLIENT_DEMO_TOKEN_SHA256/);
-  assert.match(transactionApi, /action==='RESERVE'/);
-  assert.match(transactionApi, /action==='RECONCILE'/);
-  assert.match(transactionApi, /demo_access_denied/);
+  assert.match(transactionApi, /action==='RESERVE'\|\|action==='RECONCILE'/);
+  assert.match(transactionApi, /booking_mutations_disabled/);
+  assert.match(transactionApi, /423/);
+  assert.doesNotMatch(transactionApi, /demo_access_denied/);
+  assert.doesNotMatch(transactionApi, /LOVE_TRAVEL_CLIENT_DEMO_INVITE_SHA256/);
 
-  assert.match(bokunProvider, /x-love-travel-demo-token/);
-  assert.match(bokunProvider, /SUBMIT_LOVE_TRAVEL_CLIENT_DEMO_BOOKING/);
   assert.match(booking, /\/api\/travel-commerce\/transaction/);
   assert.match(booking, /transactionAction\('APPROVE'/);
   assert.match(booking, /transactionAction\('RESERVE'/);
@@ -93,8 +89,4 @@ test('customer Bókun mutation has one transaction-backed, fail-closed path', ()
   assert.match(postDeploySmoke, /404\|410/);
   assert.doesNotMatch(postDeploySmoke, /test "\$code" = "403"/);
   assert.match(liveBokunGate, /Verify the one-time contract is disarmed/);
-  assert.match(liveBokunGate, /demo_access_denied/);
-
-  assert.match(semanticI18n,/"booking\.demoCreate": "Создать тестовую бронь"/);
-  assert.match(semanticI18n,/"booking\.demoCreate": "创建测试预订"/);
 });
