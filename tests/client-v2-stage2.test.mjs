@@ -120,15 +120,14 @@ test('Stage 2 semantic UI exposes stable locale-independent regions',()=>{
   assert.match(client,/modelCustomerInfoSections/);
 });
 
-test('Stage 2C live gate audits raw provider rates and checks readable home typography',()=>{
-  assert.match(previewWorkflow,/integration\.viiversion\.com\/api\/bokun\/product/);
-  assert.match(previewWorkflow,/integration\.viiversion\.com\/api\/bokun\/availability/);
-  assert.match(previewWorkflow,/rawProviderProducts/);
-  assert.match(previewWorkflow,/trustSubFont<9\.5/);
-  assert.match(previewWorkflow,/heroCtaFont<13/);
-  const fontCheck=previewWorkflow.indexOf('const trustFont=');
-  const firstLocaleClick=previewWorkflow.indexOf("page.locator('[data-language-trigger]').click()");
-  assert.ok(fontCheck>0 && firstLocaleClick>fontCheck,'typography must be checked on Home before navigation');
+test('Stage 2 live gate stays focused on real integration smoke',()=>{
+  assert.match(previewWorkflow,/Verify live Bókun API contract/);
+  assert.match(previewWorkflow,/npm run test:client-v2:live/);
+  assert.doesNotMatch(previewWorkflow,/rawProviderProducts/);
+  assert.doesNotMatch(previewWorkflow,/trustSubFont/);
+  assert.doesNotMatch(previewWorkflow,/data-language-trigger/);
+  assert.doesNotMatch(previewWorkflow,/tour-pickup/);
+  assert.doesNotMatch(previewWorkflow,/innerText\(/);
 });
 
 test('preview worker exposes only read-only tour API and static Client v2 assets',async()=>{
