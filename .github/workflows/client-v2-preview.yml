@@ -2,6 +2,11 @@ name: Deploy LoveTravel Client v2 preview
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'preview/client-v2/**'
+      - '.github/workflows/client-v2-preview.yml'
 
 concurrency:
   group: lovetravel-client-v2-preview
