@@ -581,3 +581,185 @@ img{display:block;max-width:100%}
   .departure-calendar{grid-template-columns:repeat(2,minmax(0,1fr))}
   .rate-option{grid-template-columns:80px minmax(0,1fr)}
 }
+
+
+/* Stage 2D — progressive date + visual option selection */
+.selection-head--compact{margin-bottom:10px}
+.date-picker-trigger{
+  appearance:none;
+  width:100%;
+  min-height:74px;
+  padding:12px 14px;
+  border:1px solid rgba(54,131,232,.14);
+  border-radius:18px;
+  display:grid;
+  grid-template-columns:40px minmax(0,1fr) 28px;
+  gap:10px;
+  align-items:center;
+  background:linear-gradient(135deg,#f8fcff,#fff);
+  color:#18374b;
+  text-align:left;
+  cursor:pointer;
+  box-shadow:0 7px 18px rgba(29,72,101,.045);
+}
+.date-picker-trigger:hover{border-color:rgba(67,143,216,.34)}
+.date-picker-trigger.has-value{
+  border-color:rgba(67,143,216,.26);
+  background:linear-gradient(135deg,#eef7ff,#fff);
+}
+.date-picker-trigger__icon{
+  width:40px;height:40px;border-radius:13px;
+  display:grid;place-items:center;
+  background:linear-gradient(135deg,#e8f5ff,#d8ecfb);
+  color:var(--blue-deep);
+  font-size:17px;font-weight:950
+}
+.date-picker-trigger__copy{min-width:0}
+.date-picker-trigger__copy small{
+  display:block;margin-bottom:3px;
+  color:#8295a2;font-size:8.5px;font-weight:900;
+  text-transform:uppercase;letter-spacing:.04em
+}
+.date-picker-trigger__copy strong{
+  display:block;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  color:#18374b;font-size:15px;line-height:1.2
+}
+.date-picker-trigger__chevron{
+  width:28px;height:28px;border-radius:9px;
+  display:grid;place-items:center;
+  color:#54758a;background:#f1f6f9;font-weight:950
+}
+.selection-section--dates .departure-calendar{
+  margin-top:10px;
+  padding-top:10px;
+  border-top:1px solid rgba(24,74,108,.07);
+}
+
+.selection-locked{
+  min-height:76px;padding:13px 14px;
+  border:1px dashed rgba(54,131,232,.17);
+  border-radius:17px;
+  display:flex;align-items:center;gap:11px;
+  background:#f8fbfd;color:#6f8796
+}
+.selection-locked>span{
+  width:34px;height:34px;flex:0 0 auto;
+  border-radius:11px;display:grid;place-items:center;
+  background:#edf4f8;color:#7890a0;
+  font-size:11px;font-weight:950
+}
+.selection-locked p{margin:0;font-size:11px;line-height:1.4;font-weight:800}
+
+.rate-options{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:10px;
+}
+.rate-card{
+  min-width:0;
+  overflow:hidden;
+  border:1px solid rgba(54,131,232,.11);
+  border-radius:21px;
+  background:#fff;
+  box-shadow:0 8px 22px rgba(29,72,101,.045);
+}
+.rate-card.is-active{
+  border-color:rgba(239,111,26,.40);
+  box-shadow:0 0 0 2px rgba(245,138,36,.07),0 10px 24px rgba(29,72,101,.06);
+}
+.rate-card .rate-option{
+  appearance:none;
+  width:100%;
+  padding:0;
+  border:0;
+  border-radius:0;
+  display:block;
+  background:#fff;
+  color:#18374b;
+  text-align:left;
+  cursor:pointer;
+  box-shadow:none;
+}
+.rate-card .rate-photo{
+  position:relative;
+  display:block;
+  width:100%;
+  min-height:0;
+  aspect-ratio:16/9;
+  overflow:hidden;
+  background:#dcebf4;
+}
+.rate-card .rate-photo img{width:100%;height:100%;object-fit:cover}
+.rate-card .rate-photo em{
+  position:absolute;left:9px;bottom:9px;
+  padding:5px 7px;border-radius:999px;
+  background:rgba(12,42,61,.68);
+  color:#fff;font-size:7.5px;font-style:normal;font-weight:900;
+  letter-spacing:.02em
+}
+.rate-summary{
+  min-height:80px;
+  padding:12px 13px;
+  display:grid;
+  grid-template-columns:30px minmax(0,1fr) auto 24px;
+  gap:8px;
+  align-items:center;
+}
+.rate-summary .rate-marker{
+  width:30px;height:30px;border-radius:10px;
+  display:grid;place-items:center;
+  background:#edf7ff;color:var(--blue-deep);
+  font-size:10px;font-weight:950
+}
+.rate-card.is-active .rate-marker{
+  color:#fff;background:linear-gradient(135deg,var(--orange-deep),var(--orange))
+}
+.rate-summary__copy{min-width:0}
+.rate-summary__copy b{
+  display:block;
+  color:#18374b;font-size:12.5px;line-height:1.25
+}
+.rate-summary__copy small{
+  display:block;margin-top:3px;
+  color:#7a909e;font-size:8.5px;line-height:1.25
+}
+.rate-summary>strong{
+  color:var(--orange);font-size:17px;letter-spacing:-.035em;white-space:nowrap
+}
+.rate-chevron{
+  width:24px;height:24px;border-radius:8px;
+  display:grid;place-items:center;
+  background:#f2f6f9;color:#698395;font-size:13px;font-weight:950
+}
+.rate-card.is-active .rate-chevron{transform:rotate(180deg)}
+.rate-expanded{
+  padding:0 13px 13px;
+  border-top:1px solid rgba(24,74,108,.06);
+}
+.rate-expanded .rate-description{
+  margin:11px 0 0;
+  color:#627d8d;font-size:11px;line-height:1.5
+}
+.rate-expanded .rate-price-lines{margin-top:10px}
+.rate-expanded .rate-action{
+  display:inline-flex;
+  margin-top:11px;
+  padding:7px 10px;
+  border-radius:10px;
+  background:#fff0e2;color:var(--orange-deep);
+  font-size:9px;font-weight:950
+}
+
+@media(max-width:760px){
+  .rate-options{grid-template-columns:1fr}
+}
+@media(max-width:520px){
+  .date-picker-trigger{min-height:70px;padding:10px 11px;grid-template-columns:38px minmax(0,1fr) 26px}
+  .date-picker-trigger__icon{width:38px;height:38px}
+  .date-picker-trigger__copy strong{font-size:14px}
+  .selection-section--dates .departure-calendar{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .rate-summary{grid-template-columns:29px minmax(0,1fr) auto 22px;padding:11px}
+  .rate-summary>strong{font-size:16px}
+  .rate-card .rate-photo{aspect-ratio:16/8.8}
+}

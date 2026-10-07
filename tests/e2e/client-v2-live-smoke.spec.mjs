@@ -25,7 +25,10 @@ test('live preview connects real Bókun data to the mini-app shell',async({page}
   await expect(page.locator('.detail-hero h1')).not.toHaveText('');
   await expect(page.getByTestId('departure-calendar')).toBeAttached();
   await expect(page.getByTestId('tour-options')).toBeAttached();
+  await expect(page.locator('[data-preview-slot]')).toHaveCount(0);
+  await page.locator('[data-date-picker-trigger]').click();
   expect(await page.locator('[data-preview-slot]').count()).toBeGreaterThan(0);
+  await page.locator('[data-preview-slot]:not([disabled])').first().click();
   expect(await page.locator('[data-preview-rate]').count()).toBeGreaterThan(0);
 
   await page.screenshot({
