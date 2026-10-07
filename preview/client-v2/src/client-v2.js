@@ -29,6 +29,7 @@ const state={
   languageOpen:false,
   galleryIndexByTour:new Map(),
   visualChoiceByTour:new Map(),
+  datePickerOpenByTour:new Map(),
   localeRequestId:0,
   error:'',
 };
@@ -52,7 +53,7 @@ const COPY={
     route:'МАРШРУТ',dayProgram:'Программа дня',inPrice:'В СТОИМОСТИ',includedTitle:'Что включено',
     options:'Варианты тура',optionsHint:'Выберите формат программы',selected:'Выбрано',select:'Выбрать',
     dates:'Выберите выезд',datesHint:'Выберите дату и время из доступных выездов',places:'мест',unlimited:'места есть',soldOut:'нет мест',
-    chooseDate:'Выбрать дату',continue:'Продолжить',dateNotSelected:'Выберите дату',
+    chooseDate:'Выбрать дату',chooseOption:'Выбрать вариант',continue:'Продолжить',dateNotSelected:'Выберите дату',optionsLocked:'Сначала выберите дату',tourPhotoFallback:'Фото экскурсии',optionDetails:'Информация о варианте',
     navHome:'Главная',navCatalog:'Каталог',navTrips:'Мои поездки',navAi:'ИИ‑Помощник',
     catalogTitle:'Все экскурсии',catalogLead:'Две актуальные программы Love Travel в Нячанге.',
     aiTitle:'ИИ‑консультант',aiLead:'Поможет сравнить экскурсии, подобрать вариант и затем перейти к бронированию.',
@@ -78,7 +79,7 @@ const COPY={
     route:'LỊCH TRÌNH',dayProgram:'Chương trình trong ngày',inPrice:'TRONG GIÁ',includedTitle:'Bao gồm',
     options:'Các lựa chọn tour',optionsHint:'Chọn hình thức chương trình',selected:'Đã chọn',select:'Chọn',
     dates:'Chọn chuyến khởi hành',datesHint:'Chọn ngày và giờ còn chỗ',places:'chỗ',unlimited:'còn chỗ',soldOut:'hết chỗ',
-    chooseDate:'Chọn ngày',continue:'Tiếp tục',dateNotSelected:'Chọn ngày',
+    chooseDate:'Chọn ngày',chooseOption:'Chọn phương án',continue:'Tiếp tục',dateNotSelected:'Chọn ngày',optionsLocked:'Hãy chọn ngày trước',tourPhotoFallback:'Ảnh của tour',optionDetails:'Thông tin phương án',
     navHome:'Trang chủ',navCatalog:'Tour',navTrips:'Chuyến đi',navAi:'Trợ lý AI',
     catalogTitle:'Tất cả tour',catalogLead:'Hai chương trình Love Travel đang hoạt động tại Nha Trang.',
     aiTitle:'Trợ lý AI',aiLead:'Giúp so sánh tour, chọn phương án và sau đó chuyển sang đặt tour.',
@@ -104,7 +105,7 @@ const COPY={
     route:'ROUTE',dayProgram:'Day program',inPrice:'INCLUDED',includedTitle:'What is included',
     options:'Tour options',optionsHint:'Choose a program format',selected:'Selected',select:'Select',
     dates:'Choose a departure',datesHint:'Choose an available date and time',places:'places',unlimited:'available',soldOut:'sold out',
-    chooseDate:'Choose date',continue:'Continue',dateNotSelected:'Choose a date',
+    chooseDate:'Choose date',chooseOption:'Choose option',continue:'Continue',dateNotSelected:'Choose a date',optionsLocked:'Choose a date first',tourPhotoFallback:'Tour photo',optionDetails:'Option details',
     navHome:'Home',navCatalog:'Tours',navTrips:'My trips',navAi:'AI Assistant',
     catalogTitle:'All tours',catalogLead:'Two current Love Travel experiences in Nha Trang.',
     aiTitle:'AI consultant',aiLead:'Helps compare tours, choose an option and then move to booking.',
@@ -130,7 +131,7 @@ const COPY={
     route:'路线',dayProgram:'当日行程',inPrice:'费用包含',includedTitle:'包含内容',
     options:'行程选项',optionsHint:'选择行程形式',selected:'已选择',select:'选择',
     dates:'选择出发日期',datesHint:'选择可订日期和时间',places:'个名额',unlimited:'可订',soldOut:'售罄',
-    chooseDate:'选择日期',continue:'继续',dateNotSelected:'请选择日期',
+    chooseDate:'选择日期',chooseOption:'选择方案',continue:'继续',dateNotSelected:'请选择日期',optionsLocked:'请先选择日期',tourPhotoFallback:'行程照片',optionDetails:'方案详情',
     navHome:'首页',navCatalog:'行程',navTrips:'我的行程',navAi:'AI 助手',
     catalogTitle:'全部行程',catalogLead:'Love Travel 在芽庄的两条实时线路。',
     aiTitle:'AI 顾问',aiLead:'帮助比较行程、选择方案，然后进入预订。',
@@ -156,7 +157,7 @@ const COPY={
     route:'일정',dayProgram:'하루 프로그램',inPrice:'포함 사항',includedTitle:'포함 내용',
     options:'투어 옵션',optionsHint:'프로그램 형식을 선택하세요',selected:'선택됨',select:'선택',
     dates:'출발 일정 선택',datesHint:'예약 가능한 날짜와 시간을 선택하세요',places:'자리',unlimited:'예약 가능',soldOut:'매진',
-    chooseDate:'날짜 선택',continue:'계속',dateNotSelected:'날짜를 선택하세요',
+    chooseDate:'날짜 선택',chooseOption:'옵션 선택',continue:'계속',dateNotSelected:'날짜를 선택하세요',optionsLocked:'먼저 날짜를 선택하세요',tourPhotoFallback:'투어 사진',optionDetails:'옵션 상세',
     navHome:'홈',navCatalog:'투어',navTrips:'내 여행',navAi:'AI 도우미',
     catalogTitle:'모든 투어',catalogLead:'나트랑 Love Travel의 두 가지 현재 프로그램입니다.',
     aiTitle:'AI 컨설턴트',aiLead:'투어를 비교하고 옵션을 고른 뒤 예약으로 이어집니다.',
@@ -412,18 +413,22 @@ function galleryMarkup(tour){
 
 function visualChoice(tour){
   const slots=arr(tour.availabilitySlots);
-  let choice=state.visualChoiceByTour.get(tour.id)||{};
-  let slot=slots.find(item=>String(item.id)===String(choice.slotId))
-    ||slots.find(item=>!item?.soldOut&&!item?.unavailable)
-    ||slots[0]
-    ||null;
-  const availableRates=ratesForSlot(tour,slot);
-  let rateId=availableRates.some(rate=>String(rate.id)===String(choice.rateId))
-    ?choice.rateId
-    :(availableRates.find(rate=>String(rate.id)===String(slot?.defaultRateId))?.id??availableRates[0]?.id??null);
-  choice={rateId,slotId:slot?.id||null};
+  const stored=state.visualChoiceByTour.get(tour.id)||{};
+  const slot=slots.find(item=>String(item.id)===String(stored.slotId))||null;
+  const availableRates=slot?ratesForSlot(tour,slot):[];
+  const rateId=availableRates.some(rate=>String(rate.id)===String(stored.rateId))?stored.rateId:null;
+  const choice={slotId:slot?.id||null,rateId};
   state.visualChoiceByTour.set(tour.id,choice);
   return choice;
+}
+
+function datePickerOpen(tour){
+  return Boolean(state.datePickerOpenByTour.get(tour.id));
+}
+
+function selectedDateText(tour){
+  const slot=selectedSlotForTour(tour);
+  return slot?[formatDate(slot.date),slot.startTime].filter(Boolean).join(' · '):t().dateNotSelected;
 }
 
 function mergeRateLists(...lists){
@@ -466,7 +471,11 @@ function participantPriceLines(tour,slot,rateId){
 function optionsMarkup(tour){
   const choice=visualChoice(tour);
   const slot=selectedSlotForTour(tour);
-  if(!slot) return '';
+  if(!slot){
+    return '<section class="selection-section selection-section--rates is-locked" data-testid="tour-options" aria-labelledby="tour-options-title">'
+      +'<div class="selection-head"><div><span id="tour-options-title">'+esc(t().options)+'</span><p>'+esc(t().optionsHint)+'</p></div></div>'
+      +'<div class="selection-locked"><span>2</span><p>'+esc(t().optionsLocked)+'</p></div></section>';
+  }
   const rates=ratesForSlot(tour,slot);
   if(!rates.length) return '';
   return '<section class="selection-section selection-section--rates" data-testid="tour-options" aria-labelledby="tour-options-title"><div class="selection-head"><div><span id="tour-options-title">'+esc(t().options)+'</span><p>'+esc(t().optionsHint)+'</p></div></div>'
@@ -474,15 +483,22 @@ function optionsMarkup(tour){
       const active=String(rate.id)===String(choice.rateId);
       const price=money(priceFor(tour,slot,rate.id));
       const description=rateDescription(rate);
-      const photos=arr(rate.optionPhotos);
+      const ownPhotos=arr(rate.optionPhotos);
+      const fallbackPhoto=!ownPhotos.length&&tour.photos.length?tour.photos[index%tour.photos.length]:'';
+      const photo=ownPhotos[0]||fallbackPhoto;
+      const fallback=Boolean(photo&&!ownPhotos[0]);
       const priceLines=participantPriceLines(tour,slot,rate.id);
-      return '<button type="button" class="rate-option '+(active?'is-active ':'')+'" data-preview-rate="'+esc(rate.id)+'">'
-        +(photos[0]?'<span class="rate-photo">'+media(photos[0],plainText(rate.title||tour.title))+'</span>':'')
-        +'<span class="rate-main"><span class="rate-top"><span class="rate-marker">'+(active?'✓':String(index+1))+'</span><b>'+esc(plainText(rate.title||rate.code||rate.id))+'</b>'
-        +(price?'<strong>'+esc(price)+'</strong>':'')+'</span>'
-        +(description?'<span class="rate-description">'+esc(description)+'</span>':'')
-        +(priceLines.length?'<span class="rate-price-lines">'+priceLines.map(line=>'<small>'+esc(line)+'</small>').join('')+'</span>':'')
-        +'<span class="rate-action">'+esc(active?t().selected:t().select)+'</span></span></button>';
+      const title=plainText(rate.title||rate.code||rate.id);
+      return '<article class="rate-card '+(active?'is-active':'')+'">'
+        +'<button type="button" class="rate-option" data-preview-rate="'+esc(rate.id)+'" aria-expanded="'+(active?'true':'false')+'">'
+        +(photo?'<span class="rate-photo">'+media(photo,title||tour.title)+(fallback?'<em>'+esc(t().tourPhotoFallback)+'</em>':'')+'</span>':'')
+        +'<span class="rate-summary"><span class="rate-marker">'+(active?'✓':String(index+1))+'</span><span class="rate-summary__copy"><b>'+esc(title)+'</b><small>'+esc(t().optionDetails)+'</small></span>'
+        +(price?'<strong>'+esc(price)+'</strong>':'')+'<span class="rate-chevron">⌄</span></span></button>'
+        +(active?'<div class="rate-expanded" data-rate-expanded="'+esc(rate.id)+'">'
+          +(description?'<p class="rate-description">'+esc(description)+'</p>':'')
+          +(priceLines.length?'<div class="rate-price-lines">'+priceLines.map(line=>'<small>'+esc(line)+'</small>').join('')+'</div>':'')
+          +'<span class="rate-action">'+esc(t().selected)+'</span></div>':'')
+        +'</article>';
     }).join('')+'</div></section>';
 }
 
@@ -490,8 +506,14 @@ function datesMarkup(tour){
   const choice=visualChoice(tour);
   const slots=arr(tour.availabilitySlots).slice(0,14);
   if(!slots.length) return '';
-  return '<section class="selection-section selection-section--dates" data-testid="departure-calendar" aria-labelledby="departure-calendar-title"><div class="selection-head"><div><span id="departure-calendar-title">'+esc(t().dates)+'</span><p>'+esc(t().datesHint)+'</p></div></div>'
-    +'<div class="departure-calendar">'+slots.map(slot=>{
+  const open=datePickerOpen(tour);
+  const selected=selectedSlotForTour(tour);
+  return '<section class="selection-section selection-section--dates" data-testid="departure-calendar" aria-labelledby="departure-calendar-title">'
+    +'<div class="selection-head selection-head--compact"><div><span id="departure-calendar-title">'+esc(t().dates)+'</span><p>'+esc(t().datesHint)+'</p></div></div>'
+    +'<button type="button" class="date-picker-trigger '+(selected?'has-value':'')+'" data-date-picker-trigger aria-expanded="'+(open?'true':'false')+'" aria-controls="departure-list-'+esc(tour.id)+'">'
+    +'<span class="date-picker-trigger__icon">◷</span><span class="date-picker-trigger__copy"><small>'+esc(selected?t().selected:t().chooseDate)+'</small><strong>'+esc(selectedDateText(tour))+'</strong></span>'
+    +'<span class="date-picker-trigger__chevron">'+(open?'⌃':'⌄')+'</span></button>'
+    +(open?'<div class="departure-calendar" id="departure-list-'+esc(tour.id)+'">'+slots.map(slot=>{
       const active=String(slot.id)===String(choice.slotId);
       const unavailable=Boolean(slot.soldOut||slot.unavailable||(!slot.unlimitedAvailability&&Number(slot.availabilityCount)<=0));
       const count=Number(slot.availabilityCount);
@@ -504,7 +526,7 @@ function datesMarkup(tour){
         +'<span class="departure-time">'+esc(slot.startTime||'')+'</span>'
         +'<small>'+esc(availability)+'</small>'
         +(minPrice?'<b>'+esc(minPrice)+'</b>':'')+'</button>';
-    }).join('')+'</div></section>';
+    }).join('')+'</div>':'')+'</section>';
 }
 
 function infoBlock(section){
@@ -585,7 +607,9 @@ function selectedSlotForTour(tour){
 function selectedPrice(tour){
   const choice=visualChoice(tour);
   const slot=selectedSlotForTour(tour);
-  return slot?money(priceFor(tour,slot,choice.rateId)):tour.price;
+  if(!slot) return tour.price;
+  if(choice.rateId) return money(priceFor(tour,slot,choice.rateId));
+  return ratesForSlot(tour,slot).map(rate=>money(priceFor(tour,slot,rate.id))).find(Boolean)||tour.price;
 }
 
 function detailView(tour){
@@ -602,7 +626,7 @@ function detailView(tour){
     +'<nav class="tour-tabs" data-testid="tour-tabs" aria-label="'+esc(t().overview)+'">'+tabs.map(([id,label])=>'<button type="button" class="tour-tab '+(state.detailTab===id?'is-active':'')+'" data-tab="'+id+'">'+esc(label)+'</button>').join('')+'</nav>'
     +'<section class="tour-content" id="tour-content" data-testid="tour-content" aria-live="polite">'+detailPanel(tour)+'</section>'
     +'<div class="mobile-booking-bar mobile-booking-bar--with-nav"><div><small>'+esc(t().from)+'</small><strong data-selected-price>'+esc(currentPrice)+'</strong></div>'
-    +'<button type="button" data-visual-booking>'+esc(selectedSlot?t().continue:t().chooseDate)+'</button></div></main>';
+    +'<button type="button" data-visual-booking>'+esc(!selectedSlot?t().chooseDate:(visualChoice(tour).rateId?t().continue:t().chooseOption))+'</button></div></main>';
 }
 
 function refreshDetailSelection(tour){
@@ -616,6 +640,10 @@ function refreshDetailSelection(tour){
 }
 
 function bindSelectionInteractions(tour){
+  app.querySelector('[data-date-picker-trigger]')?.addEventListener('click',()=>{
+    state.datePickerOpenByTour.set(tour.id,!datePickerOpen(tour));
+    refreshDetailSelection(tour);
+  });
   app.querySelectorAll('[data-preview-rate]').forEach(button=>{
     button.addEventListener('click',()=>{
       const choice=visualChoice(tour);
@@ -626,14 +654,10 @@ function bindSelectionInteractions(tour){
   app.querySelectorAll('[data-preview-slot]').forEach(button=>{
     button.addEventListener('click',()=>{
       const slotId=button.dataset.previewSlot;
-      const slot=arr(tour.availabilitySlots).find(item=>String(item.id)===String(slotId));
-      const availableRates=ratesForSlot(tour,slot);
-      const previous=visualChoice(tour);
-      const rateId=availableRates.some(rate=>String(rate.id)===String(previous.rateId))
-        ?previous.rateId
-        :(availableRates.find(rate=>String(rate.id)===String(slot?.defaultRateId))?.id??availableRates[0]?.id??null);
-      state.visualChoiceByTour.set(tour.id,{rateId,slotId});
+      state.visualChoiceByTour.set(tour.id,{slotId,rateId:null});
+      state.datePickerOpenByTour.set(tour.id,false);
       refreshDetailSelection(tour);
+      app.querySelector('[data-testid="tour-options"]')?.scrollIntoView({behavior:'smooth',block:'nearest'});
     });
   });
 }
@@ -740,7 +764,22 @@ function bindInteractions(){
     bindPhotoGrid();
   }
 
-  app.querySelectorAll('[data-visual-booking]').forEach(button=>button.addEventListener('click',()=>showStageNotice(t().bookingSoon)));
+  app.querySelectorAll('[data-visual-booking]').forEach(button=>button.addEventListener('click',()=>{
+    const activeTour=state.tours.find(item=>item.id===state.selectedTourId);
+    if(!activeTour) return;
+    const choice=visualChoice(activeTour);
+    if(!choice.slotId){
+      state.datePickerOpenByTour.set(activeTour.id,true);
+      refreshDetailSelection(activeTour);
+      app.querySelector('[data-date-picker-trigger]')?.scrollIntoView({behavior:'smooth',block:'center'});
+      return;
+    }
+    if(!choice.rateId){
+      app.querySelector('[data-testid="tour-options"]')?.scrollIntoView({behavior:'smooth',block:'center'});
+      return;
+    }
+    showStageNotice(t().bookingSoon);
+  }));
   app.querySelectorAll('[data-ai-preview]').forEach(button=>button.addEventListener('click',()=>showStageNotice(t().aiSoon)));
 
   const logo=app.querySelector('.brand-logo');
