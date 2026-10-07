@@ -38,7 +38,7 @@ test('Stage 2A restores customer-facing LoveTravel visual language without techn
   assert.match(client,/Обзор/);
   assert.match(client,/Программа/);
   assert.match(client,/Включено/);
-  assert.match(client,/Выбрать дату/);
+  assert.match(client,/Выберите выезд/);
   assert.match(client,/categoryLabel/);
   assert.match(css,/--orange-deep:#ef6f1a/);
   assert.match(css,/--blue-deep:#2268b3/);
@@ -74,11 +74,16 @@ test('Stage 2B is a mini-app shell, not a landing page',()=>{
   assert.match(client,/function datesMarkup/);
   assert.match(client,/function assistantView/);
   assert.match(client,/function tripsView/);
-  assert.doesNotMatch(client,/\['photos','/);
+  assert.match(client,/photosTab:'Фото'/);
   assert.match(css,/\.bottom-nav/);
   assert.match(css,/\.language-menu/);
   assert.match(css,/\.rate-option/);
-  assert.match(css,/\.departure-option/);
+  assert.match(css,/\.departure-day/);
+  assert.match(client,/data-tab="photos"/);
+  assert.match(client,/function photosPanel/);
+  assert.match(client,/datesMarkup\(tour\)\+optionsMarkup\(tour\)/);
+  assert.match(client,/providerPhotoUrls/);
+  assert.match(client,/bindSelectionInteractions/);
 });
 
 test('preview worker exposes only read-only tour API and static Client v2 assets',async()=>{
