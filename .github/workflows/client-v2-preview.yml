@@ -311,13 +311,16 @@ jobs:
             fullPage:true,
           });
 
-          const heroHandle=await page.locator('[data-detail-hero-image]').elementHandle();
+          await page.locator('[data-detail-hero-image]').evaluate(el=>{el.dataset.preserveProbe='hero';});
+          const renderCountBefore=await page.evaluate(()=>window.__loveTravelRenderCount||0);
           const alternateDeparture=page.locator('.departure-day:not(.is-disabled):not(.is-active)').first();
           if(await alternateDeparture.count()) await alternateDeparture.click();
           else await page.locator('.departure-day:not(.is-disabled)').first().click();
           if(await page.locator('.departure-day.is-active').count()!==1) throw new Error('Visual departure selection is not unique');
-          const heroPreserved=await page.evaluate(el=>document.querySelector('[data-detail-hero-image]')===el,heroHandle);
-          if(!heroPreserved) throw new Error('Selecting a departure rebuilt the whole tour screen');
+          const renderCountAfter=await page.evaluate(()=>window.__loveTravelRenderCount||0);
+          if(renderCountAfter!==renderCountBefore) throw new Error('Selecting a departure triggered a full app render: '+renderCountBefore+' -> '+renderCountAfter);
+          const heroProbe=await page.locator('[data-detail-hero-image]').getAttribute('data-preserve-probe');
+          if(heroProbe!=='hero') throw new Error('Selecting a departure replaced the hero DOM node');
           if(await page.locator('.rate-option').count()<1) throw new Error('Selected departure has no rendered rate options');
 
           await page.locator('[data-tab="photos"]').click();
