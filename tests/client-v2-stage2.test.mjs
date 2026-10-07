@@ -54,7 +54,7 @@ test('Stage 2A restores customer-facing LoveTravel visual language without techn
 
 
 test('locale refresh keeps the mini-app shell mounted and rolls back on read failure',()=>{
-  assert.match(client,/loadTours\(\{preserveRoute:true,silent:true\}\)/);
+  assert.match(client,/loadTours\(\{preserveRoute:true,silent:true,renderOnSuccess:false\}\)/);
   assert.match(client,/const previousLocale=state\.locale/);
   assert.match(client,/if\(!ok\)/);
   assert.match(client,/if\(!silent\)/);
@@ -88,6 +88,9 @@ test('Stage 2B is a mini-app shell, not a landing page',()=>{
   assert.match(client,/function rateForSlot/);
   assert.match(client,/function ratesForSlot/);
   assert.match(client,/mergeRateLists\(base\?\.textItems,live\?\.textItems\)/);
+  assert.match(client,/__loveTravelRenderCount/);
+  assert.match(client,/renderOnSuccess:false/);
+  assert.match(client,/location\.hash===routeAtRequest/);
 });
 
 test('Stage 2C live gate audits raw provider rates and checks readable home typography',()=>{
