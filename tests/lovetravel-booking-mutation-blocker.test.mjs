@@ -6,7 +6,11 @@ import { resolve } from 'node:path';
 const root=resolve(import.meta.dirname,'..');
 const api=await readFile(resolve(root,'src/travel-transaction-api.js'),'utf8');
 
-test('LoveTravel client hard-blocks provider booking mutations during UI restoration',()=>{
+test('transaction API keeps read/selection projection while hard-blocking provider mutations',()=>{
+  assert.match(api,/function view\(transaction,resolution=null\)/);
+  assert.match(api,/\.\.\.view\(current\.transaction\)/);
+  assert.match(api,/\.\.\.view\(result\.transaction,result\.resolution\)/);
+
   const start=api.indexOf("if(action==='RESERVE'||action==='RECONCILE')");
   const unsupported=api.indexOf("unsupported_action",start);
   assert.ok(start>=0,'RESERVE/RECONCILE blocker must exist');
