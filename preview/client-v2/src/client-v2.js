@@ -305,7 +305,7 @@ function normalizeTour(domain){
 
 function brand(){
   return '<button class="brand" type="button" data-app-tab="home" aria-label="Nha Trang Love Travel">'
-    +'<span class="brand-logo-wrap"><img class="brand-logo" src="'+esc(OFFICIAL_LOGO)+'" alt="Nha Trang Love Travel"></span>'
+    +'<span class="brand-logo-wrap"><img class="brand-logo" src="'+esc(OFFICIAL_LOGO)+'" alt="Nha Trang Love Travel" decoding="async" fetchpriority="low"></span>'
     +'<span class="brand-fallback"><strong>LOVE TRAVEL</strong><small>NHA TRANG</small></span>'
     +'</button>';
 }
