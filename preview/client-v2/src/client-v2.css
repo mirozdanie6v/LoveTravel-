@@ -278,9 +278,9 @@ img{display:block;max-width:100%}
   .catalog-hero p{font-size:12.5px;line-height:1.48}
   .hero-chips{margin-top:13px}.hero-chips span{padding:7px 9px;font-size:9.5px}
   .hero-actions{grid-template-columns:1fr;margin-top:13px}
-  .hero-cta{min-height:49px;border-radius:15px;font-size:12px}
+  .hero-cta{min-height:52px;border-radius:15px;font-size:14px}
   .trust-row{margin:12px 0 24px;padding:9px 5px;border-radius:20px}
-  .trust-icon{width:27px;height:27px}.trust-row b{font-size:9.5px}.trust-row small{font-size:7.7px}
+  .trust-icon{width:31px;height:31px}.trust-row b{font-size:12.5px;line-height:1.15}.trust-row small{font-size:10.5px;line-height:1.25}
   .section-head{align-items:flex-end;margin-bottom:12px}.section-head h2{font-size:25px}.section-count{font-size:9px}
   .tour-grid{gap:15px}
   .tour-card{border-radius:25px}.card-media{height:210px}.card-body{padding:15px}
@@ -444,4 +444,140 @@ img{display:block;max-width:100%}
   .departure-option{grid-template-columns:1fr auto;grid-template-areas:"date price" "availability check"}
   .departure-date{grid-area:date}.departure-availability{grid-area:availability}.departure-option>strong{grid-area:price}.departure-check{grid-area:check;justify-self:end}
   .mobile-booking-bar--with-nav{bottom:66px!important}
+}
+
+
+/* Stage 2C — Bókun content integrity + departure-first UX */
+.selection-flow{display:grid;gap:14px;margin-top:14px}
+.selection-flow .selection-section{margin-top:0}
+
+.departure-calendar{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:8px;
+}
+.departure-day{
+  appearance:none;
+  min-width:0;
+  min-height:112px;
+  padding:11px 8px;
+  border:1px solid rgba(54,131,232,.11);
+  border-radius:17px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:3px;
+  background:linear-gradient(180deg,#fff,#f7fbfe);
+  color:#284e67;
+  text-align:center;
+  cursor:pointer;
+  box-shadow:0 6px 16px rgba(29,72,101,.035);
+}
+.departure-day:hover{border-color:rgba(67,143,216,.34)}
+.departure-day.is-active{
+  color:#fff;
+  border-color:transparent;
+  background:linear-gradient(145deg,var(--blue-deep),var(--blue) 62%,var(--cyan));
+  box-shadow:0 10px 24px rgba(38,110,171,.20);
+}
+.departure-day.is-disabled{opacity:.42;cursor:not-allowed}
+.departure-weekday{font-size:10px;font-weight:850;text-transform:capitalize}
+.departure-day>strong{font-size:25px;line-height:1;font-weight:950;letter-spacing:-.04em}
+.departure-time{font-size:10px;font-weight:900}
+.departure-day>small{font-size:8.5px;line-height:1.15;opacity:.78}
+.departure-day>b{margin-top:3px;font-size:11px;color:var(--orange)}
+.departure-day.is-active>b{color:#fff}
+
+.rate-options{grid-template-columns:1fr}
+.rate-option{
+  display:grid;
+  grid-template-columns:112px minmax(0,1fr);
+  grid-template-areas:"photo main";
+  gap:0;
+  padding:0;
+  overflow:hidden;
+  border-radius:20px;
+  background:#fff;
+}
+.rate-option:not(:has(.rate-photo)){grid-template-columns:1fr}
+.rate-photo{
+  grid-area:photo;
+  min-height:132px;
+  background:#dcebf4;
+  overflow:hidden;
+}
+.rate-photo img{width:100%;height:100%;object-fit:cover}
+.rate-main{grid-area:main;min-width:0;padding:14px 15px;display:flex;flex-direction:column;gap:7px}
+.rate-top{display:grid;grid-template-columns:31px minmax(0,1fr) auto;gap:9px;align-items:center}
+.rate-top>b{font-size:13px;line-height:1.25}
+.rate-top>strong{font-size:18px;color:var(--orange);letter-spacing:-.035em}
+.rate-description{color:#627d8d;font-size:11px;line-height:1.45}
+.rate-price-lines{display:flex;flex-wrap:wrap;gap:5px 8px}
+.rate-price-lines small{
+  padding:5px 7px;
+  border-radius:999px;
+  background:#f2f7fb;
+  color:#496b80;
+  font-size:8.5px;
+  font-weight:850;
+}
+.rate-action{
+  align-self:flex-start;
+  margin-top:2px;
+  padding:6px 9px;
+  border-radius:9px;
+  background:#eef6fb;
+  color:#315f80;
+  font-size:9px;
+  font-weight:950;
+}
+.rate-option.is-active .rate-action{background:#fff0e2;color:var(--orange-deep)}
+
+.info-grid{display:grid;gap:12px;margin-top:14px}
+.info-block{padding:14px;border-radius:17px;background:#f7fafc;border:1px solid rgba(24,74,108,.07)}
+.info-block h3{margin:0 0 8px;color:#244c66;font-size:12px}
+.info-block ul,.excluded-list{list-style:none;padding:0;margin:0;display:grid;gap:7px}
+.info-block li,.excluded-list li{position:relative;padding-left:20px;color:#5f7888;font-size:11.5px;line-height:1.45}
+.info-block li::before{content:'•';position:absolute;left:4px;color:var(--blue);font-weight:950}
+.excluded-list{margin-top:15px}
+.excluded-list li::before{content:'–';position:absolute;left:3px;color:#d06b52;font-weight:950}
+.content-card--excluded{background:linear-gradient(160deg,#fff,#fff8f5)}
+
+.photo-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.photo-thumb{aspect-ratio:1.15}
+.photo-thumb:focus-visible{outline:3px solid rgba(67,143,216,.35);outline-offset:2px}
+
+.selection-section,
+.content-card,
+.tour-card{
+  content-visibility:auto;
+  contain-intrinsic-size:180px;
+}
+
+@media(max-width:520px){
+  .hero-cta{font-size:14px;font-weight:950}
+  .trust-row{grid-template-columns:repeat(3,minmax(0,1fr));gap:3px;padding:12px 4px}
+  .trust-row>div{padding:2px 3px}
+  .trust-row b{font-size:12px}
+  .trust-row small{font-size:10px}
+  .departure-calendar{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+  .departure-day{min-height:105px;padding:9px 5px}
+  .departure-day>strong{font-size:23px}
+  .rate-option{grid-template-columns:92px minmax(0,1fr)}
+  .rate-photo{min-height:140px}
+  .rate-main{padding:12px}
+  .rate-top{grid-template-columns:29px minmax(0,1fr);grid-template-areas:"marker title" "price price"}
+  .rate-top .rate-marker{grid-area:marker}
+  .rate-top>b{grid-area:title}
+  .rate-top>strong{grid-area:price;text-align:left;margin-left:38px}
+  .rate-description{font-size:10.5px}
+  .tour-tabs,.bottom-nav,.language-menu,.glass-pill,.glass-back,.photo-count{
+    -webkit-backdrop-filter:none!important;
+    backdrop-filter:none!important;
+  }
+}
+@media(max-width:380px){
+  .departure-calendar{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .rate-option{grid-template-columns:80px minmax(0,1fr)}
 }
