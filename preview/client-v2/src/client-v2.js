@@ -466,13 +466,51 @@ function visualChoice(tour){
     ||slots.find(item=>!item?.soldOut&&!item?.unavailable)
     ||slots[0]
     ||null;
-  const availableRates=arr(tour.rates).filter(rate=>slot&&rateAvailable(slot,rate.id));
+  const availableRates=ratesForSlot(tour,slot);
   let rateId=availableRates.some(rate=>String(rate.id)===String(choice.rateId))
     ?choice.rateId
     :(availableRates.find(rate=>String(rate.id)===String(slot?.defaultRateId))?.id??availableRates[0]?.id??null);
   choice={rateId,slotId:slot?.id||null};
   state.visualChoiceByTour.set(tour.id,choice);
   return choice;
+}
+
+function mergeRateLists(...lists){
+  const seen=new Set();
+  return lists.flatMap(arr).filter(item=>{
+    const key=[item?.id,item?.title,item?.description,item?.code].map(value=>String(value??'')).join('|');
+    if(seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function rateForSlot(tour,slot,rateId){
+  const base=arr(tour.rates).find(rate=>String(rate?.id)===String(rateId))||{};
+  const live=arr(slot?.rates).find(rate=>String(rate?.id)===String(rateId))||{};
+  const livePhotos=[
+    ...photoUrlsFromMedia(live?.media),
+    ...providerPhotoUrls(live?.providerData||{}),
+  ];
+  return {
+    ...base,
+    ...live,
+    id:live?.id??base?.id??rateId,
+    title:plainText(live?.title)||plainText(base?.title),
+    description:plainText(live?.description)||plainText(base?.description),
+    details:mergeRateLists(base?.details,live?.details),
+    textItems:mergeRateLists(base?.textItems,live?.textItems),
+    optionPhotos:[...new Set([...arr(base?.optionPhotos),...livePhotos])],
+  };
+}
+
+function ratesForSlot(tour,slot){
+  if(!slot) return [];
+  const ids=[
+    ...arr(slot?.rates).map(rate=>rate?.id),
+    ...arr(tour.rates).filter(rate=>rateAvailable(slot,rate?.id)).map(rate=>rate?.id),
+  ].filter(id=>id!==null&&id!==undefined&&id!=='');
+  return [...new Set(ids.map(String))].map(rateId=>rateForSlot(tour,slot,rateId));
 }
 
 function rateDescription(rate){
@@ -500,7 +538,7 @@ function optionsMarkup(tour){
   const choice=visualChoice(tour);
   const slot=selectedSlotForTour(tour);
   if(!slot) return '';
-  const rates=arr(tour.rates).filter(rate=>rateAvailable(slot,rate.id));
+  const rates=ratesForSlot(tour,slot);
   if(!rates.length) return '';
   return '<section class="selection-section selection-section--rates"><div class="selection-head"><div><span>'+esc(t().options)+'</span><p>'+esc(t().optionsHint)+'</p></div></div>'
     +'<div class="rate-options">'+rates.map((rate,index)=>{
