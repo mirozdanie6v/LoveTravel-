@@ -10,6 +10,7 @@ import {
   participantPriceLines as modelParticipantPriceLines,
   cancellationLines as modelCancellationLines,
   pickupLines as modelPickupLines,
+  customerInfoSections as modelCustomerInfoSections,
 } from './client-v2-model.js';
 
 const app=document.querySelector('#app');
@@ -311,7 +312,7 @@ function brand(){
 
 function languageSwitcher(){
   const labels={ru:'RU',vi:'VI',en:'EN',zh:'中文',ko:'KO'};
-  return '<div class="language-control">'
+  return '<div class="language-control" data-testid="language-control">'
     +'<button type="button" class="language-trigger" data-language-trigger aria-expanded="'+String(state.languageOpen)+'"><span>文</span>'+labels[state.locale]+' <b>⌄</b></button>'
     +(state.languageOpen?'<div class="language-menu" role="menu" aria-label="'+esc(t().language)+'">'
       +SUPPORTED_LOCALES.map(locale=>'<button type="button" class="'+(locale===state.locale?'is-active':'')+'" data-locale="'+locale+'">'+labels[locale]+'</button>').join('')
@@ -385,7 +386,7 @@ function catalogView(){
 function assistantView(){
   const quick=['Robinson Beach','Hòn Mun',t().chooseTour];
   return '<main class="page app-section-page">'+topbar()
-    +'<section class="assistant-shell"><div class="assistant-orb">✦</div><span class="app-eyebrow">LOVE TRAVEL AI</span><h1>'+esc(t().aiTitle)+'</h1><p>'+esc(t().aiLead)+'</p>'
+    +'<section class="assistant-shell" data-testid="ai-assistant-shell"><div class="assistant-orb">✦</div><span class="app-eyebrow">LOVE TRAVEL AI</span><h1>'+esc(t().aiTitle)+'</h1><p>'+esc(t().aiLead)+'</p>'
     +'<div class="assistant-chat"><div class="assistant-message">'+esc(t().aiHello)+'</div>'
     +'<div class="assistant-quick">'+quick.map(x=>'<button type="button" data-ai-preview>'+esc(x)+'</button>').join('')+'</div></div>'
     +'<div class="assistant-input"><input type="text" placeholder="'+esc(t().aiPlaceholder)+'" data-ai-input><button type="button" data-ai-preview>↑</button></div>'
@@ -468,7 +469,7 @@ function optionsMarkup(tour){
   if(!slot) return '';
   const rates=ratesForSlot(tour,slot);
   if(!rates.length) return '';
-  return '<section class="selection-section selection-section--rates"><div class="selection-head"><div><span>'+esc(t().options)+'</span><p>'+esc(t().optionsHint)+'</p></div></div>'
+  return '<section class="selection-section selection-section--rates" data-testid="tour-options" aria-labelledby="tour-options-title"><div class="selection-head"><div><span id="tour-options-title">'+esc(t().options)+'</span><p>'+esc(t().optionsHint)+'</p></div></div>'
     +'<div class="rate-options">'+rates.map((rate,index)=>{
       const active=String(rate.id)===String(choice.rateId);
       const price=money(priceFor(tour,slot,rate.id));
@@ -489,7 +490,7 @@ function datesMarkup(tour){
   const choice=visualChoice(tour);
   const slots=arr(tour.availabilitySlots).slice(0,14);
   if(!slots.length) return '';
-  return '<section class="selection-section selection-section--dates"><div class="selection-head"><div><span>'+esc(t().dates)+'</span><p>'+esc(t().datesHint)+'</p></div></div>'
+  return '<section class="selection-section selection-section--dates" data-testid="departure-calendar" aria-labelledby="departure-calendar-title"><div class="selection-head"><div><span id="departure-calendar-title">'+esc(t().dates)+'</span><p>'+esc(t().datesHint)+'</p></div></div>'
     +'<div class="departure-calendar">'+slots.map(slot=>{
       const active=String(slot.id)===String(choice.slotId);
       const unavailable=Boolean(slot.soldOut||slot.unavailable||(!slot.unlimitedAvailability&&Number(slot.availabilityCount)<=0));
@@ -506,10 +507,14 @@ function datesMarkup(tour){
     }).join('')+'</div></section>';
 }
 
-function infoBlock(label,items){
-  const list=arr(items).filter(Boolean);
+function infoBlock(section){
+  const list=arr(section?.items).filter(Boolean);
   if(!list.length) return '';
-  return '<div class="info-block"><h3>'+esc(label)+'</h3><ul>'+list.map(item=>'<li>'+esc(item)+'</li>').join('')+'</ul></div>';
+  const id=String(section?.id||'info').replace(/[^a-z0-9-]/gi,'-').toLowerCase();
+  const headingId='tour-'+id+'-title';
+  return '<section class="info-block" data-testid="tour-'+esc(id)+'" aria-labelledby="'+esc(headingId)+'">'
+    +'<h3 id="'+esc(headingId)+'">'+esc(section?.title||'')+'</h3>'
+    +'<ul>'+list.map(item=>'<li>'+esc(item)+'</li>').join('')+'</ul></section>';
 }
 
 function cancellationRulePercent(rule){
@@ -535,40 +540,32 @@ function overviewPanel(tour){
     ...(tour.languages.length?[[t().languagesLabel,tour.languages.join(', ')]]:[]),
     ...(tour.minAge!==null?[[t().minAgeLabel,String(tour.minAge)+'+']]:[]),
   ];
-  const important=[
-    infoBlock(t().requirementsLabel,tour.requirements),
-    infoBlock(t().attentionLabel,tour.attention),
-    infoBlock(t().knowBefore,tour.knowBefore),
-    infoBlock(t().knowBefore,tour.dressCode),
-    infoBlock(t().accessibilityLabel,tour.accessibility),
-    infoBlock(t().ticketLabel,tour.ticketMessage?[tour.ticketMessage]:[]),
-    infoBlock(t().pickupLabel,pickupLines(tour)),
-    infoBlock(t().cancellationLabel,cancellationLines(tour.cancellationPolicy)),
-  ].filter(Boolean).join('');
-  return '<div class="tab-panel tab-panel--overview">'
-    +'<article class="content-card content-card--intro"><span class="content-kicker">'+esc(t().about)+'</span><h2>'+esc(tourThemeLabel(tour))+'</h2><p>'+esc(tour.description||'')+'</p></article>'
-    +'<div class="fact-grid">'+facts.map(([label,value])=>'<div class="fact-card"><small>'+esc(label)+'</small><b>'+esc(value)+'</b></div>').join('')+'</div>'
-    +(important?'<article class="content-card"><span class="content-kicker">'+esc(t().important)+'</span><div class="info-grid">'+important+'</div></article>':'')
+  const sections=modelCustomerInfoSections(tour,{locale:state.locale,labels:t()});
+  const important=sections.map(infoBlock).filter(Boolean).join('');
+  return '<div class="tab-panel tab-panel--overview" data-testid="tour-overview">'
+    +'<article class="content-card content-card--intro" data-testid="tour-about"><span class="content-kicker">'+esc(t().about)+'</span><h2>'+esc(tourThemeLabel(tour))+'</h2><p>'+esc(tour.description||'')+'</p></article>'
+    +'<dl class="fact-grid" data-testid="tour-facts">'+facts.map(([label,value])=>'<div class="fact-card"><dt>'+esc(label)+'</dt><dd>'+esc(value)+'</dd></div>').join('')+'</dl>'
+    +(important?'<article class="content-card" data-testid="tour-important"><span class="content-kicker">'+esc(t().important)+'</span><div class="info-grid">'+important+'</div></article>':'')
     +'</div>';
 }
 
 function itineraryPanel(tour){
   const itinerary=(tour.itinerary.length?tour.itinerary:[{title:t().dayProgram,body:''}])
     .slice(0,10).map((stop,index)=>'<div class="timeline-stop"><span class="timeline-index">'+(index+1)+'</span><div><h3>'+esc(stop.title)+'</h3><p>'+esc(stop.body)+'</p></div></div>').join('');
-  return '<article class="content-card"><span class="content-kicker">'+esc(t().route)+'</span><h2>'+esc(t().dayProgram)+'</h2><div class="timeline">'+itinerary+'</div></article>';
+  return '<article class="content-card" data-testid="tour-program"><span class="content-kicker">'+esc(t().route)+'</span><h2>'+esc(t().dayProgram)+'</h2><div class="timeline">'+itinerary+'</div></article>';
 }
 
 function includedPanel(tour){
   const included=(tour.included.length?tour.included:['—']).slice(0,20).map(item=>'<li>'+esc(item)+'</li>').join('');
   const excluded=tour.excluded.slice(0,20).map(item=>'<li>'+esc(item)+'</li>').join('');
-  return '<div class="tab-panel"><article class="content-card"><span class="content-kicker">'+esc(t().inPrice)+'</span><h2>'+esc(t().includedTitle)+'</h2><ul class="included-list">'+included+'</ul></article>'
+  return '<div class="tab-panel" data-testid="tour-included"><article class="content-card"><span class="content-kicker">'+esc(t().inPrice)+'</span><h2>'+esc(t().includedTitle)+'</h2><ul class="included-list">'+included+'</ul></article>'
     +(excluded?'<article class="content-card content-card--excluded"><span class="content-kicker">'+esc(t().notIncluded)+'</span><h2>'+esc(t().notIncluded)+'</h2><ul class="excluded-list">'+excluded+'</ul></article>':'')
     +'</div>';
 }
 
 function photosPanel(tour){
   if(!tour.photos.length) return '<article class="content-card"><p class="empty-copy">—</p></article>';
-  return '<article class="content-card"><span class="content-kicker">'+esc(t().photosTab)+'</span><h2>'+esc(t().photosTab)+'</h2><div class="photo-grid">'
+  return '<article class="content-card" data-testid="tour-photos"><span class="content-kicker">'+esc(t().photosTab)+'</span><h2>'+esc(t().photosTab)+'</h2><div class="photo-grid">'
     +tour.photos.map((photo,index)=>'<button class="photo-thumb" type="button" data-photo-index="'+index+'">'+media(photo,tour.title)+'</button>').join('')
     +'</div></article>';
 }
@@ -649,7 +646,7 @@ function bottomNav(){
     ['assistant','✦',t().navAi],
   ];
   const active=state.selectedTourId?'catalog':state.appTab;
-  return '<nav class="bottom-nav" aria-label="Mini app navigation">'+tabs.map(([id,icon,label])=>'<button type="button" class="bottom-nav__item '+(active===id?'is-active':'')+'" data-app-tab="'+id+'"><span>'+icon+'</span><b>'+esc(label)+'</b></button>').join('')+'</nav>';
+  return '<nav class="bottom-nav" data-testid="bottom-nav" aria-label="Mini app navigation">'+tabs.map(([id,icon,label])=>'<button type="button" class="bottom-nav__item '+(active===id?'is-active':'')+'" data-app-tab="'+id+'"><span>'+icon+'</span><b>'+esc(label)+'</b></button>').join('')+'</nav>';
 }
 
 function showStageNotice(message){
