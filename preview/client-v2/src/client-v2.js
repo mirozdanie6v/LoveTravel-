@@ -34,7 +34,7 @@ const state={
 };
 
 const PRODUCT_IDS=new Set(['1287578','1287580']);
-const OFFICIAL_LOGO='https://bizweb.dktcdn.net/100/416/263/themes/809458/assets/logo.png?1787117096236';
+const OFFICIAL_LOGO='/brand-logo';
 
 const COPY={
   ru:{
