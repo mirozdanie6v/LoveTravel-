@@ -291,8 +291,6 @@
   function renderDomain(domain,{preserveScroll=false}={}){
     const screen=document.querySelector('#tourScreen');
     if(!screen) return;
-    // Fail open: domain controls stay interactive until BookingConfigurator has mounted successfully.
-    screen.classList.remove('lt-booking-ui');
     const state=selectedState(domain);
     const rate=selectedRate(domain,state);
     const slot=selectedSlot(domain,state);
@@ -481,14 +479,12 @@
   function loading(){
     const screen=document.querySelector('#tourScreen');
     if(!screen) return;
-    screen.classList.remove('lt-booking-ui');
     screen.classList.add('lt-domain-tour');
     screen.innerHTML='<div class="lt-domain-loading"><span class="lt-domain-spinner"></span><b>'+esc(t().loading)+'</b></div>';
   }
   function errorView(id){
     const screen=document.querySelector('#tourScreen');
     if(!screen) return;
-    screen.classList.remove('lt-booking-ui');
     screen.classList.add('lt-domain-tour');
     screen.innerHTML='<div class="lt-domain-loading"><b>'+esc(t().loadError)+'</b><button type="button" data-lt-domain-retry>'+esc(t().retry)+'</button></div>';
     screen.querySelector('[data-lt-domain-retry]')?.addEventListener('click',()=>renderProduct(id,true));
@@ -511,31 +507,15 @@
       return false;
     }
   }
-  function activateDomainTourScreen(){
-    try{
-      if(typeof state!=='undefined' && state) state.screen='tour';
-    }catch(_){}
-    document.querySelectorAll('.screen').forEach(node=>node.classList.remove('active'));
-    const screen=document.getElementById('tourScreen');
-    if(screen) screen.classList.add('active');
-    try{
-      if(typeof setNavActive==='function') setNavActive('tour');
-    }catch(_){}
-    const content=document.getElementById('content');
-    if(content) content.scrollTop=0;
-  }
   function installOpenTour(){
     if(typeof globalThis.openTour!=='function') return false;
     if(globalThis.openTour.__loveTravelDomain) return true;
     const previous=globalThis.openTour;
     const wrapped=function(id,...args){
+      const result=previous.call(this,id,...args);
       const productId=String(id ?? '');
-      if(PRODUCT_IDS.has(productId)){
-        activateDomainTourScreen();
-        void renderProduct(productId);
-        return;
-      }
-      return previous.call(this,id,...args);
+      if(PRODUCT_IDS.has(productId)) queueMicrotask(()=>renderProduct(productId));
+      return result;
     };
     wrapped.__loveTravelDomain=true;
     wrapped.__previous=previous;
