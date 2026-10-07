@@ -10,8 +10,6 @@ import {
   withSalesSession,
 } from './travel-session.js';
 
-const DEMO_INVITE_SHA256_FALLBACK='42cad24054916ff2040742df44c06a31421534cf640b784371f8d05e46635489';
-
 const json=(data,status=200,headers={})=>new Response(JSON.stringify(data),{
   status,
   headers:{
@@ -51,7 +49,7 @@ function view(transaction,resolution=null){
 async function demoInviteAllowed(body,env){
   const token=String(body?.demoToken||'').trim();
   if(!token) return false;
-  const expected=String(env?.LOVE_TRAVEL_CLIENT_DEMO_INVITE_SHA256||env?.LOVE_TRAVEL_CLIENT_DEMO_TOKEN_SHA256||DEMO_INVITE_SHA256_FALLBACK).trim();
+  const expected=String(env?.LOVE_TRAVEL_CLIENT_DEMO_INVITE_SHA256||'').trim();
   return Boolean(expected)&&await sha256Hex(token)===expected;
 }
 
