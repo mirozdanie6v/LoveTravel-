@@ -311,9 +311,9 @@ async function fetchRawProductPair({
   lang,
   includePickupPlaces = false,
   requestTimeoutMs = DEFAULT_PROVIDER_READ_TIMEOUT_MS,
-  productCacheTtl = 300,
-  availabilityCacheTtl = 15,
-  pickupPlacesCacheTtl = 300,
+  productCacheTtl = 0,
+  availabilityCacheTtl = 0,
+  pickupPlacesCacheTtl = 0,
 }) {
   const productUrl = buildUrl(baseUrl, '/api/bokun/product', { vendorId, productId, lang });
   const availabilityUrl = buildUrl(baseUrl, '/api/bokun/availability', {
