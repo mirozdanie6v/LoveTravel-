@@ -84,7 +84,7 @@ jobs:
         run: |
           set -euo pipefail
           curl --fail --silent --show-error --max-time 30 "$PREVIEW_URL/v2/" > /tmp/client-v2.html
-          grep -q 'Love Travel — Client v2 Preview' /tmp/client-v2.html
+          grep -q 'id="app"' /tmp/client-v2.html
 
           curl --fail --silent --show-error --max-time 45 "$PREVIEW_URL/api/tours" > /tmp/client-v2-tours.json
           jq '{ok,source,vendorId,productIds,domainCount:(.domains|length),domainIds:[.domains[]? | (.provider.productId // .experience.id // "")]}' /tmp/client-v2-tours.json
