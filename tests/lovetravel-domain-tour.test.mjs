@@ -116,7 +116,7 @@ test('tour page keeps the existing LoveTravel layout but exposes the requested p
 test('semantic i18n core loads before provider localization and domain rendering',()=>{
   const core=build.indexOf('<script src="/lovetravel-i18n.js" defer></script>');
   const provider=build.indexOf('<script src="/lovetravel-tour-locale.js" defer></script>');
-  const domain=build.indexOf('<script src="/lovetravel-domain-tour.js" defer></script>');
+  const domain=build.indexOf('<script src="/lovetravel-domain-tour.js?v=20261008-restore-f2ff47f" defer></script>');
   assert.ok(core>=0 && provider>core && domain>provider);
   assert.match(build,/copyFile\(resolve\(root, 'src\/lovetravel-i18n\.js'/);
 });
