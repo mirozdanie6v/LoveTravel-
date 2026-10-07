@@ -580,54 +580,18 @@
       closeSheet();
     }));
   }
-  function optionCardMarkup(productId,rate,selectedRateId){
-    const id=String(rate?.id||'');
-    const source=[...document.querySelectorAll('#tourScreen .lt-domain-section--options [data-lt-domain-rate]')]
-      .find(node=>String(node.dataset.ltDomainRate||'')===id);
-    const active=id===String(selectedRateId||'');
-    if(source){
-      const clone=source.cloneNode(true);
-      clone.classList.add('lt-booking-option-card');
-      clone.classList.toggle('is-active',active);
-      clone.dataset.ltRate=id;
-      clone.removeAttribute('data-lt-domain-rate');
-      clone.setAttribute('aria-pressed',active?'true':'false');
-      const check=clone.querySelector('.lt-domain-rate__check');
-      if(check) check.textContent=active?'✓':'';
-      const action=clone.querySelector('.lt-domain-rate__action');
-      if(action) action.textContent=(active?t().selected:t().select)+' →';
-      const price=clone.querySelector('.lt-domain-rate__price');
-      if(price&&rate?.fromPrice){
-        price.innerHTML='<small>'+esc(t().from)+'</small><strong>'+esc(money(rate.fromPrice.amount,rate.fromPrice.currency))+'</strong>';
-      }
-      return clone.outerHTML;
-    }
-    return '<button type="button" class="lt-domain-rate lt-booking-option-card '+(active?'is-active':'')+'" data-lt-rate="'+esc(id)+'" aria-pressed="'+(active?'true':'false')+'">'+
-      '<span class="lt-domain-rate__body">'+
-        '<span class="lt-domain-rate__top"><span class="lt-domain-rate__check">'+(active?'✓':'')+'</span><span class="lt-domain-rate__title">'+esc(localizedRateTitle(productId,rate))+'</span><span class="lt-domain-rate__price">'+(rate?.fromPrice?'<small>'+esc(t().from)+'</small><strong>'+esc(money(rate.fromPrice.amount,rate.fromPrice.currency))+'</strong>':'')+'</span></span>'+
-        (rate?.description?'<span class="lt-domain-rate__description">'+esc(providerText(rate.description))+'</span>':'')+
-        '<span class="lt-domain-rate__action">'+esc(active?t().selected:t().select)+' →</span>'+
-      '</span>'+
-    '</button>';
-  }
   function openOptionSheet(productId){
     const r=resolutionByProduct.get(productId); if(!r) return;
     const s=selection(productId);
     const rows=arr(r.constraints?.rates);
-    const body='<div class="lt-sheet-scroll lt-option-visual-scroll"><div class="lt-domain-rates lt-booking-option-grid">'+rows.map(rate=>
-      optionCardMarkup(productId,rate,s.rateId)
+    const body='<div class="lt-sheet-scroll"><div class="lt-option-list">'+rows.map(rate=>
+      '<button type="button" class="lt-option-card '+(String(rate.id)===String(s.rateId)?'is-active':'')+'" data-lt-rate="'+esc(rate.id)+'">'+
+        '<span><b>'+esc(localizedRateTitle(productId,rate,r?.product?.localization))+'</b></span>'+
+        '<span class="lt-option-card__price">'+(rate.fromPrice?'<small>'+esc(t().from)+'</small><strong>'+esc(money(rate.fromPrice.amount,rate.fromPrice.currency))+'</strong>':'')+'</span>'+
+      '</button>'
     ).join('')+'</div></div>';
     const root=showSheet(t().chooseOption,body);
     root.querySelectorAll('[data-lt-rate]').forEach(btn=>btn.addEventListener('click',async()=>{
-      root.querySelectorAll('[data-lt-rate]').forEach(node=>{
-        const active=node===btn;
-        node.classList.toggle('is-active',active);
-        node.setAttribute('aria-pressed',active?'true':'false');
-        const check=node.querySelector('.lt-domain-rate__check');
-        if(check) check.textContent=active?'✓':'';
-        const action=node.querySelector('.lt-domain-rate__action');
-        if(action) action.textContent=(active?t().selected:t().select)+' →';
-      });
       patchSelection(productId,{rateId:btn.dataset.ltRate});
       await resolve(productId,{quiet:true});
       closeSheet();
@@ -1260,10 +1224,7 @@
         }
       }
       render(productId);
-    }catch(error){
-      console.error('[LoveTravel] booking configurator bootstrap failed',error);
-      document.querySelector('#tourScreen')?.classList.remove('lt-booking-ui');
-    }
+    }catch(_){}
   }
   function detectProduct(){
     const screen=document.querySelector('#tourScreen');
