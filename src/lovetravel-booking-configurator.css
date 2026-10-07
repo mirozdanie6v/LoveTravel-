@@ -50,13 +50,11 @@ html.lt-sheet-open,html.lt-sheet-open body{overflow:hidden}
 .lt-time-chip{appearance:none;flex:0 0 auto;min-width:92px;padding:10px 12px;border:1px solid rgba(36,83,114,.10);border-radius:14px;background:#fff;color:#17384d;text-align:left;cursor:pointer}
 .lt-time-chip b{display:block;font-size:13px}.lt-time-chip small{display:block;margin-top:3px;color:#728a99;font-size:8px}
 .lt-time-chip.is-active{background:#ecf6ff;border-color:#3683e8}
-.lt-option-visual-scroll{padding-top:14px}
-.lt-booking-option-grid{grid-template-columns:1fr!important;gap:12px!important}
-.lt-booking-option-card{width:100%;margin:0;box-shadow:0 10px 26px rgba(29,72,101,.08)!important}
-.lt-booking-option-card .lt-domain-rate__media{height:148px}
-.lt-booking-option-card .lt-domain-rate__description{font-size:11px;line-height:1.45}
-.lt-booking-option-card .lt-domain-rate__action{font-size:10px}
-.lt-domain-tour.lt-booking-ui .lt-domain-section--options{display:none!important}
+.lt-option-list{display:grid;gap:8px}
+.lt-option-card{appearance:none;display:flex;align-items:center;justify-content:space-between;gap:14px;width:100%;padding:14px;border:1px solid rgba(31,79,110,.09);border-radius:17px;background:#fff;color:#17384b;text-align:left;cursor:pointer}
+.lt-option-card.is-active{border-color:#3683e8;background:#eef7ff;box-shadow:0 0 0 2px rgba(54,131,232,.07)}
+.lt-option-card b{display:block;font-size:12px}.lt-option-card small{display:block;margin-top:3px;color:#7c91a0;font-size:8px}
+.lt-option-card__price{text-align:right;flex:0 0 auto}.lt-option-card__price strong{display:block;color:#ff5a1f;font-size:18px;letter-spacing:-.03em}
 .lt-guest-list{display:grid;gap:8px}
 .lt-guest-row{display:flex;align-items:center;justify-content:space-between;gap:15px;padding:13px 14px;border-radius:17px;background:#fff;border:1px solid rgba(32,78,108,.08)}
 .lt-guest-row b{display:block;color:#17384b;font-size:12px}.lt-guest-row small{display:block;margin-top:3px;color:#78909f;font-size:9px}
@@ -119,7 +117,6 @@ html.lt-sheet-open,html.lt-sheet-open body{overflow:hidden}
   .lt-booking-sheet__panel{bottom:24px;border-radius:28px}
 }
 @media(max-width:520px){
-  .lt-booking-option-card .lt-domain-rate__media{height:132px}
   .lt-booking-config{padding:15px;border-radius:22px}
   .lt-booking-config__head{margin-bottom:12px}
   .lt-booking-config h2{font-size:20px!important}
