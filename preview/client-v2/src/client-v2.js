@@ -14,6 +14,7 @@ const state={
   languageOpen:false,
   galleryIndexByTour:new Map(),
   visualChoiceByTour:new Map(),
+  localeRequestId:0,
   error:'',
 };
 
@@ -567,7 +568,7 @@ function datesMarkup(tour){
       const unavailable=Boolean(slot.soldOut||slot.unavailable||(!slot.unlimitedAvailability&&Number(slot.availabilityCount)<=0));
       const count=Number(slot.availabilityCount);
       const availability=slot.unlimitedAvailability?t().unlimited:unavailable?t().soldOut:(Number.isFinite(count)?Math.max(0,count)+' '+t().places:t().unlimited);
-      const availableRates=arr(tour.rates).filter(rate=>rateAvailable(slot,rate.id));
+      const availableRates=ratesForSlot(tour,slot);
       const minPrice=availableRates.map(rate=>money(priceFor(tour,slot,rate.id))).find(Boolean)||'';
       return '<button type="button" class="departure-day '+(active?'is-active ':'')+(unavailable?'is-disabled':'')+'" data-preview-slot="'+esc(slot.id)+'" '+(unavailable?'disabled':'')+'>'
         +'<span class="departure-weekday">'+esc(formatDate(slot.date,true))+'</span>'
@@ -686,7 +687,7 @@ function bindSelectionInteractions(tour){
     button.addEventListener('click',()=>{
       const slotId=button.dataset.previewSlot;
       const slot=arr(tour.availabilitySlots).find(item=>String(item.id)===String(slotId));
-      const availableRates=arr(tour.rates).filter(rate=>slot&&rateAvailable(slot,rate.id));
+      const availableRates=ratesForSlot(tour,slot);
       const previous=visualChoice(tour);
       const rateId=availableRates.some(rate=>String(rate.id)===String(previous.rateId))
         ?previous.rateId
@@ -749,16 +750,21 @@ function bindInteractions(){
       const locale=button.dataset.locale;
       if(!SUPPORTED_LOCALES.includes(locale)||locale===state.locale){ state.languageOpen=false; render(); return; }
       const previousLocale=state.locale;
+      const routeAtRequest=location.hash;
+      const requestId=++state.localeRequestId;
       state.locale=locale; state.languageOpen=false; localStorage.setItem(LOCALE_STORAGE_KEY,locale);
       document.documentElement.lang=locale;
       render();
-      const ok=await loadTours({preserveRoute:true,silent:true});
+      const ok=await loadTours({preserveRoute:true,silent:true,renderOnSuccess:false});
+      if(requestId!==state.localeRequestId) return;
       if(!ok){
         state.locale=previousLocale;
         localStorage.setItem(LOCALE_STORAGE_KEY,previousLocale);
         document.documentElement.lang=previousLocale;
-        render();
+        if(location.hash===routeAtRequest) render();
+        return;
       }
+      if(location.hash===routeAtRequest) render();
     });
   });
 
@@ -812,6 +818,7 @@ function bindPhotoGrid(){
 }
 
 function render(){
+  window.__loveTravelRenderCount=(window.__loveTravelRenderCount||0)+1;
   if(state.status==='loading'){
     app.innerHTML='<main class="page">'+topbar()+'<section class="state-panel"><div class="spinner"></div><h2>Love Travel</h2><p>…</p></section></main>'+bottomNav();
     return;
@@ -841,7 +848,7 @@ function routeFromHash(){
   if(['home','catalog','assistant','trips'].includes(tab)) state.appTab=tab;
 }
 
-async function loadTours({preserveRoute=false,silent=false}={}){
+async function loadTours({preserveRoute=false,silent=false,renderOnSuccess=true}={}){
   if(!silent){
     state.status='loading';
     state.error='';
@@ -857,7 +864,7 @@ async function loadTours({preserveRoute=false,silent=false}={}){
     state.status='ready';
     state.error='';
     if(!preserveRoute) routeFromHash();
-    render();
+    if(renderOnSuccess) render();
     return true;
   }catch(error){
     if(silent) return false;
