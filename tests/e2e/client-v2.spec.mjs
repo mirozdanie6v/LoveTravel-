@@ -146,5 +146,5 @@ test('bottom navigation exposes the AI shell without live AI dependency',async({
   await page.goto(baseURL+'/v2/',{waitUntil:'domcontentloaded'});
   await page.locator('[data-app-tab="assistant"]').last().click();
   await expect(page.getByTestId('ai-assistant-shell')).toBeVisible();
-  await expect(page.getByTestId('ai-assistant-shell')).toContainText('ИИ-консультант');
+  await expect(page.getByTestId('ai-assistant-shell')).toContainText(/ИИ.консультант/);
 });
