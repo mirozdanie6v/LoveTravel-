@@ -41,7 +41,6 @@ const ADMIN_SHARED_ASSETS = new Set([
 const ADMIN_TOURIST_ROLE_PATTERN = /\s*<a href="\/" aria-label="Открыть кабинет туриста"><span class="role-long">Турист<\/span><span class="role-short">Турист<\/span><\/a>/i;
 const AVAILABILITY_INTENT = /(?:есть|мест[ао]?|свобод|наличи|заброни)/i;
 const ORIGIN_CUE = /(?:^|\s)(?:я|мы|сейчас|нахожусь|находимся|живу|живем|живём|из|выезд(?:\s+из)?|старт(?:\s+из)?)(?:\s|$|[^а-яё])/i;
-const LOVE_TRAVEL_CLIENT_DEMO_TOKEN_SHA256 = '42cad24054916ff2040742df44c06a31421534cf640b784371f8d05e46635489';
 async function requestedLocale(request, url) {
   if (url.pathname !== '/api/ai/chat' || request.method !== 'POST') return 'ru';
   const header = String(request.headers.get('x-max-tour-locale') || '').toLowerCase();
@@ -276,109 +275,6 @@ export async function handleLoveTravelBookingSelection(request, env, url = new U
 }
 
 
-
-async function demoTokenHash(token) {
-  const bytes = new TextEncoder().encode(String(token || ''));
-  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
-  return [...digest].map(value => value.toString(16).padStart(2,'0')).join('');
-}
-
-export async function handleLoveTravelClientDemoBooking(request, env, url = new URL(request.url)) {
-  if (url.pathname !== '/api/bokun/client-demo/submit') return null;
-  if (request.method !== 'POST') {
-    return json({ok:false,error:'method_not_allowed'},{status:405,headers:{allow:'POST','cache-control':'no-store'}});
-  }
-
-  const declaredLength = Number(request.headers.get('content-length') || 0);
-  if (Number.isFinite(declaredLength) && declaredLength > 65536) {
-    return json({ok:false,error:'payload_too_large'},{status:413,headers:{'cache-control':'no-store'}});
-  }
-
-  const body = await request.clone().json().catch(() => null);
-  const demoToken = String(body?.demoToken || '').trim();
-  const tokenHash = demoToken ? await demoTokenHash(demoToken) : '';
-  if (!demoToken || tokenHash !== LOVE_TRAVEL_CLIENT_DEMO_TOKEN_SHA256) {
-    return json({ok:false,error:'demo_access_denied'},{status:403,headers:{'cache-control':'no-store'}});
-  }
-
-  const selection = body?.selection && typeof body.selection === 'object' && !Array.isArray(body.selection)
-    ? body.selection
-    : null;
-  const productId = String(selection?.productId || '').trim();
-  if (!selection || !LOVE_TRAVEL_BOKUN_PRODUCT_IDS.includes(productId)) {
-    return json({ok:false,error:'unsupported_product'},{status:400,headers:{'cache-control':'no-store'}});
-  }
-  const date = String(selection?.date || '').trim();
-  if (!validIsoDate(date)) {
-    return json({ok:false,error:'invalid_date'},{status:400,headers:{'cache-control':'no-store'}});
-  }
-
-  const locale = normalizeContentLocale(body?.locale || 'ru');
-  const includePickupPlaces =
-    String(selection?.pickup?.mode || '').toUpperCase() === 'PICKUP' ||
-    String(selection?.dropoff?.mode || '').toUpperCase() === 'DROPOFF';
-  const integrationBase = String(env.BOKUN_INTEGRATION_BASE_URL || 'https://integration.viiversion.com').replace(/\/+$/,'');
-  const externalBookingReference = 'LT-TEST-CLIENT-' + crypto.randomUUID().replace(/-/g,'').slice(0,16).toUpperCase();
-
-  try {
-    const provider = createBokunProvider({
-      fetchImpl:fetch,
-      baseUrl:integrationBase,
-      vendorId:LOVE_TRAVEL_BOKUN_VENDOR_ID,
-      productIds:LOVE_TRAVEL_BOKUN_PRODUCT_IDS,
-    });
-    const { resolution } = await provider.resolveOffer({
-      selection,
-      start:date,
-      end:date,
-      currency:'USD',
-      lang:bokunLanguage(locale),
-      includePickupPlaces,
-    });
-    if (!resolution.readyToBook) {
-      return json({
-        ok:false,
-        error:'selection_not_ready',
-        errors:resolution.errors,
-        bookingDataIssues:resolution.bookingDataIssues,
-        warnings:resolution.warnings,
-      },{status:409,headers:{'cache-control':'no-store'}});
-    }
-
-    const contract = await provider.getCheckoutContract({
-      resolution,
-      externalBookingReference,
-      currency:'USD',
-    });
-    const draft = provider.createBookingDraft({
-      resolution,
-      checkoutContract:contract,
-      externalBookingReference,
-    });
-    if (!draft.readyForReserve) {
-      return json({ok:false,error:'checkout_not_ready',issues:draft.issues},{status:409,headers:{'cache-control':'no-store'}});
-    }
-
-    const submitted = await provider.submitClientDemoBooking({
-      checkoutRequestTemplate:draft.checkoutRequestTemplate,
-      demoToken,
-      currency:'USD',
-    });
-
-    return json({
-      ok:true,
-      mode:'LOVE_TRAVEL_CLIENT_DEMO',
-      confirmationCode:submitted.confirmationCode,
-      status:submitted.status || 'CONFIRMED',
-      paymentType:submitted.paymentType || 'NOT_PAID',
-      totalPaid:Number(submitted.totalPaid || 0),
-      externalBookingReference:submitted.externalBookingReference || externalBookingReference,
-    },{headers:{'cache-control':'no-store','x-content-type-options':'nosniff'}});
-  } catch (error) {
-    console.error('LoveTravel client demo booking failed', error?.message || error);
-    return json({ok:false,error:'demo_booking_unavailable'},{status:502,headers:{'cache-control':'no-store'}});
-  }
-}
 
 function normalizeRussian(value) {
   return String(value || '').trim().toLocaleLowerCase('ru-RU').replace(/ё/g, 'е');
@@ -624,8 +520,6 @@ export default {
     }
     const transactionResponse = await handleTravelTransactionApi(request, env, url);
     if (transactionResponse) return transactionResponse;
-        const demoBookingResponse = await handleLoveTravelClientDemoBooking(request, env, url);
-    if (demoBookingResponse) return demoBookingResponse;
     const bookingSelectionResponse = await handleLoveTravelBookingSelection(request, env, url, ctx);
     if (bookingSelectionResponse) return bookingSelectionResponse;
     const bokunToursResponse = await handleLoveTravelBokunTours(request, env, url, ctx);
