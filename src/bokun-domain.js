@@ -403,7 +403,7 @@ const MAPPED_PRODUCT_FIELDS = new Set([
   'id','actualId','externalId','title','description','excerpt','slug','published','lastModified','lastPublished',
   'activityType','productCategory','categories','activityCategories','activityAttributes','keywords','tagGroups',
   'duration','durationText','durationType','durationDays','durationHours','durationMinutes','durationWeeks',
-  'difficultyLevel','minAge','baseLanguage','languages','guidanceTypes','timeZone',
+  'difficultyLevel','minAge','baseLanguage','languages','guidanceTypes','timeZone','locationCode',
   'keyPhoto','photos','videos',
   'included','inclusions','excluded','exclusions','requirements','attention','dressCode','knowBeforeYouGoItems',
   'agendaItems','route',
@@ -433,14 +433,25 @@ const MAPPED_PRODUCT_FIELDS = new Set([
   'showGlobalPickupMsg','showNoPickupMsg','noPickupMsg','useComponentPickupAllotments',
 ]);
 
+const INTENTIONALLY_IGNORED_PRODUCT_FIELDS = new Set([
+  // Provider/audit metadata that is preserved in providerRaw/providerExtensions but
+  // is not part of the customer or booking contract.
+  'creationDate',
+  'marketplaceVisibilityType',
+]);
+
 function coverage(rawProduct, rawAvailability) {
   const productKeys = Object.keys(rawProduct || {}).sort();
   const availabilityKeys = [...new Set(asArray(rawAvailability).flatMap(item => Object.keys(item || {})))].sort();
-  const unmappedProductKeys = productKeys.filter(key => !MAPPED_PRODUCT_FIELDS.has(key));
+  const intentionallyIgnoredTopLevelFields = productKeys.filter(key => INTENTIONALLY_IGNORED_PRODUCT_FIELDS.has(key));
+  const unmappedProductKeys = productKeys.filter(
+    key => !MAPPED_PRODUCT_FIELDS.has(key) && !INTENTIONALLY_IGNORED_PRODUCT_FIELDS.has(key)
+  );
   return {
     product:{
       totalTopLevelFields:productKeys.length,
       mappedTopLevelFields:productKeys.filter(key => MAPPED_PRODUCT_FIELDS.has(key)),
+      intentionallyIgnoredTopLevelFields,
       unmappedTopLevelFields:unmappedProductKeys,
       nonEmptyUnmappedTopLevelFields:unmappedProductKeys.filter(key => nonEmpty(rawProduct?.[key])),
     },
