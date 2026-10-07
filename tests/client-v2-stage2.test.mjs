@@ -90,6 +90,11 @@ test('Stage 2B is a mini-app shell, not a landing page',()=>{
   assert.match(client,/bindSelectionInteractions/);
   assert.match(client,/function rateForSlot/);
   assert.match(client,/function ratesForSlot/);
+  assert.match(client,/data-date-picker-trigger/);
+  assert.match(client,/datePickerOpenByTour/);
+  assert.match(client,/tourPhotoFallback:'Фото экскурсии'/);
+  assert.match(client,/class="rate-card/);
+  assert.match(client,/aria-expanded/);
   assert.match(client,/mergeRateLists\(base\?\.textItems,live\?\.textItems\)/);
   assert.match(client,/__loveTravelRenderCount/);
   assert.match(client,/renderOnSuccess:false/);
