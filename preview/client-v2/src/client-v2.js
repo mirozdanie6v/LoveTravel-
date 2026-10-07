@@ -41,7 +41,7 @@ const COPY={
     catalogTitle:'Все экскурсии',catalogLead:'Две актуальные программы Love Travel в Нячанге.',
     aiTitle:'ИИ‑консультант',aiLead:'Поможет сравнить экскурсии, подобрать вариант и затем перейти к бронированию.',
     aiHello:'Расскажите, какой отдых вам нужен — море, острова, спокойный день или активная программа.',
-    aiPlaceholder:'Напишите сообщение…',aiSoon:'AI будет подключён на следующем функциональном слое.',
+    aiPlaceholder:'Напишите сообщение…',aiSoon:'AI будет подключён на следующем функциональном слое.',bookingSoon:'Оформление бронирования подключается следующим слоем.',
     tripsTitle:'Мои поездки',tripsLead:'Здесь будут отображаться созданные и подтверждённые бронирования.',
     tripsEmpty:'Пока поездок нет',tripsEmptySub:'После подключения бронирования ваши поездки появятся здесь.',
     language:'Язык',tour:'Экскурсия',dayTour:'Экскурсия на день',activity:'Активность',
@@ -67,7 +67,7 @@ const COPY={
     catalogTitle:'Tất cả tour',catalogLead:'Hai chương trình Love Travel đang hoạt động tại Nha Trang.',
     aiTitle:'Trợ lý AI',aiLead:'Giúp so sánh tour, chọn phương án và sau đó chuyển sang đặt tour.',
     aiHello:'Hãy cho tôi biết bạn muốn biển, đảo, thư giãn hay một ngày năng động.',
-    aiPlaceholder:'Nhập tin nhắn…',aiSoon:'AI sẽ được kết nối ở lớp chức năng tiếp theo.',
+    aiPlaceholder:'Nhập tin nhắn…',aiSoon:'AI sẽ được kết nối ở lớp chức năng tiếp theo.',bookingSoon:'Bước đặt tour sẽ được kết nối ở lớp chức năng tiếp theo.',
     tripsTitle:'Chuyến đi của tôi',tripsLead:'Các booking đã tạo và xác nhận sẽ hiển thị tại đây.',
     tripsEmpty:'Chưa có chuyến đi',tripsEmptySub:'Sau khi kết nối booking, chuyến đi của bạn sẽ xuất hiện ở đây.',
     language:'Ngôn ngữ',tour:'Tour',dayTour:'Tour trong ngày',activity:'Hoạt động',
@@ -93,7 +93,7 @@ const COPY={
     catalogTitle:'All tours',catalogLead:'Two current Love Travel experiences in Nha Trang.',
     aiTitle:'AI consultant',aiLead:'Helps compare tours, choose an option and then move to booking.',
     aiHello:'Tell me what kind of day you want — sea, islands, relaxed or active.',
-    aiPlaceholder:'Type a message…',aiSoon:'AI will be connected in the next functional layer.',
+    aiPlaceholder:'Type a message…',aiSoon:'AI will be connected in the next functional layer.',bookingSoon:'Booking checkout will be connected in the next functional layer.',
     tripsTitle:'My trips',tripsLead:'Created and confirmed bookings will appear here.',
     tripsEmpty:'No trips yet',tripsEmptySub:'Your trips will appear here after booking is connected.',
     language:'Language',tour:'Tour',dayTour:'Day tour',activity:'Activity',
@@ -119,7 +119,7 @@ const COPY={
     catalogTitle:'全部行程',catalogLead:'Love Travel 在芽庄的两条实时线路。',
     aiTitle:'AI 顾问',aiLead:'帮助比较行程、选择方案，然后进入预订。',
     aiHello:'告诉我您想要海岛、轻松还是更活跃的一天。',
-    aiPlaceholder:'输入消息…',aiSoon:'AI 将在下一功能层接入。',
+    aiPlaceholder:'输入消息…',aiSoon:'AI 将在下一功能层接入。',bookingSoon:'预订流程将在下一功能层接入。',
     tripsTitle:'我的行程',tripsLead:'已创建和确认的预订将显示在这里。',
     tripsEmpty:'暂无行程',tripsEmptySub:'接入预订后，您的行程会显示在这里。',
     language:'语言',tour:'行程',dayTour:'一日游',activity:'活动',
@@ -145,7 +145,7 @@ const COPY={
     catalogTitle:'모든 투어',catalogLead:'나트랑 Love Travel의 두 가지 현재 프로그램입니다.',
     aiTitle:'AI 컨설턴트',aiLead:'투어를 비교하고 옵션을 고른 뒤 예약으로 이어집니다.',
     aiHello:'바다, 섬, 여유로운 일정 또는 활동적인 하루 중 원하는 스타일을 알려주세요.',
-    aiPlaceholder:'메시지를 입력하세요…',aiSoon:'AI는 다음 기능 단계에서 연결됩니다.',
+    aiPlaceholder:'메시지를 입력하세요…',aiSoon:'AI는 다음 기능 단계에서 연결됩니다.',bookingSoon:'예약 단계는 다음 기능 단계에서 연결됩니다.',
     tripsTitle:'내 여행',tripsLead:'생성 및 확정된 예약이 여기에 표시됩니다.',
     tripsEmpty:'아직 여행이 없습니다',tripsEmptySub:'예약 기능 연결 후 여행이 여기에 표시됩니다.',
     language:'언어',tour:'투어',dayTour:'당일 투어',activity:'액티비티',
@@ -600,7 +600,7 @@ function bindInteractions(){
     });
   }
 
-  app.querySelectorAll('[data-visual-booking]').forEach(button=>button.addEventListener('click',()=>showStageNotice(t().aiSoon.replace('AI',state.locale==='ru'?'Бронирование':'Booking'))));
+  app.querySelectorAll('[data-visual-booking]').forEach(button=>button.addEventListener('click',()=>showStageNotice(t().bookingSoon)));
   app.querySelectorAll('[data-ai-preview]').forEach(button=>button.addEventListener('click',()=>showStageNotice(t().aiSoon)));
 
   const logo=app.querySelector('.brand-logo');
