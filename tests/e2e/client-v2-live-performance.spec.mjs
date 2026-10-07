@@ -65,6 +65,25 @@ test('capture live Client v2 performance baseline',async({page,request})=>{
       +'&end='+encodeURIComponent(end)
       +'&includePickupPlaces=0'
   );
+  const integrationBase='https://integration.viiversion.com';
+  const providerReads={};
+  for(const productId of ['1287578','1287580']){
+    providerReads[productId]={
+      product:await sampleRequest(
+        request,
+        integrationBase+'/api/bokun/product?vendorId=137689&productId='+productId+'&lang=RU',
+        2
+      ),
+      availability:await sampleRequest(
+        request,
+        integrationBase+'/api/bokun/availability?vendorId=137689&productId='+productId
+          +'&start='+encodeURIComponent(today)
+          +'&end='+encodeURIComponent(addIsoDays(today,14))
+          +'&currency=USD',
+        2
+      ),
+    };
+  }
   const previewHtml=await sampleRequest(request,base+'/v2/',2);
   const externalLogo=await sampleRequest(
     request,
@@ -100,6 +119,7 @@ test('capture live Client v2 performance baseline',async({page,request})=>{
     network:{
       previewApi,
       upstreamDomain,
+      providerReads,
       previewHtml,
       externalLogo,
       previewProxyOverheadMedianMs:Math.max(0,previewApi.medianMs-upstreamDomain.medianMs),
