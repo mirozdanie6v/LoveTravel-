@@ -48,7 +48,14 @@ try{
       headers:{accept:'application/json'},
     });
     const data=await response.json().catch(()=>null);
-    if(!response.ok||!data?.ok||!data?.transaction) throw new Error('transaction bootstrap failed');
+    if(!response.ok||!data?.ok||!data?.transaction){
+      throw new Error('transaction bootstrap failed: '+JSON.stringify({
+        status:response.status,
+        ok:Boolean(data?.ok),
+        error:data?.error||null,
+        message:data?.message||null,
+      }));
+    }
     return {transactionId:data.transaction.transactionId,state:data.transaction.state};
   });
   console.log(JSON.stringify({stage:'transaction-ready',...tx}));
