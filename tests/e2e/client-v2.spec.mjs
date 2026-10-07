@@ -35,6 +35,11 @@ test.beforeAll(async()=>{
         res.end(JSON.stringify(fixturePayload(locale)));
         return;
       }
+      if(url.pathname==='/brand-logo'){
+        res.writeHead(200,{'content-type':'image/svg+xml; charset=utf-8','cache-control':'public,max-age=86400'});
+        res.end(svg('LOVE TRAVEL'));
+        return;
+      }
       if(url.pathname.startsWith('/fixture/')&&url.pathname.endsWith('.svg')){
         res.writeHead(200,{'content-type':mime['.svg'],'cache-control':'public,max-age=3600'});
         res.end(svg(url.pathname.split('/').pop().replace('.svg','')));
@@ -62,14 +67,6 @@ test.beforeAll(async()=>{
 
 test.afterAll(async()=>{
   if(server) await new Promise(resolveClose=>server.close(resolveClose));
-});
-
-test.beforeEach(async({page})=>{
-  await page.route('https://bizweb.dktcdn.net/**',route=>route.fulfill({
-    status:200,
-    contentType:'image/svg+xml',
-    body:svg('LOVE TRAVEL'),
-  }));
 });
 
 test('mini-app shell and locale switching are deterministic',async({page})=>{
