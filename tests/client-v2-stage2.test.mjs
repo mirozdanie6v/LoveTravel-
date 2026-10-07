@@ -96,6 +96,30 @@ test('Stage 2B is a mini-app shell, not a landing page',()=>{
   assert.match(client,/location\.hash===routeAtRequest/);
 });
 
+
+test('Stage 2 semantic UI exposes stable locale-independent regions',()=>{
+  for(const testId of [
+    'departure-calendar',
+    'tour-options',
+    'tour-overview',
+    'tour-program',
+    'tour-included',
+    'tour-photos',
+    'tour-tabs',
+    'tour-content',
+    'bottom-nav',
+    'language-control',
+    'ai-assistant-shell',
+  ]){
+    assert.match(client,new RegExp('data-testid=["\\\']'+testId+'["\\\']'));
+  }
+  assert.match(client,/function infoBlock\(section\)/);
+  assert.match(client,/data-testid="tour-/);
+  assert.match(client,/aria-labelledby/);
+  assert.match(client,/<dl class="fact-grid"/);
+  assert.match(client,/modelCustomerInfoSections/);
+});
+
 test('Stage 2C live gate audits raw provider rates and checks readable home typography',()=>{
   assert.match(previewWorkflow,/integration\.viiversion\.com\/api\/bokun\/product/);
   assert.match(previewWorkflow,/integration\.viiversion\.com\/api\/bokun\/availability/);
