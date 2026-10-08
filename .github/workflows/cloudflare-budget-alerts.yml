@@ -21,6 +21,7 @@ jobs:
       CF_TOKEN_4: ${{ secrets.VIIVERSION_CLOUDFLARE_API_TOKEN }}
       CF_TOKEN_5: ${{ secrets.CLOUDFLARE_PROD_API_TOKEN }}
       CF_TOKEN_6: ${{ secrets.CLOUDFLARE_WORKERS_API_TOKEN }}
+      CF_NOTIFICATIONS_TOKEN: ${{ secrets.CLOUDFLARE_NOTIFICATIONS_API_TOKEN }}
     steps:
       - uses: actions/checkout@v5
 
@@ -65,7 +66,7 @@ jobs:
           account = os.environ["CLOUDFLARE_ACCOUNT_ID"]
           base = f"https://api.cloudflare.com/client/v4/accounts/{account}/alerting/v3"
           candidate_tokens = []
-          for name in ("CF_TOKEN_1", "CF_TOKEN_2", "CF_TOKEN_3", "CF_TOKEN_4", "CF_TOKEN_5", "CF_TOKEN_6"):
+          for name in ("CF_NOTIFICATIONS_TOKEN", "CF_TOKEN_1", "CF_TOKEN_2", "CF_TOKEN_3", "CF_TOKEN_4", "CF_TOKEN_5", "CF_TOKEN_6"):
               value = os.environ.get(name, "").strip()
               if value and value not in candidate_tokens:
                   candidate_tokens.append(value)
