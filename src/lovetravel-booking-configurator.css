@@ -369,11 +369,3 @@ html.lt-sheet-open,html.lt-sheet-open body{overflow:hidden}
 .lt-guest-limits{margin:0 0 14px;color:#5c7890;font-size:13px;line-height:1.45}
 
 .lt-booking-config .lt-booking-sticky{position:static;margin-inline:0}
-
-
-/* Immediate receipt of a tap; the transaction still supplies the verified result. */
-.lt-option-card.is-pending,.lt-pickup-mode.is-pending,.lt-pickup-place.is-pending,
-.lt-pickup-place.is-active{opacity:1;border-color:#ee4214;background:#fff1eb;box-shadow:0 0 0 2px rgba(238,66,20,.18)}
-.lt-choice-status{flex:0 0 auto;padding:12px 18px;border-bottom:1px solid rgba(238,66,20,.12);background:#fff4eb;color:#83340f;font-size:13px;line-height:1.45}
-.lt-choice-status.is-error{background:#fff0f0;color:#9c2727}
-.lt-choice-status .lt-sheet-secondary{display:block;margin-top:10px}

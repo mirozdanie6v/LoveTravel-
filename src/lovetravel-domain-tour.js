@@ -376,7 +376,6 @@
         (firstPhoto?'<div class="lt-domain-source-note" aria-hidden="true"></div>':'')+
       '</div>';
 
-    clearCatalogFeedback();
     wire(screen,domain);
     document.dispatchEvent(new CustomEvent('lovetravel:tour-rendered',{detail:{productId:String(domain.experience.id)}}));
     if(!preserveScroll){
@@ -504,32 +503,13 @@
     }
     return domainPromise;
   }
-  function clearCatalogFeedback(){
-    document.querySelectorAll('.lt-tour-card.is-opening').forEach(card=>{
-      card.classList.remove('is-opening');
-      card.removeAttribute('aria-busy');
-    });
-  }
-  document.addEventListener('click',event=>{
-    const card=event.target.closest?.('.lt-tour-card');
-    if(!card||event.target.closest?.('button')) return;
-    const id=String(card.getAttribute('onclick')||'').match(/openTour\(['"]?(\d+)/)?.[1];
-    if(!PRODUCT_IDS.has(id)) return;
-    clearCatalogFeedback();
-    card.classList.add('is-opening');
-    card.setAttribute('aria-busy','true');
-  },true);
-  function loading(productId){
+  function loading(){
     const screen=document.querySelector('#tourScreen');
     if(!screen) return;
     screen.classList.add('lt-domain-tour');
-    const navigationState=typeof state!=='undefined'?state:null;
-    const selected=navigationState?.selectedTour;
-    const title=String(selected?.id)===String(productId)?String(selected?.title||''):'';
-    screen.innerHTML='<div class="lt-domain-loading"><span class="lt-domain-spinner"></span><b>'+esc(t().loading)+'</b>'+(title?'<p>'+esc(title)+'</p>':'')+'</div>';
+    screen.innerHTML='<div class="lt-domain-loading"><span class="lt-domain-spinner"></span><b>'+esc(t().loading)+'</b></div>';
   }
   function errorView(id){
-    clearCatalogFeedback();
     const screen=document.querySelector('#tourScreen');
     if(!screen) return;
     screen.classList.add('lt-domain-tour');
@@ -544,7 +524,7 @@
     const revision=++renderRevision;
     currentProductId=productId;
     if(screen) delete screen.dataset.ltDomainProduct;
-    loading(productId);
+    loading();
     try{
       const list=await domains(force);
       if(currentProductId!==productId||revision!==renderRevision||!screen?.classList.contains('active')) return false;
@@ -608,13 +588,6 @@
       if(String(currentDomain?.experience?.id)!==String(productId)||domainLocale!==locale()) return null;
       const rate=arr(currentDomain.rates).find(item=>String(item.id)===String(rateId));
       return rate ? {title:localizedRateTitle(currentDomain,rate),description:textFromHtml(rateDescription(currentDomain,rate))} : null;
-    },
-    syncCancellation:(productId,rateId)=>{
-      if(String(currentDomain?.experience?.id)!==String(productId)) return;
-      const panel=document.querySelector('#tourScreen [data-lt-info-panel="cancellation"]');
-      const rate=arr(currentDomain.rates).find(item=>String(item.id)===String(rateId));
-      const policy=rate?.cancellationPolicy||currentDomain.cancellationPolicy;
-      if(panel&&policy) panel.innerHTML=cancellationSection(policy);
     },
     renderProduct,refresh:()=>currentProductId?renderProduct(currentProductId,true):Promise.resolve(false)};
 })();
