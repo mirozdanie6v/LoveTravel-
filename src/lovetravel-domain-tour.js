@@ -288,6 +288,35 @@
     if(questions.length||custom.length) inner+='<div class="lt-domain-info"><span class="lt-domain-eyebrow">'+esc(t().questions)+'</span>'+[...questions,...custom].map(x=>'<div class="lt-domain-info__row"><b>'+esc(providerText(x.title||x.code||x.id))+'</b>'+(x.required?'<span>*</span>':'')+'</div>').join('')+'</div>';
     return '<section class="lt-domain-section"><div class="lt-domain-section__head"><span class="lt-domain-eyebrow">'+esc(t().bookingInfo)+'</span></div><div class="lt-domain-grid">'+inner+'</div></section>';
   }
+  function cancellationSection(policy){
+    if(!policy) return '';
+    return '<section class="lt-domain-section"><div class="lt-domain-section__head"><span class="lt-domain-eyebrow">'+esc(t().conditions)+'</span></div><div class="lt-domain-policy"><b>'+esc(l10n()?.policyTitle?.(policy.title||'')??providerText(policy.title||''))+'</b>'+cancellationRows(policy)+'</div></section>';
+  }
+  function informationTabs(domain,included,excluded,requirements,cancellation){
+    const panels=[
+      {key:'included',title:t().included,body:listSection(t().included,included,'included')+listSection(t().excluded,excluded,'excluded')},
+      {key:'important',title:t().requirements,body:listSection(t().requirements,requirements,'requirements')+listSection(t().accessibility,domain?.experience?.accessibility,'accessibility')},
+      {key:'cancellation',title:t().conditions,body:cancellationSection(cancellation)},
+    ].filter(panel=>panel.body);
+    if(!panels.length) return '';
+    const prefix='lt-info-'+String(domain.experience.id);
+    return '<section class="lt-domain-section lt-domain-information" data-lt-information>'+
+      '<div class="lt-domain-info-tabs" style="--lt-info-count:'+panels.length+'" role="tablist" aria-label="'+esc(t().info)+'">'+panels.map((panel,index)=>
+        '<button type="button" role="tab" id="'+esc(prefix+'-'+panel.key)+'" aria-controls="'+esc(prefix+'-panel-'+panel.key)+'" aria-selected="'+(index===0?'true':'false')+'" tabindex="'+(index===0?'0':'-1')+'" class="lt-domain-info-tab '+(index===0?'is-active':'')+'" data-lt-info-tab="'+panel.key+'">'+esc(panel.title)+'</button>'
+      ).join('')+'</div>'+
+      panels.map((panel,index)=>'<div role="tabpanel" id="'+esc(prefix+'-panel-'+panel.key)+'" aria-labelledby="'+esc(prefix+'-'+panel.key)+'" tabindex="0" class="lt-domain-info-panel" data-lt-info-panel="'+panel.key+'" '+(index===0?'':'hidden')+'>'+panel.body+'</div>').join('')+
+    '</section>';
+  }
+  function activateInformationTab(screen,button){
+    const key=button.dataset.ltInfoTab;
+    screen.querySelectorAll('[data-lt-info-tab]').forEach(tab=>{
+      const active=tab===button;
+      tab.classList.toggle('is-active',active);
+      tab.setAttribute('aria-selected',String(active));
+      tab.tabIndex=active?0:-1;
+    });
+    screen.querySelectorAll('[data-lt-info-panel]').forEach(panel=>{panel.hidden=panel.dataset.ltInfoPanel!==key;});
+  }
   function renderDomain(domain,{preserveScroll=false}={}){
     const screen=document.querySelector('#tourScreen');
     if(!screen) return;
@@ -339,18 +368,15 @@
         meeting(domain,rate)+
         itinerary(domain)+
         videoSection(domain)+
+        informationTabs(domain,included,excluded,requirements,cancellation)+
         '<div class="lt-domain-content-grid">'+
-          listSection(t().included,included,'included')+
-          listSection(t().excluded,excluded,'excluded')+
-          listSection(t().requirements,requirements,'requirements')+
-          listSection(t().accessibility,domain?.experience?.accessibility,'accessibility')+
           listSection(t().offers,domain?.offers,'offers')+
           listSection(t().currencies,domain?.experience?.paymentCurrencies,'currencies')+
         '</div>'+
-        (cancellation?'<section class="lt-domain-section"><div class="lt-domain-section__head"><span class="lt-domain-eyebrow">'+esc(t().conditions)+'</span></div><div class="lt-domain-policy"><b>'+esc(l10n()?.policyTitle?.(cancellation.title||'')??providerText(cancellation.title||''))+'</b>'+cancellationRows(cancellation)+'</div></section>':'')+
         (firstPhoto?'<div class="lt-domain-source-note" aria-hidden="true"></div>':'')+
       '</div>';
 
+    clearCatalogFeedback();
     wire(screen,domain);
     document.dispatchEvent(new CustomEvent('lovetravel:tour-rendered',{detail:{productId:String(domain.experience.id)}}));
     if(!preserveScroll){
@@ -428,6 +454,21 @@
     paint();
   }
   function wire(screen,domain){
+    const infoTabs=[...screen.querySelectorAll('[data-lt-info-tab]')];
+    infoTabs.forEach((button,index)=>{
+      button.addEventListener('click',()=>activateInformationTab(screen,button));
+      button.addEventListener('keydown',event=>{
+        let next;
+        if(event.key==='ArrowRight') next=(index+1)%infoTabs.length;
+        else if(event.key==='ArrowLeft') next=(index+infoTabs.length-1)%infoTabs.length;
+        else if(event.key==='Home') next=0;
+        else if(event.key==='End') next=infoTabs.length-1;
+        else return;
+        event.preventDefault();
+        activateInformationTab(screen,infoTabs[next]);
+        infoTabs[next].focus({preventScroll:true});
+      });
+    });
     screen.querySelector('[data-lt-domain-back]')?.addEventListener('click',()=>typeof showScreen==='function'&&showScreen('catalog'));
     screen.querySelector('[data-lt-jump-booking]')?.addEventListener('click',()=>{
       if(globalThis.LoveTravelBookingConfigurator?.open){ globalThis.LoveTravelBookingConfigurator.open(); return; }
@@ -463,13 +504,32 @@
     }
     return domainPromise;
   }
-  function loading(){
+  function clearCatalogFeedback(){
+    document.querySelectorAll('.lt-tour-card.is-opening').forEach(card=>{
+      card.classList.remove('is-opening');
+      card.removeAttribute('aria-busy');
+    });
+  }
+  document.addEventListener('click',event=>{
+    const card=event.target.closest?.('.lt-tour-card');
+    if(!card||event.target.closest?.('button')) return;
+    const id=String(card.getAttribute('onclick')||'').match(/openTour\(['"]?(\d+)/)?.[1];
+    if(!PRODUCT_IDS.has(id)) return;
+    clearCatalogFeedback();
+    card.classList.add('is-opening');
+    card.setAttribute('aria-busy','true');
+  },true);
+  function loading(productId){
     const screen=document.querySelector('#tourScreen');
     if(!screen) return;
     screen.classList.add('lt-domain-tour');
-    screen.innerHTML='<div class="lt-domain-loading"><span class="lt-domain-spinner"></span><b>'+esc(t().loading)+'</b></div>';
+    const navigationState=typeof state!=='undefined'?state:null;
+    const selected=navigationState?.selectedTour;
+    const title=String(selected?.id)===String(productId)?String(selected?.title||''):'';
+    screen.innerHTML='<div class="lt-domain-loading"><span class="lt-domain-spinner"></span><b>'+esc(t().loading)+'</b>'+(title?'<p>'+esc(title)+'</p>':'')+'</div>';
   }
   function errorView(id){
+    clearCatalogFeedback();
     const screen=document.querySelector('#tourScreen');
     if(!screen) return;
     screen.classList.add('lt-domain-tour');
@@ -484,7 +544,7 @@
     const revision=++renderRevision;
     currentProductId=productId;
     if(screen) delete screen.dataset.ltDomainProduct;
-    loading();
+    loading(productId);
     try{
       const list=await domains(force);
       if(currentProductId!==productId||revision!==renderRevision||!screen?.classList.contains('active')) return false;
@@ -548,6 +608,13 @@
       if(String(currentDomain?.experience?.id)!==String(productId)||domainLocale!==locale()) return null;
       const rate=arr(currentDomain.rates).find(item=>String(item.id)===String(rateId));
       return rate ? {title:localizedRateTitle(currentDomain,rate),description:textFromHtml(rateDescription(currentDomain,rate))} : null;
+    },
+    syncCancellation:(productId,rateId)=>{
+      if(String(currentDomain?.experience?.id)!==String(productId)) return;
+      const panel=document.querySelector('#tourScreen [data-lt-info-panel="cancellation"]');
+      const rate=arr(currentDomain.rates).find(item=>String(item.id)===String(rateId));
+      const policy=rate?.cancellationPolicy||currentDomain.cancellationPolicy;
+      if(panel&&policy) panel.innerHTML=cancellationSection(policy);
     },
     renderProduct,refresh:()=>currentProductId?renderProduct(currentProductId,true):Promise.resolve(false)};
 })();

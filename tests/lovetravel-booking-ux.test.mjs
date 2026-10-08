@@ -21,7 +21,7 @@ function context(selected='ru'){
     querySelectorAll:()=>[]};
   const c={Intl,Date,console,CSS:{escape:v=>v},MutationObserver:class{},
     window:{scrollTo(){}},CustomEvent:class{},localStorage:{getItem:()=>selected,setItem(){}},
-    document:{documentElement:{lang:selected},addEventListener(){},dispatchEvent(){},
+    document:{documentElement:{lang:selected},addEventListener(){},dispatchEvent(){},querySelectorAll:()=>[],
       querySelector(sel){return {'#tourScreen':screen,'#tourScreen .lt-domain-shell':shell,'#tourScreen [data-lt-jump-booking]':quick}[sel]||null;}},
     DOMParser:class{parseFromString(text){return {body:{textContent:text.replace(/<[^>]+>/g,'')}};}},
     renderTour(){},openTour(){},setTimeout(){},};
