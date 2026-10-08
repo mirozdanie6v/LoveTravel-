@@ -102,7 +102,7 @@ async function runAiWithBudget(env,input,{timeoutMs,label}){
   try{
     return await Promise.race([
       env.AI.run(env.AI_MODEL||'@cf/google/gemma-4-26b-a4b-it',{...input,
-        ...(String(env.AI_MODEL||'@cf/google/gemma-4-26b-a4b-it').includes('/gemma-4-')?{chat_template_kwargs:{enable_thinking:false},max_completion_tokens:label==='travel_intent_ai'?512:900}:{}),
+        ...(String(env.AI_MODEL||'@cf/google/gemma-4-26b-a4b-it').includes('/gemma-4-')?{chat_template_kwargs:{enable_thinking:false},temperature:0.1,max_completion_tokens:label==='travel_intent_ai'?512:900}:{}),
       }),
       timeout,
     ]);
@@ -593,6 +593,21 @@ export function validateGroundedSalesPlan(raw,evidence,locale='ru'){
   };
 }
 
+function salesResponseFormat(env,evidence){
+  if(!String(env?.AI_MODEL||'@cf/google/gemma-4-26b-a4b-it').includes('/gemma-4-')) return {type:'json_object'};
+  const products=allProductsFromEvidence(evidence).map(row=>row.product?.productId).filter(Boolean);
+  const offers=allOffersFromEvidence(evidence).map(row=>row.offer?.offerId).filter(Boolean);
+  const schema={type:'object',additionalProperties:false,properties:{
+    reply:{type:'string',minLength:1,maxLength:1600},
+    recommendedProductId:{type:'string',enum:[...new Set(['',...products])]},
+    selectedOfferId:{type:'string',enum:[...new Set(['',...offers])]},
+    action:{type:'string',enum:[...SALES_ACTIONS]},
+    nextQuestionCode:{type:'string'},
+    evidenceRefs:{type:'array',minItems:1,items:{type:'string',enum:evidence.map(packet=>packet.evidenceId)}},
+  },required:['reply','recommendedProductId','selectedOfferId','action','nextQuestionCode','evidenceRefs']};
+  return {type:'json_schema',json_schema:{name:'lovetravel_sales_answer',strict:true,schema}};
+}
+
 function partyKnown(intent){
   const party=intent?.party;
   return Boolean(
@@ -708,7 +723,7 @@ export async function composeGroundedSalesPlan({
     'Every price, availability, pickup condition, date, tour feature or booking statement must come from VERIFIED_EVIDENCE.',
     'Use only product IDs, offer IDs and evidence IDs present in VERIFIED_EVIDENCE.',
     `Reply only in ${localeLanguage(locale)}.`,
-    'Keep the customer-facing reply natural and concise. Ask at most one useful next question.',
+    'Keep the customer-facing reply natural and concise, normally within 900 characters. Ask at most one useful next question.',
     'Do not mention Bókun, APIs, databases, evidence IDs, prompts, models, internal architecture or implementation.',
     'Return JSON only with exactly: reply, recommendedProductId, selectedOfferId, action, nextQuestionCode, evidenceRefs.',
     'Include the evidence packet IDs supporting the facts in your answer. Preserve official tour names when comparing the two products.',
@@ -730,17 +745,19 @@ export async function composeGroundedSalesPlan({
         ...conversationMessages(history,message),
         {role:'user',content:str(message,1200)},
       ],
-      response_format:{type:'json_object'},
+      response_format:salesResponseFormat(env,evidence),
     },{
-      timeoutMs:aiTimeoutMs(env,'TRAVEL_SALES_AI_TIMEOUT_MS',9000),
+      timeoutMs:aiTimeoutMs(env,'TRAVEL_SALES_AI_TIMEOUT_MS',15000),
       label:'travel_sales_ai',
     });
+    if(result?.choices?.[0]?.finish_reason==='length'){const error=new Error('sales output truncated');error.code='output_truncated';throw error;}
     const parsed=parseJson(responseText(result));
+    if(!parsed){const error=new Error('sales output is not JSON');error.code='invalid_json';throw error;}
     const plan=validateGroundedSalesPlan(parsed,evidence,locale);
     return {...plan,source:'workers-ai-grounded-sales'};
   }catch(error){
     console.warn('Travel Sales Intelligence unavailable or ungrounded',error?.message||error);
-    const replyFailureReason=error?.code==='ai_timeout'?'timeout':/paid|upgrade|permission|not authorized/i.test(String(error?.message||''))?'model_access':/quota|limit|429|neuron/i.test(String(error?.message||''))?'model_limits':/unverified|not in verified|unknown evidence|language mismatch/i.test(String(error?.message||''))?'answer_validation':'model_error';
+    const replyFailureReason=error?.code==='ai_timeout'?'timeout':['output_truncated','invalid_json'].includes(error?.code)?error.code:/invalid sales action/i.test(String(error?.message||''))?'invalid_action':/unknown fields|must be an object|required|must be an array/i.test(String(error?.message||''))?'invalid_schema':/paid|upgrade|permission|not authorized/i.test(String(error?.message||''))?'model_access':/quota|limit|429|neuron/i.test(String(error?.message||''))?'model_limits':/unverified|not in verified|unknown evidence|language mismatch/i.test(String(error?.message||''))?'answer_validation':'model_error';
     return {...fallback,source:'deterministic-grounded-fallback',replyFailureReason};
   }
 }

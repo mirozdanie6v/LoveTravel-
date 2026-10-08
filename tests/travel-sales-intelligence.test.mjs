@@ -428,3 +428,36 @@ test('consultation timeout is an explicit retryable failure rather than a date q
   assert.equal(plan.degraded,true);assert.equal(plan.replyFailureReason,'timeout');assert.equal(plan.nextQuestionCode,'RETRY');
   assert.doesNotMatch(plan.reply,/What date/);
 });
+
+
+test('Gemma answer schema restricts actions and IDs to verified evidence',async()=>{
+  const env={AI_MODEL:'@cf/google/gemma-4-26b-a4b-it',AI:{async run(_model,input){
+    assert.equal(input.temperature,0.1);
+    assert.equal(input.response_format.type,'json_schema');
+    const format=input.response_format.json_schema;
+    assert.equal(format.strict,true);
+    assert.equal(format.schema.additionalProperties,false);
+    assert.deepEqual(format.schema.properties.recommendedProductId.enum,['','love-travel-hon-mun']);
+    assert.deepEqual(format.schema.properties.selectedOfferId.enum,['']);
+    assert.deepEqual(format.schema.properties.evidenceRefs.items.enum,['cap-products']);
+    assert.ok(!format.schema.properties.action.enum.includes('DETAILS'));
+    assert.ok(format.schema.properties.reply.maxLength<=1800);
+    return {response:{reply:'The tour includes a boat.',recommendedProductId:'love-travel-hon-mun',selectedOfferId:'',action:'GENERAL',nextQuestionCode:'',evidenceRefs:['cap-products']}};
+  }}};
+  const plan=await composeGroundedSalesPlan({env,message:'What is included?',locale:'en',intent:createInitialTravelIntent('en'),evidence:[productEvidence()],goal:'DETAILS'});
+  assert.equal(plan.source,'workers-ai-grounded-sales');
+});
+
+for(const [result,reason] of [
+  [{response:'Incomplete JSON'},'invalid_json'],
+  [{choices:[{finish_reason:'length',message:{content:'partial'}}]},'output_truncated'],
+  [{response:{reply:'A boat is included.',action:'DETAILS'}},'invalid_action'],
+  [{response:{reply:'A boat is included.',action:'GENERAL',extra:'unexpected'}},'invalid_schema'],
+]){
+  test('model failure has safe specific diagnosis: '+reason,async()=>{
+    const env={AI:{run:async()=>result}};
+    const plan=await composeGroundedSalesPlan({env,message:'What is included?',locale:'en',intent:createInitialTravelIntent('en'),evidence:[productEvidence()],goal:'DETAILS'});
+    assert.equal(plan.degraded,true);assert.equal(plan.replyFailureReason,reason);
+    assert.equal(plan.nextQuestionCode,'RETRY');
+  });
+}
