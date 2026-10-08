@@ -7,13 +7,19 @@ on:
       - scripts/diagnose-live-ai-model.mjs
       - .github/workflows/ai-model-diagnostics.yml
 
+  pull_request:
+    paths:
+      - scripts/diagnose-live-ai-model.mjs
+      - .github/workflows/ai-model-diagnostics.yml
+
 permissions:
   contents: read
 
 jobs:
   model-reads:
+    if: github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == github.repository_owner)
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 7
     env:
       CF_TOKEN_1: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CF_TOKEN_2: ${{ secrets.CF_API_TOKEN }}
@@ -30,6 +36,9 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: '22'
+
+      - name: Install project dependencies
+        run: npm install --no-fund --no-audit
 
       - name: Resolve Cloudflare credential
         shell: bash
