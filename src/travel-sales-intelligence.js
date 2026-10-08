@@ -593,6 +593,19 @@ export function validateGroundedSalesPlan(raw,evidence,locale='ru'){
   };
 }
 
+function salesFailureReason(error){
+  const message=String(error?.message||'');
+  if(!error||error.code==='ai_timeout') return 'timeout';
+  if(['output_truncated','invalid_json'].includes(error.code)) return error.code;
+  if(/unverified monetary claim/i.test(message)) return 'unverified_price';
+  if(/invalid sales action/i.test(message)) return 'invalid_action';
+  if(/unknown fields|must be an object|required|must be an array/i.test(message)) return 'invalid_schema';
+  if(/paid|upgrade|permission|not authorized/i.test(message)) return 'model_access';
+  if(/quota|limit|429|neuron/i.test(message)) return 'model_limits';
+  if(/unverified|not in verified|unknown evidence|language mismatch/i.test(message)) return 'answer_validation';
+  return 'model_error';
+}
+
 function salesResponseFormat(env,evidence){
   if(!String(env?.AI_MODEL||'@cf/google/gemma-4-26b-a4b-it').includes('/gemma-4-')) return {type:'json_object'};
   const products=allProductsFromEvidence(evidence).map(row=>row.product?.productId).filter(Boolean);
@@ -733,31 +746,46 @@ export async function composeGroundedSalesPlan({
     'Do not require date or participant counts for program, inclusions, exclusions, meeting point, general pickup rules or general cancellation information.',
     'Rate-specific conditions require the relevant option; exact prices and available seats require verified offer evidence. Explain missing evidence without inventing it.',
     'If a verified offer exists, recommendation may cite only that offer price/availability.',
+    'Numeric prices in descriptions are not authoritative offers. Do not repeat prices for optional activities, rentals or extras unless they appear in VERIFIED_OFFER_PRICES. When no offers exist, describe paid extras without numeric prices.',
+    'VERIFIED_OFFER_PRICES='+JSON.stringify([...allowedMoney(evidence)]),
     'CURRENT_INTENT='+JSON.stringify(intent),
     'CUSTOMER_GOAL='+JSON.stringify(goal),
     'VERIFIED_EVIDENCE='+JSON.stringify(evidenceView),
   ].join('\n');
 
-  try{
-    const result=await runAiWithBudget(env,{
-      messages:[
-        {role:'system',content:system},
-        ...conversationMessages(history,message),
-        {role:'user',content:str(message,1200)},
-      ],
-      response_format:salesResponseFormat(env,evidence),
-    },{
-      timeoutMs:aiTimeoutMs(env,'TRAVEL_SALES_AI_TIMEOUT_MS',15000),
-      label:'travel_sales_ai',
-    });
-    if(result?.choices?.[0]?.finish_reason==='length'){const error=new Error('sales output truncated');error.code='output_truncated';throw error;}
-    const parsed=parseJson(responseText(result));
-    if(!parsed){const error=new Error('sales output is not JSON');error.code='invalid_json';throw error;}
-    const plan=validateGroundedSalesPlan(parsed,evidence,locale);
-    return {...plan,source:'workers-ai-grounded-sales'};
-  }catch(error){
-    console.warn('Travel Sales Intelligence unavailable or ungrounded',error?.message||error);
-    const replyFailureReason=error?.code==='ai_timeout'?'timeout':['output_truncated','invalid_json'].includes(error?.code)?error.code:/invalid sales action/i.test(String(error?.message||''))?'invalid_action':/unknown fields|must be an object|required|must be an array/i.test(String(error?.message||''))?'invalid_schema':/paid|upgrade|permission|not authorized/i.test(String(error?.message||''))?'model_access':/quota|limit|429|neuron/i.test(String(error?.message||''))?'model_limits':/unverified|not in verified|unknown evidence|language mismatch/i.test(String(error?.message||''))?'answer_validation':'model_error';
-    return {...fallback,source:'deterministic-grounded-fallback',replyFailureReason};
+  const baseMessages=[
+    {role:'system',content:system},
+    ...conversationMessages(history,message),
+    {role:'user',content:str(message,1200)},
+  ];
+  const deadline=Date.now()+aiTimeoutMs(env,'TRAVEL_SALES_AI_TIMEOUT_MS',15000);
+  let failure=null;
+  for(let attempt=0;attempt<2;attempt++){
+    const remaining=deadline-Date.now();
+    if(remaining<=0) break;
+    try{
+      const correction=attempt
+        ? '\nThe previous generation failed validation. Use the required JSON schema and allowed IDs. Use numeric prices only from VERIFIED_OFFER_PRICES; when the list is empty, explain paid extras without numeric prices.'
+        : '';
+      const result=await runAiWithBudget(env,{
+        messages:baseMessages.map((row,index)=>index===0?{...row,content:row.content+correction}:row),
+        response_format:salesResponseFormat(env,evidence),
+      },{
+        timeoutMs:remaining,
+        label:'travel_sales_ai',
+      });
+      if(result?.choices?.[0]?.finish_reason==='length'){const error=new Error('sales output truncated');error.code='output_truncated';throw error;}
+      const parsed=parseJson(responseText(result));
+      if(!parsed){const error=new Error('sales output is not JSON');error.code='invalid_json';throw error;}
+      const plan=validateGroundedSalesPlan(parsed,evidence,locale);
+      return {...plan,source:'workers-ai-grounded-sales'};
+    }catch(error){
+      failure=error;
+      const reason=salesFailureReason(error);
+      if(attempt===0&&['output_truncated','invalid_json','invalid_action','invalid_schema','unverified_price','answer_validation'].includes(reason)&&deadline-Date.now()>=1000) continue;
+      break;
+    }
   }
+  console.warn('Travel Sales Intelligence unavailable or ungrounded',failure?.message||'answer budget exceeded');
+  return {...fallback,source:'deterministic-grounded-fallback',replyFailureReason:salesFailureReason(failure)};
 }
