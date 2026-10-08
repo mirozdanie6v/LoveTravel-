@@ -98,18 +98,26 @@ jobs:
               return payload.get("result")
 
           available = call("GET", "/available_alerts")
-          billing_available = False
-          if isinstance(available, dict):
-              billing_available = "billing_usage_alert" in available
-          elif isinstance(available, list):
-              billing_available = any(
-                  isinstance(item, dict) and item.get("type") == "billing_usage_alert"
-                  for item in available
-              )
+          def collect_alert_types(node):
+              found = set()
+              if isinstance(node, dict):
+                  value = node.get("type")
+                  if isinstance(value, str):
+                      found.add(value)
+                  for child in node.values():
+                      found.update(collect_alert_types(child))
+              elif isinstance(node, list):
+                  for child in node:
+                      found.update(collect_alert_types(child))
+              return found
+
+          alert_types = collect_alert_types(available)
+          billing_available = "billing_usage_alert" in alert_types
+          print("AVAILABLE_BILLING_ALERT=" + ("yes" if billing_available else "no"))
+          print("BILLING_RELATED_TYPES=" + ",".join(sorted(x for x in alert_types if "billing" in x or "usage" in x)))
           if not billing_available:
               raise RuntimeError(
-                  "billing_usage_alert is not available for this Cloudflare account; "
-                  "Budget Alerts require an eligible Pay-as-you-go account."
+                  "billing_usage_alert is not available in Cloudflare available_alerts for this account/token."
               )
 
           policies = call("GET", "/policies")
