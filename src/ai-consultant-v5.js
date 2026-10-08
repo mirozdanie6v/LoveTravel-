@@ -156,6 +156,8 @@
   }
   let state = freshState();
   let pending = false;
+  let retryMessage = null;
+  const semanticText=key=>globalThis.LoveTravelI18n?.t?.(key)||key;
   try {
     const saved = JSON.parse(sessionStorage.getItem(STORAGE_KEY) || 'null');
     if (saved?.slots && Array.isArray(saved.messages)) state = { ...freshState(), ...saved, slots:{ ...freshSlots(), ...saved.slots } };
@@ -443,6 +445,7 @@
       tourId:clean(result.tourId,120),
       faqIntent:clean(result.faqIntent,120),
       source:clean(result.source,120),
+      degraded:Boolean(result.degraded),
     };
   }
 
@@ -582,15 +585,15 @@
     const t=ui();
     const messages = state.messages.map(item => `<div class="ai-msg ${item.role === 'user' ? 'user' : 'bot'}"><span class="ai-msg-author">${esc(item.role === 'user' ? t.user : t.assistant)}</span><span class="ai-msg-text">${esc(item.text)}</span></div>`).join('');
     const quick = quickReplies();
-    root.innerHTML = `<div class="section-title ai-section-head"><div><h2>${esc(t.assistant)}</h2><p class="ai-chat-subtitle">${esc(t.subtitle)}</p></div><button class="secondary ai-clear" type="button" data-ai-action="clear">${esc(t.clear)}</button></div><section class="ai-consultant-shell"><div class="ai-consultant-main ai-chat-panel"><div class="ai-messages" role="log" aria-live="polite">${messages}</div><form class="ai-consultant-input" data-ai-form="chat"><textarea name="message" rows="1" placeholder="${esc(t.placeholder)}" ${pending ? 'disabled' : ''}></textarea><button class="primary" type="submit" ${pending ? 'disabled' : ''}>→</button></form></div><div class="ai-chat-below">${quick.length ? `<div class="ai-quick-replies">${quick.map(([label,value]) => `<button type="button" data-ai-action="quick" data-value="${esc(value)}">${esc(label)}</button>`).join('')}</div>` : ''}${renderRecommendations()}</div></section>`;
+    root.innerHTML = `<div class="section-title ai-section-head"><div><h2>${esc(t.assistant)}</h2><p class="ai-chat-subtitle">${esc(t.subtitle)}</p></div><button class="secondary ai-clear" type="button" data-ai-action="clear">${esc(t.clear)}</button></div><section class="ai-consultant-shell"><div class="ai-consultant-main ai-chat-panel"><div class="ai-messages" role="log" aria-live="polite">${messages}</div><form class="ai-consultant-input" data-ai-form="chat"><textarea name="message" rows="1" placeholder="${esc(t.placeholder)}" ${pending ? 'disabled' : ''}></textarea><button class="primary" type="submit" ${pending ? 'disabled' : ''}>→</button></form></div><div class="ai-chat-below">${retryMessage ? `<button class="secondary" type="button" data-ai-action="retry">${esc(semanticText('ai.retry'))}</button>` : ''}${quick.length ? `<div class="ai-quick-replies">${quick.map(([label,value]) => `<button type="button" data-ai-action="quick" data-value="${esc(value)}">${esc(label)}</button>`).join('')}</div>` : ''}${renderRecommendations()}</div></section>`;
     const messagesBox = root.querySelector('.ai-messages'); if (options.scrollToEnd && messagesBox) messagesBox.scrollTop = messagesBox.scrollHeight;
     if (options.focus) { const textarea = root.querySelector('textarea[name="message"]'); try { textarea?.focus({preventScroll:true}); } catch (_) { textarea?.focus(); } }
     persist();
   }
 
-  async function handleText(text, root) {
+  async function handleText(text, root, {retry=false}={}) {
     if (!text || pending) return;
-    add('user', text); parseMessage(text);
+    if(!retry){add('user', text); parseMessage(text);}
     if (state.slots.dateError) {
       const today = vietnamTodayIso();
       add('bot', localeText(
@@ -603,19 +606,19 @@
       updateRecommendations(text); render(root, { scrollToEnd:true, focus:true }); return;
     }
     updateRecommendations(text);
-    if (isBookingIntent(text) && state.recommendations.length) {
-      const item = state.recommendations.find(row => row.tour.id === state.selectedTourId) || state.recommendations[0];
-      startBooking(item, root); return;
-    }
+    retryMessage = null;
     pending = true; add('bot', ui().pending); render(root, { scrollToEnd:true });
     try {
       const result = await requestAiReply(text);
       if (state.messages.at(-1)?.text === ui().pending) state.messages.pop();
       applyServerTour(result);
-      add('bot', result.reply || nextQuestion());
-    } catch (_) {
+      if(result.degraded){retryMessage=text;add('bot',semanticText('ai.unavailable'));}
+      else add('bot',result.reply);
+    } catch (error) {
+      console.warn('[LoveTravel AI] consultation request failed',error?.message||error);
       if (state.messages.at(-1)?.text === ui().pending) state.messages.pop();
-      add('bot', nextQuestion());
+      retryMessage=text;
+      add('bot',semanticText('ai.unavailable'));
     } finally { pending = false; render(root, { scrollToEnd:true, focus:true }); }
   }
 
@@ -623,7 +626,8 @@
     const button = event.target.closest('[data-ai-action]'); if (!button) return;
     const action = button.dataset.aiAction;
     if (action === 'quick') void handleText(button.dataset.value || '', root);
-    if (action === 'clear') { state = freshState(); try { sessionStorage.removeItem(STORAGE_KEY); sessionStorage.removeItem(BOOKING_INTENT_KEY); } catch (_) {} render(root); }
+    if (action === 'retry' && retryMessage) void handleText(retryMessage,root,{retry:true});
+    if (action === 'clear') { retryMessage=null; state = freshState(); try { sessionStorage.removeItem(STORAGE_KEY); sessionStorage.removeItem(BOOKING_INTENT_KEY); } catch (_) {} render(root); }
     if (action === 'open-tour') {
       const item = state.recommendations.find(row => row.tour.id === button.dataset.id); if (!item) return;
       state.selectedTourId = item.tour.id; persist();

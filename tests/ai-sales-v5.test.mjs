@@ -12,7 +12,7 @@ const worker = await import('../src/worker-profile.js?ai-sales-v5-test');
 
 test('AI consultant v5 source is syntactically valid and wired into build', () => {
   assert.doesNotThrow(() => new vm.Script(ai));
-  assert.match(build, /ai-consultant-v5\.js\?v=26/);
+  assert.match(build, /ai-consultant-v5\.js\?v=20261009-ai-dialogue-v1/);
   assert.match(build, /ai-consultant-v5\.css/);
   assert.match(build, /copyFile\(resolve\(root, 'src\/ai-consultant-v5\.js'/);
 });

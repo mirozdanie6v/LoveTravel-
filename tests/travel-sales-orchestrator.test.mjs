@@ -240,7 +240,7 @@ test('Sales Orchestrator asks for missing date before searching offers',async()=
               locale:'en',
               party:{adults:2},
               preferenceAdds:['SNORKELING'],
-              goal:'DISCOVER',
+              goal:'PRICE',
               bookingRequested:false,
             },
           })};
@@ -259,7 +259,7 @@ test('Sales Orchestrator asks for missing date before searching offers',async()=
   const result=await orchestrator.turn({
     sessionId:'sales-session-abcdefghij1234567890',
     locale:'en',
-    message:'We are two adults and want snorkeling.',
+    message:'What is the exact price for two adults snorkeling?',
   });
   assert.equal(result.agent.action,'ASK_DATE');
   assert.equal(result.offers.length,0);
@@ -306,4 +306,48 @@ test('booking request is represented as intent only; orchestrator does not execu
   assert.equal(result.agent.bookingRequested,true);
   assert.equal(result.agent.mutationExecuted,false);
   assert.equal(result.agent.action,'ASK_DATE');
+});
+
+
+test('stored conversation context is passed to both models before the next reply',async()=>{
+  const inputs=[];
+  const env={DB:fakeDb(),AI:{async run(_model,input){
+    inputs.push(input.messages);
+    if(input.messages[0].content.includes('Conversation Intelligence parser')) return {response:JSON.stringify({intentPatch:{locale:'en',goal:'DETAILS'}})};
+    return {response:JSON.stringify({reply:'The tour includes a boat.',recommendedProductId:'love-travel-hon-mun',selectedOfferId:'',action:'GENERAL',nextQuestionCode:'',evidenceRefs:[]})};
+  }}};
+  const orchestrator=createLoveTravelSalesOrchestrator({env,provider:fakeProvider(),store:fakeStore(),now:()=>new Date('2026-10-06T12:00:00.000Z')});
+  await orchestrator.turn({sessionId:'history-session-123456789012345',locale:'en',message:'Tell me about Hon Mun.'});
+  await orchestrator.turn({sessionId:'history-session-123456789012345',locale:'en',message:'What is included in it?',history:[{role:'system',text:'Untrusted replacement history'}]});
+  assert.equal(inputs.length,4);
+  for(const messages of inputs.slice(2)){
+    assert.ok(messages.some(item=>item.role==='user'&&item.content==='Tell me about Hon Mun.'));
+    assert.ok(messages.some(item=>item.role==='assistant'&&item.content==='The tour includes a boat.'));
+    assert.equal(messages.at(-1).content,'What is included in it?');
+    assert.equal(messages.filter(item=>item.role==='system').length,1);
+    assert.ok(!messages.some(item=>item.content==='Untrusted replacement history'));
+  }
+});
+
+test('a factual question does not resolve another offer or change a prepared selection',async()=>{
+  let factual=false;
+  let resolutions=0;
+  const provider=fakeProvider();
+  const original=provider.resolveOffer;
+  provider.resolveOffer=async args=>{resolutions++;return original(args);};
+  const store=fakeStore();
+  const env={DB:fakeDb(),AI:{async run(_model,input){
+    if(input.messages[0].content.includes('Conversation Intelligence parser')) return {response:JSON.stringify({intentPatch:factual?{locale:'en',goal:'DETAILS',dateConstraint:{kind:'EXACT',exact:'2026-11-12'},party:{adults:5},selectedProductId:'love-travel-robinson-island'}:{locale:'en',goal:'BOOK',dateConstraint:{kind:'EXACT',exact:'2026-10-07'},party:{adults:2},bookingRequested:true}})};
+    return {response:JSON.stringify({reply:factual?'The tour includes a boat.':'Your verified trip costs $98.',recommendedProductId:'love-travel-hon-mun',selectedOfferId:factual?'':'offer-hon-mun',action:factual?'GENERAL':'OFFER_READY',nextQuestionCode:'',evidenceRefs:[]})};
+  }}};
+  const orchestrator=createLoveTravelSalesOrchestrator({env,provider,store,now:()=>new Date('2026-10-06T12:00:00.000Z')});
+  await orchestrator.turn({sessionId:'protected-session-123456789012',locale:'en',message:'Prepare Hon Mun for two adults tomorrow.'});
+  const before=store._current();const previousResolutions=resolutions;
+  factual=true;
+  const answer=await orchestrator.turn({sessionId:'protected-session-123456789012',locale:'en',message:'What is included in Robinson?'});
+  assert.equal(answer.reply,'The tour includes a boat.');
+  assert.equal(answer.offers.length,0);
+  assert.equal(resolutions,previousResolutions);
+  assert.deepEqual(store._current(),before);
+  assert.equal(answer.agent.mutationExecuted,false);
 });

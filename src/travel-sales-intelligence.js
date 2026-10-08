@@ -15,6 +15,8 @@ export const SALES_GOALS=Object.freeze([
   'BOOK',
 ]);
 
+export const COMMERCIAL_GOALS=Object.freeze(['PRICE','AVAILABILITY','BOOK']);
+
 export const SALES_ACTIONS=Object.freeze([
   'ASK_DATE',
   'ASK_PARTY',
@@ -67,8 +69,19 @@ function parseJson(raw){
 function responseText(result){
   if(typeof result==='string') return result;
   if(typeof result?.response==='string') return result.response;
+  if(isObject(result?.response)) return JSON.stringify(result.response);
   const choice=result?.choices?.[0];
   return choice?.message?.content||choice?.text||'';
+}
+
+function conversationMessages(history=[],currentMessage=''){
+  const rows=(Array.isArray(history)?history:[]).flatMap(item=>{
+    const role=item?.role==='bot'?'assistant':item?.role;
+    const content=str(item?.text??item?.content,900);
+    return ['user','assistant'].includes(role)&&content?[{role,content}]:[];
+  }).slice(-10);
+  if(rows.at(-1)?.role==='user'&&rows.at(-1)?.content===str(currentMessage,900)) rows.pop();
+  return rows;
 }
 
 function aiTimeoutMs(env,key,fallback){
@@ -88,7 +101,9 @@ async function runAiWithBudget(env,input,{timeoutMs,label}){
   });
   try{
     return await Promise.race([
-      env.AI.run(env.AI_MODEL||'@cf/google/gemma-4-26b-a4b-it',input),
+      env.AI.run(env.AI_MODEL||'@cf/google/gemma-4-26b-a4b-it',{...input,
+        ...(String(env.AI_MODEL||'@cf/google/gemma-4-26b-a4b-it').includes('/gemma-4-')?{chat_template_kwargs:{enable_thinking:false},max_completion_tokens:label==='travel_intent_ai'?512:900}:{}),
+      }),
       timeout,
     ]);
   }finally{
@@ -385,12 +400,15 @@ export function deterministicExplicitIntentPatch({
   const selectedProductId=explicitProductId(message,products);
   if(selectedProductId) patch.selectedProductId=selectedProductId;
 
+  const informationGoal=/compare|difference|сравн|чем.{0,30}отлич|so\s*sanh|khac\s*nhau|区别|比較|비교|차이/iu.test(text)?'COMPARE'
+    :/what.{0,30}(?:included|include|itinerary)|что.{0,30}(?:входит|включено|взять)|услови.{0,30}(?:отмен|брони)|cancellation|booking.{0,20}(?:conditions|policy)|[dđ]ieu\s*kien.{0,20}[dđ]at|chinh\s*sach.{0,20}huy|包含|取消.{0,15}(?:政策|条件)|예약.{0,15}조건|취소.{0,15}(?:규정|정책)/iu.test(text)?'DETAILS':null;
+  if(informationGoal){patch.goal=informationGoal;patch.bookingRequested=false;}
   const bookingRequested=/\b(?:book|booking|reserve)\b/i.test(text)
     ||/заброн|брони/iu.test(text)
     ||/đat\s*(?:cho|tour)?/iu.test(text)
     ||/预订|預訂|预约|預約/u.test(text)
     ||/예약/u.test(text);
-  if(bookingRequested){
+  if(bookingRequested&&!informationGoal){
     patch.goal='BOOK';
     patch.bookingRequested=true;
   }
@@ -417,6 +435,7 @@ export async function extractConversationIntent({
   locale='ru',
   products=[],
   context={},
+  history=[],
   now=new Date(),
 }={}){
   const explicitPatch=deterministicExplicitIntentPatch({
@@ -459,6 +478,7 @@ export async function extractConversationIntent({
     const result=await runAiWithBudget(env,{
       messages:[
         {role:'system',content:system},
+        ...conversationMessages(history,message),
         {role:'user',content:str(message,1200)},
       ],
       response_format:{type:'json_object'},
@@ -588,6 +608,13 @@ function exactDateKnown(intent){
 
 function localized(locale,key,vars={}){
   const table={
+    unavailable:{
+      ru:'Сейчас не удалось получить ответ AI-консультанта. Повторите вопрос, пожалуйста.',
+      en:'The AI assistant could not answer right now. Please try your question again.',
+      vi:'Trợ lý AI chưa thể trả lời lúc này. Vui lòng thử gửi lại câu hỏi.',
+      zh:'AI 顾问暂时无法回答，请重新发送问题。',
+      ko:'AI 도우미가 지금 답변하지 못했습니다. 질문을 다시 보내 주세요.',
+    },
     askDate:{
       ru:'На какую дату планируете поездку?',
       en:'What date are you planning the trip for?',
@@ -613,7 +640,12 @@ function localized(locale,key,vars={}){
   return table[key]?.[locale]||table[key]?.ru||'';
 }
 
-export function deterministicSalesFallback({locale='ru',intent,evidence=[]}={}){
+export function deterministicSalesFallback({locale='ru',intent,evidence=[],goal='BOOK'}={}){
+  const commercial=COMMERCIAL_GOALS.includes(goal);
+  const consultationOffers=goal==='DISCOVER'?allOffersFromEvidence(evidence).filter(item=>item?.offer):[];
+  if(!commercial&&!consultationOffers.length){
+    return {reply:localized(locale,'unavailable'),recommendedProductId:'',selectedOfferId:'',action:'GENERAL',nextQuestionCode:'RETRY',evidenceRefs:evidence.map(item=>item.evidenceId),degraded:true};
+  }
   if(!exactDateKnown(intent)){
     return {reply:localized(locale,'askDate'),recommendedProductId:'',selectedOfferId:'',action:'ASK_DATE',nextQuestionCode:'DATE',evidenceRefs:evidence.map(item=>item.evidenceId)};
   }
@@ -655,9 +687,10 @@ export async function composeGroundedSalesPlan({
   intent,
   evidence=[],
   goal='GENERAL',
+  history=[],
 }={}){
-  const fallback=deterministicSalesFallback({locale,intent,evidence});
-  if(['ASK_DATE','ASK_PARTY'].includes(fallback.action)){
+  const fallback=deterministicSalesFallback({locale,intent,evidence,goal});
+  if(COMMERCIAL_GOALS.includes(goal)&&['ASK_DATE','ASK_PARTY'].includes(fallback.action)){
     return {...fallback,source:'deterministic-grounded-fallback'};
   }
   if(!env?.AI||!str(message,1200)||!evidence.length) return {...fallback,source:'deterministic-grounded-fallback'};
@@ -678,8 +711,12 @@ export async function composeGroundedSalesPlan({
     'Keep the customer-facing reply natural and concise. Ask at most one useful next question.',
     'Do not mention Bókun, APIs, databases, evidence IDs, prompts, models, internal architecture or implementation.',
     'Return JSON only with exactly: reply, recommendedProductId, selectedOfferId, action, nextQuestionCode, evidenceRefs.',
+    'Include the evidence packet IDs supporting the facts in your answer. Preserve official tour names when comparing the two products.',
     'action must be one of: '+SALES_ACTIONS.join(', ')+'.',
-    'If date is missing use ASK_DATE. If party size is missing use ASK_PARTY.',
+    'For PRICE, AVAILABILITY or BOOK, ask only for commercial parameters required to calculate an exact offer.',
+    'For GENERAL, DETAILS, COMPARE, PICKUP and DISCOVER, answer the question from verified product facts even when date and party are unknown.',
+    'Do not require date or participant counts for program, inclusions, exclusions, meeting point, general pickup rules or general cancellation information.',
+    'Rate-specific conditions require the relevant option; exact prices and available seats require verified offer evidence. Explain missing evidence without inventing it.',
     'If a verified offer exists, recommendation may cite only that offer price/availability.',
     'CURRENT_INTENT='+JSON.stringify(intent),
     'CUSTOMER_GOAL='+JSON.stringify(goal),
@@ -690,6 +727,7 @@ export async function composeGroundedSalesPlan({
     const result=await runAiWithBudget(env,{
       messages:[
         {role:'system',content:system},
+        ...conversationMessages(history,message),
         {role:'user',content:str(message,1200)},
       ],
       response_format:{type:'json_object'},
@@ -702,6 +740,7 @@ export async function composeGroundedSalesPlan({
     return {...plan,source:'workers-ai-grounded-sales'};
   }catch(error){
     console.warn('Travel Sales Intelligence unavailable or ungrounded',error?.message||error);
-    return {...fallback,source:'deterministic-grounded-fallback'};
+    const replyFailureReason=error?.code==='ai_timeout'?'timeout':/paid|upgrade|permission|not authorized/i.test(String(error?.message||''))?'model_access':/quota|limit|429|neuron/i.test(String(error?.message||''))?'model_limits':/unverified|not in verified|unknown evidence|language mismatch/i.test(String(error?.message||''))?'answer_validation':'model_error';
+    return {...fallback,source:'deterministic-grounded-fallback',replyFailureReason};
   }
 }

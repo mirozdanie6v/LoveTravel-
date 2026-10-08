@@ -373,3 +373,58 @@ test('deterministic fallback asks only for missing sales-critical state',()=>{
     locale:'en',intent:withDate,evidence:[productEvidence()],
   }).action,'ASK_PARTY');
 });
+
+// Consultation is available before the commercial booking parameters are known.
+const consultationReplies={ru:'В экскурсию включена лодка.',vi:'Tour bao gồm thuyền.',en:'The tour includes a boat.',zh:'行程包含乘船。',ko:'투어에는 보트가 포함됩니다.'};
+for(const locale of Object.keys(consultationReplies)){
+  for(const goal of ['GENERAL','DETAILS','COMPARE','PICKUP']){
+    test('consultation before date and party: '+locale+' '+goal,async()=>{
+      let calls=0;
+      const env={AI:{async run(_model,input){
+        calls++;
+        assert.match(input.messages[0].content,/VERIFIED_EVIDENCE=/);
+        assert.doesNotMatch(input.messages[0].content,/If date is missing use ASK_DATE\. If party size is missing use ASK_PARTY\./);
+        return {response:JSON.stringify({reply:consultationReplies[locale],recommendedProductId:'love-travel-hon-mun',selectedOfferId:'',action:goal==='COMPARE'?'COMPARE':'GENERAL',nextQuestionCode:'',evidenceRefs:['cap-products']})};
+      }}};
+      const result=await composeGroundedSalesPlan({env,message:'What does this tour include?',locale,intent:createInitialTravelIntent(locale),evidence:[productEvidence()],goal});
+      assert.equal(calls,1,'the answer model must receive a consultation question');
+      assert.equal(result.reply,consultationReplies[locale]);
+      assert.equal(result.source,'workers-ai-grounded-sales');
+      assert.equal(result.selectedOfferId,'');
+    });
+  }
+}
+
+test('consultation history reaches the answer model as bounded conversation context',async()=>{
+  let messages;
+  const env={AI:{async run(_model,input){messages=input.messages;return {response:JSON.stringify({reply:'The tour includes a boat.',recommendedProductId:'love-travel-hon-mun',selectedOfferId:'',action:'GENERAL',nextQuestionCode:'',evidenceRefs:['cap-products']})};}}};
+  await composeGroundedSalesPlan({env,message:'What is included in it?',locale:'en',intent:createInitialTravelIntent('en'),evidence:[productEvidence()],goal:'DETAILS',history:[{role:'user',text:'Tell me about Hon Mun.'},{role:'assistant',text:'Hon Mun is a snorkeling tour.'}]});
+  assert.ok(messages?.some(item=>item.role==='user'&&item.content==='Tell me about Hon Mun.'));
+  assert.ok(messages?.some(item=>item.role==='assistant'&&item.content==='Hon Mun is a snorkeling tour.'));
+  assert.equal(messages.at(-1).content,'What is included in it?');
+});
+
+test('questions about booking conditions remain consultation when intent AI is unavailable',async()=>{
+  for(const [locale,message] of [['ru','Какие условия отмены бронирования?'],['en','What are the booking conditions?'],['vi','Điều kiện đặt tour là gì?'],['zh','预订的取消政策是什么？'],['ko','예약 취소 규정은 무엇인가요?']]){
+    const result=await extractConversationIntent({env:{},message,locale,currentIntent:createInitialTravelIntent(locale),products:productEvidence().data});
+    assert.equal(result.goal,'DETAILS',locale);
+    assert.equal(result.bookingRequested,false,locale);
+  }
+});
+
+
+test('Gemma requests bound generation and parse structured object replies',async()=>{
+  const requests=[];
+  const env={AI_MODEL:'@cf/google/gemma-4-26b-a4b-it',AI:{async run(_model,input){requests.push(input);return {response:input.messages[0].content.includes('Conversation Intelligence parser')?{intentPatch:{locale:'en',goal:'DETAILS'}}:{reply:'The tour includes a boat.',recommendedProductId:'love-travel-hon-mun',selectedOfferId:'',action:'GENERAL',nextQuestionCode:'',evidenceRefs:['cap-products']}};}}};
+  const intent=createInitialTravelIntent('en');
+  const parsed=await extractConversationIntent({env,message:'What is included?',locale:'en',currentIntent:intent,products:productEvidence().data});
+  const reply=await composeGroundedSalesPlan({env,message:'What is included?',locale:'en',intent,evidence:[productEvidence()],goal:parsed.goal});
+  assert.equal(parsed.goal,'DETAILS');assert.equal(reply.source,'workers-ai-grounded-sales');
+  for(const request of requests){assert.equal(request.chat_template_kwargs.enable_thinking,false);assert.ok(request.max_completion_tokens<=900);}
+});
+
+test('consultation timeout is an explicit retryable failure rather than a date question',async()=>{
+  const plan=await composeGroundedSalesPlan({env:{TRAVEL_SALES_AI_TIMEOUT_MS:'5',AI:{run:()=>new Promise(()=>{})}},message:'What is included?',locale:'en',intent:createInitialTravelIntent('en'),evidence:[productEvidence()],goal:'DETAILS'});
+  assert.equal(plan.degraded,true);assert.equal(plan.replyFailureReason,'timeout');assert.equal(plan.nextQuestionCode,'RETRY');
+  assert.doesNotMatch(plan.reply,/What date/);
+});

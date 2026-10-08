@@ -34,8 +34,58 @@ const cases=[
   },
 ];
 
+
+const consultationCases=[
+  {locale:'ru',questions:['Что входит в экскурсию Robinson Beach? Дату ещё не выбрали.','Чем она отличается от Hòn Mun?','Какие условия отмены бронирования у этой экскурсии?'],inclusions:/обед|питан|сноркл|снаряж|транспорт/i},
+  {locale:'vi',questions:['Tour Robinson Beach bao gồm những gì? Tôi chưa chọn ngày.','Tour này khác Hòn Mun như thế nào?','Điều kiện hủy đặt tour này là gì?'],inclusions:/trưa|thiết bị|dụng cụ|đưa đón|xe/i},
+  {locale:'en',questions:['What is included in Robinson Beach? We have not chosen a date.','How does it differ from Hòn Mun?','What are the booking cancellation conditions for this tour?'],inclusions:/lunch|snorkel|equipment|transport/i},
+  {locale:'zh',questions:['Robinson Beach 行程包含什么？我们还没选日期。','它与 Hòn Mun 有什么区别？','这个行程的预订取消政策是什么？'],inclusions:/午餐|浮潜|装备|接送|交通/},
+  {locale:'ko',questions:['Robinson Beach 투어에는 무엇이 포함되나요? 날짜는 아직 정하지 않았어요.','이 투어는 Hòn Mun과 어떻게 다른가요?','이 투어의 예약 취소 규정은 무엇인가요?'],inclusions:/점심|스노클|장비|차량|이동|교통/},
+];
+async function verifyConsultation(browser){
+  for(const row of consultationCases){
+    const context=await browser.newContext({viewport:{width:390,height:844}});
+    const page=await context.newPage();
+    const mutations=[];
+    page.on('request',request=>{
+      if(request.method()==='POST'&&request.url().includes('/api/travel-commerce/transaction')){
+        try{const body=request.postDataJSON();if(['RESERVE','RECONCILE'].includes(body?.action))mutations.push(body.action);}catch{}
+      }
+    });
+    await page.addInitScript(locale=>{localStorage.setItem('max-tour-locale-v1',locale);sessionStorage.clear();},row.locale);
+    await page.goto(base+'/?aiDialogueGate=1',{waitUntil:'domcontentloaded',timeout:60000});
+    const entry=page.locator('#homeScreen [data-lt-action="ai"]');
+    await entry.waitFor({state:'visible',timeout:20000});await entry.click();
+    const field=page.locator('#aiScreen.active textarea[name="message"]');
+    await field.waitFor({state:'visible',timeout:10000});
+    let previousReply='';
+    for(const [index,question] of row.questions.entries()){
+      const started=Date.now();
+      const responsePromise=page.waitForResponse(response=>response.url().includes('/api/ai/chat')&&response.request().method()==='POST',{timeout:45000});
+      await field.fill(question);await field.press('Enter');
+      const response=await responsePromise;const answer=await response.json();
+      invariant(response.ok()&&answer.ok===true,'Consultation API failed: '+row.locale+' '+JSON.stringify(answer));
+      invariant(answer.source==='workers-ai-grounded-sales'&&!answer.degraded,'A template or unavailable AI reply cannot pass consultation: '+row.locale+' '+JSON.stringify(answer));
+      invariant(!['ASK_DATE','ASK_PARTY'].includes(answer.agent?.action),'Consultation was blocked by commercial parameters: '+row.locale);
+      invariant(answer.agent?.mutationExecuted===false&&!(answer.offers||[]).length,'A factual question prepared another offer: '+row.locale);
+      invariant(String(answer.reply||'').length>=12&&answer.reply!==previousReply,'Consultation did not produce a substantive new reply: '+row.locale);
+      if(index===0)invariant(row.inclusions.test(answer.reply),'Included services were not explained: '+row.locale+' '+answer.reply);
+      if(index===1)invariant(/Robinson|Робинсон|로빈슨|鲁滨逊/i.test(answer.reply)&&/H[oò]ns*Mun|Хон.{0,3}Мун|혼.{0,2}문/i.test(answer.reply),'Comparison lost the previously discussed tour: '+row.locale+' '+answer.reply);
+      previousReply=answer.reply;
+      await page.waitForFunction(reply=>[...document.querySelectorAll('#aiScreen .ai-msg.bot .ai-msg-text')].some(node=>node.textContent===reply),answer.reply,{timeout:10000});
+      const txResponse=await context.request.get(base+'/api/travel-commerce/transaction');
+      const tx=await txResponse.json();
+      invariant(txResponse.ok()&&!tx.providerBooking&&!tx.selection,'Consultation changed a booking configuration: '+row.locale);
+      invariant(mutations.length===0,'Consultation attempted a booking mutation');
+      console.log(JSON.stringify({stage:'consultation',locale:row.locale,index,source:answer.source,intentSource:answer.agent.intentSource,replyFailureReason:answer.agent.replyFailureReason,elapsedMs:Date.now()-started,reply:answer.reply}));
+    }
+    await context.close();
+  }
+}
+
 const browser=await chromium.launch({headless:true});
 try{
+  await verifyConsultation(browser);
   const tomorrow=await vietnamTomorrow();
   for(const row of cases){
     const context=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:1});
