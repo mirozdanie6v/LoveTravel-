@@ -1,7 +1,10 @@
 import { chromium } from 'playwright';
+import { mkdir } from 'node:fs/promises';
 
 const base=String(process.env.LOVE_TRAVEL_LIVE_BASE_URL||'https://lovetravel.viiversion.com').replace(/\/$/,'');
 const allowedProducts=new Set(['1287578','1287580']);
+const proofDir='artifacts/ai-dialogue';
+await mkdir(proofDir,{recursive:true});
 
 function invariant(value,message){
   if(!value) throw new Error(message);
@@ -47,6 +50,9 @@ async function verifyConsultation(browser){
     const context=await browser.newContext({viewport:{width:390,height:844}});
     const page=await context.newPage();
     const mutations=[];
+    const pageErrors=[];
+    page.on('pageerror',error=>pageErrors.push(String(error)));
+    try{
     page.on('request',request=>{
       if(request.method()==='POST'&&request.url().includes('/api/travel-commerce/transaction')){
         try{const body=request.postDataJSON();if(['RESERVE','RECONCILE'].includes(body?.action))mutations.push(body.action);}catch{}
@@ -70,7 +76,7 @@ async function verifyConsultation(browser){
       invariant(answer.agent?.mutationExecuted===false&&!(answer.offers||[]).length,'A factual question prepared another offer: '+row.locale);
       invariant(String(answer.reply||'').length>=12&&answer.reply!==previousReply,'Consultation did not produce a substantive new reply: '+row.locale);
       if(index===0)invariant(row.inclusions.test(answer.reply),'Included services were not explained: '+row.locale+' '+answer.reply);
-      if(index===1)invariant(/Robinson|Робинсон|로빈슨|鲁滨逊/i.test(answer.reply)&&/H[oò]ns*Mun|Хон.{0,3}Мун|혼.{0,2}문/i.test(answer.reply),'Comparison lost the previously discussed tour: '+row.locale+' '+answer.reply);
+      if(index===1)invariant(/Robinson|Робинсон|로빈슨|鲁滨逊/i.test(answer.reply)&&/H[oò]n\s*Mun|Хон.{0,3}Мун|혼.{0,2}문/i.test(answer.reply),'Comparison lost the previously discussed tour: '+row.locale+' '+answer.reply);
       previousReply=answer.reply;
       await page.waitForFunction(reply=>[...document.querySelectorAll('#aiScreen .ai-msg.bot .ai-msg-text')].some(node=>node.textContent===reply),answer.reply,{timeout:10000});
       const txResponse=await context.request.get(base+'/api/travel-commerce/transaction');
@@ -79,7 +85,12 @@ async function verifyConsultation(browser){
       invariant(mutations.length===0,'Consultation attempted a booking mutation');
       console.log(JSON.stringify({stage:'consultation',locale:row.locale,index,source:answer.source,intentSource:answer.agent.intentSource,replyFailureReason:answer.agent.replyFailureReason,elapsedMs:Date.now()-started,reply:answer.reply}));
     }
-    await context.close();
+    invariant(pageErrors.length===0,'Page errors during consultation: '+row.locale+' '+JSON.stringify(pageErrors));
+    await page.screenshot({path:proofDir+'/'+row.locale+'-consultation.png',fullPage:true});
+    }catch(error){
+      await page.screenshot({path:proofDir+'/'+row.locale+'-failure.png',fullPage:true}).catch(()=>{});
+      throw error;
+    }finally{await context.close();}
   }
 }
 
