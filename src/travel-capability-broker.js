@@ -140,7 +140,7 @@ function normalized(value){
   return str(value).toLocaleLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'');
 }
 
-function pickupSelection(domain,intent){
+export function pickupSelection(domain,intent){
   if(intent?.pickupPreference!=='PICKUP') return {mode:'MEET_ON_LOCATION'};
   const hotel=str(intent?.hotel);
   const places=arr(domain?.experience?.pickup?.places);
@@ -219,7 +219,7 @@ function productFacts(domain,product){
   };
 }
 
-async function evidenceEnvelope(capability,args,data,now){
+export async function evidenceEnvelope(capability,args,data,now){
   const retrievedAt=(now instanceof Date?now:new Date(now)).toISOString();
   const hash=await sha256Hex(stableJson({capability,args,data,retrievedAt}));
   return {

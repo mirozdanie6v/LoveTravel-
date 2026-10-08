@@ -509,3 +509,134 @@ test('an incomplete comparison is regenerated once with both verified tours',asy
   assert.equal(plan.source,'workers-ai-grounded-sales');assert.equal(plan.replyAttempts,2);
   assert.deepEqual(plan.replyFailureReasons,['answer_validation']);
 });
+
+test('dated available recommendations must select an offer for the same verified product',async()=>{
+  const evidence=[productEvidence(),offerEvidence()];
+  const empty={reply:'Compare these tours.',recommendedProductId:'',selectedOfferId:'',action:'COMPARE',nextQuestionCode:'',evidenceRefs:['cap-products']};
+  assert.throws(()=>validateGroundedSalesPlan(empty,evidence,'en','GENERAL'),/offer recommendation is required/);
+  const valid={...empty,reply:'Hon Mun is available for $98.',recommendedProductId:'love-travel-hon-mun',selectedOfferId:'offer-1',action:'RECOMMEND'};
+  assert.equal(validateGroundedSalesPlan(valid,evidence,'en','GENERAL').selectedOfferId,'offer-1');
+  const more=productEvidence();more.data.push({product:{productId:'love-travel-robinson-island',title:'Robinson Beach'}});
+  assert.throws(()=>validateGroundedSalesPlan({...valid,recommendedProductId:'love-travel-robinson-island'},[more,offerEvidence()],'en','GENERAL'),/differs from verified offer/);
+});
+
+test('Gemma recommendation schema cannot return an unselected comparison when offers are available',async()=>{
+  const env={AI_MODEL:'@cf/google/gemma-4-26b-a4b-it',AI:{async run(_model,input){
+    const schema=input.response_format.json_schema.schema;
+    assert.deepEqual(schema.properties.selectedOfferId.enum,['offer-1']);
+    assert.deepEqual(schema.properties.recommendedProductId.enum,['love-travel-hon-mun']);
+    assert.deepEqual(schema.properties.action.enum,['RECOMMEND','OFFER_READY']);
+    return {response:{reply:'Hon Mun is available for $98.',recommendedProductId:'love-travel-hon-mun',selectedOfferId:'offer-1',action:'RECOMMEND',nextQuestionCode:'',evidenceRefs:['cap-offers']}};
+  }}};
+  const plan=await composeGroundedSalesPlan({env,message:'What do you recommend?',locale:'en',intent:createInitialTravelIntent('en'),evidence:[productEvidence(),offerEvidence()],goal:'GENERAL'});
+  assert.equal(plan.source,'workers-ai-grounded-sales');assert.equal(plan.selectedOfferId,'offer-1');
+});
+
+test('authoritative offers do not ask again for date and party stored outside discovery hints',()=>{
+  const plan=deterministicSalesFallback({locale:'en',intent:createInitialTravelIntent('en'),evidence:[offerEvidence()],goal:'BOOK'});
+  assert.equal(plan.selectedOfferId,'offer-1');assert.equal(plan.action,'RECOMMEND');
+});
+
+test('Russian instrumental transfer wording preserves the hotel during intent fallback',async()=>{
+  const result=await extractConversationIntent({env:{},message:'Нас двое взрослых, завтра с трансфером от Oceanus.',locale:'ru',currentIntent:createInitialTravelIntent('ru'),products:productEvidence().data,now:new Date('2026-10-06T12:00:00Z')});
+  assert.equal(result.patch.hotel,'Oceanus');assert.equal(result.patch.party.adults,2);
+});
+
+for(const [locale,message] of [
+  ['en','Change pickup from Amiana.'],
+  ['ru','Поменяйте трансфер от Amiana.'],
+  ['vi','Thay đổi khách sạn đưa đón: Amiana.'],
+  ['zh','请把接送酒店改为 Amiana。'],
+  ['ko','픽업 호텔을 Amiana로 변경해주세요.'],
+]){
+  test('explicit hotel correction remains a selection command: '+locale,async()=>{
+    const result=await extractConversationIntent({env:{AI:{run:async()=>({response:{intentPatch:{locale,goal:'PICKUP',hotel:'Amiana',pickupPreference:'PICKUP',bookingRequested:false}}})}},message,locale,currentIntent:createInitialTravelIntent(locale),products:productEvidence().data});
+    assert.equal(result.goal,'GENERAL');assert.equal(result.patch.hotel,'Amiana');assert.equal(result.bookingRequested,false);
+  });
+}
+
+test('a question about the ability to change pickup remains read-only',async()=>{
+  const result=await extractConversationIntent({env:{AI:{run:async()=>({response:{intentPatch:{locale:'en',goal:'PICKUP',hotel:'Amiana',pickupPreference:'PICKUP'}}})}},message:'Can I change pickup from Amiana?',locale:'en',currentIntent:createInitialTravelIntent('en'),products:productEvidence().data});
+  assert.equal(result.goal,'PICKUP');
+});
+
+test('complete selections and custom transport addresses never enter the answer model',async()=>{
+  const evidence=offerEvidence();
+  evidence.data[0].selection={customer:{email:'private@example.test'},passengers:[{passportId:'PRIVATE-ID'}]};
+  evidence.data[0].offer.pickup={mode:'CUSTOM',customText:'private home address'};
+  const env={AI_MODEL:'fake',AI:{async run(_model,input){
+    assert.ok(!input.messages[0].content.includes('private@example.test'));
+    assert.ok(!input.messages[0].content.includes('PRIVATE-ID'));
+    assert.ok(!input.messages[0].content.includes('private home address'));
+    return {response:{reply:'The offer is $98.',recommendedProductId:'love-travel-hon-mun',selectedOfferId:'offer-1',action:'RECOMMEND',nextQuestionCode:'',evidenceRefs:['cap-offers']}};
+  }}};
+  const plan=await composeGroundedSalesPlan({env,message:'What is the price?',locale:'en',intent:createInitialTravelIntent('en'),evidence:[evidence],goal:'PRICE'});
+  assert.equal(plan.source,'workers-ai-grounded-sales');
+});
+
+
+for(const [locale,reply] of [
+  ['ru','Стоимость 98 долларов за человека.'],
+  ['vi','Giá 98 đô la Mỹ mỗi người.'],
+  ['en','The tour costs 98 USD per person.'],
+  ['zh','价格为每人 98 美元。'],
+  ['ko','1인당 98달러입니다.'],
+]){
+  test('a verified total is never relabeled as a unit price: '+locale,()=>{
+    const raw={reply,recommendedProductId:'love-travel-hon-mun',selectedOfferId:'offer-1',action:'RECOMMEND',nextQuestionCode:'',evidenceRefs:['cap-offers']};
+    assert.throws(()=>validateGroundedSalesPlan(raw,[offerEvidence()],locale,'GENERAL'),/per-person monetary claim/);
+  });
+}
+
+for(const [locale,reply] of [
+  ['ru','Прокат стоит 6 долларов.'],
+  ['vi','Thuê xe giá 6 đô la.'],
+  ['en','Rental costs 6 dollars.'],
+  ['zh','摩托车租赁费为每人 6 美元。'],
+  ['ko','대여 비용은 6달러입니다.'],
+]){
+  test('unverified localized monetary amounts remain rejected: '+locale,()=>{
+    const raw={reply,recommendedProductId:'',selectedOfferId:'',action:'GENERAL',nextQuestionCode:'',evidenceRefs:['cap-products']};
+    assert.throws(()=>validateGroundedSalesPlan(raw,[productEvidence()],locale,'DETAILS'),/unverified monetary claim/);
+  });
+}
+
+test('verified amount with the wrong currency is rejected',()=>{
+  const raw={reply:'The tour total is 98 EUR.',recommendedProductId:'love-travel-hon-mun',selectedOfferId:'offer-1',action:'RECOMMEND',nextQuestionCode:'',evidenceRefs:['cap-offers']};
+  assert.throws(()=>validateGroundedSalesPlan(raw,[offerEvidence()],'en','GENERAL'),/unverified monetary claim/);
+  assert.equal(validateGroundedSalesPlan({...raw,reply:'The total for two adults is 98 USD.'},[offerEvidence()],'en','GENERAL').selectedOfferId,'offer-1');
+});
+
+test('unit-price wording is regenerated as the authoritative group total',async()=>{
+  let calls=0;
+  const env={AI:{async run(_model,input){
+    calls++;
+    assert.match(input.messages[0].content,/TOTAL for the entire offer.participantMix/);
+    return {response:{reply:calls===1?'The tour is 98 USD per person.':'The total for two adults is 98 USD.',recommendedProductId:'love-travel-hon-mun',selectedOfferId:'offer-1',action:'RECOMMEND',nextQuestionCode:'',evidenceRefs:['cap-offers']}};
+  }}};
+  const plan=await composeGroundedSalesPlan({env,message:'What is the price for two adults?',locale:'en',intent:createInitialTravelIntent('en'),evidence:[offerEvidence()],goal:'PRICE'});
+  assert.equal(plan.source,'workers-ai-grounded-sales');assert.equal(plan.replyAttempts,2);
+  assert.deepEqual(plan.replyFailureReasons,['unverified_price']);
+  assert.equal(plan.reply,'The total for two adults is 98 USD.');
+});
+
+
+test('descriptive rental prices are removed only from model facts while exact offers remain intact',async()=>{
+  const products=productEvidence();
+  products.data[0].facts={description:'Optional motorbike rental costs US$6 per person.',itinerary:[{body:'Kayaking is included; rental costs 6 dollars.'}],cancellationPolicy:{deadlineHours:24,penaltyPercent:100}};
+  const before=structuredClone(products);
+  const env={AI:{async run(_model,input){
+    const prompt=input.messages[0].content;
+    const modelView=JSON.parse(prompt.split('VERIFIED_EVIDENCE=')[1]);
+    assert.ok(!JSON.stringify(modelView[0].data).includes('US$6'));
+    assert.ok(!JSON.stringify(modelView[0].data).includes('6 dollars'));
+    assert.match(modelView[0].data[0].facts.description,/additional charge/);
+    assert.equal(modelView[0].data[0].facts.cancellationPolicy.deadlineHours,24);
+    assert.equal(modelView[0].data[0].facts.cancellationPolicy.penaltyPercent,100);
+    assert.equal(modelView[1].data[0].offer.price.amount,98);
+    return {response:{reply:'The total for two adults is 98 USD. Motorbike rental is optional and paid separately.',recommendedProductId:'love-travel-hon-mun',selectedOfferId:'offer-1',action:'RECOMMEND',nextQuestionCode:'',evidenceRefs:['cap-products','cap-offers']}};
+  }}};
+  const plan=await composeGroundedSalesPlan({env,message:'What does the tour cost?',locale:'en',intent:createInitialTravelIntent('en'),evidence:[products,offerEvidence()],goal:'GENERAL'});
+  assert.equal(plan.source,'workers-ai-grounded-sales');
+  assert.deepEqual(products,before);
+});
