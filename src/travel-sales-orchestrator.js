@@ -303,6 +303,8 @@ export function createLoveTravelSalesOrchestrator({
         version:'travel-commerce-sales-v1',
         intentSource:extracted.source,
         replyFailureReason:plan.replyFailureReason||null,
+        replyAttempts:plan.replyAttempts||0,
+        replyFailureReasons:plan.replyFailureReasons||[],
         action:plan.action,
         nextQuestionCode:plan.nextQuestionCode,
         recommendedProductId:plan.recommendedProductId,

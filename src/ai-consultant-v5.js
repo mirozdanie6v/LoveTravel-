@@ -431,7 +431,7 @@
       body:JSON.stringify({
         locale:ACTIVE_LOCALE,
         message:clean(text,900),
-        history:state.messages.slice(-10).map(item => ({ role:item.role, text:item.text })),
+        history:state.messages.filter(item => item.text !== ui().pending).slice(-10).map(item => ({ role:item.role, text:item.text })),
         context:{
           destination:state.slots.destination, format:state.slots.tripType, people:peopleLabel(), date:state.slots.date,
           preferences:state.slots.preferences, currentDateVietnam:vietnamTodayIso(), timeZone:TIME_ZONE, locale:ACTIVE_LOCALE,

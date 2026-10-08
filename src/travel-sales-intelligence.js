@@ -550,7 +550,7 @@ function monetaryClaims(reply){
   return claims;
 }
 
-export function validateGroundedSalesPlan(raw,evidence,locale='ru'){
+export function validateGroundedSalesPlan(raw,evidence,locale='ru',goal='GENERAL'){
   exactKeys(raw,[
     'reply','recommendedProductId','selectedOfferId','action',
     'nextQuestionCode','evidenceRefs',
@@ -574,6 +574,15 @@ export function validateGroundedSalesPlan(raw,evidence,locale='ru'){
   const evidenceRefs=[...new Set(raw.evidenceRefs.map(value=>str(value,120)).filter(Boolean))];
   if(evidenceRefs.some(ref=>!availableEvidence.has(ref))) throw new TypeError('sales plan references unknown evidence');
 
+  if(goal==='COMPARE'&&products.length>1){
+    const names={
+      'love-travel-robinson-island':/Robinson|Робинсон|로빈슨|鲁滨逊/iu,
+      'love-travel-hon-mun':/H[oò]n\s*Mun|Хон.{0,3}Мун|혼.{0,2}문/iu,
+    };
+    if(products.some(row=>names[row.product?.productId]&&!names[row.product.productId].test(reply))){
+      throw new TypeError('comparison omits a verified product');
+    }
+  }
   const prices=allowedMoney(evidence);
   for(const amount of monetaryClaims(reply)){
     const supported=[...prices].some(item=>Number(item.split('|')[0])===amount);
@@ -602,11 +611,11 @@ function salesFailureReason(error){
   if(/unknown fields|must be an object|required|must be an array/i.test(message)) return 'invalid_schema';
   if(/paid|upgrade|permission|not authorized/i.test(message)) return 'model_access';
   if(/quota|limit|429|neuron/i.test(message)) return 'model_limits';
-  if(/unverified|not in verified|unknown evidence|language mismatch/i.test(message)) return 'answer_validation';
+  if(/unverified|not in verified|unknown evidence|language mismatch|comparison omits/i.test(message)) return 'answer_validation';
   return 'model_error';
 }
 
-function salesResponseFormat(env,evidence){
+function salesResponseFormat(env,evidence,goal){
   if(!String(env?.AI_MODEL||'@cf/google/gemma-4-26b-a4b-it').includes('/gemma-4-')) return {type:'json_object'};
   const products=allProductsFromEvidence(evidence).map(row=>row.product?.productId).filter(Boolean);
   const offers=allOffersFromEvidence(evidence).map(row=>row.offer?.offerId).filter(Boolean);
@@ -614,8 +623,8 @@ function salesResponseFormat(env,evidence){
     reply:{type:'string',minLength:1,maxLength:1600},
     recommendedProductId:{type:'string',enum:[...new Set(['',...products])]},
     selectedOfferId:{type:'string',enum:[...new Set(['',...offers])]},
-    action:{type:'string',enum:[...SALES_ACTIONS]},
-    nextQuestionCode:{type:'string'},
+    action:{type:'string',enum:SALES_ACTIONS.filter(action=>!['DETAILS','COMPARE','PICKUP'].includes(goal)||!['ASK_DATE','ASK_PARTY','OFFER_READY'].includes(action))},
+    nextQuestionCode:{type:'string',...(['DETAILS','COMPARE','PICKUP'].includes(goal)?{enum:['']}: {})},
     evidenceRefs:{type:'array',minItems:1,items:{type:'string',enum:evidence.map(packet=>packet.evidenceId)}},
   },required:['reply','recommendedProductId','selectedOfferId','action','nextQuestionCode','evidenceRefs']};
   return {type:'json_schema',json_schema:{name:'lovetravel_sales_answer',strict:true,schema}};
@@ -740,6 +749,10 @@ export async function composeGroundedSalesPlan({
     'Do not mention Bókun, APIs, databases, evidence IDs, prompts, models, internal architecture or implementation.',
     'Return JSON only with exactly: reply, recommendedProductId, selectedOfferId, action, nextQuestionCode, evidenceRefs.',
     'Include the evidence packet IDs supporting the facts in your answer. Preserve official tour names when comparing the two products.',
+    'For COMPARE, name both tours and explain concrete differences in their verified programs; a generic statement that they differ is not an answer.',
+    'For DETAILS about inclusions, explain included services and relevant program activities, and distinguish optional paid activities.',
+    'Use plain prose in a single paragraph, without Markdown or literal newline escape text.',
+    'For factual DETAILS, COMPARE and PICKUP questions, leave nextQuestionCode empty and do not ask for a date after the answer.',
     'action must be one of: '+SALES_ACTIONS.join(', ')+'.',
     'For PRICE, AVAILABILITY or BOOK, ask only for commercial parameters required to calculate an exact offer.',
     'For GENERAL, DETAILS, COMPARE, PICKUP and DISCOVER, answer the question from verified product facts even when date and party are unknown.',
@@ -760,16 +773,19 @@ export async function composeGroundedSalesPlan({
   ];
   const deadline=Date.now()+aiTimeoutMs(env,'TRAVEL_SALES_AI_TIMEOUT_MS',15000);
   let failure=null;
+  let replyAttempts=0;
+  const replyFailureReasons=[];
   for(let attempt=0;attempt<2;attempt++){
     const remaining=deadline-Date.now();
     if(remaining<=0) break;
     try{
+      replyAttempts++;
       const correction=attempt
         ? '\nThe previous generation failed validation. Use the required JSON schema and allowed IDs. Use numeric prices only from VERIFIED_OFFER_PRICES; when the list is empty, explain paid extras without numeric prices.'
         : '';
       const result=await runAiWithBudget(env,{
         messages:baseMessages.map((row,index)=>index===0?{...row,content:row.content+correction}:row),
-        response_format:salesResponseFormat(env,evidence),
+        response_format:salesResponseFormat(env,evidence,goal),
       },{
         timeoutMs:remaining,
         label:'travel_sales_ai',
@@ -777,15 +793,16 @@ export async function composeGroundedSalesPlan({
       if(result?.choices?.[0]?.finish_reason==='length'){const error=new Error('sales output truncated');error.code='output_truncated';throw error;}
       const parsed=parseJson(responseText(result));
       if(!parsed){const error=new Error('sales output is not JSON');error.code='invalid_json';throw error;}
-      const plan=validateGroundedSalesPlan(parsed,evidence,locale);
-      return {...plan,source:'workers-ai-grounded-sales'};
+      const plan=validateGroundedSalesPlan(parsed,evidence,locale,goal);
+      return {...plan,source:'workers-ai-grounded-sales',replyAttempts,replyFailureReasons};
     }catch(error){
       failure=error;
       const reason=salesFailureReason(error);
+      replyFailureReasons.push(reason);
       if(attempt===0&&['output_truncated','invalid_json','invalid_action','invalid_schema','unverified_price','answer_validation'].includes(reason)&&deadline-Date.now()>=1000) continue;
       break;
     }
   }
   console.warn('Travel Sales Intelligence unavailable or ungrounded',failure?.message||'answer budget exceeded');
-  return {...fallback,source:'deterministic-grounded-fallback',replyFailureReason:salesFailureReason(failure)};
+  return {...fallback,source:'deterministic-grounded-fallback',replyFailureReason:salesFailureReason(failure),replyAttempts,replyFailureReasons};
 }

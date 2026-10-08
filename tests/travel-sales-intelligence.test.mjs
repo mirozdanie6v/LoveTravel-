@@ -490,3 +490,22 @@ test('model access failures are never blindly retried',async()=>{
   const plan=await composeGroundedSalesPlan({env,message:'What is included?',locale:'en',intent:createInitialTravelIntent('en'),evidence:[productEvidence()],goal:'DETAILS'});
   assert.equal(calls,1);assert.equal(plan.replyFailureReason,'model_access');assert.equal(plan.degraded,true);
 });
+
+test('a comparison must identify both verified tours and explain the choice',async()=>{
+  const evidence=productEvidence();
+  evidence.data.push({product:{productId:'love-travel-robinson-island',title:'Robinson Beach'}});
+  const generic={reply:'Both tours are seven hours long but they differ.',recommendedProductId:'',selectedOfferId:'',action:'COMPARE',nextQuestionCode:'',evidenceRefs:['cap-products']};
+  assert.throws(()=>validateGroundedSalesPlan(generic,[evidence],'en','COMPARE'),/comparison omits/);
+  const detailed={...generic,reply:'Robinson Beach visits a fishing village with kayaking. Hon Mun focuses on snorkeling and a mud bath.'};
+  assert.equal(validateGroundedSalesPlan(detailed,[evidence],'en','COMPARE').action,'COMPARE');
+});
+
+test('an incomplete comparison is regenerated once with both verified tours',async()=>{
+  const evidence=productEvidence();
+  evidence.data.push({product:{productId:'love-travel-robinson-island',title:'Robinson Beach'}});
+  let calls=0;
+  const env={AI:{async run(){calls++;return {response:{reply:calls===1?'Both tours differ.':'Robinson Beach offers kayaking; Hon Mun focuses on snorkeling.',recommendedProductId:'',selectedOfferId:'',action:'COMPARE',nextQuestionCode:'',evidenceRefs:['cap-products']}};}}};
+  const plan=await composeGroundedSalesPlan({env,message:'Compare these tours.',locale:'en',intent:createInitialTravelIntent('en'),evidence:[evidence],goal:'COMPARE'});
+  assert.equal(plan.source,'workers-ai-grounded-sales');assert.equal(plan.replyAttempts,2);
+  assert.deepEqual(plan.replyFailureReasons,['answer_validation']);
+});
