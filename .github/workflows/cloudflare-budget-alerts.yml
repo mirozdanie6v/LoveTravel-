@@ -61,16 +61,24 @@ jobs:
           import urllib.error
           import urllib.request
 
-          token = os.environ["CLOUDFLARE_API_TOKEN"]
+          read_token = os.environ["CLOUDFLARE_API_TOKEN"]
           account = os.environ["CLOUDFLARE_ACCOUNT_ID"]
           base = f"https://api.cloudflare.com/client/v4/accounts/{account}/alerting/v3"
-          headers = {
-              "Authorization": f"Bearer {token}",
-              "Content-Type": "application/json",
-              "User-Agent": "VIIVERSION-Cloudflare-Budget-Guard/1.0",
-          }
+          candidate_tokens = []
+          for name in ("CF_TOKEN_1", "CF_TOKEN_2", "CF_TOKEN_3", "CF_TOKEN_4", "CF_TOKEN_5", "CF_TOKEN_6"):
+              value = os.environ.get(name, "").strip()
+              if value and value not in candidate_tokens:
+                  candidate_tokens.append(value)
+          if read_token not in candidate_tokens:
+              candidate_tokens.insert(0, read_token)
 
-          def call(method, path, body=None):
+          def call(method, path, body=None, token=None):
+              token = token or read_token
+              headers = {
+                  "Authorization": f"Bearer {token}",
+                  "Content-Type": "application/json",
+                  "User-Agent": "VIIVERSION-Cloudflare-Budget-Guard/1.0",
+              }
               data = None if body is None else json.dumps(body).encode()
               req = urllib.request.Request(base + path, data=data, headers=headers, method=method)
               try:
@@ -171,7 +179,25 @@ jobs:
                   "description": "Account-wide usage-based spend guardrail for VIIVERSION / Showreel.",
                   "filters": filters,
               }
-              result = call("POST", "/policies", body)
+              result = None
+              write_errors = []
+              for index, candidate in enumerate(candidate_tokens, start=1):
+                  try:
+                      result = call("POST", "/policies", body, token=candidate)
+                      print(f"WRITE_TOKEN_SLOT={index}")
+                      break
+                  except RuntimeError as exc:
+                      message = str(exc)
+                      if "HTTP 403" in message or "HTTP 401" in message:
+                          write_errors.append(f"slot {index}: denied")
+                          continue
+                      raise
+              if result is None:
+                  raise RuntimeError(
+                      "None of the existing Cloudflare GitHub tokens can create notification policies ("
+                      + ", ".join(write_errors)
+                      + "). A token with Notifications Write or Account Settings Write is required."
+                  )
               created.append({"amount": amount, "id": (result or {}).get("id")})
 
           final = call("GET", "/policies")
