@@ -461,3 +461,32 @@ for(const [result,reason] of [
     assert.equal(plan.nextQuestionCode,'RETRY');
   });
 }
+
+test('unsupported descriptive prices are regenerated once without weakening price validation',async()=>{
+  let calls=0;
+  const env={AI:{async run(_model,input){
+    calls++;
+    assert.match(input.messages[0].content,/Numeric prices in descriptions are not authoritative offers/);
+    assert.match(input.messages[0].content,/VERIFIED_OFFER_PRICES=\[\]/);
+    if(calls===2) assert.match(input.messages[0].content,/previous generation failed validation/);
+    return {response:{reply:calls===1?'A motorbike costs $6.':'Motorbike rental is optional and paid separately.',recommendedProductId:'',selectedOfferId:'',action:'GENERAL',nextQuestionCode:'',evidenceRefs:['cap-products']}};
+  }}};
+  const plan=await composeGroundedSalesPlan({env,message:'What is included?',locale:'en',intent:createInitialTravelIntent('en'),evidence:[productEvidence()],goal:'DETAILS'});
+  assert.equal(calls,2);assert.equal(plan.source,'workers-ai-grounded-sales');assert.ok(!plan.degraded);
+  assert.doesNotMatch(plan.reply,/\$/);
+});
+
+test('both invalid answer attempts remain rejected with a precise safe reason',async()=>{
+  let calls=0;
+  const env={AI:{async run(){calls++;return {response:{reply:'The price is $6.',recommendedProductId:'',selectedOfferId:'',action:'GENERAL',nextQuestionCode:'',evidenceRefs:['cap-products']}};}}};
+  const plan=await composeGroundedSalesPlan({env,message:'What is included?',locale:'en',intent:createInitialTravelIntent('en'),evidence:[productEvidence()],goal:'DETAILS'});
+  assert.equal(calls,2);assert.equal(plan.degraded,true);assert.equal(plan.replyFailureReason,'unverified_price');
+  assert.doesNotMatch(plan.reply,/\$/);
+});
+
+test('model access failures are never blindly retried',async()=>{
+  let calls=0;
+  const env={AI:{async run(){calls++;throw new Error('Model permission denied');}}};
+  const plan=await composeGroundedSalesPlan({env,message:'What is included?',locale:'en',intent:createInitialTravelIntent('en'),evidence:[productEvidence()],goal:'DETAILS'});
+  assert.equal(calls,1);assert.equal(plan.replyFailureReason,'model_access');assert.equal(plan.degraded,true);
+});
