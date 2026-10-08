@@ -1,4 +1,5 @@
 import test from 'node:test';
+import {canonicalBookingSelectionFromBokun,bokunSelectionFromCanonicalSelection} from '../src/bokun-provider.js';
 import assert from 'node:assert/strict';
 import {
   CONTRACT_SCHEMA_VERSIONS,
@@ -351,3 +352,68 @@ test('a factual question does not resolve another offer or change a prepared sel
   assert.deepEqual(store._current(),before);
   assert.equal(answer.agent.mutationExecuted,false);
 });
+
+function configuredBookingHarness(goal='PICKUP',message='Change pickup from Amiana.'){
+  const selectedDomain=domain();
+  selectedDomain.rates.push({id:202});
+  selectedDomain.availabilitySlots[0].rates.push({id:202});
+  selectedDomain.experience.pickup.places.push({id:502,title:'Amiana'});
+  selectedDomain.experience.dropoff={enabled:true,places:[{id:601,title:'Return hotel'}]};
+  const ui={productId:'1287580',date:'2026-10-07',slotId:'slot-1',rateId:'202',startTimeId:'301',participants:{101:2},
+    pickup:{mode:'PICKUP',placeId:'501',roomNumber:'804',answers:{gate:'lobby'}},dropoff:{mode:'DROPOFF',placeId:'601'},
+    customer:{firstName:'Demo',lastName:'Passenger',email:'private@example.test',phoneNumber:'000000000'},
+    answers:{custom:'sensitive_answer_marker'},extras:{701:1},extraAnswers:{701:{extraQuestion:'extra answer'}},
+    passengers:[{categoryId:'101',firstName:'Demo',lastName:'One',answers:{passengerQuestion:'private passenger answer'},extras:{702:{quantity:1,answers:{meal:'vegetarian'}}}}],
+  };
+  const selectedOffer={...offer(),offerId:'kept-user-rate',rateRef:{...offer().rateRef,externalId:'202'},price:{amount:123,currency:'USD'}};
+  let tx={transactionId:'txn-configured-ui-session-123456789',revision:4,state:'QUOTE_READY',selection:canonicalBookingSelectionFromBokun(selectedDomain,ui),
+    selectedOfferId:selectedOffer.offerId,quote:{quoteId:'quote-test',revision:1,status:'ACTIVE',expiresAt:'2026-10-06T13:00:00Z',offer:selectedOffer,readyToBook:false,issues:{bookingDataIssues:[]}},providerBooking:null};
+  const original=bokunSelectionFromCanonicalSelection(tx.selection);
+  const commands=[],modelInputs=[],providerCalls=[];
+  const env={DB:fakeDb(),AI_MODEL:'fake',BOOKING_SESSIONS:{idFromName:id=>id,get:()=>({async fetch(request){
+    const body=await request.json();
+    if(request.url.endsWith('/initialize'))return new Response(JSON.stringify({ok:true,transaction:tx}));
+    commands.push(body);
+    assert.equal(body.action,'SYNC_SELECTION');assert.equal(body.expectedRevision,tx.revision);
+    const updatedOffer={...tx.quote.offer,offerId:'updated-user-rate',pickup:{mode:'PICKUP',placeRef:{provider:'BOKUN',resourceType:'PICKUP_PLACE',externalId:String(body.selection.pickup.placeId),accountRef:'137689'}},price:{amount:137,currency:'USD'}};
+    tx={...tx,revision:tx.revision+1,selection:canonicalBookingSelectionFromBokun(selectedDomain,body.selection),selectedOfferId:updatedOffer.offerId,quote:{...tx.quote,revision:tx.quote.revision+1,offer:updatedOffer}};
+    return new Response(JSON.stringify({ok:true,transaction:tx,resolution:{selection:body.selection}}));
+  }})},AI:{async run(_model,input){
+    modelInputs.push(input.messages[0].content);
+    if(input.messages[0].content.includes('Conversation Intelligence parser')){
+      return {response:{intentPatch:{locale:'en',goal,...(goal==='PICKUP'?{hotel:'Amiana',pickupPreference:'PICKUP'}:{})}}};
+    }
+    return {response:{reply:'The current verified offer is $'+tx.quote.offer.price.amount+'.',recommendedProductId:'love-travel-hon-mun',selectedOfferId:tx.quote.offer.offerId,action:'RECOMMEND',nextQuestionCode:'',evidenceRefs:[]}};
+  }}};
+  const provider={...fakeProvider(),async getDomains(options){providerCalls.push(options);return [selectedDomain];}};
+  const store=fakeStore();
+  const app=createLoveTravelSalesOrchestrator({env,store,provider,now:()=>new Date('2026-10-06T12:00:00Z')});
+  return {turn:()=>app.turn({sessionId:'configured-ui-session-123456789',locale:'en',message}),commands,modelInputs,providerCalls,original,tx:()=>tx};
+}
+
+test('explicit pickup correction changes only pickup in the existing authoritative UI transaction',async()=>{
+  const h=configuredBookingHarness();
+  const result=await h.turn();
+  assert.equal(h.commands.length,1);
+  const {pickup:originalPickup,...original}=h.original;
+  const {pickup:changedPickup,...changed}=h.commands[0].selection;
+  assert.deepEqual(changed,original);
+  assert.equal(changedPickup.placeId,'502');assert.equal(changedPickup.roomNumber,'804');assert.deepEqual(changedPickup.answers,{gate:'lobby'});
+  assert.equal(result.transaction.transactionId,'txn-configured-ui-session-123456789');
+  assert.equal(result.bookingSelection.rateId,'202');assert.deepEqual(result.bookingSelection.participants,{101:2});
+  assert.equal(result.agent.selectedOfferId,'updated-user-rate');assert.equal(result.transaction.quote.offer.price.amount,137);assert.equal(result.agent.mutationExecuted,false);
+  assert.ok(!h.modelInputs.some(text=>text.includes('private@example.test')||text.includes('sensitive_answer_marker')||text.includes('private passenger answer')));
+  assert.equal(h.tx().providerBooking,null);
+});
+
+for(const goal of ['BOOK','PRICE','AVAILABILITY']){
+  test('current Quote scope preserves the UI date, rate and participants for '+goal,async()=>{
+    const h=configuredBookingHarness(goal,goal==='BOOK'?'Book it.':goal==='PRICE'?'What is the price?':'Is this trip available?');
+    const result=await h.turn();
+    assert.equal(h.commands.length,0);
+    assert.deepEqual(result.bookingSelection,h.original);
+    assert.equal(result.transaction.transactionId,'txn-configured-ui-session-123456789');
+    assert.equal(result.agent.selectedOfferId,'kept-user-rate');assert.equal(result.agent.mutationExecuted,false);
+    assert.equal(h.tx().revision,4);assert.equal(h.tx().providerBooking,null);
+  });
+}

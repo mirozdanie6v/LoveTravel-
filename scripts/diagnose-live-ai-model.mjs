@@ -1,5 +1,6 @@
 import {createTravelCapabilityBroker} from '../src/travel-capability-broker.js';
 import {createBokunProvider} from '../src/bokun-provider.js';
+import {createInitialTravelIntent,mergeIntentPatch} from '../src/travel-sales-intelligence.js';
 import {mkdir,writeFile} from 'node:fs/promises';
 import {spawn} from 'node:child_process';
 import {setTimeout as delay} from 'node:timers/promises';
@@ -14,7 +15,7 @@ const rows=[
 ];
 const folder='artifacts/ai-model-audit';
 await mkdir(folder,{recursive:true});
-await writeFile(folder+'/worker.mjs',"import {composeGroundedSalesPlan,createInitialTravelIntent} from '../../src/travel-sales-intelligence.js';\nexport default {\n  async fetch(request,env){\n    if(request.method==='GET')return Response.json({ready:true});\n    const body=await request.json();\n    const raw=[];\n    const binding=env.AI;\n    const modelEnv={AI_MODEL:env.AI_MODEL,TRAVEL_SALES_AI_TIMEOUT_MS:'15000',AI:{async run(model,input){\n      if(body.format==='json_object')input={...input,response_format:{type:'json_object'}};\n      const started=Date.now();\n      try{\n        const result=await binding.run(model,input);\n        raw.push({ms:Date.now()-started,inputChars:JSON.stringify(input).length,result});\n        return result;\n      }catch(error){\n        raw.push({ms:Date.now()-started,code:error.code,message:error.message});\n        throw error;\n      }\n    }}};\n    const started=Date.now();\n    const plan=await composeGroundedSalesPlan({env:modelEnv,message:body.message,locale:body.locale,intent:createInitialTravelIntent(body.locale),evidence:[body.evidence],goal:body.goal||'DETAILS',history:body.history||[]});\n    return Response.json({format:body.format,ms:Date.now()-started,raw,plan});\n  },\n};\n");
+await writeFile(folder+'/worker.mjs',"import {composeGroundedSalesPlan,createInitialTravelIntent,extractConversationIntent} from '../../src/travel-sales-intelligence.js';\nexport default {\n  async fetch(request,env){\n    if(request.method==='GET')return Response.json({ready:true});\n    const body=await request.json();\n    const raw=[];\n    const binding=env.AI;\n    const modelEnv={AI_MODEL:env.AI_MODEL,TRAVEL_SALES_AI_TIMEOUT_MS:'15000',AI:{async run(model,input){\n      if(body.format==='json_object')input={...input,response_format:{type:'json_object'}};\n      const started=Date.now();\n      try{\n        const result=await binding.run(model,input);\n        raw.push({ms:Date.now()-started,inputChars:JSON.stringify(input).length,result});\n        return result;\n      }catch(error){\n        raw.push({ms:Date.now()-started,code:error.code,message:error.message});\n        throw error;\n      }\n    }}};\n    const started=Date.now();\n    if(body.kind==='intent'){\n      const parsed=await extractConversationIntent({env:modelEnv,message:body.message,locale:body.locale,currentIntent:body.intent||createInitialTravelIntent(body.locale),products:body.evidence.data});\n      return Response.json({ms:Date.now()-started,parsed,raw});\n    }\n    const plan=await composeGroundedSalesPlan({env:modelEnv,message:body.message,locale:body.locale,intent:body.intent||createInitialTravelIntent(body.locale),evidence:body.evidencePackets||[body.evidence],goal:body.goal||'DETAILS',history:body.history||[]});\n    return Response.json({format:body.format,ms:Date.now()-started,raw,plan});\n  },\n};\n");
 await writeFile(folder+'/wrangler.jsonc',JSON.stringify({name:'love-travel-v28',main:'./worker.mjs',compatibility_date:'2026-09-09',vars:{AI_MODEL:'@cf/google/gemma-4-26b-a4b-it'},ai:{binding:'AI'}}));
 const child=spawn(process.execPath,['node_modules/wrangler/bin/wrangler.js','dev','--config',folder+'/wrangler.jsonc','--remote','--ip','127.0.0.1','--port','8799'],{stdio:['ignore','pipe','pipe']});
 let cliLog='';child.stdout.on('data',data=>{cliLog+=data;});child.stderr.on('data',data=>{cliLog+=data;});
@@ -26,6 +27,24 @@ try{
     await delay(500);
   }
   if(!ready)throw new Error('Remote preview did not start: '+cliLog.slice(-2500));
+  const recommendationCases=[
+    {locale:'ru',message:'Нас двое взрослых, хотим завтра на снорклинг с трансфером от Oceanus. Что посоветуете?'},
+    {locale:'en',message:'We are two adults and want snorkeling tomorrow with pickup from Oceanus. What do you recommend?'},
+  ];
+  for(const row of recommendationCases){
+    const products=await broker.execute('searchProducts',{lang:'EN',includePickupPlaces:false},{principal:'ORCHESTRATOR'});
+    const parsedResponse=await fetch('http://127.0.0.1:8799',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({kind:'intent',locale:row.locale,message:row.message,evidence:products}),signal:AbortSignal.timeout(20000)});
+    const parsed=(await parsedResponse.json()).parsed;
+    if(!['GENERAL','DISCOVER','PRICE','AVAILABILITY','BOOK'].includes(parsed.goal))throw new Error('Recommendation was classified as a read-only question: '+JSON.stringify(parsed));
+    const intent=mergeIntentPatch(createInitialTravelIntent(row.locale),parsed.patch);
+    if(intent.party.adults!==2||intent.hotel!=='Oceanus')throw new Error('Date/party/hotel recommendation context was lost: '+JSON.stringify({locale:row.locale,parsed,intent}));
+    const offers=await broker.execute('searchOffers',{intent,lang:'EN'},{principal:'ORCHESTRATOR'});
+    const answerResponse=await fetch('http://127.0.0.1:8799',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({format:'json_schema',locale:row.locale,message:row.message,intent,evidencePackets:[products,offers],goal:parsed.goal}),signal:AbortSignal.timeout(25000)});
+    const answer=await answerResponse.json();
+    console.log(JSON.stringify({stage:'preview-recommendation',locale:row.locale,goal:parsed.goal,intentSource:parsed.source,ms:answer.ms,plan:answer.plan}));
+    const selected=offers.data.find(item=>item.offer?.offerId===answer.plan?.selectedOfferId);
+    if(answer.plan?.source!=='workers-ai-grounded-sales'||answer.plan.degraded||!selected||selected.product.productId!==answer.plan.recommendedProductId)throw new Error('Verified recommendation handoff is missing: '+JSON.stringify(answer));
+  }
   for(const row of rows){
     const history=[];
     for(const [index,message] of row.questions.entries()){

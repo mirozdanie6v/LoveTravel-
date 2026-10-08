@@ -3,13 +3,14 @@ import {
   createBokunProvider,
 } from './bokun-provider.js';
 import { executeBookingSession } from './booking-session-client.js';
-import { createTravelCapabilityBroker } from './travel-capability-broker.js';
+import { createTravelCapabilityBroker, evidenceEnvelope, pickupSelection } from './travel-capability-broker.js';
 import {
   COMMERCIAL_GOALS,
   composeGroundedSalesPlan,
   createInitialTravelIntent,
   extractConversationIntent,
   mergeIntentPatch,
+  pickupChangeRequested,
 } from './travel-sales-intelligence.js';
 import {
   createShoppingSession,
@@ -210,6 +211,9 @@ export function createLoveTravelSalesOrchestrator({
     });
     const readOnlyQuestion=['DETAILS','COMPARE','PICKUP'].includes(extracted.goal);
     const intentPatch={...extracted.patch};
+    const pickupOnlyChange=extracted.goal==='GENERAL'&&pickupChangeRequested(message)&&Boolean(intentPatch.hotel)
+      &&!['dateConstraint','party','selectedProductId'].some(key=>Object.prototype.hasOwnProperty.call(extracted.explicitPatch||{},key));
+    if(pickupOnlyChange){for(const key of ['dateConstraint','party','selectedProductId','preferenceAdds','preferenceRemoves'])delete intentPatch[key];}
     if(readOnlyQuestion){
       for(const key of ['dateConstraint','party','hotel','pickupPreference','selectedProductId','bookingRequested']) delete intentPatch[key];
     }
@@ -226,8 +230,44 @@ export function createLoveTravelSalesOrchestrator({
 
     const evidence=[productsPacket];
     let offersPacket=null;
+    let bookingTransaction=null;
+    let bookingSelection=null;
+    let canonicalScopeUsed=false;
+    const currentQuoteRequest=COMMERCIAL_GOALS.includes(extracted.goal)&&!commercialPatch(extracted.explicitPatch||{});
+    if((pickupOnlyChange||currentQuoteRequest)&&env.BOOKING_SESSIONS){
+      const currentTx=await ensureCommerceTransaction(env,sessionId,{now:now(),locale});
+      if(currentTx.selection&&!['RESERVING','FAILED_NEEDS_RECONCILIATION','CONFIRMED','ABANDONED'].includes(currentTx.state)){
+        const current=bokunSelectionFromCanonicalSelection(currentTx.selection);
+        let incoming=current;
+        if(pickupOnlyChange){
+          const [domain]=await provider.getDomains({productIds:[current.productId],start:current.date,end:current.date,lang:'EN',includePickupPlaces:true});
+          const {placeId:oldPlace,customLocation:oldAddress,mode:oldMode,...pickupDetails}=current.pickup||{};
+          incoming={...current,pickup:{...pickupDetails,...pickupSelection(domain,{hotel:intentPatch.hotel,pickupPreference:'PICKUP'})}};
+        }
+        const freshQuote=currentTx.quote?.status==='ACTIVE'&&Date.parse(currentTx.quote.expiresAt)>now().getTime();
+        if(currentQuoteRequest&&freshQuote){
+          bookingTransaction=currentTx;
+          bookingSelection=current;
+        }else{
+          const synced=await executeBookingSession(env,currentTx.transactionId,{action:'SYNC_SELECTION',expectedRevision:currentTx.revision,selection:incoming});
+          bookingTransaction=synced.transaction;
+          bookingSelection=synced.resolution?.selection||bokunSelectionFromCanonicalSelection(bookingTransaction.selection);
+        }
+        canonicalScopeUsed=true;
+        const quote=bookingTransaction.quote;
+        const product=productsPacket.data.find(row=>row.product.productId===quote?.offer?.productId)?.product;
+        if(quote?.offer&&product){
+          // Only commercial evidence goes to the model; the complete selection
+          // remains in the authoritative transaction and in the user's UI response.
+          offersPacket=await evidenceEnvelope('getOfferDetails',{transactionId:currentTx.transactionId,revision:bookingTransaction.revision},{
+            product,offer:quote.offer,readyToQuote:true,readyToBook:Boolean(quote.readyToBook),
+            bookingDataIssues:structuredClone(quote.issues?.bookingDataIssues||[]),
+          },now());
+        }
+      }
+    }
     const offersRequested=COMMERCIAL_GOALS.includes(extracted.goal)||(['DISCOVER','GENERAL'].includes(extracted.goal)&&commercialPatch(intentPatch));
-    if(offersRequested&&exactDate(shopping.intent)&&partyKnown(shopping.intent)){
+    if(!canonicalScopeUsed&&offersRequested&&exactDate(shopping.intent)&&partyKnown(shopping.intent)){
       const productIds=canonicalToProviderProducts(
         productsPacket,
         extracted.selectedProductId,
@@ -237,9 +277,12 @@ export function createLoveTravelSalesOrchestrator({
         ...(productIds?{productIds}:{}),
         lang:'EN',
       },{principal:'ORCHESTRATOR'});
+    }
+    const offeredRows=offersPacket?(Array.isArray(offersPacket.data)?offersPacket.data:[offersPacket.data]):[];
+    if(offersPacket){
       evidence.push(offersPacket);
 
-      const candidateIds=offersPacket.data
+      const candidateIds=offeredRows
         .map(item=>item?.offer?.offerId)
         .filter(Boolean);
       const next=setShoppingCandidates(shopping,candidateIds,{now:now()});
@@ -264,10 +307,8 @@ export function createLoveTravelSalesOrchestrator({
       shopping=next;
     }
 
-    let bookingTransaction=null;
-    let bookingSelection=null;
-    const selectedRow=offersPacket?.data?.find(item=>item?.offer?.offerId===plan.selectedOfferId)||null;
-    if(selectedRow?.selection&&plan.selectedOfferId){
+    const selectedRow=offeredRows.find(item=>item?.offer?.offerId===plan.selectedOfferId)||null;
+    if(!bookingTransaction&&selectedRow?.selection&&plan.selectedOfferId){
       try{
         let currentTx=await ensureCommerceTransaction(env,sessionId,{now:now()});
         const needsSync=
@@ -331,7 +372,7 @@ export function createLoveTravelSalesOrchestrator({
       },
       intent:shopping.intent,
       offers:offersPacket
-        ? offersPacket.data.filter(item=>item?.offer).map(item=>({
+        ? offeredRows.filter(item=>item?.offer).map(item=>({
             productId:item.product?.productId||'',
             offer:item.offer,
             readyToBook:item.readyToBook,

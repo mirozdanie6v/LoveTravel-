@@ -324,6 +324,15 @@ function explicitDateConstraint(message,now){
   return null;
 }
 
+export function pickupChangeRequested(message){
+  const text=normalizedText(message);
+  return /^(?:please\s+)?(?:change|switch|update|replace)\b|^can\s+you\s+(?:please\s+)?(?:change|switch|update|replace)\b/iu.test(text)
+    ||/^(?:пожалуйста[, ]+)?(?:измени|поменя|замени)/iu.test(text)
+    ||/^(?:vui\s+long\s+)?(?:[dđ]oi|thay\s+[dđ]oi|chuyen)/iu.test(text)
+    ||/^(?:请|請)?(?:把|将|將)?.{0,40}(?:改为|改成|更换|更換|换成|換成)/u.test(text)
+    ||/(?:픽업|호텔).{0,80}(?:변경해|바꿔|바꾸|수정해)/u.test(text);
+}
+
 function explicitPickupHotel(message,products=[]){
   const raw=str(message,1200);
   const normalized=normalizedText(raw);
@@ -337,7 +346,7 @@ function explicitPickupHotel(message,products=[]){
   }
   const patterns=[
     /(?:pickup|pick\s*up|collect)(?:\s+us)?(?:\s+(?:from|at))?\s+([^,.;!?]{2,80})/i,
-    /(?:заберите|забрать|трансфер)(?:\s+нас)?(?:\s+(?:из|от))?\s+([^,.;!?]{2,80})/iu,
+    /(?:заберите|забрать|трансфер(?:ом|а|у|е)?)(?:\s+нас)?(?:\s+(?:из|от))?\s+([^,.;!?]{2,80})/iu,
     /(?:đón)(?:\s+(?:tại|ở))?\s+([^,.;!?]{2,80})/iu,
     /(?:从|從)\s*([^，。！？]{2,40}?)\s*(?:接|接我们|接我們)/u,
     /([^,.!?]{2,60}?)에서\s*픽업/u,
@@ -403,6 +412,7 @@ export function deterministicExplicitIntentPatch({
   const informationGoal=/compare|difference|сравн|чем.{0,30}отлич|so\s*sanh|khac\s*nhau|区别|比較|비교|차이/iu.test(text)?'COMPARE'
     :/what.{0,30}(?:included|include|itinerary)|что.{0,30}(?:входит|включено|взять)|услови.{0,30}(?:отмен|брони)|cancellation|booking.{0,20}(?:conditions|policy)|[dđ]ieu\s*kien.{0,20}[dđ]at|chinh\s*sach.{0,20}huy|包含|取消.{0,15}(?:政策|条件)|예약.{0,15}조건|취소.{0,15}(?:규정|정책)/iu.test(text)?'DETAILS':null;
   if(informationGoal){patch.goal=informationGoal;patch.bookingRequested=false;}
+  else if(hotel&&pickupChangeRequested(message)){patch.goal='GENERAL';patch.bookingRequested=false;}
   const bookingRequested=/\b(?:book|booking|reserve)\b/i.test(text)
     ||/заброн|брони/iu.test(text)
     ||/đat\s*(?:cho|tour)?/iu.test(text)
@@ -415,7 +425,7 @@ export function deterministicExplicitIntentPatch({
   return validateIntentPatch(patch);
 }
 
-function mergeExplicitOverModel(modelPatch,explicitPatch){
+function mergeExplicitOverModel(modelPatch,explicitPatch,message=''){
   const combined={...modelPatch,...explicitPatch};
   if(modelPatch?.party||explicitPatch?.party){
     combined.party={...(modelPatch?.party||{}),...(explicitPatch?.party||{})};
@@ -425,6 +435,7 @@ function mergeExplicitOverModel(modelPatch,explicitPatch){
     ...arr(explicitPatch?.preferenceAdds),
   ])];
   if(adds.length) combined.preferenceAdds=adds;
+  if(combined.goal==='PICKUP'&&combined.hotel&&pickupChangeRequested(message)){combined.goal='GENERAL';combined.bookingRequested=false;}
   return validateIntentPatch(combined);
 }
 
@@ -446,6 +457,7 @@ export async function extractConversationIntent({
   });
   const fallback={
     patch:explicitPatch,
+    explicitPatch,
     selectedProductId:explicitPatch.selectedProductId??null,
     goal:explicitPatch.goal||'GENERAL',
     bookingRequested:Boolean(explicitPatch.bookingRequested),
@@ -469,6 +481,8 @@ export async function extractConversationIntent({
     'Output shape exactly:',
     '{"intentPatch":{"locale":"ru|en|vi|zh|ko","dateConstraint":object|null,"party":object|null,"preferenceAdds":[],"preferenceRemoves":[],"hotel":string|null,"pickupPreference":string|null,"selectedProductId":string|null,"goal":"...","bookingRequested":boolean}}',
     'Omit unchanged optional fields from intentPatch.',
+    'Use PICKUP for factual pickup/meeting-point questions. An explicit request to change a hotel, pickup place or pickup mode is GENERAL and must include only the requested changes.',
+    'Preserve hotel names exactly as provided by the customer.',
     'CURRENT_INTENT='+JSON.stringify(currentIntent),
     'AVAILABLE_PRODUCTS='+JSON.stringify(modelProductList(products)),
     'CLIENT_CONTEXT_HINTS='+JSON.stringify(context&&typeof context==='object'?context:{}),
@@ -489,9 +503,10 @@ export async function extractConversationIntent({
     const parsed=parseJson(responseText(result));
     const rawPatch=isObject(parsed?.intentPatch)?parsed.intentPatch:{};
     const modelPatch=validateIntentPatch(rawPatch);
-    const patch=mergeExplicitOverModel(modelPatch,explicitPatch);
+    const patch=mergeExplicitOverModel(modelPatch,explicitPatch,message);
     return {
       patch,
+      explicitPatch,
       selectedProductId:patch.selectedProductId??null,
       goal:patch.goal||'GENERAL',
       bookingRequested:Boolean(patch.bookingRequested),
@@ -568,6 +583,14 @@ export function validateGroundedSalesPlan(raw,evidence,locale='ru',goal='GENERAL
   if(recommendedProductId&&!productIds.has(recommendedProductId)) throw new TypeError('recommended product is not in verified evidence');
   const selectedOfferId=str(raw.selectedOfferId,120);
   if(selectedOfferId&&!offerIds.has(selectedOfferId)) throw new TypeError('selected offer is not in verified evidence');
+  const requiredOffers=recommendationOffers(evidence,goal);
+  if(requiredOffers.length&&!requiredOffers.some(row=>row.offer.offerId===selectedOfferId)){
+    throw new TypeError('verified offer recommendation is required');
+  }
+  const selected=offers.find(row=>row.offer?.offerId===selectedOfferId);
+  if(selected&&recommendedProductId&&recommendedProductId!==(selected.product?.productId||selected.offer.productId)){
+    throw new TypeError('recommended product differs from verified offer');
+  }
 
   if(!Array.isArray(raw.evidenceRefs)) throw new TypeError('evidenceRefs must be an array');
   const availableEvidence=new Set(evidence.map(item=>item.evidenceId));
@@ -602,12 +625,35 @@ export function validateGroundedSalesPlan(raw,evidence,locale='ru',goal='GENERAL
   };
 }
 
+function recommendationOffers(evidence,goal){
+  if(!['GENERAL','DISCOVER','PRICE','AVAILABILITY','BOOK'].includes(goal)) return [];
+  return allOffersFromEvidence(evidence).filter(row=>row.offer?.offerId&&row.offer.availability?.status==='AVAILABLE');
+}
+
+function modelEvidenceData(packet){
+  if(!['searchOffers','getOfferDetails'].includes(packet.capability)) return packet.data;
+  const clean=row=>{
+    if(!isObject(row))return row;
+    const {selection:privateSelection,...rest}=row;
+    const offer=rest.offer?structuredClone(rest.offer):null;
+    if(offer){
+      for(const key of ['pickup','dropoff']){
+        if(offer[key]){const {customText:privateAddress,...transport}=offer[key];offer[key]=transport;}
+      }
+    }
+    return {...rest,...(offer?{offer}:{}),
+      ...(Array.isArray(rest.bookingDataIssues)?{bookingDataIssues:rest.bookingDataIssues.map(item=>({code:item.code,path:item.path}))}:{})};
+  };
+  return Array.isArray(packet.data)?packet.data.map(clean):clean(packet.data);
+}
+
 function salesFailureReason(error){
   const message=String(error?.message||'');
   if(!error||error.code==='ai_timeout') return 'timeout';
   if(['output_truncated','invalid_json'].includes(error.code)) return error.code;
   if(/unverified monetary claim/i.test(message)) return 'unverified_price';
   if(/invalid sales action/i.test(message)) return 'invalid_action';
+  if(/offer recommendation|differs from verified offer/i.test(message)) return 'answer_validation';
   if(/unknown fields|must be an object|required|must be an array/i.test(message)) return 'invalid_schema';
   if(/paid|upgrade|permission|not authorized/i.test(message)) return 'model_access';
   if(/quota|limit|429|neuron/i.test(message)) return 'model_limits';
@@ -619,11 +665,12 @@ function salesResponseFormat(env,evidence,goal){
   if(!String(env?.AI_MODEL||'@cf/google/gemma-4-26b-a4b-it').includes('/gemma-4-')) return {type:'json_object'};
   const products=allProductsFromEvidence(evidence).map(row=>row.product?.productId).filter(Boolean);
   const offers=allOffersFromEvidence(evidence).map(row=>row.offer?.offerId).filter(Boolean);
+  const requiredOffers=recommendationOffers(evidence,goal);
   const schema={type:'object',additionalProperties:false,properties:{
     reply:{type:'string',minLength:1,maxLength:1600},
-    recommendedProductId:{type:'string',enum:[...new Set(['',...products])]},
-    selectedOfferId:{type:'string',enum:[...new Set(['',...offers])]},
-    action:{type:'string',enum:SALES_ACTIONS.filter(action=>!['DETAILS','COMPARE','PICKUP'].includes(goal)||!['ASK_DATE','ASK_PARTY','OFFER_READY'].includes(action))},
+    recommendedProductId:{type:'string',enum:[...new Set(requiredOffers.length?requiredOffers.map(row=>row.product?.productId||row.offer.productId):['',...products])]},
+    selectedOfferId:{type:'string',enum:[...new Set(requiredOffers.length?requiredOffers.map(row=>row.offer.offerId):['',...offers])]},
+    action:{type:'string',enum:requiredOffers.length?['RECOMMEND','OFFER_READY']:SALES_ACTIONS.filter(action=>!['DETAILS','COMPARE','PICKUP'].includes(goal)||!['ASK_DATE','ASK_PARTY','OFFER_READY'].includes(action))},
     nextQuestionCode:{type:'string',...(['DETAILS','COMPARE','PICKUP'].includes(goal)?{enum:['']}: {})},
     evidenceRefs:{type:'array',minItems:1,items:{type:'string',enum:evidence.map(packet=>packet.evidenceId)}},
   },required:['reply','recommendedProductId','selectedOfferId','action','nextQuestionCode','evidenceRefs']};
@@ -679,17 +726,18 @@ function localized(locale,key,vars={}){
 
 export function deterministicSalesFallback({locale='ru',intent,evidence=[],goal='BOOK'}={}){
   const commercial=COMMERCIAL_GOALS.includes(goal);
-  const consultationOffers=goal==='DISCOVER'?allOffersFromEvidence(evidence).filter(item=>item?.offer):[];
+  const availableOffers=recommendationOffers(evidence,goal);
+  const consultationOffers=['DISCOVER','GENERAL'].includes(goal)?availableOffers:[];
   if(!commercial&&!consultationOffers.length){
     return {reply:localized(locale,'unavailable'),recommendedProductId:'',selectedOfferId:'',action:'GENERAL',nextQuestionCode:'RETRY',evidenceRefs:evidence.map(item=>item.evidenceId),degraded:true};
   }
-  if(!exactDateKnown(intent)){
+  if(!availableOffers.length&&!exactDateKnown(intent)){
     return {reply:localized(locale,'askDate'),recommendedProductId:'',selectedOfferId:'',action:'ASK_DATE',nextQuestionCode:'DATE',evidenceRefs:evidence.map(item=>item.evidenceId)};
   }
-  if(!partyKnown(intent)){
+  if(!availableOffers.length&&!partyKnown(intent)){
     return {reply:localized(locale,'askParty'),recommendedProductId:'',selectedOfferId:'',action:'ASK_PARTY',nextQuestionCode:'PARTY',evidenceRefs:evidence.map(item=>item.evidenceId)};
   }
-  const offers=allOffersFromEvidence(evidence).filter(item=>item?.offer);
+  const offers=availableOffers;
   if(offers.length){
     const first=offers[0];
     const title=first.product?.title||'';
@@ -737,7 +785,7 @@ export async function composeGroundedSalesPlan({
     source:packet.source,
     authority:packet.authority,
     capability:packet.capability,
-    data:packet.data,
+    data:modelEvidenceData(packet),
   }));
   const system=[
     'You are Sales Intelligence for Nha Trang Love Travel.',
@@ -758,6 +806,9 @@ export async function composeGroundedSalesPlan({
     'For GENERAL, DETAILS, COMPARE, PICKUP and DISCOVER, answer the question from verified product facts even when date and party are unknown.',
     'Do not require date or participant counts for program, inclusions, exclusions, meeting point, general pickup rules or general cancellation information.',
     'Rate-specific conditions require the relevant option; exact prices and available seats require verified offer evidence. Explain missing evidence without inventing it.',
+    'If verified AVAILABLE offers exist for this request, choose the best matching offer and return its selectedOfferId with the same recommendedProductId; do not replace a requested recommendation with an unselected comparison.',
+    'For a selected offer, explain required bookingDataIssues that remain; selection is preparation, never a created booking.',
+    'Verified offer date and participantMix take precedence over earlier intent hints. Describe the actual selected offer scope.',
     'If a verified offer exists, recommendation may cite only that offer price/availability.',
     'Numeric prices in descriptions are not authoritative offers. Do not repeat prices for optional activities, rentals or extras unless they appear in VERIFIED_OFFER_PRICES. When no offers exist, describe paid extras without numeric prices.',
     'VERIFIED_OFFER_PRICES='+JSON.stringify([...allowedMoney(evidence)]),

@@ -3,11 +3,6 @@ name: LoveTravel client AI browser E2E
 on:
   workflow_dispatch:
   workflow_call:
-  push:
-    branches: [main]
-    paths:
-      - scripts/verify-live-client-ai-browser.mjs
-      - .github/workflows/client-ai-browser-e2e.yml
 
 concurrency:
   group: lovetravel-client-ai-browser
