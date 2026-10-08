@@ -551,7 +551,7 @@ function allowedMoney(evidence=[]){
 }
 
 function monetaryClaims(reply){
-  const text=str(reply,2400);
+  const text=String(reply??'');
   const claims=[];
   const number=String.raw`(?:\d{1,3}(?:[ ,.\u00a0]\d{3})+|\d+)(?:[.,]\d{1,2})?`;
   const currencies=[
@@ -567,12 +567,12 @@ function monetaryClaims(reply){
   };
   for(const {code,token} of currencies){
     for(const pattern of [new RegExp('('+number+')\\s*(?:'+token+')','giu'),new RegExp('(?:'+token+')\\s*('+number+')','giu')]){
-      for(const match of text.matchAll(pattern))claims.push({amount:parseAmount(match[1]),currency:code});
+      for(const match of text.matchAll(pattern))claims.push({amount:parseAmount(match[1]),currency:code,index:match.index,length:match[0].length});
     }
   }
   for(const [symbol,currency] of [['\\$','USD'],['€','EUR'],['₽','RUB']]){
     for(const pattern of [new RegExp(symbol+'\\s*('+number+')','gu'),new RegExp('('+number+')\\s*'+symbol,'gu')]){
-      for(const match of text.matchAll(pattern))claims.push({amount:parseAmount(match[1]),currency});
+      for(const match of text.matchAll(pattern))claims.push({amount:parseAmount(match[1]),currency,index:match.index,length:match[0].length});
     }
   }
   return claims;
@@ -650,7 +650,28 @@ function recommendationOffers(evidence,goal){
   return allOffersFromEvidence(evidence).filter(row=>row.offer?.offerId&&row.offer.availability?.status==='AVAILABLE');
 }
 
+function descriptiveFacts(value){
+  if(typeof value==='string'){
+    const ranges=monetaryClaims(value).map(claim=>({start:claim.index,end:claim.index+claim.length})).sort((a,b)=>a.start-b.start);
+    const merged=[];
+    for(const range of ranges){
+      const previous=merged.at(-1);
+      if(previous&&range.start<=previous.end)previous.end=Math.max(previous.end,range.end);
+      else merged.push({...range});
+    }
+    let clean=value;
+    for(const range of merged.reverse())clean=clean.slice(0,range.start)+'[additional charge]'+clean.slice(range.end);
+    return clean;
+  }
+  if(Array.isArray(value))return value.map(descriptiveFacts);
+  if(isObject(value))return Object.fromEntries(Object.entries(value).map(([key,item])=>[key,descriptiveFacts(item)]));
+  return value;
+}
+
 function modelEvidenceData(packet){
+  if(['searchProducts','compareProducts'].includes(packet.capability)){
+    return arr(packet.data).map(row=>({...row,...(row.facts?{facts:descriptiveFacts(row.facts)}:{})}));
+  }
   if(!['searchOffers','getOfferDetails'].includes(packet.capability)) return packet.data;
   const clean=row=>{
     if(!isObject(row))return row;
@@ -661,7 +682,7 @@ function modelEvidenceData(packet){
         if(offer[key]){const {customText:privateAddress,...transport}=offer[key];offer[key]=transport;}
       }
     }
-    return {...rest,...(offer?{offer}:{}),
+    return {...rest,...(rest.facts?{facts:descriptiveFacts(rest.facts)}:{}),...(offer?{offer}:{}),
       ...(Array.isArray(rest.bookingDataIssues)?{bookingDataIssues:rest.bookingDataIssues.map(item=>({code:item.code,path:item.path}))}:{})};
   };
   return Array.isArray(packet.data)?packet.data.map(clean):clean(packet.data);

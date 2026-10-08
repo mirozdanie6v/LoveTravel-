@@ -619,3 +619,24 @@ test('unit-price wording is regenerated as the authoritative group total',async(
   assert.deepEqual(plan.replyFailureReasons,['unverified_price']);
   assert.equal(plan.reply,'The total for two adults is 98 USD.');
 });
+
+
+test('descriptive rental prices are removed only from model facts while exact offers remain intact',async()=>{
+  const products=productEvidence();
+  products.data[0].facts={description:'Optional motorbike rental costs US$6 per person.',itinerary:[{body:'Kayaking is included; rental costs 6 dollars.'}],cancellationPolicy:{deadlineHours:24,penaltyPercent:100}};
+  const before=structuredClone(products);
+  const env={AI:{async run(_model,input){
+    const prompt=input.messages[0].content;
+    const modelView=JSON.parse(prompt.split('VERIFIED_EVIDENCE=')[1]);
+    assert.ok(!JSON.stringify(modelView[0].data).includes('US$6'));
+    assert.ok(!JSON.stringify(modelView[0].data).includes('6 dollars'));
+    assert.match(modelView[0].data[0].facts.description,/additional charge/);
+    assert.equal(modelView[0].data[0].facts.cancellationPolicy.deadlineHours,24);
+    assert.equal(modelView[0].data[0].facts.cancellationPolicy.penaltyPercent,100);
+    assert.equal(modelView[1].data[0].offer.price.amount,98);
+    return {response:{reply:'The total for two adults is 98 USD. Motorbike rental is optional and paid separately.',recommendedProductId:'love-travel-hon-mun',selectedOfferId:'offer-1',action:'RECOMMEND',nextQuestionCode:'',evidenceRefs:['cap-products','cap-offers']}};
+  }}};
+  const plan=await composeGroundedSalesPlan({env,message:'What does the tour cost?',locale:'en',intent:createInitialTravelIntent('en'),evidence:[products,offerEvidence()],goal:'GENERAL'});
+  assert.equal(plan.source,'workers-ai-grounded-sales');
+  assert.deepEqual(products,before);
+});
