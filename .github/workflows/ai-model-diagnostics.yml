@@ -1,16 +1,14 @@
-name: Diagnose LoveTravel AI model reads
+name: LoveTravel AI consultation contract (no bookings)
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - scripts/diagnose-live-ai-model.mjs
-      - .github/workflows/ai-model-diagnostics.yml
-
+  workflow_dispatch:
   pull_request:
     paths:
       - scripts/diagnose-live-ai-model.mjs
       - .github/workflows/ai-model-diagnostics.yml
+      - src/travel-sales-intelligence.js
+      - src/travel-sales-orchestrator.js
+      - src/ai-consultant-v5.js
 
 permissions:
   contents: read
@@ -68,5 +66,5 @@ jobs:
             echo "CLOUDFLARE_ACCOUNT_ID=$account_id"
           } >> "$GITHUB_ENV"
 
-      - name: Inspect actual evidence and model output (no bookings)
+      - name: Verify actual model consultation in five locales (no bookings)
         run: node scripts/diagnose-live-ai-model.mjs

@@ -58,3 +58,13 @@ test('network compatibility guards cannot replace the authoritative server reply
   assert.equal(result.reply,'Могу подобрать варианты по вашей просьбе.');
   assert.equal(result.source,'workers-ai-grounded-sales');
 });
+for(const [locale,pendingText] of Object.entries({ru:'Подбираю…',vi:'Đang tìm...',en:'Finding options…',zh:'正在查询…',ko:'찾는 중…'})){
+  test('temporary UI status is never sent as conversation history: '+locale,async()=>{
+    const {c,root}=harness(locale);let payload;
+    c.fetch=async(_url,init)=>{payload=JSON.parse(init.body);return new Response(JSON.stringify({ok:true,reply:'The tour includes food and drinks.',source:'workers-ai-grounded-sales'}));};
+    await c.MaxTourAI._audit.handleText('What is included?',root);
+    assert.ok(payload.history.every(row=>row.text!==pendingText));
+    assert.equal(payload.history.at(-1).role,'user');
+    assert.equal(payload.history.at(-1).text,'What is included?');
+  });
+}
