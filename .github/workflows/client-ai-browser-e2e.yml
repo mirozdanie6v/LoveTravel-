@@ -3,6 +3,11 @@ name: LoveTravel client AI browser E2E
 on:
   workflow_dispatch:
   workflow_call:
+  push:
+    branches: [main]
+    paths:
+      - scripts/verify-live-client-ai-browser.mjs
+      - .github/workflows/client-ai-browser-e2e.yml
 
 concurrency:
   group: lovetravel-client-ai-browser
@@ -23,7 +28,14 @@ jobs:
         run: |
           npm install --no-fund --no-audit
           npm install --no-save playwright@1.55.0
-      - name: Verify public AI journey in RU and EN
+      - name: Verify consultation in five locales and BookingTransaction handoff
         env:
           LOVE_TRAVEL_LIVE_BASE_URL: https://lovetravel.viiversion.com
         run: node scripts/verify-live-client-ai-browser.mjs
+      - name: Save actual consultation screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-dialogue-screenshots
+          path: artifacts/ai-dialogue/*.png
+          if-no-files-found: ignore
