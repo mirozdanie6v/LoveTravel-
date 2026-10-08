@@ -13,6 +13,7 @@ permissions:
 jobs:
   configure:
     runs-on: ubuntu-latest
+    environment: production
     timeout-minutes: 5
     env:
       CF_TOKEN_1: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -24,6 +25,15 @@ jobs:
       CF_NOTIFICATIONS_TOKEN: ${{ secrets.CLOUDFLARE_NOTIFICATIONS_API_TOKEN }}
     steps:
       - uses: actions/checkout@v5
+
+      - name: Check notifications token presence
+        shell: bash
+        run: |
+          if [ -n "${CF_NOTIFICATIONS_TOKEN:-}" ]; then
+            echo "NOTIFICATIONS_TOKEN_PRESENT=yes"
+          else
+            echo "NOTIFICATIONS_TOKEN_PRESENT=no"
+          fi
 
       - name: Resolve existing Cloudflare credential
         shell: bash
