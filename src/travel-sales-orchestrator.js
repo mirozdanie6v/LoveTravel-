@@ -5,6 +5,7 @@ import {
 import { executeBookingSession } from './booking-session-client.js';
 import { createTravelCapabilityBroker } from './travel-capability-broker.js';
 import {
+  COMMERCIAL_GOALS,
   composeGroundedSalesPlan,
   createInitialTravelIntent,
   extractConversationIntent,
@@ -181,9 +182,11 @@ export function createLoveTravelSalesOrchestrator({
     bookingSessionExecutor:(transactionId,payload)=>executeBookingSession(env,transactionId,payload),
   });
 
-  async function turn({sessionId,locale,message,context={}}={}){
+  async function turn({sessionId,locale,message,context={},history=[]}={}){
     await ensureTravelCommerceRuntimeSchema(env.DB);
     let shopping=await ensureShopping(store,sessionId,locale,now());
+    const memory=await loadConversationMemory(env,sessionId);
+    const conversation=memory.turns?.length?memory.turns:history;
 
     const date=exactDate(shopping.intent);
     const productsPacket=await broker.execute('searchProducts',{
@@ -202,10 +205,16 @@ export function createLoveTravelSalesOrchestrator({
       locale,
       products:productsPacket.data,
       context,
+      history:conversation,
       now:now(),
     });
+    const readOnlyQuestion=['DETAILS','COMPARE','PICKUP'].includes(extracted.goal);
+    const intentPatch={...extracted.patch};
+    if(readOnlyQuestion){
+      for(const key of ['dateConstraint','party','hotel','pickupPreference','selectedProductId','bookingRequested']) delete intentPatch[key];
+    }
     const merged=mergeIntentPatch(shopping.intent,{
-      ...extracted.patch,
+      ...intentPatch,
       locale,
     });
 
@@ -217,7 +226,8 @@ export function createLoveTravelSalesOrchestrator({
 
     const evidence=[productsPacket];
     let offersPacket=null;
-    if(exactDate(shopping.intent)&&partyKnown(shopping.intent)){
+    const offersRequested=COMMERCIAL_GOALS.includes(extracted.goal)||(['DISCOVER','GENERAL'].includes(extracted.goal)&&commercialPatch(intentPatch));
+    if(offersRequested&&exactDate(shopping.intent)&&partyKnown(shopping.intent)){
       const productIds=canonicalToProviderProducts(
         productsPacket,
         extracted.selectedProductId,
@@ -244,6 +254,7 @@ export function createLoveTravelSalesOrchestrator({
       intent:shopping.intent,
       evidence,
       goal:extracted.goal,
+      history:conversation,
     });
 
     if(plan.selectedOfferId&&shopping.candidateOfferIds.includes(plan.selectedOfferId)
@@ -280,17 +291,18 @@ export function createLoveTravelSalesOrchestrator({
       }
     }
 
-    const memory=await loadConversationMemory(env,sessionId);
     await saveConversationMemory(env,sessionId,appendTurns(memory,message,plan.reply));
 
     return {
       reply:plan.reply,
+      degraded:Boolean(plan.degraded),
       tourId:externalTourId(productsPacket,plan.recommendedProductId),
       faqIntent:String(extracted.goal||'GENERAL').toLowerCase(),
       source:plan.source,
       agent:{
         version:'travel-commerce-sales-v1',
         intentSource:extracted.source,
+        replyFailureReason:plan.replyFailureReason||null,
         action:plan.action,
         nextQuestionCode:plan.nextQuestionCode,
         recommendedProductId:plan.recommendedProductId,
@@ -356,6 +368,7 @@ export async function handleLoveTravelSalesAgent(
       locale:localeFrom(request,body),
       message,
       context:body.context&&typeof body.context==='object'?body.context:{},
+      history:Array.isArray(body.history)?body.history:[],
     });
     return withSalesSession(json({ok:true,...result}),session);
   }catch(error){

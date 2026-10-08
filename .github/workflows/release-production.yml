@@ -40,3 +40,8 @@ jobs:
     needs: post-deploy
     uses: ./.github/workflows/booking-ui-browser.yml
     secrets: inherit
+
+  ai-dialogue:
+    needs: post-deploy
+    uses: ./.github/workflows/client-ai-browser-e2e.yml
+    secrets: inherit
