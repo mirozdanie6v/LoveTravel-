@@ -1,0 +1,63 @@
+name: Diagnose LoveTravel AI model reads
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - scripts/diagnose-live-ai-model.mjs
+      - .github/workflows/ai-model-diagnostics.yml
+
+permissions:
+  contents: read
+
+jobs:
+  model-reads:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      CF_TOKEN_1: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CF_TOKEN_2: ${{ secrets.CF_API_TOKEN }}
+      CF_TOKEN_3: ${{ secrets.CLOUDFLARE_TOKEN }}
+      CF_TOKEN_4: ${{ secrets.VIIVERSION_CLOUDFLARE_API_TOKEN }}
+      CF_TOKEN_5: ${{ secrets.CLOUDFLARE_PROD_API_TOKEN }}
+      CF_TOKEN_6: ${{ secrets.CLOUDFLARE_WORKERS_API_TOKEN }}
+      CF_ACCOUNT_1: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CF_ACCOUNT_2: ${{ secrets.CF_ACCOUNT_ID }}
+      CF_ACCOUNT_3: ${{ secrets.VIIVERSION_CLOUDFLARE_ACCOUNT_ID }}
+      CF_ACCOUNT_4: ${{ secrets.CLOUDFLARE_PROD_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Resolve Cloudflare credential
+        shell: bash
+        run: |
+          set -euo pipefail
+          chosen=''
+          for name in CF_TOKEN_1 CF_TOKEN_2 CF_TOKEN_3 CF_TOKEN_4 CF_TOKEN_5 CF_TOKEN_6; do
+            value="${!name:-}"
+            [ -n "$value" ] || continue
+            echo "::add-mask::$value"
+            code="$(curl --silent --show-error --max-time 15 -o /tmp/cf-verify.json -w '%{http_code}'               https://api.cloudflare.com/client/v4/user/tokens/verify               -H "Authorization: Bearer $value"               -H 'Content-Type: application/json' || true)"
+            status="$(jq -r '.result.status // ""' /tmp/cf-verify.json 2>/dev/null || true)"
+            if [ "$code" = "200" ] && [ "$status" = "active" ]; then
+              chosen="$value"
+              break
+            fi
+          done
+          test -n "$chosen"
+
+          zone="$(curl --fail --silent --show-error --max-time 15             'https://api.cloudflare.com/client/v4/zones?name=viiversion.com'             -H "Authorization: Bearer $chosen"             -H 'Content-Type: application/json')"
+          account_id="$(echo "$zone" | jq -r '.result[]? | select(.name=="viiversion.com") | .account.id' | head -n1)"
+          test -n "$account_id"
+
+          echo "::add-mask::$chosen"
+          {
+            echo "CLOUDFLARE_API_TOKEN=$chosen"
+            echo "CLOUDFLARE_ACCOUNT_ID=$account_id"
+          } >> "$GITHUB_ENV"
+
+      - name: Inspect actual evidence and model output (no bookings)
+        run: node scripts/diagnose-live-ai-model.mjs
