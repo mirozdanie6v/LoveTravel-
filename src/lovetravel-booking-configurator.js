@@ -383,7 +383,6 @@
   function syncDomainSummary(r){
     const screen=document.querySelector('#tourScreen');
     if(!screen || String(screen.dataset.ltDomainProduct)!==String(r?.product?.id||activeProductId)) return;
-    globalThis.LoveTravelDomainTour?.syncCancellation?.(r?.product?.id||activeProductId,r?.selection?.rateId);
     const date=screen.querySelector('[data-lt-summary-date]');
     if(date){
       date.hidden=!r?.resolved?.slot;
@@ -539,7 +538,6 @@
     root.hidden=false;
     root.querySelector('[role="dialog"]').setAttribute('aria-label',title);
     syncVisualViewport();
-    delete root.querySelector('.lt-booking-sheet__content').dataset.ltSelectionPending;
     root.querySelector('.lt-booking-sheet__content').innerHTML=
       '<header class="lt-booking-sheet__header"><div><h3>'+esc(title)+'</h3></div><button type="button" data-lt-sheet-close data-lt-sheet-close-button aria-label="'+esc(t().close)+'">×</button></header>'+body;
     const focusRevision=++sheetFocusRevision;
@@ -658,62 +656,6 @@
       closeSheet();
     }));
   }
-  async function withChoiceFeedback(productId,root,{button,selector,attribute,patch,after}){
-    if(root.dataset.ltSelectionPending) return null;
-    const viewRevision=sheetFocusRevision;
-    const current=()=>activeProductId===productId&&sheetFocusRevision===viewRevision&&root.isConnected&&document.querySelector('#tourScreen')?.classList.contains('active')&&String(document.querySelector('#tourScreen')?.dataset.ltDomainProduct||'')===productId;
-    const value=button.getAttribute(attribute);
-    root.dataset.ltSelectionPending='true';
-    root.querySelectorAll(selector).forEach(choice=>{
-      const active=choice.getAttribute(attribute)===value;
-      choice.classList.toggle('is-active',active);
-      choice.classList.toggle('is-pending',active);
-      choice.setAttribute('aria-pressed',String(active));
-      if(active) choice.setAttribute('aria-busy','true'); else choice.removeAttribute('aria-busy');
-    });
-    let status=root.querySelector('[data-lt-choice-status]');
-    if(!status){
-      status=document.createElement('div');
-      status.dataset.ltChoiceStatus='';
-      root.querySelector('.lt-booking-sheet__header').insertAdjacentElement('afterend',status);
-    }
-    status.className='lt-choice-status';
-    status.setAttribute('role','status');
-    status.setAttribute('aria-live','polite');
-    status.textContent=i18n()?.t?.('booking.selectionChecking',{choice:button.querySelector('b')?.textContent||button.textContent});
-    const controls=[...root.querySelectorAll('button,input,select,textarea')].filter(control=>!control.hasAttribute('data-lt-sheet-close'));
-    const disabled=controls.map(control=>({control,disabled:control.disabled}));
-    controls.forEach(control=>{control.disabled=true;});
-    patchSelection(productId,patch);
-    try{
-      const next=await resolve(productId,{quiet:true});
-      if(current()) after(next);
-      return next;
-    }catch(error){
-      if(current()){
-        status.className='lt-choice-status is-error';
-        status.setAttribute('role','alert');
-        status.textContent=t().selectionError;
-        const retry=document.createElement('button');
-        retry.type='button';
-        retry.className='lt-sheet-secondary';
-        retry.dataset.ltChoiceRetry='';
-        retry.textContent=t().retrySelection;
-        retry.addEventListener('click',()=>withChoiceFeedback(productId,root,{button,selector,attribute,patch,after}));
-        status.appendChild(retry);
-      }
-      return null;
-    }finally{
-      if(current()){
-        delete root.dataset.ltSelectionPending;
-        disabled.forEach(item=>{item.control.disabled=item.disabled;});
-        root.querySelectorAll(selector).forEach(choice=>{
-          choice.classList.remove('is-pending');
-          choice.removeAttribute('aria-busy');
-        });
-      }
-    }
-  }
   function openOptionSheet(productId){
     const r=resolutionByProduct.get(productId); if(!r) return;
     const s=selection(productId);
@@ -726,11 +668,10 @@
     ).join('')+'</div></div>';
     const root=showSheet(t().chooseOption,body);
     root.querySelectorAll('[data-lt-rate]').forEach(btn=>btn.addEventListener('click',async()=>{
-      const next=await withChoiceFeedback(productId,root,{
-        button:btn,selector:'[data-lt-rate]',attribute:'data-lt-rate',patch:{rateId:btn.dataset.ltRate},
-        after:()=>closeSheet(),
-      });
-      if(next) refreshCalendar(productId,{force:true}).catch(error=>console.error('[LoveTravel] rate calendar refresh failed',error));
+      patchSelection(productId,{rateId:btn.dataset.ltRate});
+      await resolve(productId,{quiet:true});
+      closeSheet();
+      refreshCalendar(productId,{force:true}).catch(error=>console.error('[LoveTravel] rate calendar refresh failed',error));
     }));
   }
   function openGuestsSheet(productId){
@@ -759,7 +700,7 @@
   function pickupPlaceRows(places,s){
     if(!places.length) return '<div class="lt-empty">'+esc(t().noPlaces)+'</div>';
     return places.map(place=>
-      '<button type="button" class="lt-pickup-place '+(String(place.id)===String(s.pickup?.placeId)?'is-active':'')+'" data-lt-place="'+esc(place.id)+'" aria-pressed="'+(String(place.id)===String(s.pickup?.placeId)?'true':'false')+'">'+
+      '<button type="button" class="lt-pickup-place '+(String(place.id)===String(s.pickup?.placeId)?'is-active':'')+'" data-lt-place="'+esc(place.id)+'">'+
         '<span><b>'+esc(place.title)+'</b><small>'+esc(place.wholeAddress||[place.addressLine1,place.city].filter(Boolean).join(', '))+'</small></span>'+
       '</button>'
     ).join('');
@@ -805,16 +746,14 @@
     if(roomRequired) setTimeout(()=>root.querySelector('[data-lt-room-number]')?.focus({preventScroll:true}),0);
     root.querySelectorAll('[data-lt-pickup-mode]').forEach(btn=>btn.addEventListener('click',async()=>{
       const selectedMode=btn.dataset.ltPickupMode;
-      await withChoiceFeedback(productId,root,{
-        button:btn,selector:'[data-lt-pickup-mode]',attribute:'data-lt-pickup-mode',
-        patch:{pickup:{
-          mode:selectedMode,
-          placeId:selectedMode==='PICKUP'?selection(productId).pickup.placeId:null,
-          customLocation:selectedMode==='PICKUP'?selection(productId).pickup.customLocation:null,
-          roomNumber:selectedMode==='PICKUP'?selection(productId).pickup.roomNumber:'',
-        }},
-        after:()=>{if(selectedMode==='MEET_ON_LOCATION') closeSheet(); else openPickupSheet(productId);},
-      });
+      patchSelection(productId,{pickup:{
+        mode:selectedMode,
+        placeId:selectedMode==='PICKUP'?selection(productId).pickup.placeId:null,
+        customLocation:selectedMode==='PICKUP'?selection(productId).pickup.customLocation:null,
+        roomNumber:selectedMode==='PICKUP'?selection(productId).pickup.roomNumber:'',
+      }});
+      await resolve(productId,{quiet:true});
+      if(selectedMode==='MEET_ON_LOCATION') closeSheet(); else openPickupSheet(productId);
     }));
     const search=root.querySelector('[data-lt-pickup-search]');
     const results=root.querySelector('[data-lt-pickup-results]');
@@ -824,15 +763,11 @@
     results?.addEventListener('click',async e=>{
       const btn=e.target.closest('[data-lt-place]'); if(!btn) return;
       const currentQuery=search?.value||'';
-      await withChoiceFeedback(productId,root,{
-        button:btn,selector:'[data-lt-place]',attribute:'data-lt-place',
-        patch:{pickup:{mode:'PICKUP',placeId:btn.dataset.ltPlace,customLocation:null,roomNumber:''}},
-        after:next=>{
-          const place=next.resolved?.pickupPlace;
-          if(place?.askForRoomNumber || arr(next?.bookingDataIssues).some(item=>item.code==='pickup_room_number_required')) openPickupSheet(productId,currentQuery,next);
-          else closeSheet();
-        },
-      });
+      patchSelection(productId,{pickup:{mode:'PICKUP',placeId:btn.dataset.ltPlace,customLocation:null,roomNumber:''}});
+      const next=await resolve(productId,{quiet:true});
+      const place=next.resolved?.pickupPlace;
+      if(place?.askForRoomNumber || arr(next?.bookingDataIssues).some(item=>item.code==='pickup_room_number_required')) openPickupSheet(productId,currentQuery,next);
+      else closeSheet();
     });
     root.querySelector('[data-lt-room-save]')?.addEventListener('click',async()=>{
       const roomNumber=root.querySelector('[data-lt-room-number]')?.value.trim()||'';

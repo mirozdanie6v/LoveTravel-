@@ -483,6 +483,3 @@ html.love-travel-branded #tourScreen.lt-domain-tour{
 .lt-domain-info-panel>.lt-domain-section{margin:0;border:0;box-shadow:none;background:transparent}
 .lt-domain-info-panel>.lt-domain-section:first-child>.lt-domain-section__head{display:none}
 .lt-domain-info-panel .lt-domain-list li{font-size:13px;line-height:1.5}
-
-html.love-travel-branded .lt-tour-card.is-opening{outline:2px solid #ee4214;outline-offset:2px;box-shadow:0 0 0 4px rgba(238,66,20,.12)}
-.lt-domain-loading>p{max-width:340px;margin:10px auto 0;color:#36556b;font-size:15px;line-height:1.4}
