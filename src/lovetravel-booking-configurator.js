@@ -11,6 +11,9 @@
   let activeProductId = null;
   let requestSeq = 0;
   let sheet = null;
+  let sheetReturnFocus = null;
+  let sheetReturnStep = null;
+  let sheetFocusRevision = 0;
   let transactionSnapshot = null;
   const bootstrapping = new Set();
   const bootstrapPromises = new Map();
@@ -74,7 +77,14 @@
   function l10n(){ return globalThis.LoveTravelTourLocale || null; }
   function providerText(value){ return l10n()?.providerText?.(value) ?? String(value ?? ''); }
   function localizedRateTitle(_productId,rate,_localization=null){
-    return String(rate?.title||rate?.code||rate?.id||'');
+    return globalThis.LoveTravelDomainTour?.rateContent?.(_productId,rate?.id)?.title || String(rate?.title||rate?.code||rate?.id||'');
+  }
+  function localizedRateDescription(productId,rate){
+    const content=globalThis.LoveTravelDomainTour?.rateContent?.(productId,rate?.id);
+    if(content?.description) return content.description;
+    const key='tour.ratePresentation.'+String(rate?.id||'');
+    const curated=i18n()?.t?.(key);
+    return curated && curated!==key ? curated : '';
   }
   function arr(v){ return Array.isArray(v) ? v : []; }
   function esc(v){ return String(v ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
@@ -302,8 +312,16 @@
   }
   function quoteSummary(r){
     if(r?.quote?.available) return money(r.quote.total,r.quote.currency);
-    const from=arr(r?.constraints?.rates).map(x=>x.fromPrice).filter(Boolean).sort((a,b)=>Number(a.amount)-Number(b.amount))[0];
+    const rates=arr(r?.constraints?.rates);
+    const selected=rates.find(x=>String(x.id)===String(r?.selection?.rateId));
+    const from=selected?.fromPrice || rates.map(x=>x.fromPrice).filter(Boolean).sort((a,b)=>Number(a.amount)-Number(b.amount))[0];
     return from ? t().from+' '+money(from.amount,from.currency) : '—';
+  }
+  function hasParticipantIssue(r){
+    return [...arr(r?.errors),...arr(r?.bookingDataIssues),...arr(r?.warnings)].some(item=>
+      String(item.path||'').startsWith('participants') ||
+      /participant|minimum|maximum|capacity/.test(String(item.code||''))
+    );
   }
   function firstBlockingStep(r){
     const codes=new Set([
@@ -313,7 +331,7 @@
     ]);
     if(codes.has('date_required')||codes.has('slot_required')) return 'date';
     if(codes.has('rate_required')) return 'option';
-    if(codes.has('participants_required')||[...codes].some(x=>x.includes('participant')||x.includes('minimum')||x.includes('capacity'))) return 'guests';
+    if(hasParticipantIssue(r)) return 'guests';
     if(codes.has('required_extra_missing')||codes.has('required_passenger_extra_missing')||codes.has('extras_price_unresolved')||[...codes].some(x=>x.includes('extra_booking_question'))) return 'extras';
     if(
       codes.has('pickup_mode_required')||
@@ -359,20 +377,69 @@
       if(selectedPickupValue) selectedPickupValue.textContent=selectedTitle;
     }
   }
-  function render(productId){
-    if(activeProductId!==productId) return;
-    const r=resolutionByProduct.get(productId);
+  function quoteLabel(r){
+    return r?.quote?.available ? t().total : t().pricePerPerson;
+  }
+  function syncDomainSummary(r){
+    const screen=document.querySelector('#tourScreen');
+    if(!screen || String(screen.dataset.ltDomainProduct)!==String(r?.product?.id||activeProductId)) return;
+    const date=screen.querySelector('[data-lt-summary-date]');
+    if(date){
+      date.hidden=!r?.resolved?.slot;
+      date.querySelector('[data-lt-summary-date-value]').textContent=r?.resolved?.slot ? dateSummary(r) : '';
+    }
+    const quick=screen.querySelector('[data-lt-jump-booking]');
+    if(quick){
+      quick.disabled=false;
+      quick.removeAttribute('aria-busy');
+      quick.querySelector('[data-lt-summary-price-label]').textContent=quoteLabel(r);
+      quick.querySelector('[data-lt-summary-price]').textContent=quoteSummary(r);
+      quick.querySelector('[data-lt-summary-cta]').textContent=ctaLabel(r,Boolean(r.readyToBook&&checkoutContactComplete(r)));
+    }
+  }
+  function configMount(productId){
     const shell=document.querySelector('#tourScreen .lt-domain-shell');
-    if(!shell || !r) return;
-    markLegacySelection();
-    syncDomainTransport(r);
+    if(!shell || String(document.querySelector('#tourScreen')?.dataset.ltDomainProduct)!==String(productId)) return null;
     let mount=shell.querySelector('[data-lt-config="'+CSS.escape(productId)+'"]');
     if(!mount){
       mount=document.createElement('section');
+      mount.dataset.ltConfig=productId;
       const hero=shell.querySelector('.lt-domain-hero');
       if(hero) hero.insertAdjacentElement('afterend',mount); else shell.prepend(mount);
     }
-    mount.dataset.ltConfig=productId;
+    return mount;
+  }
+  function renderPending(productId,{failed=false}={}){
+    if(activeProductId!==productId) return;
+    const mount=configMount(productId);
+    if(!mount) return;
+    markLegacySelection();
+    mount.className='lt-booking-config'+(failed?' has-error':' is-loading');
+    delete mount.dataset.ltConfigReady;
+    mount.setAttribute('aria-busy',String(!failed));
+    const labels=[t().date,t().option,t().guests,t().pickup,t().contact];
+    mount.innerHTML='<div class="lt-booking-config__head"><h2>'+esc(t().title)+'</h2></div>'+
+      '<div class="lt-booking-config__grid">'+labels.map(label=>'<button type="button" class="lt-booking-step" disabled><span class="lt-booking-step__copy"><small>'+esc(label)+'</small><b>'+esc(t().loading)+'</b></span></button>').join('')+'</div>'+
+      '<div class="lt-booking-config__status" role="status">'+esc(failed?t().refreshError:t().loading)+'</div>'+
+      '<div class="lt-booking-sticky"><div><small>'+esc(t().total)+'</small><strong>&mdash;</strong></div><button type="button" class="lt-booking-cta" disabled>'+esc(t().loading)+'</button></div>'+
+      (failed?'<button type="button" class="lt-sheet-secondary" data-lt-config-retry>'+esc(i18n()?.t?.('tour.retry'))+'</button>':'');
+    const quick=document.querySelector('#tourScreen [data-lt-jump-booking]');
+    if(quick) quick.disabled=true;
+    mount.querySelector('[data-lt-config-retry]')?.addEventListener('click',()=>{
+      resolutionByProduct.delete(productId);
+      detectProduct();
+    });
+  }
+  function render(productId){
+    if(activeProductId!==productId) return;
+    const r=resolutionByProduct.get(productId);
+    const mount=configMount(productId);
+    if(!mount || !r) return;
+    markLegacySelection();
+    syncDomainTransport(r);
+    syncDomainSummary(r);
+    mount.dataset.ltConfigReady='true';
+    mount.setAttribute('aria-busy','false');
     mount.className='lt-booking-config'+(r.readyToQuote?' has-quote':'');
     const quote=quoteSummary(r);
     const ready=Boolean(r.readyToBook && checkoutContactComplete(r));
@@ -385,24 +452,24 @@
     mount.innerHTML=
       '<div class="lt-booking-config__head">'+
         '<div><span class="lt-booking-config__eyebrow"><i></i>'+esc(t().live)+'</span><h2>'+esc(t().title)+'</h2></div>'+
-        '<div class="lt-booking-config__quote"><small>'+esc(t().total)+'</small><strong>'+esc(quote)+'</strong></div>'+
+        '<div class="lt-booking-config__quote"><small>'+esc(quoteLabel(r))+'</small><strong>'+esc(quote)+'</strong></div>'+
       '</div>'+
       '<div class="lt-booking-config__grid">'+
         stepButton('date',t().date,dateSummary(r),Boolean(r?.resolved?.slot))+
         stepButton('option',t().option,optionSummary(r),Boolean(r?.resolved?.rate))+
-        stepButton('guests',t().guests,guestSummary(r),Number(r?.resolved?.participantTotal)>0)+
+        stepButton('guests',t().guests,guestSummary(r),Number(r?.resolved?.participantTotal)>0&&!hasParticipantIssue(r))+
         stepButton('pickup',pickupStepLabel(r),pickupSummary(r),Boolean(r?.selection?.pickup?.mode)&&!arr(r?.bookingDataIssues).some(item=>String(item.code).startsWith('pickup_')||item.code==='custom_pickup_location_incomplete'))+
         (arr(r?.constraints?.dropoff?.modes).includes('DROPOFF')?stepButton('dropoff',t().dropoff,dropoffSummary(r),Boolean(r?.selection?.dropoff?.mode)&&!arr(r?.bookingDataIssues).some(item=>String(item.code).startsWith('dropoff_')||item.code==='custom_dropoff_location_incomplete')):'')+
         (extras.length?stepButton('extras',t().extras,extrasSummary(r),extrasComplete):'')+
         stepButton('contact',t().contact,contactSummary(r),detailsComplete)+
       '</div>'+
       '<div class="lt-booking-config__status">'+
-        (r?.quote?.available?'<span class="is-live">'+esc(t().liveQuote)+'</span>':'<span>'+esc(statusText(r))+'</span>')+
+        (r?.quote?.available&&!arr(r?.errors).length?'<span class="is-live">'+esc(t().liveQuote)+'</span>':'<span>'+esc(statusText(r))+'</span>')+
         (r?.product?.confirmationMode==='ON_REQUEST'?'<span class="is-request">'+esc(t().onRequest)+'</span>':'')+
         '<span data-lt-config-error="'+esc(productId)+'" hidden></span>'+
       '</div>'+
       '<div class="lt-booking-sticky">'+
-        '<div><small>'+esc(t().total)+'</small><strong>'+esc(quote)+'</strong></div>'+
+        '<div><small>'+esc(quoteLabel(r))+'</small><strong>'+esc(quote)+'</strong></div>'+
         '<button type="button" class="lt-booking-cta '+(ready?'is-ready':'')+'" data-lt-config-continue>'+esc(cta)+'</button>'+
       '</div>';
 
@@ -417,7 +484,7 @@
     const step=firstBlockingStep(r);
     if(step==='date') return t().selectDateFirst;
     if(step==='option') return t().selectOptionFirst;
-    if(step==='guests') return t().selectGuestsFirst;
+    if(step==='guests') return t().chooseGuests;
     if(step==='extras') return t().extrasRequired;
     if(step==='pickup') return t().pickupRequired;
     if(step==='dropoff') return t().dropoffRequired;
@@ -439,22 +506,46 @@
     sheet.innerHTML='<div class="lt-booking-sheet__backdrop" data-lt-sheet-close></div><section class="lt-booking-sheet__panel" role="dialog" aria-modal="true"><div class="lt-booking-sheet__handle"></div><div class="lt-booking-sheet__content"></div></section>';
     document.body.appendChild(sheet);
     sheet.addEventListener('click',e=>{ if(e.target.closest('[data-lt-sheet-close]')) closeSheet(); });
-    document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&!sheet.hidden) closeSheet(); });
+    document.addEventListener('keydown',e=>{
+      if(sheet.hidden||!sheet.classList.contains('is-open')) return;
+      if(e.key==='Escape'){ e.preventDefault(); closeSheet(); }
+      if(e.key==='Tab'){
+        const controls=[...sheet.querySelectorAll('button,input,select,textarea,a[href],[tabindex="0"]')].filter(node=>!node.disabled&&node.getClientRects().length);
+        const first=controls[0],last=controls.at(-1);
+        if(!controls.includes(document.activeElement)||(e.shiftKey&&document.activeElement===first)||(!e.shiftKey&&document.activeElement===last)){
+          e.preventDefault();
+          (e.shiftKey?last:first)?.focus();
+        }
+      }
+    });
     return sheet;
   }
   function closeSheet(){
     if(!sheet) return;
+    sheetFocusRevision++;
     sheet.classList.remove('is-open');
     document.documentElement.classList.remove('lt-sheet-open');
+    const target=sheetReturnFocus?.isConnected ? sheetReturnFocus : document.querySelector('[data-lt-config-ready] [data-lt-step="'+CSS.escape(sheetReturnStep||'date')+'"]');
+    target?.focus({preventScroll:true});
     setTimeout(()=>{ if(sheet&&!sheet.classList.contains('is-open')) sheet.hidden=true; },180);
   }
   function showSheet(title,body){
     const root=ensureSheet();
+    if(!root.classList.contains('is-open')){
+      sheetReturnFocus=document.activeElement;
+      sheetReturnStep=sheetReturnFocus?.dataset?.ltStep||null;
+    }
     root.hidden=false;
+    root.querySelector('[role="dialog"]').setAttribute('aria-label',title);
     syncVisualViewport();
     root.querySelector('.lt-booking-sheet__content').innerHTML=
       '<header class="lt-booking-sheet__header"><div><h3>'+esc(title)+'</h3></div><button type="button" data-lt-sheet-close data-lt-sheet-close-button aria-label="'+esc(t().close)+'">×</button></header>'+body;
-    requestAnimationFrame(()=>root.classList.add('is-open'));
+    const focusRevision=++sheetFocusRevision;
+    requestAnimationFrame(()=>{
+      if(focusRevision!==sheetFocusRevision) return;
+      root.classList.add('is-open');
+      root.querySelector('[data-lt-sheet-close-button]')?.focus({preventScroll:true});
+    });
     document.documentElement.classList.add('lt-sheet-open');
     return root.querySelector('.lt-booking-sheet__content');
   }
@@ -570,8 +661,8 @@
     const s=selection(productId);
     const rows=arr(r.constraints?.rates);
     const body='<div class="lt-sheet-scroll"><div class="lt-option-list">'+rows.map(rate=>
-      '<button type="button" class="lt-option-card '+(String(rate.id)===String(s.rateId)?'is-active':'')+'" data-lt-rate="'+esc(rate.id)+'">'+
-        '<span><b>'+esc(localizedRateTitle(productId,rate,r?.product?.localization))+'</b></span>'+
+      '<button type="button" class="lt-option-card '+(String(rate.id)===String(s.rateId)?'is-active':'')+'" data-lt-rate="'+esc(rate.id)+'" aria-pressed="'+(String(rate.id)===String(s.rateId)?'true':'false')+'">'+
+        '<span><b>'+esc(localizedRateTitle(productId,rate,r?.product?.localization))+'</b>'+(localizedRateDescription(productId,rate)?'<small class="lt-option-card__description">'+esc(localizedRateDescription(productId,rate))+'</small>':'')+'</span>'+
         '<span class="lt-option-card__price">'+(rate.fromPrice?'<small>'+esc(t().from)+'</small><strong>'+esc(money(rate.fromPrice.amount,rate.fromPrice.currency))+'</strong>':'')+'</span>'+
       '</button>'
     ).join('')+'</div></div>';
@@ -586,7 +677,9 @@
   function openGuestsSheet(productId){
     const r=resolutionByProduct.get(productId); if(!r) return;
     const participants=arr(r.constraints?.participants);
-    const body='<div class="lt-sheet-scroll"><div class="lt-guest-list">'+participants.map(item=>
+    const rate=r.resolved?.rate;
+    const limits=[Number(rate?.minPerBooking)>0?t().minGuests+' '+rate.minPerBooking:'',Number(rate?.maxPerBooking)>0?t().maxGuests+' '+rate.maxPerBooking:''].filter(Boolean).join(' · ');
+    const body='<div class="lt-sheet-scroll">'+(limits?'<p class="lt-guest-limits">'+esc(limits)+'</p>':'')+'<div class="lt-guest-list">'+participants.map(item=>
       '<div class="lt-guest-row" data-lt-guest-row="'+esc(item.id)+'">'+
         '<div><b>'+esc(guestLabel(item))+'</b><small>'+esc(item.minAge+'–'+item.maxAge+' '+t().years)+'</small></div>'+
         '<div class="lt-counter"><button type="button" data-lt-guest-minus="'+esc(item.id)+'">−</button><strong data-lt-guest-count="'+esc(item.id)+'">'+esc(item.count||0)+'</strong><button type="button" data-lt-guest-plus="'+esc(item.id)+'">+</button></div>'+
@@ -1158,6 +1251,7 @@
     bootstrapping.add(productId);
     activeProductId=productId;
     selection(productId);
+    renderPending(productId);
     try{
       try{
         const snapshot=await loadTransaction();
@@ -1179,7 +1273,10 @@
         }
       }
       render(productId);
-    }catch(_){}finally{
+    }catch(_){
+      resolutionByProduct.delete(productId);
+      renderPending(productId,{failed:true});
+    }finally{
       bootstrapping.delete(productId);
       if(activeProductId!==productId) detectProduct();
     }
@@ -1192,7 +1289,7 @@
     }
     const id=String(screen?.dataset?.ltDomainProduct||'');
     if(!PRODUCT_IDS.has(id) || !screen.querySelector('.lt-domain-shell')) return;
-    const mounted=Boolean(screen.querySelector('[data-lt-config="'+CSS.escape(id)+'"]'));
+    const mounted=Boolean(screen.querySelector('[data-lt-config="'+CSS.escape(id)+'"][data-lt-config-ready]'));
     if(bootstrapping.has(id)) return;
     if(id!==activeProductId || !resolutionByProduct.has(id)){
       const pending=bootstrap(id);
@@ -1245,6 +1342,12 @@
     },
     calendar:()=>activeProductId?calendarFor(activeProductId):null,
     refreshCalendar:()=>activeProductId?refreshCalendar(activeProductId,{force:true}):Promise.resolve(null),
-    open:step=>activeProductId&&openSheet(activeProductId,step||firstBlockingStep(resolutionByProduct.get(activeProductId))),
+    open:step=>{
+      if(!activeProductId) return;
+      const r=resolutionByProduct.get(activeProductId);
+      if(!r) return;
+      if(!step&&r.readyToBook&&checkoutContactComplete(r)) return openQuoteSheet(activeProductId);
+      return openSheet(activeProductId,step||firstBlockingStep(r));
+    },
   };
 })();

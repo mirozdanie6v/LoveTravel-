@@ -62,8 +62,8 @@ test('configurator uses professional mobile sheet and sticky summary styles',()=
 test('production build includes configurator after the domain tour runtime',()=>{
   assert.match(build,/lovetravel-booking-configurator\.css/);
   assert.match(build,/lovetravel-booking-configurator\.js/);
-  const domain=build.indexOf('<script src="/lovetravel-domain-tour.js?v=20261008-restored-config-v1" defer></script>');
-  const config=build.indexOf('<script src="/lovetravel-booking-configurator.js?v=20261008-restored-config-v1" defer></script>');
+  const domain=build.indexOf('<script src="/lovetravel-domain-tour.js?v=20261008-config-ux-v2" defer></script>');
+  const config=build.indexOf('<script src="/lovetravel-booking-configurator.js?v=20261008-config-ux-v2" defer></script>');
   assert.ok(domain>=0 && config>domain);
 });
 
@@ -159,7 +159,8 @@ test('pickup room requirement survives exact revalidation and uses the latest re
 test('mobile configurator uses readable single-column steps and brand primary CTA',()=>{
   assert.match(css,/@media\(max-width:520px\)[\s\S]*\.lt-booking-config__grid\{[\s\S]*grid-template-columns:1fr/);
   assert.match(css,/background:linear-gradient\(135deg,#ee4214,#ff7b2e\)/);
-  assert.match(css,/-webkit-line-clamp:2/);
+  assert.doesNotMatch(css,/-webkit-line-clamp:2/);
+  assert.match(css,/@container\(min-width:600px\)/);
 });
 
 

@@ -41,7 +41,7 @@ test('domain tour visual layer is included after runtime in the production build
   assert.match(build,/lovetravel-domain-tour\.css/);
   assert.match(build,/lovetravel-domain-tour\.js/);
   const runtime=build.indexOf('<script src="/runtime-api.js" defer></script>');
-  const domain=build.indexOf('<script src="/lovetravel-domain-tour.js?v=20261008-restored-config-v1" defer></script>');
+  const domain=build.indexOf('<script src="/lovetravel-domain-tour.js?v=20261008-config-ux-v2" defer></script>');
   assert.ok(runtime>=0 && domain>runtime);
   assert.match(build,/copyFile\(resolve\(root, 'src\/lovetravel-domain-tour\.js'/);
   assert.match(css,/\.lt-domain-rate\.is-active/);
@@ -59,7 +59,7 @@ test('baseline navigation delegates Bókun rendering to one lifecycle owner',()=
 
 test('tour page exposes a high-position booking CTA and suppresses empty reviews',()=>{
   assert.match(js,/data-lt-jump-booking/);
-  assert.match(js,/LoveTravelBookingConfigurator\.open\('date'\)/);
+  assert.match(js,/LoveTravelBookingConfigurator\.open\(\)/);
   assert.match(js,/const hasReviews=/);
   assert.match(css,/\.lt-domain-quickbook/);
   assert.match(css,/background:linear-gradient\(135deg,#e84e18 0%,#f56b25 48%,#f6bd39 100%\)/);
@@ -89,16 +89,12 @@ test('tour gallery renders every Bókun photo and supports full-screen navigatio
   assert.match(css,/\.lt-domain-gallery__thumb\.is-active/);
 });
 
-test('tour options are visual cards with curated descriptions and tour photos',()=>{
-  assert.match(i18n,/tour\.ratePresentation\.2581224/);
-  assert.equal(js.includes('RATE_PRESENTATION'),false);
+test('domain leaves all booking option selection to the existing BookingConfigurator',()=>{
+  const rendered=js.slice(js.indexOf('  function renderDomain('),js.indexOf('  function setGalleryIndex('));
+  assert.match(rendered,/data-lt-config=/);
+  assert.doesNotMatch(rendered,/rateCards\(domain|availabilityCards\(domain|participantPrices\(domain|data-lt-sticky-book/);
+  assert.match(js,/rateContent:/);
   assert.match(js,/function rateDescription/);
-  assert.match(js,/function ratePhotos/);
-  assert.match(js,/lt-domain-rate__media/);
-  assert.match(js,/lt-domain-rate__description/);
-  assert.match(css,/\.lt-domain-section--options/);
-  assert.match(css,/\.lt-domain-rate__media/);
-  assert.match(css,/\.lt-domain-rate__description/);
 });
 
 test('selecting a rate or date preserves the current scroll position',()=>{
@@ -116,9 +112,9 @@ test('tour page keeps the existing LoveTravel layout but exposes the requested p
 
 
 test('semantic i18n core loads before provider localization and domain rendering',()=>{
-  const core=build.indexOf('<script src="/lovetravel-i18n.js?v=20261008-restored-config-v1" defer></script>');
+  const core=build.indexOf('<script src="/lovetravel-i18n.js?v=20261008-config-ux-v2" defer></script>');
   const provider=build.indexOf('<script src="/lovetravel-tour-locale.js" defer></script>');
-  const domain=build.indexOf('<script src="/lovetravel-domain-tour.js?v=20261008-restored-config-v1" defer></script>');
+  const domain=build.indexOf('<script src="/lovetravel-domain-tour.js?v=20261008-config-ux-v2" defer></script>');
   assert.ok(core>=0 && provider>core && domain>provider);
   assert.match(build,/copyFile\(resolve\(root, 'src\/lovetravel-i18n\.js'/);
 });

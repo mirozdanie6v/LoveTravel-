@@ -101,8 +101,9 @@ try{
   }
 
   const duplicate=page.locator('#tourScreen .lt-domain-section--options');
-  invariant((await duplicate.count())>0,'Domain source option section is missing from tour renderer');
-  invariant(!(await duplicate.first().isVisible()),'Duplicate lower tour options section is still visible');
+  invariant((await duplicate.count())===0,'Legacy lower tour option controls must not be emitted');
+  invariant((await page.locator('#tourScreen [data-lt-domain-rate],#tourScreen [data-lt-domain-slot]').count())===0,
+    'Legacy rate/date controls compete with BookingConfigurator');
 
   const optionStep=page.locator('#tourScreen .lt-booking-config [data-lt-step="option"]');
   await optionStep.click();
@@ -161,7 +162,7 @@ try{
     optionCount,
     selectedRate,
     participantCategories,
-    duplicateVisible:await duplicate.first().isVisible(),
+    duplicateOptionsCount:await duplicate.count(),
     steps,
     mutationAttempts,
   }));
