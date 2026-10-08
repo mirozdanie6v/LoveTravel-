@@ -553,16 +553,33 @@ function allowedMoney(evidence=[]){
 function monetaryClaims(reply){
   const text=str(reply,2400);
   const claims=[];
-  const patterns=[
-    /\$\s*(\d+(?:[.,]\d{1,2})?)/g,
-    /(\d+(?:[.,]\d{1,2})?)\s*(USD|US\$)/gi,
+  const number=String.raw`(?:\d{1,3}(?:[ ,.\u00a0]\d{3})+|\d+)(?:[.,]\d{1,2})?`;
+  const currencies=[
+    {code:'USD',token:String.raw`US\$|USD|dollars?|доллар(?:ов|а|ы)?(?:\s+США)?|долл\.?|đô\s*la(?:\s*Mỹ)?|美元|美金|(?:미국\s*)?달러`},
+    {code:'VND',token:String.raw`VND|đồng|越南盾|베트남\s*동`},
+    {code:'EUR',token:String.raw`EUR|euros?|евро|欧元|유로`},
+    {code:'RUB',token:String.raw`RUB|руб(?:лей|ля|ль)?\.?|卢布|루블`},
   ];
-  for(const pattern of patterns){
-    for(const match of text.matchAll(pattern)){
-      claims.push(Number(String(match[1]).replace(',','.')));
+  const parseAmount=value=>{
+    let normalized=String(value).replace(/[ \u00a0]/g,'');
+    normalized=normalized.replace(/[.,](?=\d{3}(?:[.,]|$))/g,'').replace(',','.');
+    return Number(normalized);
+  };
+  for(const {code,token} of currencies){
+    for(const pattern of [new RegExp('('+number+')\\s*(?:'+token+')','giu'),new RegExp('(?:'+token+')\\s*('+number+')','giu')]){
+      for(const match of text.matchAll(pattern))claims.push({amount:parseAmount(match[1]),currency:code});
+    }
+  }
+  for(const [symbol,currency] of [['\\$','USD'],['€','EUR'],['₽','RUB']]){
+    for(const pattern of [new RegExp(symbol+'\\s*('+number+')','gu'),new RegExp('('+number+')\\s*'+symbol,'gu')]){
+      for(const match of text.matchAll(pattern))claims.push({amount:parseAmount(match[1]),currency});
     }
   }
   return claims;
+}
+
+function perPersonPrice(reply){
+  return /\bper\s+(?:person|adult|guest|travell?er|pax)\b|\beach\s+(?:person|adult|guest)\b|\/\s*(?:person|pax)\b|(?:за|на|с)\s+(?:одного\s+)?(?:человека|взрослого)|mỗi\s*(?:người|khách)|\/\s*người|每人|人均|인당|인\s*당/iu.test(reply);
 }
 
 export function validateGroundedSalesPlan(raw,evidence,locale='ru',goal='GENERAL'){
@@ -607,10 +624,13 @@ export function validateGroundedSalesPlan(raw,evidence,locale='ru',goal='GENERAL
     }
   }
   const prices=allowedMoney(evidence);
-  for(const amount of monetaryClaims(reply)){
-    const supported=[...prices].some(item=>Number(item.split('|')[0])===amount);
+  const claims=monetaryClaims(reply);
+  for(const {amount,currency} of claims){
+    const supported=prices.has(`${amount}|${currency}`);
     if(!supported) throw new TypeError('reply contains an unverified monetary claim');
   }
+
+  if(claims.length&&perPersonPrice(reply)) throw new TypeError('reply changes verified total price into a per-person monetary claim');
 
   if(locale!=='ru'&&locale!=='zh'&&/[А-Яа-яЁё]/u.test(reply)) throw new TypeError('reply language mismatch');
   if(locale==='zh'&&/[А-Яа-яЁё]/u.test(reply)) throw new TypeError('reply language mismatch');
@@ -651,7 +671,7 @@ function salesFailureReason(error){
   const message=String(error?.message||'');
   if(!error||error.code==='ai_timeout') return 'timeout';
   if(['output_truncated','invalid_json'].includes(error.code)) return error.code;
-  if(/unverified monetary claim/i.test(message)) return 'unverified_price';
+  if(/unverified monetary claim|per-person monetary claim/i.test(message)) return 'unverified_price';
   if(/invalid sales action/i.test(message)) return 'invalid_action';
   if(/offer recommendation|differs from verified offer/i.test(message)) return 'answer_validation';
   if(/unknown fields|must be an object|required|must be an array/i.test(message)) return 'invalid_schema';
@@ -810,6 +830,7 @@ export async function composeGroundedSalesPlan({
     'For a selected offer, explain required bookingDataIssues that remain; selection is preparation, never a created booking.',
     'Verified offer date and participantMix take precedence over earlier intent hints. Describe the actual selected offer scope.',
     'If a verified offer exists, recommendation may cite only that offer price/availability.',
+    'Every offer.price.amount is the TOTAL for the entire offer.participantMix, including all selected adults/children/infants. State it as a total for that group, never per person or per adult. Do not divide, multiply or invent unit prices.',
     'Numeric prices in descriptions are not authoritative offers. Do not repeat prices for optional activities, rentals or extras unless they appear in VERIFIED_OFFER_PRICES. When no offers exist, describe paid extras without numeric prices.',
     'VERIFIED_OFFER_PRICES='+JSON.stringify([...allowedMoney(evidence)]),
     'CURRENT_INTENT='+JSON.stringify(intent),
