@@ -11,7 +11,7 @@ html.lt-sheet-open,html.lt-sheet-open body{overflow:hidden}
 .lt-booking-config__quote{text-align:right;flex:0 0 auto}
 .lt-booking-config__quote small,.lt-booking-sticky small{display:block;color:#7990a0;font-size:9px;font-weight:850;text-transform:uppercase;letter-spacing:.06em}
 .lt-booking-config__quote strong,.lt-booking-sticky strong{display:block;margin-top:3px;color:#ff5a1f;font-size:24px;line-height:1;font-weight:950;letter-spacing:-.04em}
-.lt-booking-config__grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.lt-booking-config__grid{display:grid;grid-template-columns:1fr;gap:8px}
 .lt-booking-step{appearance:none;display:grid;grid-template-columns:26px minmax(0,1fr) 18px;gap:9px;align-items:center;width:100%;padding:11px;border:1px solid rgba(29,82,117,.09);border-radius:16px;background:rgba(255,255,255,.84);text-align:left;color:#17384d;cursor:pointer;transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease}
 .lt-booking-step:active{transform:scale(.985)}
 .lt-booking-step.is-complete{border-color:rgba(54,131,232,.2);background:#fff}
@@ -113,7 +113,6 @@ html.lt-sheet-open,html.lt-sheet-open body{overflow:hidden}
 .lt-passenger-card__head{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .lt-passenger-card__head b{color:#17384b;font-size:11px}.lt-passenger-card__head small{color:#78909f;font-size:8px}
 @media(min-width:720px){
-  .lt-booking-config__grid{grid-template-columns:repeat(3,minmax(0,1fr))}
   .lt-booking-sheet__panel{bottom:24px;border-radius:28px}
 }
 @media(max-width:520px){
@@ -163,9 +162,8 @@ html.lt-sheet-open,html.lt-sheet-open body{overflow:hidden}
   white-space:normal;
   font-size:12px;
   line-height:1.25;
-  display:-webkit-box;
-  -webkit-line-clamp:2;
-  -webkit-box-orient:vertical;
+  display:block;
+  overflow-wrap:anywhere;
 }
 .lt-booking-sheet__header button{
   width:44px;
@@ -329,3 +327,45 @@ html.lt-sheet-open,html.lt-sheet-open body{overflow:hidden}
     grid-template-columns:1fr;
   }
 }
+
+
+/* Size the selection rows for the app container, including desktop embeds. */
+.lt-booking-config{container-type:inline-size}
+.lt-booking-step{min-height:68px;box-sizing:border-box}
+.lt-booking-step__copy small{font-size:11px;line-height:1.4;letter-spacing:.025em;text-transform:none}
+.lt-booking-step__copy b{font-size:14px;line-height:1.4;max-height:none;white-space:normal}
+.lt-booking-config__status{flex-wrap:wrap;font-size:12px;line-height:1.45}
+.lt-booking-config.is-loading .lt-booking-step,
+.lt-booking-config.has-error .lt-booking-step{grid-template-columns:1fr;color:#5c7890;cursor:default}
+.lt-booking-config.is-loading .lt-booking-step__copy b,
+.lt-booking-config.has-error .lt-booking-step__copy b{color:#5c7890;font-weight:500}
+.lt-option-card{align-items:flex-start;gap:14px;min-height:72px}
+.lt-option-card>span:first-child{min-width:0}
+.lt-option-card__description{display:block;margin-top:6px;color:#5c7890;font-size:13px;line-height:1.45;white-space:normal}
+.lt-option-card__price{flex:0 0 auto;white-space:nowrap}
+.lt-booking-step:focus-visible,.lt-option-card:focus-visible,
+.lt-booking-sheet button:focus-visible{outline:3px solid #3683e8;outline-offset:3px}
+@container(min-width:600px){
+  .lt-booking-config__grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+
+
+.lt-booking-config .lt-booking-step,
+.lt-booking-config .lt-booking-step__copy{text-align:left}
+.lt-booking-sheet .lt-option-card{text-align:left;justify-content:space-between}
+.lt-option-card .lt-option-card__description{font-size:13px;line-height:1.45}
+.lt-booking-cta:disabled{cursor:wait;box-shadow:none;opacity:.6}
+
+
+/* Keep booking copy readable under legacy embed-wide centering rules. */
+.lt-booking-config .lt-booking-step__copy,
+.lt-booking-config .lt-booking-step__copy small,
+.lt-booking-config .lt-booking-step__copy b,
+.lt-booking-sheet .lt-option-card>span:first-child,
+.lt-booking-sheet .lt-option-card>span:first-child b,
+.lt-booking-sheet .lt-option-card__description{text-align:left!important}
+.lt-booking-config .lt-booking-step__copy b,
+.lt-booking-sheet .lt-option-card>span:first-child{overflow-wrap:anywhere!important}
+.lt-guest-limits{margin:0 0 14px;color:#5c7890;font-size:13px;line-height:1.45}
+
+.lt-booking-config .lt-booking-sticky{position:static;margin-inline:0}

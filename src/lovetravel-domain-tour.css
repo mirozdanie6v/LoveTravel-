@@ -464,3 +464,9 @@ html.love-travel-branded #tourScreen.lt-domain-tour{
 .lt-domain-info{
   background:linear-gradient(135deg,#ffffff 0%,#f1f7fc 100%);
 }
+
+
+.lt-domain-quickbook:disabled{cursor:wait;box-shadow:none;opacity:.7}
+.lt-domain-quickbook small{font-size:11px;line-height:1.3;text-transform:none;letter-spacing:0}
+.lt-domain-quickbook>b{min-width:0;overflow-wrap:anywhere;line-height:1.35}
+.lt-domain-quickbook:focus-visible{outline:3px solid #3683e8;outline-offset:3px}

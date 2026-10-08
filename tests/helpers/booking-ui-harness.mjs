@@ -20,7 +20,7 @@ class Statement {
 
 // Runs the production transaction API, Durable Object, store, resolver and
 // Quote code. Only D1/DO hosting and provider input data are substituted.
-export async function startBookingUiHarness(domains,{delayMs=0}={}){
+export async function startBookingUiHarness(domains,{delayMs=0,presentationDomains=domains}={}){
   const sqlite=new DatabaseSync(':memory:');
   sqlite.exec(await readFile(resolve(root,'migrations/0001_init.sql'),'utf8'));
   sqlite.exec(await readFile(resolve(root,'migrations/0008_travel_commerce_runtime.sql'),'utf8'));
@@ -67,7 +67,7 @@ export async function startBookingUiHarness(domains,{delayMs=0}={}){
       const request=new Request(url,{method:req.method,headers,...(body?{body}:{})});
       let response=handleBlockedBookingRoute(request,url);
       if(!response) response=await handleTravelTransactionApi(request,env,url);
-      if(!response&&url.pathname==='/api/bokun/domain') response=json({ok:true,schema:'lovetravel.bokun-domain.v1',domains});
+      if(!response&&url.pathname==='/api/bokun/domain') response=json({ok:true,schema:'lovetravel.bokun-domain.v1',domains:presentationDomains});
       if(!response&&url.pathname==='/api/bokun/tours') response=json({ok:true,source:'bokun',vendorId:'137689',tours:domains.map(projectBokunDomainToLegacyTour)});
       if(!response&&url.pathname==='/api/bokun/booking-selection/resolve'){
         const result=await providerForFixture.resolveOffer(JSON.parse(body));

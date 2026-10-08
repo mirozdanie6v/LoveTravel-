@@ -60,7 +60,7 @@ try{
     // Use the existing catalog and its real click handler.
     await page.evaluate(()=>showScreen('catalog'));
     await page.locator('#catalogScreen article[onclick*="'+productId+'"]').first().click({timeout:5000});
-    await page.locator('[data-lt-config="'+productId+'"]').waitFor({timeout:15000});
+    await page.locator('[data-lt-config="'+productId+'"][data-lt-config-ready]').waitFor({timeout:15000});
     const result=await page.evaluate(()=>({
       selection:LoveTravelBookingConfigurator.selection(),
       resolution:LoveTravelBookingConfigurator.resolution(),
@@ -167,6 +167,18 @@ try{
     assert.equal(ready.transaction.state,'READY_FOR_APPROVAL');
     assert.equal(ready.transaction.quote.readyToBook,true);
     assert.equal(ready.transaction.quote.price.amount,ready.resolution.quote.total);
+    const presentation=await page.evaluate(()=>({
+      headerDate:document.querySelector('[data-lt-summary-date-value]')?.textContent,
+      selectedDate:document.querySelector('[data-lt-step="date"] b')?.textContent,
+      headerPrice:document.querySelector('[data-lt-summary-price]')?.textContent,
+      configPrice:document.querySelector('.lt-booking-config__quote strong')?.textContent,
+      rawControls:document.querySelectorAll('#tourScreen [data-lt-domain-rate],#tourScreen [data-lt-domain-slot]').length,
+      clippedValues:[...document.querySelectorAll('.lt-booking-step__copy b')].some(n=>n.scrollWidth>n.clientWidth||n.scrollHeight>n.clientHeight),
+    }));
+    assert.equal(presentation.headerDate,presentation.selectedDate);
+    assert.equal(presentation.headerPrice,presentation.configPrice);
+    assert.equal(presentation.rawControls,0);
+    assert.equal(presentation.clippedValues,false);
     if(!live) assert.equal(ready.transaction.quote.price.amount,138);
     if(!live) assert.equal(ready.selection.passengers[0].extras['702'].quantity,1);
     await mkdir('artifacts/restoration',{recursive:true});
@@ -185,7 +197,7 @@ try{
         await page.waitForFunction(()=>globalThis.LOVE_TRAVEL_BOKUN_ACTIVE===true);
         await page.evaluate(()=>showScreen('catalog'));
         await page.locator('#catalogScreen article[onclick*="'+productId+'"]').first().click();
-        await page.locator('[data-lt-config="'+productId+'"]').waitFor();
+        await page.locator('[data-lt-config="'+productId+'"][data-lt-config-ready]').waitFor();
         const localized=await snapshot();
         // Canonical transport stores custom address text; the UI may also
         // supply an identical addressLine1 alias before its first round-trip.

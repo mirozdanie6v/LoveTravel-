@@ -5,6 +5,7 @@
   let domainPromise = null;
   let domainLocale = null;
   let currentProductId = null;
+  let currentDomain = null;
   let renderRevision = 0;
   const galleryIndexByProduct = new Map();
 
@@ -292,7 +293,6 @@
     if(!screen) return;
     const state=selectedState(domain);
     const rate=selectedRate(domain,state);
-    const slot=selectedSlot(domain,state);
     const languages=arr(domain?.experience?.languages?.guidanceTypes).flatMap(x=>arr(x?.displayLanguages)).filter(Boolean).map(value=>l10n()?.languageName?.(value)??providerText(value));
     const included=listFromHtml(domain?.experience?.content?.included);
     const excluded=listFromHtml(domain?.experience?.content?.excluded);
@@ -305,12 +305,12 @@
     ];
     const cancellation=rate?.cancellationPolicy || domain?.cancellationPolicy;
     const firstPhoto=arr(domain?.experience?.media?.photos)[0]?.url || '';
-    const heroPrice=rate ? ratePrice(domain,rate) : null;
     const reviewRating=Number(domain.experience.reviews?.rating);
     const reviewCount=Number(domain.experience.reviews?.count);
     const hasReviews=Number.isFinite(reviewRating)&&reviewRating>0&&Number.isFinite(reviewCount)&&reviewCount>0;
 
-    screen.classList.add('lt-domain-tour');
+    currentDomain=domain;
+    screen.classList.add('lt-domain-tour','lt-booking-ui');
     screen.dataset.ltDomainProduct=String(domain.experience.id);
     screen.innerHTML=
       '<div class="lt-domain-shell">'+
@@ -328,16 +328,14 @@
             (Number.isFinite(Number(domain.experience.minAge))?'<div><small>'+esc(t().minAge)+'</small><b>'+esc(domain.experience.minAge)+'+</b></div>':'')+
             (hasReviews?'<div><small>'+esc(t().reviews)+'</small><b>'+esc(reviewRating)+' · '+esc(reviewCount)+'</b></div>':'')+
             (String(domain.experience.booking?.capacityType||'').toUpperCase()==='ON_REQUEST'?'<div><small>'+esc(t().confirmation)+'</small><b>'+esc(t().onRequest)+'</b></div>':'')+
-            (slot?'<div><small>'+esc(t().chooseDate)+'</small><b>'+esc(localizedDate(slot.date,{weekday:'short',day:'numeric',month:'short'})+' · '+(slot.startTime||''))+'</b></div>':'')+
+            '<div data-lt-summary-date hidden><small>'+esc(i18n()?.t?.('booking.date'))+'</small><b data-lt-summary-date-value></b></div>'+
           '</div>'+
-          '<button type="button" class="lt-domain-quickbook" data-lt-jump-booking>'+
-            '<span>'+(heroPrice?'<small>'+esc(t().from)+'</small><strong>'+esc(money(heroPrice))+'</strong>':'')+'</span>'+
-            '<b>'+esc(t().chooseDate)+' →</b>'+
+          '<button type="button" class="lt-domain-quickbook" data-lt-jump-booking disabled aria-busy="true">'+
+            '<span><small data-lt-summary-price-label></small><strong data-lt-summary-price></strong></span>'+
+            '<b data-lt-summary-cta>'+esc(i18n()?.t?.('booking.loading'))+'</b>'+
           '</button>'+
         '</section>'+
-        rateCards(domain,state)+
-        availabilityCards(domain,state)+
-        participantPrices(domain,state)+
+        '<section class="lt-booking-config is-loading" data-lt-config="'+esc(domain.experience.id)+'" aria-busy="true"><p role="status">'+esc(i18n()?.t?.('booking.loading'))+'</p></section>'+
         meeting(domain,rate)+
         itinerary(domain)+
         videoSection(domain)+
@@ -350,13 +348,7 @@
           listSection(t().currencies,domain?.experience?.paymentCurrencies,'currencies')+
         '</div>'+
         (cancellation?'<section class="lt-domain-section"><div class="lt-domain-section__head"><span class="lt-domain-eyebrow">'+esc(t().conditions)+'</span></div><div class="lt-domain-policy"><b>'+esc(l10n()?.policyTitle?.(cancellation.title||'')??providerText(cancellation.title||''))+'</b>'+cancellationRows(cancellation)+'</div></section>':'')+
-        bookingDynamic(domain)+
         (firstPhoto?'<div class="lt-domain-source-note" aria-hidden="true"></div>':'')+
-        '<div class="lt-domain-stickybook" data-lt-sticky-book>'+
-          '<div class="lt-domain-stickybook__copy"><small>'+esc(t().selectedOption)+'</small><b>'+esc(localizedRateTitle(domain,rate))+'</b></div>'+
-          '<div class="lt-domain-stickybook__price">'+(heroPrice?'<small>'+esc(t().from)+'</small><strong>'+esc(money(heroPrice))+'</strong>':'')+'</div>'+
-          '<button type="button" data-lt-jump-booking>'+esc(t().bookNow)+'</button>'+
-        '</div>'+
       '</div>';
 
     wire(screen,domain);
@@ -438,7 +430,7 @@
   function wire(screen,domain){
     screen.querySelector('[data-lt-domain-back]')?.addEventListener('click',()=>typeof showScreen==='function'&&showScreen('catalog'));
     screen.querySelector('[data-lt-jump-booking]')?.addEventListener('click',()=>{
-      if(globalThis.LoveTravelBookingConfigurator?.open){ globalThis.LoveTravelBookingConfigurator.open('date'); return; }
+      if(globalThis.LoveTravelBookingConfigurator?.open){ globalThis.LoveTravelBookingConfigurator.open(); return; }
       screen.querySelector('.lt-booking-config')?.scrollIntoView({behavior:'smooth',block:'center'});
     });
     screen.querySelectorAll('[data-lt-gallery-thumb]').forEach(button=>button.addEventListener('click',()=>setGalleryIndex(screen,domain,button.dataset.ltGalleryThumb)));
@@ -549,5 +541,13 @@
     }
   },true);
   install();
-  globalThis.LoveTravelDomainTour={renderProduct,refresh:()=>currentProductId?renderProduct(currentProductId,true):Promise.resolve(false)};
+  globalThis.LoveTravelDomainTour={
+    // Presentation content from the already loaded, server-localized domain.
+    // Selection and pricing remain owned by BookingTransaction.
+    rateContent:(productId,rateId)=>{
+      if(String(currentDomain?.experience?.id)!==String(productId)||domainLocale!==locale()) return null;
+      const rate=arr(currentDomain.rates).find(item=>String(item.id)===String(rateId));
+      return rate ? {title:localizedRateTitle(currentDomain,rate),description:textFromHtml(rateDescription(currentDomain,rate))} : null;
+    },
+    renderProduct,refresh:()=>currentProductId?renderProduct(currentProductId,true):Promise.resolve(false)};
 })();
