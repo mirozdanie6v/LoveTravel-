@@ -14,9 +14,6 @@
       lead:'Robinson Beach и Hòn Mun — реальные даты, актуальные цены и удобный путь от выбора до бронирования.',
       tours:'Смотреть экскурсии',
       ai:'Спросить AI',
-      trust1:['Местная команда','только Нячанг'],
-      trust2:['Живые даты','актуальная доступность'],
-      trust3:['RU · VI · EN · ZH · KO','5 языков'],
       catalogTitle:'Островные экскурсии',
       catalogHint:'2 тура',
       catalogIntro:'Выберите одну из двух программ',
@@ -33,9 +30,6 @@
       lead:'Robinson Beach và Hòn Mun — lịch khởi hành, giá hiện tại và quy trình đặt tour thuận tiện.',
       tours:'Xem tour',
       ai:'Hỏi trợ lý AI',
-      trust1:['Đội ngũ địa phương','chỉ chuyên Nha Trang'],
-      trust2:['Lịch trực tiếp','cập nhật chỗ trống'],
-      trust3:['RU · VI · EN · ZH · KO','5 ngôn ngữ'],
       catalogTitle:'Trải nghiệm biển đảo',
       catalogHint:'2 tour',
       catalogIntro:'Chọn một trong hai chương trình',
@@ -52,9 +46,6 @@
       lead:'Robinson Beach and Hòn Mun with current dates, live pricing and a simple path from discovery to booking.',
       tours:'Explore tours',
       ai:'Ask AI assistant',
-      trust1:['Local team','Nha Trang specialists'],
-      trust2:['Live dates','current availability'],
-      trust3:['RU · VI · EN · ZH · KO','5 languages'],
       catalogTitle:'Island experiences',
       catalogHint:'2 tours',
       catalogIntro:'Choose your island experience',
@@ -71,9 +62,6 @@
       lead:'Robinson Beach 与 Hòn Mun 提供实时日期、当前价格和顺畅的一站式预订流程。',
       tours:'查看行程',
       ai:'咨询 AI',
-      trust1:['当地团队','专注芽庄'],
-      trust2:['实时日期','当前可订情况'],
-      trust3:['RU · VI · EN · ZH · KO','5 种语言'],
       catalogTitle:'海岛行程',
       catalogHint:'2 条行程',
       catalogIntro:'请选择两条行程中的一条',
@@ -90,9 +78,6 @@
       lead:'Robinson Beach와 Hòn Mun의 최신 일정, 가격 및 예약 가능 정보를 확인하세요.',
       tours:'투어 보기',
       ai:'AI에게 묻기',
-      trust1:['현지 팀','나트랑 전문'],
-      trust2:['실시간 일정','예약 가능 정보'],
-      trust3:['RU · VI · EN · ZH · KO','5개 언어'],
       catalogTitle:'아일랜드 투어',
       catalogHint:'투어 2개',
       catalogIntro:'두 가지 섬 투어 중 선택하세요',
@@ -181,14 +166,6 @@
       </div>`;
   }
 
-  function trustMarkup() {
-    const c=t();
-    return `
-      <div class="lt-trust-item"><b>${c.trust1[0]}</b><span>${c.trust1[1]}</span></div>
-      <div class="lt-trust-item"><b>${c.trust2[0]}</b><span>${c.trust2[1]}</span></div>
-      <div class="lt-trust-item"><b>${c.trust3[0]}</b><span>${c.trust3[1]}</span></div>`;
-  }
-
   function hideLegacyDiscovery(screen, hero) {
     const cards=[...screen.querySelectorAll('.quick-destination-card-v23')];
     if (!cards.length) return;
@@ -223,16 +200,7 @@
       hero.innerHTML=heroMarkup();
     }
 
-    let trust=screen.querySelector('.lt-home-trust');
-    if (!trust) {
-      trust=document.createElement('section');
-      trust.className='lt-home-trust';
-      hero.insertAdjacentElement('afterend',trust);
-    }
-    if (trust.dataset.ltLocale !== lang) {
-      trust.dataset.ltLocale=lang;
-      trust.innerHTML=trustMarkup();
-    }
+    screen.querySelector('.lt-home-trust')?.remove();
   }
 
   const legacyCardCopy={
@@ -325,10 +293,52 @@
     });
   }
 
+  const semantic=key=>globalThis.LoveTravelI18n?.t?.(key)||key;
+  const escapeMarkup=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+
+  function brandNavigation(){
+    const nav=document.querySelector('.bottom-nav');
+    if(!nav)return;
+    ['home','catalog','ai','trips'].forEach((name,index)=>{
+      const button=nav.querySelector('[data-nav="'+name+'"]');
+      if(!button)return;
+      let label=button.querySelector('.nav-label');
+      if(!label){
+        label=document.createElement('span');
+        label.className='nav-label';
+        const icon=button.querySelector('.nav-icon');
+        button.replaceChildren(...(icon?[icon]:[]),label);
+      }
+      const text=semantic('navigation.'+name);
+      if(label.textContent!==text)label.textContent=text;
+      if(nav.children[index]!==button)nav.insertBefore(button,nav.children[index]||null);
+    });
+  }
+
+  function renderLoveTravelTrips(){
+    const screen=document.getElementById('tripsScreen');
+    if(!screen)return;
+    const lang=locale();
+    if(screen.dataset.ltTripsLocale===lang&&screen.querySelector('.lt-trips-empty'))return;
+    screen.dataset.ltTripsLocale=lang;
+    screen.innerHTML='<div class="section-title"><h2 id="lt-trips-title">'+escapeMarkup(semantic('navigation.trips'))+'</h2></div>'
+      +'<section class="panel lt-trips-empty" aria-labelledby="lt-trips-title"><h3>'+escapeMarkup(semantic('trips.bookings'))+'</h3>'
+      +'<p>'+escapeMarkup(semantic('trips.placeholder'))+'</p><button class="secondary" type="button" data-lt-action="catalog">'+escapeMarkup(semantic('trips.explore'))+'</button></section>';
+    wireActions(screen);
+  }
+
+  if(typeof renderTrips==='function'){
+    // The existing public trips screen is reserved for future real bookings.
+    // Prototype orders and payment/profile controls are not public trip history.
+    renderTrips=renderLoveTravelTrips;
+  }
+
   let scheduled=false;
   function apply() {
     scheduled=false;
     brandHeader();
+    brandNavigation();
+    if(document.getElementById('tripsScreen')?.classList.contains('active'))renderLoveTravelTrips();
     brandHome();
     brandCatalog();
     replaceLegacyBrandText();

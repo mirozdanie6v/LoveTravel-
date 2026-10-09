@@ -27,3 +27,11 @@ jobs:
         env:
           LOVE_TRAVEL_LIVE_BASE_URL: https://lovetravel.viiversion.com
         run: node scripts/verify-live-booking-option-ui.mjs
+      - name: Save mobile navigation screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-navigation-screenshots
+          path: artifacts/mobile-ui/*.png
+          if-no-files-found: ignore
+

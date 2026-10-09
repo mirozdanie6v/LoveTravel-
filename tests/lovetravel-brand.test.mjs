@@ -24,7 +24,7 @@ test('LoveTravel branding replaces the old multi-destination hero with a two-pro
   assert.doesNotMatch(js,/Дананг.*Фукуок.*Муйне/s);
   assert.match(css,/\.lt-hero/);
   assert.match(css,/--lt-hero-image/);
-  assert.match(css,/\.lt-home-trust/);
+  assert.match(js,/querySelector\('\.lt-home-trust'\)\?\.remove\(\)/);
 });
 
 test('LoveTravel catalog presentation removes irrelevant MAX TOUR filters and styles live Bókun cards', () => {
@@ -41,16 +41,17 @@ test('LoveTravel build publishes and loads branding after the runtime adapter', 
   assert.match(build,/copyFile\(resolve\(root, 'src\/lovetravel-brand\.css'/);
   assert.match(build,/copyFile\(resolve\(root, 'src\/lovetravel-brand\.js'/);
   const runtimeIndex=build.indexOf('<script src="/runtime-api.js" defer></script>');
-  const brandIndex=build.indexOf('<script src="/lovetravel-brand.js" defer></script>');
+  const brandIndex=build.indexOf('<script src="/lovetravel-brand.js?v=20261009-mobile-nav-v1" defer></script>');
   assert.ok(runtimeIndex >= 0 && brandIndex > runtimeIndex);
   assert.match(build,/data-project="LoveTravel"/);
 });
 
 
-test('LoveTravel keeps public navigation focused while exposing AI from the home hero',()=>{
+test('LoveTravel exposes all public tabs while preserving the home AI entry',()=>{
   assert.match(js,/data-lt-action="ai"/);
-  assert.match(css,/\.bottom-nav \.nav-btn:nth-child\(n\+3\)/);
-  assert.match(css,/display:none!important/);
+  assert.doesNotMatch(css,/\.bottom-nav \.nav-btn:nth-child\(n\+3\)/);
+  assert.match(css,/grid-template-columns:repeat\(4,minmax\(0,1fr\)\)/);
+  assert.match(js,/navigation\.'\+name/);
   assert.match(css,/\.lt-card-action[\s\S]*var\(--lt-orange-deep\)/);
 });
 
