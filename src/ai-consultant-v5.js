@@ -582,18 +582,43 @@
     return [];
   }
 
+  // Keep the original text and escape every fragment; only these fixed tags are rendered.
+  function renderReplyText(text) {
+    const paragraph = value => {
+      const paragraphLimit=ACTIVE_LOCALE==='zh'?100:300;
+      if (value.length <= paragraphLimit || typeof Intl.Segmenter !== 'function') return '<p>'+esc(value)+'</p>';
+      const sentences = [...new Intl.Segmenter(ACTIVE_LOCALE,{granularity:'sentence'}).segment(value)].map(row=>row.segment);
+      const groups=[];let group='',count=0;
+      for(const sentence of sentences){
+        group+=sentence;count++;
+        if(count>=2||group.length>=paragraphLimit){groups.push(group);group='';count=0;}
+      }
+      if(group)groups.push(group);
+      return groups.map(part=>'<p>'+esc(part)+'</p>').join('');
+    };
+    const lines=String(text??'').split(/(\n+)/);let html='',list='';
+    for(const line of lines){
+      if(/^\n+$/.test(line)){html+=line;continue;}
+      if(!line)continue;
+      const kind=/^\s*\d+[.)]\s+/.test(line)?'ol':/^\s*[-*•]\s+/.test(line)?'ul':'';
+      if(kind!==list){if(list)html+='</'+list+'>';if(kind)html+='<'+kind+' class="ai-reply-list">';list=kind;}
+      html+=kind?'<li>'+esc(line)+'</li>':paragraph(line);
+    }
+    if(list)html+='</'+list+'>';
+    return html;
+  }
+
   function render(root, options = {}) {
     const t=ui();
     const messages = state.messages.map(item => {
       // Also offer help for unavailable messages saved before this release.
       const needsConsultant=item.role==='bot'&&(item.needsConsultant||item.text===semanticText('ai.unavailable'));
       const contact=needsConsultant?`<a class="ai-consultant-contact" data-ai-contact href="${esc(CONSULTANT_CONTACT_URL)}" target="_blank" rel="noopener noreferrer">${esc(semanticText('ai.contactConsultant'))}</a>`:'';
-      return `<div class="ai-msg ${item.role === 'user' ? 'user' : 'bot'}"><span class="ai-msg-author">${esc(item.role === 'user' ? t.user : t.assistant)}</span><span class="ai-msg-text">${esc(item.text)}</span>${contact}</div>`;
+      return `<div class="ai-msg ${item.role === 'user' ? 'user' : 'bot'}"><span class="ai-msg-author">${esc(item.role === 'user' ? t.user : t.assistant)}</span>${item.role === 'user' ? `<span class="ai-msg-text">${esc(item.text)}</span>` : `<div class="ai-msg-text">${renderReplyText(item.text)}</div>`}${contact}</div>`;
     }).join('');
     const quick = quickReplies();
     root.innerHTML = `<div class="section-title ai-section-head"><div><h2>${esc(t.assistant)}</h2><p class="ai-chat-subtitle">${esc(t.subtitle)}</p></div><button class="secondary ai-clear" type="button" data-ai-action="clear">${esc(t.clear)}</button></div><section class="ai-consultant-shell"><div class="ai-consultant-main ai-chat-panel"><div class="ai-messages" role="log" aria-live="polite">${messages}</div><form class="ai-consultant-input" data-ai-form="chat"><textarea name="message" rows="1" placeholder="${esc(t.placeholder)}" ${pending ? 'disabled' : ''}></textarea><button class="primary" type="submit" ${pending ? 'disabled' : ''}>→</button></form></div><div class="ai-chat-below">${retryMessage ? `<button class="secondary" type="button" data-ai-action="retry">${esc(semanticText('ai.retry'))}</button>` : ''}${quick.length ? `<div class="ai-quick-replies">${quick.map(([label,value]) => `<button type="button" data-ai-action="quick" data-value="${esc(value)}">${esc(label)}</button>`).join('')}</div>` : ''}${renderRecommendations()}</div></section>`;
-    const messagesBox = root.querySelector('.ai-messages'); if (options.scrollToEnd && messagesBox) messagesBox.scrollTop = messagesBox.scrollHeight;
-    if (options.focus) { const textarea = root.querySelector('textarea[name="message"]'); try { textarea?.focus({preventScroll:true}); } catch (_) { textarea?.focus(); } }
+    if (options.scrollToEnd) root.querySelector('.ai-msg:last-child')?.scrollIntoView?.({block:'start',behavior:'auto'});
     persist();
   }
 
@@ -609,7 +634,7 @@
         `이미 지난 날짜입니다. 베트남 기준 오늘은 ${dateLabel(today)}입니다. ${dateLabel(today, { year:false })} 또는 그 이후 날짜를 선택해 주세요.`,
         `该日期已经过去。越南今天是 ${dateLabel(today)}。请选择 ${dateLabel(today, { year:false })} 或之后的日期。`
       ));
-      updateRecommendations(text); render(root, { scrollToEnd:true, focus:true }); return;
+      updateRecommendations(text); render(root, { scrollToEnd:true }); return;
     }
     updateRecommendations(text);
     retryMessage = null;
@@ -625,7 +650,7 @@
       if (state.messages.at(-1)?.text === ui().pending) state.messages.pop();
       retryMessage=text;
       add('bot',semanticText('ai.unavailable'),{needsConsultant:true});
-    } finally { pending = false; render(root, { scrollToEnd:true, focus:true }); }
+    } finally { pending = false; render(root, { scrollToEnd:true }); }
   }
 
   function handleClick(root, event) {
@@ -663,7 +688,7 @@
   globalThis.MaxTourAI = {
     mount,
     _test:{
-      vietnamTodayIso, parseDate, parseParty, departureIso, isDiscoveryIntent, isBookingIntent,
+      renderReplyText, vietnamTodayIso, parseDate, parseParty, departureIso, isDiscoveryIntent, isBookingIntent,
       recommendationForTourId, applyServerTour, locationAllowsTour, dispatchValue, prefillBooking,
     },
   };

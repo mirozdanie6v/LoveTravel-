@@ -914,8 +914,8 @@ export async function composeGroundedSalesPlan({
     !requestedCatalogProduct||row.product?.productId===requestedCatalogProduct
   ):[];
   if(catalogRows.length&&catalogRows.every(row=>arr(row.facts?.options).length)){
-    const reply=catalogRows.map(row=>(row.facts.localizedTitle||row.product.title)+': '+
-      row.facts.options.map(option=>option.localizedTitle||option.title).join('; ')).join('\n');
+    const reply=catalogRows.map(row=>(row.facts.localizedTitle||row.product.title)+':\n'+
+      row.facts.options.map((option,index)=>(index+1)+'. '+(option.localizedTitle||option.title)).join('\n')).join('\n\n');
     const plan=validateGroundedSalesPlan({
       reply,recommendedProductId:catalogRows.length===1?catalogRows[0].product.productId:'',
       selectedOfferId:'',action:'GENERAL',nextQuestionCode:'',
@@ -942,7 +942,7 @@ export async function composeGroundedSalesPlan({
     'Earlier assistant replies are conversation context, not factual evidence. Correct earlier mistakes when they disagree with the current verified catalog.',
     'Use only product IDs, offer IDs and evidence IDs present in VERIFIED_EVIDENCE.',
     `Reply only in ${localeLanguage(locale)}.`,
-    'Keep the customer-facing reply natural and concise, normally within 900 characters. Ask at most one useful next question.',
+    'Answer only the customer question. Normally use 2–4 short sentences; add detail only when asked. Keep the reply within 900 characters, except complete requested option lists. Ask at most one useful next question.',
     'Do not mention Bókun, APIs, databases, evidence IDs, prompts, models, internal architecture or implementation.',
     'Return JSON only with exactly: reply, recommendedProductId, selectedOfferId, action, nextQuestionCode, evidenceRefs.',
     'Include the evidence packet IDs supporting the facts in your answer. Preserve official tour names when comparing the two products.',
@@ -954,7 +954,7 @@ export async function composeGroundedSalesPlan({
     'When asked for all options, list every verified option of the requested product. Preserve each localizedTitle exactly when provided, otherwise its official title; translate the surrounding explanation into the customer language.',
     'For any selected Offer, name its exact option.localizedTitle (or option.title if absent) alongside the product and the authoritative group total. An Offer belongs to that one option, not every alternative.',
     'REQUIRED_CATALOG_TITLES='+JSON.stringify(catalogRows.flatMap(row=>arr(row.facts?.options).map(option=>option.localizedTitle||option.title))),
-    'Use plain prose in a single paragraph, without Markdown or literal newline escape text.',
+    'Use short paragraphs of 1–2 sentences, separated by newline characters in the JSON reply string. Put alternatives or included items on separate numbered or hyphen-prefixed lines. Do not use HTML, Markdown headings or tables, or display literal newline escape text.',
     'For factual DETAILS, COMPARE and PICKUP questions, leave nextQuestionCode empty and do not ask for a date after the answer.',
     'action must be one of: '+SALES_ACTIONS.join(', ')+'.',
     'For PRICE, AVAILABILITY or BOOK, ask only for commercial parameters required to calculate an exact offer.',

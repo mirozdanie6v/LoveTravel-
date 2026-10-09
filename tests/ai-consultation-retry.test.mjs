@@ -81,3 +81,35 @@ for(const [locale,pendingText] of Object.entries({ru:'Подбираю…',vi:'�
     assert.equal(payload.history.at(-1).text,'What is included?');
   });
 }
+
+
+test('reply paragraphs and lists retain every character while escaping provider text',()=>{
+  const {c}=harness();const format=c.MaxTourAI._test.renderReplyText;
+  const text='First paragraph.\n\nOptions:\n1. Robinson & Hon Mun\n2. Robinson <img src=x onerror=alert(1)>\n\nTotal: $98.00 for 2 adults.';
+  const html=format(text);
+  assert.match(html,/<p>First paragraph\.<\/p>/);
+  assert.match(html,/<ol class="ai-reply-list">/);
+  assert.equal((html.match(/<li>/g)||[]).length,2);
+  assert.ok(!html.includes('<img'));
+  assert.ok(html.includes('&lt;img src=x onerror=alert(1)&gt;'));
+  assert.ok(html.includes('$98.00 for 2 adults.'));
+  assert.equal(html.replace(/<[^>]+>/g,'').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>'),text);
+});
+
+test('saved long replies gain paragraphs without losing or rewriting sentences in any locale',()=>{
+  for(const [locale,sentence] of [['ru','В экскурсию входит трансфер. '],['en','The tour includes transport. '],['vi','Tour bao gồm xe đưa đón. '],['zh','行程包含接送。'],['ko','투어에는 교통편이 포함됩니다. ']]){
+    const {c}=harness(locale);const text=sentence.repeat(30);const html=c.MaxTourAI._test.renderReplyText(text);
+    assert.ok((html.match(/<p>/g)||[]).length>1,locale);
+    assert.equal(html.replace(/<[^>]+>/g,''),text,locale);
+  }
+});
+
+test('an answer does not reopen the keyboard or scroll a separate message viewport',async()=>{
+  const {c,root}=harness();let focused=0;const scrolled=[];
+  root.querySelector=selector=>selector==='.ai-msg:last-child'?{scrollIntoView:value=>scrolled.push(value)}:{focus:()=>focused++};
+  c.fetch=async()=>new Response(JSON.stringify({ok:true,reply:'The tour includes transport.'}));
+  await c.MaxTourAI._audit.handleText('What is included?',root);
+  assert.equal(focused,0);
+  assert.ok(scrolled.length>=2);
+  assert.equal(scrolled.at(-1).block,'start');
+});

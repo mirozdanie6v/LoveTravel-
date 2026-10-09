@@ -73,14 +73,14 @@ test('AI consultant is a simple customer-facing chat with optional saved selecti
   assert.doesNotMatch(ai, /ai-progress|ai-consultant-brief|ai-consultant-intro|Персональный подбор|заполнено/);
   assert.doesNotMatch(ai, /менеджер|передать/iu);
   assert.match(ai, /answerQuestion/);
-  assert.match(aiCss, /\.ai-messages\{[^}]*overflow-y:auto/);
+  assert.match(aiCss, /\.ai-messages\{[^}]*overflow:visible/);
   assert.doesNotMatch(aiCss, /overscroll-behavior-y:contain/);
   assert.match(ai, /\/api\/ai\/chat/);
   assert.match(ai, /Подбираю подходящий ответ/);
   assert.match(ai, /dollarLabel/);
   assert.match(ai, /ai-party/);
   assert.match(aiCss, /\.ai-consultant-input\{[^}]*position:relative/);
-  assert.match(aiCss, /height:clamp\(/);
+  assert.match(aiCss, /\.ai-chat-panel\{[^}]*height:auto/);
   assert.match(aiCss, /\.ai-messages \.ai-msg\{[^}]*flex:0 0 auto/);
   assert.match(aiCss, /min-height:44px/);
   assert.match(ai, /event\.key !== 'Enter'/);
