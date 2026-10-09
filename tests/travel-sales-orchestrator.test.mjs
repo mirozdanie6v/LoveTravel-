@@ -353,7 +353,7 @@ test('a factual question does not resolve another offer or change a prepared sel
   assert.equal(answer.agent.mutationExecuted,false);
 });
 
-function configuredBookingHarness(goal='PICKUP',message='Change pickup from Amiana.',optionChange=false){
+function configuredBookingHarness(goal='PICKUP',message='Change pickup from Amiana.',optionChange=false,modelEcho=false){
   const selectedDomain=domain();
   selectedDomain.rates.push({id:202});
   if(optionChange){selectedDomain.rates[0].title='Bai Tranh Beach';selectedDomain.rates[1].title='Mini Beach';}
@@ -382,7 +382,7 @@ function configuredBookingHarness(goal='PICKUP',message='Change pickup from Amia
   }})},AI:{async run(_model,input){
     modelInputs.push(input.messages[0].content);
     if(input.messages[0].content.includes('Conversation Intelligence parser')){
-      return {response:{intentPatch:{locale:'en',goal,...(goal==='PICKUP'?{hotel:'Amiana',pickupPreference:'PICKUP'}:{})}}};
+      return {response:{intentPatch:{locale:'en',goal,...(modelEcho?{selectedOption:{productId:'love-travel-hon-mun',rateRef:{provider:'BOKUN',resourceType:'RATE',externalId:'201',accountRef:'137689'}}}:{}),...(goal==='PICKUP'?{hotel:'Amiana',pickupPreference:'PICKUP'}:{})}}};
     }
     return {response:{reply:'The current verified offer '+(optionChange?selectedDomain.rates.find(r=>String(r.id)===String(tx.selection.rateRef.externalId)).title+' ':'')+'is $'+tx.quote.offer.price.amount+'.',recommendedProductId:'love-travel-hon-mun',selectedOfferId:tx.quote.offer.offerId,action:'RECOMMEND',nextQuestionCode:'',evidenceRefs:[]}};
   }}};
@@ -440,4 +440,13 @@ test('party correction after UI option selection keeps its non-default rate and 
   const {participants:newParty,passengers:newPassengers,...after}=h.commands[0].selection;
   assert.deepEqual(after,before);assert.deepEqual(newParty,{'101':3});assert.deepEqual(newPassengers,oldPassengers);
   assert.equal(result.bookingSelection.rateId,'202');assert.equal(result.agent.mutationExecuted,false);
+});
+
+test('a generic price question cannot apply a model-repeated old option over the current UI rate',async()=>{
+  const h=configuredBookingHarness('PRICE','What is the price?',true,true);
+  const result=await h.turn();
+  assert.equal(h.commands.length,0);
+  assert.equal(result.bookingSelection.rateId,'202');
+  assert.deepEqual(result.bookingSelection,h.original);
+  assert.equal(result.transaction.quote.offer.rateRef.externalId,'202');
 });

@@ -265,7 +265,7 @@ export function createLoveTravelSalesOrchestrator({
     let bookingSelection=null;
     let canonicalScopeUsed=false;
     const currentQuoteRequest=COMMERCIAL_GOALS.includes(extracted.goal)&&!commercialPatch(extracted.explicitPatch||{});
-    const canonicalCorrection=!readOnlyQuestion&&activeProduct&&commercialPatch(intentPatch)
+    const canonicalCorrection=!readOnlyQuestion&&!currentQuoteRequest&&activeProduct&&commercialPatch(intentPatch)
       &&(!intentPatch.selectedProductId||intentPatch.selectedProductId===activeProduct.product.productId);
     if((pickupOnlyChange||currentQuoteRequest||canonicalCorrection)&&env.BOOKING_SESSIONS){
       const currentTx=activeTransaction;
