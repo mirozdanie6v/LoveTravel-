@@ -1,4 +1,4 @@
-// Rate identities/titles read from the two live Bókun products on 2026-10-09.
+// Provider rate identities read on 2026-10-09; representative labels are fixture data.
 // Prices, participant constraints and availability below are synthetic test data.
 import {configurationDomains} from './booking-configurator-domains.mjs';
 
@@ -13,7 +13,7 @@ export const optionCatalog=[
   {productId:'1287580',canonicalId:'love-travel-hon-mun',
     title:'Hon Mun Marine Park Snorkeling and Nha Trang Island Tour',rates:[
       ['2581227','Bai Tranh Beach'],['2581226','Bai Soi Beach'],
-      ['2581229','Hon Tam Island Mud Bath'],['2581228','Mini Beach'],
+      ['2581229','Hon Tam Mud Bath'],['2581228','Mini Beach'],
     ]},
 ];
 

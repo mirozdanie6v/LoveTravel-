@@ -653,7 +653,7 @@ test('sales model receives complete option catalogs and included text without th
       return {response:{reply:optionCatalog[0].rates.map(([,title])=>title).join('; '),
         recommendedProductId:'love-travel-robinson-island',selectedOfferId:'',action:'GENERAL',nextQuestionCode:'',evidenceRefs:[packet.evidenceId]}};
     }}},
-    message:'List all Robinson tour options.',locale:'en',intent:createInitialTravelIntent('en'),evidence:[packet],goal:'DETAILS',
+    message:'Explain Robinson tour programs.',locale:'en',intent:createInitialTravelIntent('en'),evidence:[packet],goal:'DETAILS',
   });
   assert.equal(result.source,'workers-ai-grounded-sales');
   const view=JSON.parse(prompt.split('VERIFIED_EVIDENCE=')[1]);
@@ -671,15 +671,15 @@ async function catalogEvidence(){
   return createTravelCapabilityBroker({provider:{vendorId:'137689',async getDomains(){return optionCatalogDomains();}}}).execute('searchProducts',{});
 }
 
-test('a complete catalog answer is required; denying or omitting existing variants is regenerated',async()=>{
+test('catalog lists enumerate every provider option without waiting for or trusting model generation',async()=>{
   const packet=await catalogEvidence();let calls=0;
-  const result=await composeGroundedSalesPlan({
-    env:{AI_MODEL:'fake',AI:{async run(){calls++;return {response:{reply:calls===1?'There are no other Robinson options.':packet.data[0].facts.options.map(o=>o.title).join('; '),
-      recommendedProductId:'love-travel-robinson-island',selectedOfferId:'',action:'GENERAL',nextQuestionCode:'',evidenceRefs:[packet.evidenceId]}};}}},
-    message:'List all Robinson tour options.',locale:'en',intent:createInitialTravelIntent('en'),evidence:[packet],goal:'DETAILS',
-  });
-  assert.equal(calls,2);assert.equal(result.replyAttempts,2);assert.deepEqual(result.replyFailureReasons,['answer_validation']);
+  const env={AI_MODEL:'fake',AI:{async run(){calls++;throw new Error('Model must not generate catalog enumerations');}}};
+  const intent=await extractConversationIntent({env,message:'List all Robinson tour options.',locale:'en',products:packet.data,currentIntent:createInitialTravelIntent('en')});
+  assert.equal(intent.goal,'DETAILS');assert.equal(intent.source,'verified-catalog-intent');
+  const result=await composeGroundedSalesPlan({env,message:'List all Robinson tour options.',locale:'en',intent:createInitialTravelIntent('en'),evidence:[packet],goal:'DETAILS'});
+  assert.equal(calls,0);assert.equal(result.source,'provider-catalog-options');assert.equal(result.replyAttempts,0);
   assert.ok(packet.data[0].facts.options.every(o=>result.reply.includes(o.title)));
+  assert.equal(result.selectedOfferId,'');assert.equal(result.nextQuestionCode,'');
 });
 
 test('explicit Robinson plus Hon Mun remains a Robinson option, including during parser failure',async()=>{

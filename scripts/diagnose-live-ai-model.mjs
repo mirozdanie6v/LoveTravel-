@@ -60,7 +60,7 @@ try{
     const response=await fetch('http://127.0.0.1:8799',{method:'POST',headers:{'content-type':'application/json'},
       body:JSON.stringify({format:'json_schema',locale:row.locale,message,evidence:catalog,goal:'DETAILS'}),signal:AbortSignal.timeout(25000)});
     const result=await response.json(),plan=result.plan;
-    if(!response.ok||plan?.source!=='workers-ai-grounded-sales'||plan.degraded)throw new Error('Actual model catalog reply failed: '+row.locale+' '+JSON.stringify(result));
+    if(!response.ok||plan?.source!=='provider-catalog-options'||plan.degraded)throw new Error('Provider catalog reply failed: '+row.locale+' '+JSON.stringify(result));
     if(product.facts.options.some(option=>!optionName(plan.reply).includes(optionName(option.title))))throw new Error('Actual model omitted an option: '+row.locale+' '+plan.reply);
     console.log(JSON.stringify({stage:'preview-option-catalog',locale:row.locale,productId:product.product.productId,count:product.facts.options.length,ms:result.ms,plan}));
   }

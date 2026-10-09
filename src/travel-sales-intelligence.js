@@ -531,6 +531,8 @@ export async function extractConversationIntent({
     bookingRequested:Boolean(explicitPatch.bookingRequested),
     source:'deterministic-explicit',
   };
+  // Enumerating known options requires no model inference or intent mutation.
+  if(catalogListQuestion(message)) return {...fallback,source:'verified-catalog-intent'};
   if(!env?.AI||!str(message,1200)) return fallback;
 
   const system=[
@@ -911,6 +913,16 @@ export async function composeGroundedSalesPlan({
   const catalogRows=catalogListQuestion(message)?allProductsFromEvidence(evidence).filter(row=>
     !requestedCatalogProduct||row.product?.productId===requestedCatalogProduct
   ):[];
+  if(catalogRows.length&&catalogRows.every(row=>arr(row.facts?.options).length)){
+    const reply=catalogRows.map(row=>(row.facts.localizedTitle||row.product.title)+': '+
+      row.facts.options.map(option=>option.localizedTitle||option.title).join('; ')).join('\n');
+    const plan=validateGroundedSalesPlan({
+      reply,recommendedProductId:catalogRows.length===1?catalogRows[0].product.productId:'',
+      selectedOfferId:'',action:'GENERAL',nextQuestionCode:'',
+      evidenceRefs:evidence.filter(packet=>['searchProducts','compareProducts'].includes(packet.capability)).map(packet=>packet.evidenceId),
+    },evidence,locale,'DETAILS');
+    return {...plan,source:'provider-catalog-options',replyAttempts:0,replyFailureReasons:[]};
+  }
   if(COMMERCIAL_GOALS.includes(goal)&&['ASK_DATE','ASK_PARTY'].includes(fallback.action)){
     return {...fallback,source:'deterministic-grounded-fallback'};
   }

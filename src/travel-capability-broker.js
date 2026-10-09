@@ -213,6 +213,7 @@ function productFacts(domain,product,localizedTitles={}){
   return {
     product,
     facts:{
+      localizedTitle:str(localizedTitles._productTitle||product.title),
       description:str(domain?.experience?.description),
       excerpt:str(domain?.experience?.excerpt),
       duration:structuredClone(domain?.experience?.duration||null),

@@ -202,10 +202,10 @@ export function createLoveTravelSalesOrchestrator({
       // Reuse the same cached names as the UI. This reads titles only; no model
       // generation or additional provider request is performed for localization.
       const localized=await localizeDomainFromCache({
-        provider:domain.provider,experience:{id:domain.experience.id},
+        provider:domain.provider,experience:{id:domain.experience.id,title:domain.experience.title},
         rates:(domain.rates||[]).map(rate=>({id:rate.id,title:rate.title})),
       },{DB:env.DB},requestedLocale);
-      return Object.fromEntries((localized.rates||[]).map(rate=>[String(rate.id),rate.title]));
+      return {_productTitle:localized.experience.title,...Object.fromEntries((localized.rates||[]).map(rate=>[String(rate.id),rate.title]))};
     },
     bookingSessionExecutor:(transactionId,payload)=>executeBookingSession(env,transactionId,payload),
   });

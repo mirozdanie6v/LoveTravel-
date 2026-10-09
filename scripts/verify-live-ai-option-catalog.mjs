@@ -78,7 +78,7 @@ try{
       for(const domain of source){
         const nativeDomain=native.find(d=>String(d.experience.id)===String(domain.experience.id));
         const answer=await ask(h.page,catalogQuestions[locale](domain.experience.title));
-        invariant(answer.source==='workers-ai-grounded-sales'&&!answer.degraded,'Catalog question degraded: '+locale+' '+JSON.stringify(answer));
+        invariant(answer.source==='provider-catalog-options'&&!answer.degraded,'Provider catalog question degraded: '+locale+' '+JSON.stringify(answer));
         invariant(!(answer.offers||[]).length&&!answer.transaction,'Catalog question prepared a commercial selection: '+locale);
         for(const rate of domain.rates){
           const translated=nativeDomain.rates.find(r=>String(r.id)===String(rate.id));
