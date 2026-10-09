@@ -66,3 +66,23 @@
   #aiScreen .ai-tour-image{width:82px;min-height:132px}
   #aiScreen .ai-card-actions button{font-size:10px;padding-left:6px;padding-right:6px}
 }
+
+#aiScreen .ai-consultant-contact{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  min-height:44px;
+  box-sizing:border-box;
+  margin-top:10px;
+  padding:10px 12px;
+  border:1px solid #dc6b25;
+  border-radius:12px;
+  background:#fff;
+  color:#8d3400;
+  font-size:13px;
+  font-weight:800;
+  line-height:1.35;
+  text-align:center;
+  text-decoration:none;
+}
+#aiScreen .ai-consultant-contact:focus-visible{outline:3px solid #8d3400;outline-offset:3px}

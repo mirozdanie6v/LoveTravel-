@@ -236,6 +236,21 @@ try{
     assert.equal((await snapshot()).transaction.selection.productRef.externalId,target);
     await sheet().locator('[data-lt-sheet-close-button]').click();
   }
+  // The offline harness intentionally returns no AI reply. Exercise the
+  // customer's visible recovery route without calling any model or manager.
+  await page.locator('.bottom-nav [data-nav="ai"]').click();
+  const aiInput=page.locator('#aiScreen.active textarea[name="message"]');
+  await aiInput.fill('What is included in Robinson Beach?');await aiInput.press('Enter');
+  const consultant=page.locator('#aiScreen .ai-msg.bot [data-ai-contact]').last();
+  await consultant.waitFor({state:'visible',timeout:10000});
+  assert.equal(await consultant.getAttribute('href'),'https://nhatranglove.com/lien-he');
+  assert.equal(await consultant.getAttribute('rel'),'noopener noreferrer');
+  assert.ok((await consultant.boundingBox()).height>=44);
+  await page.screenshot({path:'artifacts/restoration/'+(live?'live':'fixture')+'-ai-contact.png'});
+  const opened=page.waitForEvent('popup');await consultant.click();const contactPage=await opened;
+  await contactPage.waitForLoadState('domcontentloaded');
+  assert.equal(contactPage.url(),'https://nhatranglove.com/lien-he');await contactPage.close();
+  report.consultantContact={url:'https://nhatranglove.com/lien-he',trigger:'controlled unavailable reply',opened:true};
   assert.equal(harness.upstreamCalls(),0);
   assert.equal(harness.requests.filter(r=>['RESERVE','RECONCILE'].includes(r.body?.action)).length,0);
   await mkdir('artifacts/restoration',{recursive:true});

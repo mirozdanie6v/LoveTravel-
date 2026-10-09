@@ -7,6 +7,7 @@
   const BOOKING_INTENT_KEY = 'max-tour-ai-booking-intent-v1';
   const LOCATION_KEY = 'max-tour-ai-location-v6';
   const TIME_ZONE = 'Asia/Ho_Chi_Minh';
+  const CONSULTANT_CONTACT_URL = 'https://nhatranglove.com/lien-he';
   const MAX_MESSAGES = 100;
   const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[char]));
   const lower = value => String(value || '').toLocaleLowerCase(ACTIVE_LOCALE === 'vi' ? 'vi-VN' : ACTIVE_LOCALE === 'en' ? 'en-US' : ACTIVE_LOCALE === 'ko' ? 'ko-KR' : ACTIVE_LOCALE === 'zh' ? 'zh-CN' : 'ru-RU');
@@ -164,11 +165,11 @@
   } catch (_) {}
 
   function persist() { try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ ...state, messages:state.messages.slice(-MAX_MESSAGES) })); } catch (_) {} }
-  function add(role, text) {
+  function add(role, text, {needsConsultant=false}={}) {
     const value = clean(text, 1800); if (!value) return;
     const last = state.messages[state.messages.length - 1];
     if (last?.role === role && last.text === value) return;
-    state.messages.push({ role, text:value }); state.messages = state.messages.slice(-MAX_MESSAGES);
+    state.messages.push({ role, text:value, ...(needsConsultant?{needsConsultant:true}:{}) }); state.messages = state.messages.slice(-MAX_MESSAGES);
   }
   function peopleCount() { return Number(state.slots.adults || 0) + state.slots.children.length + Number(state.slots.infants || 0); }
   function peopleLabel() {
@@ -583,7 +584,12 @@
 
   function render(root, options = {}) {
     const t=ui();
-    const messages = state.messages.map(item => `<div class="ai-msg ${item.role === 'user' ? 'user' : 'bot'}"><span class="ai-msg-author">${esc(item.role === 'user' ? t.user : t.assistant)}</span><span class="ai-msg-text">${esc(item.text)}</span></div>`).join('');
+    const messages = state.messages.map(item => {
+      // Also offer help for unavailable messages saved before this release.
+      const needsConsultant=item.role==='bot'&&(item.needsConsultant||item.text===semanticText('ai.unavailable'));
+      const contact=needsConsultant?`<a class="ai-consultant-contact" data-ai-contact href="${esc(CONSULTANT_CONTACT_URL)}" target="_blank" rel="noopener noreferrer">${esc(semanticText('ai.contactConsultant'))}</a>`:'';
+      return `<div class="ai-msg ${item.role === 'user' ? 'user' : 'bot'}"><span class="ai-msg-author">${esc(item.role === 'user' ? t.user : t.assistant)}</span><span class="ai-msg-text">${esc(item.text)}</span>${contact}</div>`;
+    }).join('');
     const quick = quickReplies();
     root.innerHTML = `<div class="section-title ai-section-head"><div><h2>${esc(t.assistant)}</h2><p class="ai-chat-subtitle">${esc(t.subtitle)}</p></div><button class="secondary ai-clear" type="button" data-ai-action="clear">${esc(t.clear)}</button></div><section class="ai-consultant-shell"><div class="ai-consultant-main ai-chat-panel"><div class="ai-messages" role="log" aria-live="polite">${messages}</div><form class="ai-consultant-input" data-ai-form="chat"><textarea name="message" rows="1" placeholder="${esc(t.placeholder)}" ${pending ? 'disabled' : ''}></textarea><button class="primary" type="submit" ${pending ? 'disabled' : ''}>→</button></form></div><div class="ai-chat-below">${retryMessage ? `<button class="secondary" type="button" data-ai-action="retry">${esc(semanticText('ai.retry'))}</button>` : ''}${quick.length ? `<div class="ai-quick-replies">${quick.map(([label,value]) => `<button type="button" data-ai-action="quick" data-value="${esc(value)}">${esc(label)}</button>`).join('')}</div>` : ''}${renderRecommendations()}</div></section>`;
     const messagesBox = root.querySelector('.ai-messages'); if (options.scrollToEnd && messagesBox) messagesBox.scrollTop = messagesBox.scrollHeight;
@@ -612,13 +618,13 @@
       const result = await requestAiReply(text);
       if (state.messages.at(-1)?.text === ui().pending) state.messages.pop();
       applyServerTour(result);
-      if(result.degraded){retryMessage=text;add('bot',semanticText('ai.unavailable'));}
+      if(result.degraded){retryMessage=text;add('bot',semanticText('ai.unavailable'),{needsConsultant:true});}
       else add('bot',result.reply);
     } catch (error) {
       console.warn('[LoveTravel AI] consultation request failed',error?.message||error);
       if (state.messages.at(-1)?.text === ui().pending) state.messages.pop();
       retryMessage=text;
-      add('bot',semanticText('ai.unavailable'));
+      add('bot',semanticText('ai.unavailable'),{needsConsultant:true});
     } finally { pending = false; render(root, { scrollToEnd:true, focus:true }); }
   }
 
