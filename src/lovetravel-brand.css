@@ -572,6 +572,7 @@ html.love-travel-branded .bottom-nav .nav-btn{
   min-width:0;
 }
 html.love-travel-branded .bottom-nav .nav-label{
+  font-size:inherit!important;
   line-height:1.2;
   text-align:center;
 }

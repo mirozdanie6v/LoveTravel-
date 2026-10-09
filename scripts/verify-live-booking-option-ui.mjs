@@ -67,10 +67,13 @@ try{
   await page.locator('.mt-language-switcher [data-locale="ru"]').click();
   const publicUi=await page.evaluate(()=>{
     const logo=document.querySelector('.brandmark-real img').getBoundingClientRect();
-    return {logo:{width:logo.width,height:logo.height},tabs:[...document.querySelectorAll('.bottom-nav .nav-btn')].filter(node=>getComputedStyle(node).display!=='none').map(node=>node.dataset.nav)};
+    const nav=document.querySelector('.bottom-nav');
+    return {navHeight:nav.getBoundingClientRect().height,labelFonts:[...nav.querySelectorAll('.nav-btn')].map(button=>({button:getComputedStyle(button).fontSize,label:getComputedStyle(button.querySelector('.nav-label')).fontSize})),logo:{width:logo.width,height:logo.height},tabs:[...document.querySelectorAll('.bottom-nav .nav-btn')].filter(node=>getComputedStyle(node).display!=='none').map(node=>node.dataset.nav)};
   });
   invariant(Math.abs(publicUi.logo.width-88)<1&&Math.abs(publicUi.logo.height-88)<1,'Mobile logo is not twice its previous 44px size');
   invariant(publicUi.tabs.join(',')==='home,catalog,ai,trips','Public navigation is incomplete');
+  invariant(publicUi.labelFonts.every(font=>font.button===font.label),'Navigation labels inherit icon font size');
+  invariant(publicUi.navHeight<80,'Navigation grew beyond its original mobile height');
   await page.screenshot({path:'artifacts/mobile-ui/01-home.png'});
   await page.locator('.bottom-nav [data-nav="trips"]').click();
   await page.locator('#tripsScreen.active .lt-trips-empty').waitFor({state:'visible',timeout:10000});
