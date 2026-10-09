@@ -32,8 +32,10 @@ try{
   const pageErrors=[];
   page.on('pageerror',error=>pageErrors.push(String(error)));
   await page.addInitScript(()=>{
-    localStorage.setItem('max-tour-locale-v1','ru');
-    sessionStorage.clear();
+    if(!localStorage.getItem('max-tour-locale-v1')){
+      localStorage.setItem('max-tour-locale-v1','ru');
+      sessionStorage.clear();
+    }
   });
 
   await page.goto(base+'/?bookingOptionSmoke=1',{waitUntil:'domcontentloaded',timeout:60000});
