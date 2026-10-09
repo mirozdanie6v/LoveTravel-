@@ -66,5 +66,18 @@ jobs:
             echo "CLOUDFLARE_ACCOUNT_ID=$account_id"
           } >> "$GITHUB_ENV"
 
+      - name: Read and encrypt recent conversation snapshot
+        if: startsWith(github.head_ref, 'audit-recent-ai-20261010')
+        run: node scripts/audit-recent-ai-conversations.mjs
+
+      - name: Save encrypted snapshot only
+        if: startsWith(github.head_ref, 'audit-recent-ai-20261010')
+        uses: actions/upload-artifact@v4
+        with:
+          name: recent-ai-private
+          path: artifacts/recent-ai-private/sealed.json
+          retention-days: 1
+
       - name: Verify actual model consultation in five locales (no bookings)
+        if: "!startsWith(github.head_ref, 'audit-recent-ai-20261010')"
         run: node scripts/diagnose-live-ai-model.mjs
