@@ -5,7 +5,7 @@ import {readFile} from 'node:fs/promises';
 const client=(await readFile(new URL('../src/ai-consultant-v5.js',import.meta.url),'utf8')).replace(/\r\n/g,'\n');
 const semantic=await readFile(new URL('../src/lovetravel-i18n.js',import.meta.url),'utf8');
 const network=await readFile(new URL('../src/ai-network-guard-v8.js',import.meta.url),'utf8');
-function harness(locale='ru'){
+function harness(locale='ru',savedState=null){
   const storage=new Map();
   const messagesBox={scrollHeight:0,scrollTop:0};
   const root={innerHTML:'',querySelector:selector=>selector==='.ai-messages'?messagesBox:{focus(){}},querySelectorAll:()=>[]};
@@ -14,6 +14,7 @@ function harness(locale='ru'){
     document:{documentElement:{lang:locale},readyState:'loading',addEventListener(){},querySelector:()=>null,querySelectorAll:()=>[]},
     location:{origin:'https://lovetravel.viiversion.com',href:'https://lovetravel.viiversion.com/'},
     MutationObserver:class{observe(){}},requestAnimationFrame:callback=>callback()};
+  if(savedState)storage.set('max-tour-ai-consultant-v5-'+locale,JSON.stringify(savedState));
   c.globalThis=c;vm.createContext(c);vm.runInContext(semantic,c);
   vm.runInContext(client.replace('    mount,\n    _test:{','    mount,\n    _audit:{handleText,handleClick,state:()=>state,pending:()=>pending,retry:()=>retryMessage},\n    _test:{'),c);
   return {c,root,storage};
@@ -27,6 +28,9 @@ for(const locale of ['ru','vi','en','zh','ko']){
     assert.equal(ui.pending(),false);
     assert.ok(root.innerHTML.includes(c.LoveTravelI18n.t('ai.unavailable')));
     assert.ok(root.innerHTML.includes(c.LoveTravelI18n.t('ai.retry')));
+    assert.ok(root.innerHTML.includes(c.LoveTravelI18n.t('ai.contactConsultant')));
+    assert.match(root.innerHTML,/data-ai-contact href="https:\/\/nhatranglove\.com\/lien-he" target="_blank" rel="noopener noreferrer"/);
+    assert.equal(requests,1,'Offering a consultant must not send a message automatically');
     assert.ok(root.innerHTML.includes('data-ai-action="retry"'));
     assert.equal(ui.state().messages.filter(item=>item.role==='user').length,1);
     c.fetch=async()=>{requests++;return new Response(JSON.stringify({ok:true,reply:'The tour includes a boat.',source:'workers-ai-grounded-sales'}),{headers:{'content-type':'application/json'}});};
@@ -45,6 +49,15 @@ test('a server AI-unavailable reply is presented as a retryable failure',async()
   await c.MaxTourAI._audit.handleText('What is included?',root);
   assert.ok(root.innerHTML.includes(c.LoveTravelI18n.t('ai.unavailable')));
   assert.ok(root.innerHTML.includes('data-ai-action="retry"'));
+  assert.ok(root.innerHTML.includes(c.LoveTravelI18n.t('ai.contactConsultant')));
+});
+
+test('saved unavailable replies offer the official contact without treating quoted user text as an error',()=>{
+  const {c:first}=harness();const text=first.LoveTravelI18n.t('ai.unavailable');
+  const {c,root}=harness('ru',{slots:{},messages:[{role:'bot',text},{role:'user',text}]});
+  c.MaxTourAI.mount(root);
+  assert.equal((root.innerHTML.match(/data-ai-contact/g)||[]).length,1);
+  assert.ok(root.innerHTML.includes(c.LoveTravelI18n.t('ai.contactConsultant')));
 });
 
 test('network compatibility guards cannot replace the authoritative server reply',async()=>{
