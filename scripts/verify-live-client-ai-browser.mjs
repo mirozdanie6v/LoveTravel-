@@ -69,10 +69,22 @@ async function verifyConsultation(browser){
     let previousReply='';
     for(const [index,question] of row.questions.entries()){
       const started=Date.now();
+      const beforeRequests=chatRequests.length;
       const responsePromise=page.waitForResponse(response=>response.url().includes('/api/ai/chat')&&response.request().method()==='POST',{timeout:45000});
       await field.fill(question);await field.press('Enter');
-      const response=await responsePromise;const answer=await response.json();
-      invariant(chatRequests.length===index+1,'One question sent multiple chat requests: '+row.locale);
+      let response=await responsePromise;let answer=await response.json();
+      let attempts=1;
+      if(response.ok()&&answer.degraded&&['timeout','output_truncated','invalid_json'].includes(answer.agent?.replyFailureReason)){
+        // Exercise the customer's visible recovery path once. A wrong price,
+        // bad evidence or invalid selection remains a hard failure.
+        const retry=page.locator('#aiScreen [data-ai-action="retry"]');
+        await retry.waitFor({state:'visible',timeout:10000});
+        const retried=page.waitForResponse(r=>r.url().includes('/api/ai/chat')&&r.request().method()==='POST',{timeout:45000});
+        await retry.click();response=await retried;answer=await response.json();attempts++;
+        console.log(JSON.stringify({stage:'consultation-visible-retry',locale:row.locale,index,reason:'generation_failure'}));
+      }
+      invariant(chatRequests.length===beforeRequests+attempts,'One send or explicit retry produced duplicate requests: '+row.locale);
+      invariant(await page.locator('#aiScreen .ai-msg.user .ai-msg-text').evaluateAll((nodes,text)=>nodes.filter(node=>node.textContent===text).length,question)===1,'Retry duplicated the customer message: '+row.locale);
       invariant(response.ok()&&answer.ok===true,'Consultation API failed: '+row.locale+' '+JSON.stringify(answer));
       invariant(answer.source==='workers-ai-grounded-sales'&&!answer.degraded,'A template or unavailable AI reply cannot pass consultation: '+row.locale+' '+JSON.stringify(answer));
       invariant(!['ASK_DATE','ASK_PARTY'].includes(answer.agent?.action),'Consultation was blocked by commercial parameters: '+row.locale);
