@@ -46,13 +46,13 @@ html.love-travel-branded header.top{
   -webkit-backdrop-filter:blur(18px) saturate(135%);
 }
 html.love-travel-branded .brandrow{
-  min-height:72px;
+  min-height:106px;
   gap:12px;
 }
 html.love-travel-branded .brandmark-real{
   width:min(190px,48vw)!important;
   min-width:0!important;
-  height:56px!important;
+  height:106px!important;
   display:flex!important;
   align-items:center!important;
   justify-content:flex-start!important;
@@ -60,7 +60,7 @@ html.love-travel-branded .brandmark-real{
 }
 html.love-travel-branded .brandmark-real img{
   width:auto!important;
-  height:50px!important;
+  height:100px!important;
   max-width:100%!important;
   object-fit:contain!important;
   object-position:left center!important;
@@ -522,9 +522,9 @@ html.love-travel-branded #aiScreen .ai-message.user{
   html.love-travel-branded #catalogScreen .wide-card .img-wrap{height:310px!important}
 }
 @media (max-width:420px){
-  html.love-travel-branded .brandrow{min-height:66px}
-  html.love-travel-branded .brandmark-real{width:150px!important;height:50px!important}
-  html.love-travel-branded .brandmark-real img{height:44px!important}
+  html.love-travel-branded .brandrow{min-height:94px}
+  html.love-travel-branded .brandmark-real{width:150px!important;height:94px!important}
+  html.love-travel-branded .brandmark-real img{height:88px!important}
   html.love-travel-branded .lt-hero,
   html.love-travel-branded .lt-hero__inner{min-height:560px!important}
   html.love-travel-branded .lt-hero{border-radius:27px!important}
@@ -563,8 +563,27 @@ html.love-travel-branded #catalogScreen .wide-card .card-body h3{
   -webkit-line-clamp:3;
   overflow:hidden;
 }
-html.love-travel-branded .bottom-nav .nav-btn:nth-child(n+3){
-  display:none!important;
+html.love-travel-branded .bottom-nav{
+  display:grid!important;
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;
+}
+html.love-travel-branded .bottom-nav .nav-btn{
+  display:flex!important;
+  min-width:0;
+}
+html.love-travel-branded .bottom-nav .nav-label{
+  line-height:1.2;
+  text-align:center;
+}
+html.love-travel-branded #tripsScreen .lt-trips-empty{
+  padding:22px;
+  color:var(--lt-ink);
+  background:#fff;
+}
+html.love-travel-branded #tripsScreen .lt-trips-empty p{
+  margin:12px 0 20px;
+  color:var(--lt-muted);
+  line-height:1.5;
 }
 html.love-travel-branded .bottom-nav .nav-btn.active{
   color:var(--lt-orange-deep)!important;

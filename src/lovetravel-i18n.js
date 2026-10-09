@@ -6,6 +6,13 @@
   const LOCALE_TAGS = Object.freeze({ru:'ru-RU',vi:'vi-VN',en:'en-US',ko:'ko-KR',zh:'zh-CN'});
   const BUNDLES = Object.freeze({
   "ru": {
+    "navigation.home": "Главная",
+    "navigation.catalog": "Каталог",
+    "navigation.ai": "Спросить AI",
+    "navigation.trips": "Мои поездки",
+    "trips.bookings": "Ваши бронирования",
+    "trips.placeholder": "Здесь будут появляться ваши бронирования.",
+    "trips.explore": "Выбрать экскурсию",
     "tour.back": "Назад к экскурсиям",
     "tour.live": "Данные из системы туроператора",
     "tour.duration": "Длительность",
@@ -253,6 +260,13 @@
     "provider.nhaTrangTouristPier": "Туристический причал Нячанга (Bến Tàu Du Lịch Nha Trang)"
   },
   "vi": {
+    "navigation.home": "Trang chủ",
+    "navigation.catalog": "Tour",
+    "navigation.ai": "Hỏi AI",
+    "navigation.trips": "Chuyến đi",
+    "trips.bookings": "Đặt tour của bạn",
+    "trips.placeholder": "Các đặt tour của bạn sẽ xuất hiện tại đây.",
+    "trips.explore": "Khám phá tour",
     "tour.back": "Quay lại danh sách tour",
     "tour.live": "Dữ liệu trực tiếp từ hệ thống nhà cung cấp",
     "tour.duration": "Thời lượng",
@@ -488,6 +502,13 @@
     "provider.nhaTrangTouristPier": "Bến Tàu Du Lịch Nha Trang"
   },
   "en": {
+    "navigation.home": "Home",
+    "navigation.catalog": "Tours",
+    "navigation.ai": "Ask AI",
+    "navigation.trips": "My trips",
+    "trips.bookings": "Your bookings",
+    "trips.placeholder": "Your bookings will appear here.",
+    "trips.explore": "Explore tours",
     "tour.back": "Back to tours",
     "tour.live": "Live operator data",
     "tour.duration": "Duration",
@@ -727,6 +748,13 @@
     "provider.nhaTrangTouristPier": "Nha Trang Tourist Pier (Bến Tàu Du Lịch Nha Trang)"
   },
   "ko": {
+    "navigation.home": "홈",
+    "navigation.catalog": "투어",
+    "navigation.ai": "AI에게 묻기",
+    "navigation.trips": "내 여행",
+    "trips.bookings": "내 예약",
+    "trips.placeholder": "예약한 여행이 여기에 표시됩니다.",
+    "trips.explore": "투어 둘러보기",
     "tour.back": "투어 목록으로",
     "tour.live": "여행사 시스템 실시간 정보",
     "tour.duration": "소요 시간",
@@ -962,6 +990,13 @@
     "provider.nhaTrangTouristPier": "나트랑 관광 선착장 (Bến Tàu Du Lịch Nha Trang)"
   },
   "zh": {
+    "navigation.home": "首页",
+    "navigation.catalog": "行程",
+    "navigation.ai": "咨询 AI",
+    "navigation.trips": "我的行程",
+    "trips.bookings": "您的预订",
+    "trips.placeholder": "您的预订将显示在这里。",
+    "trips.explore": "查看行程",
     "tour.back": "返回行程列表",
     "tour.live": "旅行社实时数据",
     "tour.duration": "时长",

@@ -1,4 +1,5 @@
 import { chromium } from 'playwright';
+import { mkdir } from 'node:fs/promises';
 
 const base=String(process.env.LOVE_TRAVEL_LIVE_BASE_URL||'https://lovetravel.viiversion.com').replace(/\/$/,'');
 const allowedProducts=new Set(['1287578','1287580']);
@@ -44,6 +45,39 @@ try{
     null,{timeout:60000}
   );
   console.log('catalog-ready');
+
+  await mkdir('artifacts/mobile-ui',{recursive:true});
+  const navigationLocales={ru:['Спросить AI','Мои поездки'],vi:['Hỏi AI','Chuyến đi'],en:['Ask AI','My trips'],zh:['咨询 AI','我的行程'],ko:['AI에게 묻기','내 여행']};
+  for(const [locale,labels] of Object.entries(navigationLocales)){
+    await page.locator('.mt-language-switcher [data-locale="'+locale+'"]').click();
+    await page.waitForFunction(({labels})=>{
+      const ai=document.querySelector('.bottom-nav [data-nav="ai"]'),trips=document.querySelector('.bottom-nav [data-nav="trips"]');
+      return ai?.innerText===labels[0]&&trips?.innerText===labels[1]&&getComputedStyle(ai).display!=='none'&&getComputedStyle(trips).display!=='none';
+    },{labels},{timeout:10000});
+    await page.locator('.bottom-nav [data-nav="ai"]').click();
+    await page.locator('#aiScreen.active textarea[name="message"]').waitFor({state:'visible',timeout:10000});
+    await page.locator('.bottom-nav [data-nav="trips"]').click();
+    await page.locator('#tripsScreen.active .lt-trips-empty').waitFor({state:'visible',timeout:10000});
+    invariant((await page.locator('#tripsScreen .trip-card,#tripsScreen .trip-tabs').count())===0,'Prototype orders/profile leaked into public My trips');
+    invariant((await page.locator('#tripsScreen h2').innerText())===labels[1],'My trips locale differs from navigation');
+    await page.locator('.bottom-nav [data-nav="home"]').click();
+    await page.locator('#homeScreen.active [data-lt-action="catalog"]').waitFor({state:'visible',timeout:10000});
+    invariant((await page.locator('.lt-home-trust').count())===0,'Removed home trust strip was recreated');
+  }
+  await page.locator('.mt-language-switcher [data-locale="ru"]').click();
+  const publicUi=await page.evaluate(()=>{
+    const logo=document.querySelector('.brandmark-real img').getBoundingClientRect();
+    return {logo:{width:logo.width,height:logo.height},tabs:[...document.querySelectorAll('.bottom-nav .nav-btn')].filter(node=>getComputedStyle(node).display!=='none').map(node=>node.dataset.nav)};
+  });
+  invariant(Math.abs(publicUi.logo.width-88)<1&&Math.abs(publicUi.logo.height-88)<1,'Mobile logo is not twice its previous 44px size');
+  invariant(publicUi.tabs.join(',')==='home,catalog,ai,trips','Public navigation is incomplete');
+  await page.screenshot({path:'artifacts/mobile-ui/01-home.png'});
+  await page.locator('.bottom-nav [data-nav="trips"]').click();
+  await page.locator('#tripsScreen.active .lt-trips-empty').waitFor({state:'visible',timeout:10000});
+  await page.screenshot({path:'artifacts/mobile-ui/02-my-trips.png'});
+  await page.locator('.bottom-nav [data-nav="home"]').click();
+  console.log(JSON.stringify({stage:'public-navigation',...publicUi,locales:Object.keys(navigationLocales),prototypeTripsShown:false}));
+
 
   await page.waitForFunction(()=>
     typeof openTour==='function' &&
