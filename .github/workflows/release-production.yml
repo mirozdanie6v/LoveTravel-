@@ -16,6 +16,7 @@ on:
       - 'migrations/**'
       - 'build.mjs'
       - 'scripts/verify-live-client-ai-browser.mjs'
+      - 'scripts/verify-live-booking-option-ui.mjs'
       - '.github/workflows/client-ai-browser-e2e.yml'
       - 'package.json'
       - 'wrangler.jsonc'
