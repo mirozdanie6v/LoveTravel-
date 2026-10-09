@@ -58,7 +58,7 @@ const TOP_LEVEL_KEYS = Object.freeze({
   TravelIntent: [
     'schemaVersion', 'locale', 'origin', 'destination', 'dateConstraint', 'party',
     'preferences', 'budget', 'hotel', 'pickupPreference', 'accessibility',
-    'specialRequests', 'freeTextNotes',
+    'specialRequests', 'freeTextNotes', 'optionPreference',
   ],
   Product: [
     'schemaVersion', 'productId', 'providerRef', 'title', 'summary', 'location',
@@ -274,6 +274,15 @@ function validateTravelIntentInternal(value, path, issues) {
   if (value.accessibility !== undefined) validateStringArray(value.accessibility, `${path}accessibility`, issues, { semantic: true });
   if (value.specialRequests !== undefined) validateStringArray(value.specialRequests, `${path}specialRequests`, issues);
   optionalString(value.freeTextNotes, `${path}freeTextNotes`, issues);
+  // A preference becomes a selection only in the existing BookingTransaction.
+  if (value.optionPreference !== undefined) {
+    const option=value.optionPreference;
+    if (exactObject(option, `${path}optionPreference`, ['productId','rateRef'], issues)) {
+      requiredString(option.productId, `${path}optionPreference.productId`, issues, { safe:true });
+      validateProviderRef(option.rateRef, `${path}optionPreference.rateRef`, issues);
+      if (option.rateRef?.resourceType !== 'RATE') issue(issues,'invalid_option_ref',`${path}optionPreference.rateRef`,'must reference a RATE');
+    }
+  }
 }
 
 function validateLocation(value, path, issues) {

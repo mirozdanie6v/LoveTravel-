@@ -170,7 +170,7 @@ export function createInitialTravelIntent(locale='ru'){
 export function validateIntentPatch(raw={}){
   exactKeys(raw,[
     'locale','dateConstraint','party','preferenceAdds','preferenceRemoves',
-    'hotel','pickupPreference','selectedProductId','goal','bookingRequested',
+    'hotel','pickupPreference','selectedProductId','selectedOption','goal','bookingRequested',
   ],'intentPatch');
   const patch={};
   if(raw.locale!==undefined){
@@ -195,6 +195,16 @@ export function validateIntentPatch(raw={}){
   if(raw.selectedProductId!==undefined){
     if(raw.selectedProductId!==null&&!PRODUCT_IDS.includes(raw.selectedProductId)) throw new TypeError('invalid selectedProductId');
     patch.selectedProductId=raw.selectedProductId;
+  }
+  if(raw.selectedOption!==undefined){
+    if(raw.selectedOption===null) patch.selectedOption=null;
+    else{
+      const checked=validateTravelIntent({...createInitialTravelIntent('en'),optionPreference:raw.selectedOption});
+      if(!PRODUCT_IDS.includes(checked.optionPreference.productId)) throw new TypeError('invalid option product');
+      if(patch.selectedProductId&&patch.selectedProductId!==checked.optionPreference.productId) throw new TypeError('option product mismatch');
+      patch.selectedOption=structuredClone(checked.optionPreference);
+      patch.selectedProductId=checked.optionPreference.productId;
+    }
   }
   if(raw.goal!==undefined){
     if(!SALES_GOALS.includes(raw.goal)) throw new TypeError('invalid sales goal');
@@ -226,6 +236,9 @@ export function mergeIntentPatch(intent,patch){
       if(change.party.childrenAges!==undefined) next.party.children=change.party.childrenAges.map(age=>({age}));
     }
   }
+  if(change.selectedOption===null) delete next.optionPreference;
+  else if(change.selectedOption) next.optionPreference=structuredClone(change.selectedOption);
+  else if(change.selectedProductId&&next.optionPreference?.productId!==change.selectedProductId) delete next.optionPreference;
   const preferences=new Map(arr(next.preferences).map(item=>[item.code,item]));
   for(const code of change.preferenceRemoves||[]) preferences.delete(code);
   for(const code of change.preferenceAdds||[]) preferences.set(code,{code,weight:1});
@@ -263,6 +276,9 @@ function modelProductList(products=[]){
   return products.map(item=>({
     productId:item?.product?.productId,
     title:item?.product?.title,
+    options:arr(item?.facts?.options).map(option=>({
+      rateRef:option.rateRef,title:option.title,localizedTitle:option.localizedTitle,
+    })),
   })).filter(item=>item.productId&&item.title);
 }
 
@@ -315,6 +331,10 @@ function explicitAdultCount(message){
 function explicitDateConstraint(message,now){
   const text=normalizedText(message);
   const today=todayVietnam(now);
+  const isoDates=[...text.matchAll(/\b\d{4}-\d{2}-\d{2}\b/gu)].map(match=>match[0]);
+  if(isoDates.length===1&&!Number.isNaN(Date.parse(isoDates[0]+'T00:00:00Z'))){
+    return {kind:'EXACT',exact:isoDates[0]};
+  }
   if(/\btomorrow\b/i.test(text)||/завтра/iu.test(text)||/ngay\s+mai/iu.test(text)||/明天/u.test(text)||/내일/u.test(text)){
     return {kind:'EXACT',exact:addIsoDays(today,1)};
   }
@@ -363,6 +383,31 @@ function explicitPickupHotel(message,products=[]){
   return '';
 }
 
+function optionName(value){
+  return normalizedText(value).replace(/\band\b/gu,' ').replace(/[^\p{L}\p{N}]+/gu,' ').replace(/\s+/gu,' ').trim();
+}
+
+function catalogListQuestion(message){
+  const text=normalizedText(message);
+  if(/\bprice\b|\bcost\b|how much|стоим|цен[ауы]|\bgia\b|价格|价钱|가격|요금/iu.test(text)) return false;
+  return /вариант|options?|variations?|lua chon|phuong an|选项|選項|옵션/iu.test(text)
+    && /все|перечисл|какие|\ball\b|\blist\b|\bwhat\b|\bwhich\b|tat ca|liet ke|nhung|所有|哪些|全部|어떤|모든|목록/iu.test(text);
+}
+
+function sameOptionRef(a,b){
+  return ['provider','resourceType','externalId','accountRef'].every(key=>String(a?.[key]||'')===String(b?.[key]||''));
+}
+
+function verifiedOptionPatch(patch,products){
+  if(patch.selectedOption){
+    const row=arr(products).find(row=>row.product?.productId===patch.selectedOption.productId);
+    if(!arr(row?.facts?.options).some(option=>sameOptionRef(option.rateRef,patch.selectedOption.rateRef))){
+      const error=new TypeError('selected option is not in verified catalog');error.code='unknown_option';throw error;
+    }
+  }
+  return patch;
+}
+
 function explicitProductId(message,products=[]){
   const text=normalizedText(message);
   for(const row of arr(products)){
@@ -372,13 +417,33 @@ function explicitProductId(message,products=[]){
       return id;
     }
   }
+  const names=[
+    [/Robinson|Робинсон|로빈슨|鲁滨逊/iu,'love-travel-robinson-island'],
+    [/H[oò]n\s*Mun|Хон.{0,3}Мун|혼.{0,2}문/iu,'love-travel-hon-mun'],
+  ];
+  for(const [pattern,id] of names)if(pattern.test(message)&&arr(products).some(row=>row.product?.productId===id))return id;
   return null;
+}
+
+function explicitCatalogOption(message,products,scopeProductId=''){
+  const text=' '+optionName(message)+' ';
+  const scope=explicitProductId(message,products)||scopeProductId;
+  const rows=arr(products).filter(row=>!scope||row.product?.productId===scope);
+  const matches=rows.flatMap(row=>arr(row.facts?.options).flatMap(option=>{
+    const full=optionName(option.title);
+    const short=optionName(option.title.replace(/^Robinson\s*(?:&|and|\+)\s*/iu,''));
+    const core=optionName(short.replace(/\b(?:marine park|island mud bath|mud bath|beach)\b/giu,''));
+    const names=[full,optionName(option.localizedTitle),short,...(core.length>=4?[core]:[])].filter(name=>name.length>=4);
+    return names.some(name=>text.includes(' '+name+' '))?[{productId:row.product.productId,rateRef:option.rateRef}]:[];
+  }));
+  return {option:matches.length===1?matches[0]:null,ambiguous:matches.length>1};
 }
 
 export function deterministicExplicitIntentPatch({
   message,
   locale='ru',
   products=[],
+  context={},
   now=new Date(),
 }={}){
   const text=normalizedText(message);
@@ -406,10 +471,12 @@ export function deterministicExplicitIntentPatch({
   if(hotel) patch.hotel=hotel;
   if(hotel||pickupCue) patch.pickupPreference='PICKUP';
 
-  const selectedProductId=explicitProductId(message,products);
+  const option=explicitCatalogOption(message,products,context.currentProductId||'');
+  const selectedProductId=option.option?.productId||explicitProductId(message,products);
   if(selectedProductId) patch.selectedProductId=selectedProductId;
+  if(option.option) patch.selectedOption=option.option;
 
-  const informationGoal=/compare|difference|сравн|чем.{0,30}отлич|so\s*sanh|khac\s*nhau|区别|比較|비교|차이/iu.test(text)?'COMPARE'
+  const informationGoal=catalogListQuestion(message)||option.ambiguous?'DETAILS':/compare|difference|сравн|чем.{0,30}отлич|so\s*sanh|khac\s*nhau|区别|比較|비교|차이/iu.test(text)?'COMPARE'
     :/what.{0,30}(?:included|include|itinerary)|что.{0,30}(?:входит|включено|взять)|услови.{0,30}(?:отмен|брони)|cancellation|booking.{0,20}(?:conditions|policy)|[dđ]ieu\s*kien.{0,20}[dđ]at|chinh\s*sach.{0,20}huy|包含|取消.{0,15}(?:政策|条件)|예약.{0,15}조건|취소.{0,15}(?:규정|정책)/iu.test(text)?'DETAILS':null;
   if(informationGoal){patch.goal=informationGoal;patch.bookingRequested=false;}
   else if(hotel&&pickupChangeRequested(message)){patch.goal='GENERAL';patch.bookingRequested=false;}
@@ -453,6 +520,7 @@ export async function extractConversationIntent({
     message,
     locale,
     products,
+    context:{...context,currentProductId:context.currentProductId||currentIntent?.optionPreference?.productId||''},
     now,
   });
   const fallback={
@@ -463,6 +531,8 @@ export async function extractConversationIntent({
     bookingRequested:Boolean(explicitPatch.bookingRequested),
     source:'deterministic-explicit',
   };
+  // Enumerating known options requires no model inference or intent mutation.
+  if(catalogListQuestion(message)) return {...fallback,source:'verified-catalog-intent'};
   if(!env?.AI||!str(message,1200)) return fallback;
 
   const system=[
@@ -479,8 +549,12 @@ export async function extractConversationIntent({
     'Use null only when the user explicitly corrects/removes a previously known value.',
     'party fields are adults, childrenAges, infants; include only fields mentioned/corrected now.',
     'Output shape exactly:',
-    '{"intentPatch":{"locale":"ru|en|vi|zh|ko","dateConstraint":object|null,"party":object|null,"preferenceAdds":[],"preferenceRemoves":[],"hotel":string|null,"pickupPreference":string|null,"selectedProductId":string|null,"goal":"...","bookingRequested":boolean}}',
+    '{"intentPatch":{"locale":"ru|en|vi|zh|ko","dateConstraint":object|null,"party":object|null,"preferenceAdds":[],"preferenceRemoves":[],"hotel":string|null,"pickupPreference":string|null,"selectedProductId":string|null,"selectedOption":{"productId":string,"rateRef":object}|null,"goal":"...","bookingRequested":boolean}}',
     'Omit unchanged optional fields from intentPatch.',
+    'AVAILABLE_PRODUCTS includes the complete alternative option catalog. selectedOption must copy productId and the exact rateRef of one verified option. Never choose an option absent from that product.',
+    'Robinson plus Hon Mun is an option of Robinson, not the standalone Hon Mun product. Match the whole requested combination.',
+    'If an option name occurs under multiple products, use the explicitly named product or the authoritative currentProductId from context; otherwise ask which product with goal DETAILS and no selectedOption.',
+    'A request to list/explain options is DETAILS, not a command to change a booking. A request to choose/change an option is GENERAL (or PRICE/BOOK when asked), and must include selectedOption.',
     'Use PICKUP for factual pickup/meeting-point questions. An explicit request to change a hotel, pickup place or pickup mode is GENERAL and must include only the requested changes.',
     'Preserve hotel names exactly as provided by the customer.',
     'CURRENT_INTENT='+JSON.stringify(currentIntent),
@@ -488,6 +562,7 @@ export async function extractConversationIntent({
     'CLIENT_CONTEXT_HINTS='+JSON.stringify(context&&typeof context==='object'?context:{}),
   ].join('\n');
 
+  let optionAttempted=false;
   try{
     const result=await runAiWithBudget(env,{
       messages:[
@@ -502,8 +577,9 @@ export async function extractConversationIntent({
     });
     const parsed=parseJson(responseText(result));
     const rawPatch=isObject(parsed?.intentPatch)?parsed.intentPatch:{};
-    const modelPatch=validateIntentPatch(rawPatch);
-    const patch=mergeExplicitOverModel(modelPatch,explicitPatch,message);
+    optionAttempted=Object.prototype.hasOwnProperty.call(rawPatch,'selectedOption');
+    const modelPatch=verifiedOptionPatch(validateIntentPatch(rawPatch),products);
+    const patch=verifiedOptionPatch(mergeExplicitOverModel(modelPatch,explicitPatch,message),products);
     return {
       patch,
       explicitPatch,
@@ -514,6 +590,10 @@ export async function extractConversationIntent({
     };
   }catch(error){
     console.warn('Travel Conversation Intelligence unavailable',error?.message||error);
+    if((error?.code==='unknown_option'||optionAttempted)&&!explicitPatch.selectedOption){
+      // Never degrade a fabricated/cross-product option into a default quote.
+      return {...fallback,patch:{...explicitPatch,goal:'DETAILS',bookingRequested:false},goal:'DETAILS',bookingRequested:false};
+    }
     return fallback;
   }
 }
@@ -537,7 +617,7 @@ function allProductsFromEvidence(evidence=[]){
       if(product?.productId) map.set(product.productId,row);
     }
     for(const row of packet?.capability==='searchOffers'?arr(packet.data):[]){
-      if(row?.product?.productId) map.set(row.product.productId,{product:row.product});
+      if(row?.product?.productId&&!map.has(row.product.productId)) map.set(row.product.productId,{product:row.product});
     }
   }
   return [...map.values()];
@@ -608,6 +688,9 @@ export function validateGroundedSalesPlan(raw,evidence,locale='ru',goal='GENERAL
   if(selected&&recommendedProductId&&recommendedProductId!==(selected.product?.productId||selected.offer.productId)){
     throw new TypeError('recommended product differs from verified offer');
   }
+  if(selected?.option?.title&&![selected.option.title,selected.option.localizedTitle].filter(Boolean).some(title=>optionName(reply).includes(optionName(title)))){
+    throw new TypeError('answer omits the verified selected option');
+  }
 
   if(!Array.isArray(raw.evidenceRefs)) throw new TypeError('evidenceRefs must be an array');
   const availableEvidence=new Set(evidence.map(item=>item.evidenceId));
@@ -670,7 +753,17 @@ function descriptiveFacts(value){
 
 function modelEvidenceData(packet){
   if(['searchProducts','compareProducts'].includes(packet.capability)){
-    return arr(packet.data).map(row=>({...row,...(row.facts?{facts:descriptiveFacts(row.facts)}:{})}));
+    return arr(packet.data).map(row=>{
+      if(!row.facts) return row;
+      const facts=descriptiveFacts(row.facts);
+      if(arr(facts.options).length>1){
+        // The provider's agenda mixes product-level/default/alternative stops and
+        // contains no rate-to-stop relation. Never present it as one itinerary.
+        delete facts.itinerary;
+        facts.optionItineraryStatus='NOT_PROVIDED';
+      }
+      return {...row,facts};
+    });
   }
   if(!['searchOffers','getOfferDetails'].includes(packet.capability)) return packet.data;
   const clean=row=>{
@@ -698,7 +791,7 @@ function salesFailureReason(error){
   if(/unknown fields|must be an object|required|must be an array/i.test(message)) return 'invalid_schema';
   if(/paid|upgrade|permission|not authorized/i.test(message)) return 'model_access';
   if(/quota|limit|429|neuron/i.test(message)) return 'model_limits';
-  if(/unverified|not in verified|unknown evidence|language mismatch|comparison omits/i.test(message)) return 'answer_validation';
+  if(/unverified|not in verified|unknown evidence|language mismatch|comparison omits|catalog answer omits|answer omits/i.test(message)) return 'answer_validation';
   return 'model_error';
 }
 
@@ -781,7 +874,7 @@ export function deterministicSalesFallback({locale='ru',intent,evidence=[],goal=
   const offers=availableOffers;
   if(offers.length){
     const first=offers[0];
-    const title=first.product?.title||'';
+    const title=[first.product?.title,first.option?.localizedTitle||first.option?.title].filter(Boolean).join(' — ');
     const price=first.offer?.price;
     const reply=price
       ? (locale==='ru'
@@ -816,6 +909,20 @@ export async function composeGroundedSalesPlan({
   history=[],
 }={}){
   const fallback=deterministicSalesFallback({locale,intent,evidence,goal});
+  const requestedCatalogProduct=explicitProductId(message,allProductsFromEvidence(evidence));
+  const catalogRows=catalogListQuestion(message)?allProductsFromEvidence(evidence).filter(row=>
+    !requestedCatalogProduct||row.product?.productId===requestedCatalogProduct
+  ):[];
+  if(catalogRows.length&&catalogRows.every(row=>arr(row.facts?.options).length)){
+    const reply=catalogRows.map(row=>(row.facts.localizedTitle||row.product.title)+': '+
+      row.facts.options.map(option=>option.localizedTitle||option.title).join('; ')).join('\n');
+    const plan=validateGroundedSalesPlan({
+      reply,recommendedProductId:catalogRows.length===1?catalogRows[0].product.productId:'',
+      selectedOfferId:'',action:'GENERAL',nextQuestionCode:'',
+      evidenceRefs:evidence.filter(packet=>['searchProducts','compareProducts'].includes(packet.capability)).map(packet=>packet.evidenceId),
+    },evidence,locale,'DETAILS');
+    return {...plan,source:'provider-catalog-options',replyAttempts:0,replyFailureReasons:[]};
+  }
   if(COMMERCIAL_GOALS.includes(goal)&&['ASK_DATE','ASK_PARTY'].includes(fallback.action)){
     return {...fallback,source:'deterministic-grounded-fallback'};
   }
@@ -832,6 +939,7 @@ export async function composeGroundedSalesPlan({
     'You are Sales Intelligence for Nha Trang Love Travel.',
     'You explain and recommend; you never mutate a booking and you never invent commercial facts.',
     'Every price, availability, pickup condition, date, tour feature or booking statement must come from VERIFIED_EVIDENCE.',
+    'Earlier assistant replies are conversation context, not factual evidence. Correct earlier mistakes when they disagree with the current verified catalog.',
     'Use only product IDs, offer IDs and evidence IDs present in VERIFIED_EVIDENCE.',
     `Reply only in ${localeLanguage(locale)}.`,
     'Keep the customer-facing reply natural and concise, normally within 900 characters. Ask at most one useful next question.',
@@ -839,7 +947,13 @@ export async function composeGroundedSalesPlan({
     'Return JSON only with exactly: reply, recommendedProductId, selectedOfferId, action, nextQuestionCode, evidenceRefs.',
     'Include the evidence packet IDs supporting the facts in your answer. Preserve official tour names when comparing the two products.',
     'For COMPARE, name both tours and explain concrete differences in their verified programs; a generic statement that they differ is not an answer.',
-    'For DETAILS about inclusions, explain included services and relevant program activities, and distinguish optional paid activities.',
+    'For DETAILS about inclusions, use the included/excluded provider text as well as inclusion categories, and distinguish optional paid activities.',
+    'Each facts.options entry is an alternative tour option owned by that product. Never say a product has no options when this list is nonempty.',
+    'Different beaches and mud baths in options are alternatives, not consecutive stops in one excursion. Never combine all options into one itinerary.',
+    'PRODUCT_DESCRIPTION_NOT_OPTION_ITINERARY describes the product generally, not every option. When optionItineraryStatus is NOT_PROVIDED, detailed timing, stop order and option-specific inclusions are unknown; do not invent them.',
+    'When asked for all options, list every verified option of the requested product. Preserve each localizedTitle exactly when provided, otherwise its official title; translate the surrounding explanation into the customer language.',
+    'For any selected Offer, name its exact option.localizedTitle (or option.title if absent) alongside the product and the authoritative group total. An Offer belongs to that one option, not every alternative.',
+    'REQUIRED_CATALOG_TITLES='+JSON.stringify(catalogRows.flatMap(row=>arr(row.facts?.options).map(option=>option.localizedTitle||option.title))),
     'Use plain prose in a single paragraph, without Markdown or literal newline escape text.',
     'For factual DETAILS, COMPARE and PICKUP questions, leave nextQuestionCode empty and do not ask for a date after the answer.',
     'action must be one of: '+SALES_ACTIONS.join(', ')+'.',
@@ -874,7 +988,7 @@ export async function composeGroundedSalesPlan({
     try{
       replyAttempts++;
       const correction=attempt
-        ? '\nThe previous generation failed validation. Use the required JSON schema and allowed IDs. Use numeric prices only from VERIFIED_OFFER_PRICES; when the list is empty, explain paid extras without numeric prices.'
+        ? '\nThe previous generation failed validation: '+String(failure?.message||'')+'. Use the required JSON schema and allowed IDs. Include all REQUIRED_CATALOG_TITLES when listing options and the selected option.title when quoting. Use numeric prices only from VERIFIED_OFFER_PRICES; when the list is empty, explain paid extras without numeric prices.'
         : '';
       const result=await runAiWithBudget(env,{
         messages:baseMessages.map((row,index)=>index===0?{...row,content:row.content+correction}:row),
@@ -887,6 +1001,9 @@ export async function composeGroundedSalesPlan({
       const parsed=parseJson(responseText(result));
       if(!parsed){const error=new Error('sales output is not JSON');error.code='invalid_json';throw error;}
       const plan=validateGroundedSalesPlan(parsed,evidence,locale,goal);
+      if(catalogRows.some(row=>arr(row.facts?.options).some(option=>option.title&&![option.title,option.localizedTitle].filter(Boolean).some(title=>optionName(plan.reply).includes(optionName(title)))))){
+        throw new TypeError('catalog answer omits a verified option');
+      }
       return {...plan,source:'workers-ai-grounded-sales',replyAttempts,replyFailureReasons};
     }catch(error){
       failure=error;

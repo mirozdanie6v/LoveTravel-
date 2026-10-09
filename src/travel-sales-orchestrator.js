@@ -2,8 +2,9 @@ import {
   bokunSelectionFromCanonicalSelection,
   createBokunProvider,
 } from './bokun-provider.js';
+import { localizeDomainFromCache } from './bokun-content-localization.js';
 import { executeBookingSession } from './booking-session-client.js';
-import { createTravelCapabilityBroker, evidenceEnvelope, pickupSelection } from './travel-capability-broker.js';
+import { createTravelCapabilityBroker, evidenceEnvelope, pickupSelection, participantSelection } from './travel-capability-broker.js';
 import {
   COMMERCIAL_GOALS,
   composeGroundedSalesPlan,
@@ -77,7 +78,7 @@ function externalTourId(packet,canonicalId){
 }
 
 function commercialPatch(patch={}){
-  return ['dateConstraint','party','hotel','pickupPreference','selectedProductId']
+  return ['dateConstraint','party','hotel','pickupPreference','selectedProductId','selectedOption']
     .some(key=>Object.prototype.hasOwnProperty.call(patch,key));
 }
 
@@ -93,6 +94,22 @@ function trimPassengersForParticipants(passengers=[],participants={}){
     remaining[id]-=1;
   }
   return out;
+}
+
+function correctedParticipants(domain,current,patch){
+  const party={adults:patch.adults||0,children:(patch.childrenAges||[]).map(age=>({age})),infants:patch.infants||0};
+  const mapped=participantSelection(domain,{party});
+  const wanted=party.adults+party.children.length+party.infants;
+  if(Object.values(mapped).reduce((sum,count)=>sum+count,0)!==wanted){
+    throw new TypeError('participant_category_unavailable');
+  }
+  const changedRoles=new Set([
+    ...(patch.adults!==undefined?['ADULT']:[]),
+    ...(patch.childrenAges!==undefined?['CHILD']:[]),
+    ...(patch.infants!==undefined?['INFANT']:[]),
+  ]);
+  const roles=new Map((domain.participants||[]).map(category=>[String(category.id),category.ticketCategory]));
+  return {...Object.fromEntries(Object.entries(current).filter(([id])=>!changedRoles.has(roles.get(String(id))))),...mapped};
 }
 
 function mergeChatSelection(transaction,incoming){
@@ -180,6 +197,16 @@ export function createLoveTravelSalesOrchestrator({
   const broker=createTravelCapabilityBroker({
     provider,
     now,
+    optionTitles:async (domain,requestedLocale='en')=>{
+      if(requestedLocale==='en') return {};
+      // Reuse the same cached names as the UI. This reads titles only; no model
+      // generation or additional provider request is performed for localization.
+      const localized=await localizeDomainFromCache({
+        provider:domain.provider,experience:{id:domain.experience.id,title:domain.experience.title},
+        rates:(domain.rates||[]).map(rate=>({id:rate.id,title:rate.title})),
+      },{DB:env.DB},requestedLocale);
+      return {_productTitle:localized.experience.title,...Object.fromEntries((localized.rates||[]).map(rate=>[String(rate.id),rate.title]))};
+    },
     bookingSessionExecutor:(transactionId,payload)=>executeBookingSession(env,transactionId,payload),
   });
 
@@ -194,28 +221,32 @@ export function createLoveTravelSalesOrchestrator({
       start:date||undefined,
       end:date||undefined,
       lang:'EN',
+      locale,
       // Product discovery does not need the ~900-place pickup directory.
       // Load pickup places only once we have a concrete dated offer to resolve.
       includePickupPlaces:false,
     },{principal:'ORCHESTRATOR'});
 
+    const activeTransaction=env.BOOKING_SESSIONS?await ensureCommerceTransaction(env,sessionId,{now:now(),locale}):null;
+    const activeProviderId=activeTransaction?.selection?.productRef?.externalId;
+    const activeProduct=productsPacket.data.find(row=>String(row.product.providerRef?.externalId)===String(activeProviderId||''));
     const extracted=await extractConversationIntent({
       env,
       message,
       currentIntent:shopping.intent,
       locale,
       products:productsPacket.data,
-      context,
+      context:{...context,...(activeProduct?{currentProductId:activeProduct.product.productId,currentOption:activeTransaction.selection.rateRef}:{} )},
       history:conversation,
       now:now(),
     });
     const readOnlyQuestion=['DETAILS','COMPARE','PICKUP'].includes(extracted.goal);
     const intentPatch={...extracted.patch};
     const pickupOnlyChange=extracted.goal==='GENERAL'&&pickupChangeRequested(message)&&Boolean(intentPatch.hotel)
-      &&!['dateConstraint','party','selectedProductId'].some(key=>Object.prototype.hasOwnProperty.call(extracted.explicitPatch||{},key));
-    if(pickupOnlyChange){for(const key of ['dateConstraint','party','selectedProductId','preferenceAdds','preferenceRemoves'])delete intentPatch[key];}
+      &&!['dateConstraint','party','selectedProductId','selectedOption'].some(key=>Object.prototype.hasOwnProperty.call(extracted.explicitPatch||{},key));
+    if(pickupOnlyChange){for(const key of ['dateConstraint','party','selectedProductId','selectedOption','preferenceAdds','preferenceRemoves'])delete intentPatch[key];}
     if(readOnlyQuestion){
-      for(const key of ['dateConstraint','party','hotel','pickupPreference','selectedProductId','bookingRequested']) delete intentPatch[key];
+      for(const key of ['dateConstraint','party','hotel','pickupPreference','selectedProductId','selectedOption','bookingRequested']) delete intentPatch[key];
     }
     const merged=mergeIntentPatch(shopping.intent,{
       ...intentPatch,
@@ -234,18 +265,36 @@ export function createLoveTravelSalesOrchestrator({
     let bookingSelection=null;
     let canonicalScopeUsed=false;
     const currentQuoteRequest=COMMERCIAL_GOALS.includes(extracted.goal)&&!commercialPatch(extracted.explicitPatch||{});
-    if((pickupOnlyChange||currentQuoteRequest)&&env.BOOKING_SESSIONS){
-      const currentTx=await ensureCommerceTransaction(env,sessionId,{now:now(),locale});
+    const canonicalCorrection=!readOnlyQuestion&&!currentQuoteRequest&&activeProduct&&commercialPatch(intentPatch)
+      &&(!intentPatch.selectedProductId||intentPatch.selectedProductId===activeProduct.product.productId);
+    if((pickupOnlyChange||currentQuoteRequest||canonicalCorrection)&&env.BOOKING_SESSIONS){
+      const currentTx=activeTransaction;
       if(currentTx.selection&&!['RESERVING','FAILED_NEEDS_RECONCILIATION','CONFIRMED','ABANDONED'].includes(currentTx.state)){
         const current=bokunSelectionFromCanonicalSelection(currentTx.selection);
         let incoming=current;
-        if(pickupOnlyChange){
-          const [domain]=await provider.getDomains({productIds:[current.productId],start:current.date,end:current.date,lang:'EN',includePickupPlaces:true});
-          const {placeId:oldPlace,customLocation:oldAddress,mode:oldMode,...pickupDetails}=current.pickup||{};
-          incoming={...current,pickup:{...pickupDetails,...pickupSelection(domain,{hotel:intentPatch.hotel,pickupPreference:'PICKUP'})}};
+        if(canonicalCorrection||pickupOnlyChange){
+          const nextDate=intentPatch.dateConstraint?.kind==='EXACT'?intentPatch.dateConstraint.exact:current.date;
+          incoming={...current,date:nextDate,...(intentPatch.selectedOption?{rateId:String(intentPatch.selectedOption.rateRef.externalId)}:{})};
+          const needsDomain=nextDate!==current.date||intentPatch.party||intentPatch.hotel||intentPatch.pickupPreference;
+          if(needsDomain){
+            const [domain]=await provider.getDomains({productIds:[current.productId],start:nextDate,end:nextDate,lang:'EN',includePickupPlaces:Boolean(intentPatch.hotel||intentPatch.pickupPreference==='PICKUP')});
+            if(nextDate!==current.date){
+              const slot=(domain.availabilitySlots||[]).find(slot=>slot.date===nextDate&&String(slot.startTimeId)===String(current.startTimeId));
+              delete incoming.slotId;
+              if(slot?.id)incoming.slotId=String(slot.id);
+            }
+            if(intentPatch.party){
+              incoming.participants=correctedParticipants(domain,current.participants||{},intentPatch.party);
+              incoming.passengers=trimPassengersForParticipants(current.passengers,incoming.participants);
+            }
+            if(intentPatch.hotel||intentPatch.pickupPreference){
+              const {placeId:oldPlace,customLocation:oldAddress,mode:oldMode,...pickupDetails}=current.pickup||{};
+              incoming.pickup={...pickupDetails,...pickupSelection(domain,{hotel:intentPatch.hotel,pickupPreference:intentPatch.pickupPreference||'PICKUP'})};
+            }
+          }
         }
         const freshQuote=currentTx.quote?.status==='ACTIVE'&&Date.parse(currentTx.quote.expiresAt)>now().getTime();
-        if(currentQuoteRequest&&freshQuote){
+        if(currentQuoteRequest&&freshQuote&&!canonicalCorrection&&!pickupOnlyChange){
           bookingTransaction=currentTx;
           bookingSelection=current;
         }else{
@@ -261,6 +310,7 @@ export function createLoveTravelSalesOrchestrator({
           // remains in the authoritative transaction and in the user's UI response.
           offersPacket=await evidenceEnvelope('getOfferDetails',{transactionId:currentTx.transactionId,revision:bookingTransaction.revision},{
             product,offer:quote.offer,readyToQuote:true,readyToBook:Boolean(quote.readyToBook),
+            option:activeProduct?.facts?.options.find(option=>String(option.rateRef.externalId)===String(quote.offer.rateRef?.externalId))||null,
             bookingDataIssues:structuredClone(quote.issues?.bookingDataIssues||[]),
           },now());
         }
@@ -270,7 +320,7 @@ export function createLoveTravelSalesOrchestrator({
     if(!canonicalScopeUsed&&offersRequested&&exactDate(shopping.intent)&&partyKnown(shopping.intent)){
       const productIds=canonicalToProviderProducts(
         productsPacket,
-        extracted.selectedProductId,
+        shopping.intent.optionPreference?.productId||extracted.selectedProductId,
       );
       offersPacket=await broker.execute('searchOffers',{
         intent:shopping.intent,

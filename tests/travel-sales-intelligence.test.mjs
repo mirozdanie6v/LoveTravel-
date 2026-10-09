@@ -640,3 +640,110 @@ test('descriptive rental prices are removed only from model facts while exact of
   assert.equal(plan.source,'workers-ai-grounded-sales');
   assert.deepEqual(products,before);
 });
+
+test('sales model receives complete option catalogs and included text without the unscoped alternative agenda',async()=>{
+  const {optionCatalogDomains,optionCatalog}=await import('./fixtures/travel-option-catalog.mjs');
+  const {createTravelCapabilityBroker}=await import('../src/travel-capability-broker.js');
+  const broker=createTravelCapabilityBroker({provider:{vendorId:'137689',async getDomains(){return optionCatalogDomains();}}});
+  const packet=await broker.execute('searchProducts',{});
+  let prompt='';
+  const result=await composeGroundedSalesPlan({
+    env:{AI_MODEL:'fake',AI:{async run(_model,input){
+      prompt=input.messages[0].content;
+      return {response:{reply:optionCatalog[0].rates.map(([,title])=>title).join('; '),
+        recommendedProductId:'love-travel-robinson-island',selectedOfferId:'',action:'GENERAL',nextQuestionCode:'',evidenceRefs:[packet.evidenceId]}};
+    }}},
+    message:'Explain Robinson tour programs.',locale:'en',intent:createInitialTravelIntent('en'),evidence:[packet],goal:'DETAILS',
+  });
+  assert.equal(result.source,'workers-ai-grounded-sales');
+  const view=JSON.parse(prompt.split('VERIFIED_EVIDENCE=')[1]);
+  assert.deepEqual(view[0].data.map(row=>row.facts.options.length),[7,4]);
+  assert.ok(!prompt.includes('ALTERNATIVE_STOPS_MUST_NOT_BE_JOINED'));
+  assert.ok(prompt.includes('Air-conditioned vehicle, snorkeling equipment and lunch.'));
+  assert.ok(view[0].data.every(row=>!row.facts.itinerary&&row.facts.optionItineraryStatus==='NOT_PROVIDED'));
+  // Full evidence is retained outside the model view.
+  assert.equal(packet.data[0].facts.itinerary[0].body,'ALTERNATIVE_STOPS_MUST_NOT_BE_JOINED');
+});
+
+async function catalogEvidence(){
+  const {optionCatalogDomains}=await import('./fixtures/travel-option-catalog.mjs');
+  const {createTravelCapabilityBroker}=await import('../src/travel-capability-broker.js');
+  return createTravelCapabilityBroker({provider:{vendorId:'137689',async getDomains(){return optionCatalogDomains();}}}).execute('searchProducts',{});
+}
+
+test('catalog lists enumerate every provider option without waiting for or trusting model generation',async()=>{
+  const packet=await catalogEvidence();let calls=0;
+  const env={AI_MODEL:'fake',AI:{async run(){calls++;throw new Error('Model must not generate catalog enumerations');}}};
+  const intent=await extractConversationIntent({env,message:'List all Robinson tour options.',locale:'en',products:packet.data,currentIntent:createInitialTravelIntent('en')});
+  assert.equal(intent.goal,'DETAILS');assert.equal(intent.source,'verified-catalog-intent');
+  const result=await composeGroundedSalesPlan({env,message:'List all Robinson tour options.',locale:'en',intent:createInitialTravelIntent('en'),evidence:[packet],goal:'DETAILS'});
+  assert.equal(calls,0);assert.equal(result.source,'provider-catalog-options');assert.equal(result.replyAttempts,0);
+  assert.ok(packet.data[0].facts.options.every(o=>result.reply.includes(o.title)));
+  assert.equal(result.selectedOfferId,'');assert.equal(result.nextQuestionCode,'');
+});
+
+test('explicit Robinson plus Hon Mun remains a Robinson option, including during parser failure',async()=>{
+  const packet=await catalogEvidence();
+  const result=await extractConversationIntent({env:{AI:{async run(){throw new Error('parser unavailable');}}},
+    message:'We want Robinson + Hon Mun tomorrow, 2 adults.',locale:'en',products:packet.data,currentIntent:createInitialTravelIntent('en'),now:new Date('2026-10-06T12:00:00Z')});
+  assert.equal(result.patch.selectedProductId,'love-travel-robinson-island');
+  assert.equal(result.patch.selectedOption.rateRef.externalId,'2623660');
+  const next=mergeIntentPatch(createInitialTravelIntent('en'),result.patch);
+  assert.deepEqual(next.optionPreference,result.patch.selectedOption);
+  assert.equal(next.dateConstraint.exact,'2026-10-07');
+});
+
+test('an option chosen before the date survives follow-up party/date changes and clears on a product switch',async()=>{
+  const packet=await catalogEvidence();
+  const chosen=await extractConversationIntent({message:'Choose Robinson & Tri Nguyen Aquarium.',locale:'en',products:packet.data,currentIntent:createInitialTravelIntent('en')});
+  let next=mergeIntentPatch(createInitialTravelIntent('en'),chosen.patch);
+  assert.equal(next.optionPreference.rateRef.externalId,'2623670');
+  next=mergeIntentPatch(next,{party:{adults:2},dateConstraint:{kind:'EXACT',exact:'2026-10-07'}});
+  assert.equal(next.optionPreference.rateRef.externalId,'2623670');
+  next=mergeIntentPatch(next,{selectedProductId:'love-travel-hon-mun'});
+  assert.equal(next.optionPreference,undefined);
+});
+
+test('Mini Beach requires product scope and uses the authoritative current product when present',async()=>{
+  const packet=await catalogEvidence();
+  const unresolved=await extractConversationIntent({message:'Choose Mini Beach.',locale:'en',products:packet.data,currentIntent:createInitialTravelIntent('en')});
+  assert.equal(unresolved.goal,'DETAILS');assert.equal(unresolved.patch.selectedOption,undefined);
+  const scoped=await extractConversationIntent({message:'Change to Mini Beach.',locale:'en',products:packet.data,currentIntent:createInitialTravelIntent('en'),context:{currentProductId:'love-travel-robinson-island'}});
+  assert.equal(scoped.patch.selectedOption.productId,'love-travel-robinson-island');assert.equal(scoped.patch.selectedOption.rateRef.externalId,'2623668');
+});
+
+for(const rateId of ['2581228','does-not-exist']){
+  test('model-selected unknown or cross-product rate cannot fall back into a default quote: '+rateId,async()=>{
+    const packet=await catalogEvidence();
+    const result=await extractConversationIntent({env:{AI:{async run(){return {response:{intentPatch:{goal:'BOOK',selectedOption:{productId:'love-travel-robinson-island',rateRef:{provider:'BOKUN',resourceType:'RATE',externalId:rateId,accountRef:'137689'}}}}};}}},
+      message:'Please prepare my trip.',locale:'en',products:packet.data,currentIntent:createInitialTravelIntent('en')});
+    assert.equal(result.goal,'DETAILS');assert.equal(result.bookingRequested,false);assert.equal(result.patch.selectedOption,undefined);
+  });
+}
+
+test('an offer for a named option cannot be described as another option',()=>{
+  const offers=offerEvidence();offers.data[0].option={title:'Robinson & Hon Mun Marine Park'};
+  const raw={reply:'Robinson & Bich Dam costs $98 for the group.',recommendedProductId:'love-travel-hon-mun',selectedOfferId:'offer-1',action:'RECOMMEND',nextQuestionCode:'',evidenceRefs:['cap-offers']};
+  assert.throws(()=>validateGroundedSalesPlan(raw,[productEvidence(),offers],'en','PRICE'),/omits the verified selected option/);
+  assert.doesNotThrow(()=>validateGroundedSalesPlan({...raw,reply:'Robinson & Hon Mun Marine Park costs $98 for the group.'},[productEvidence(),offers],'en','PRICE'));
+});
+
+test('native option titles from the shared UI cache resolve to the same provider reference',async()=>{
+  const packet=await catalogEvidence();
+  packet.data[0].facts.options.find(option=>option.rateRef.externalId==='2623666').localizedTitle='Robinson и грязевые ванны Hon Tam';
+  const result=await extractConversationIntent({message:'Выбираю Robinson и грязевые ванны Hon Tam.',locale:'ru',products:packet.data,currentIntent:createInitialTravelIntent('ru')});
+  assert.equal(result.patch.selectedOption.rateRef.externalId,'2623666');
+  assert.equal(result.patch.selectedOption.productId,'love-travel-robinson-island');
+});
+
+test('a localized exact option title satisfies grounded commercial validation',()=>{
+  const offers=offerEvidence();offers.data[0].option={title:'Robinson & Hon Mun Marine Park',localizedTitle:'Robinson и морской парк Hon Mun'};
+  assert.doesNotThrow(()=>validateGroundedSalesPlan({reply:'Robinson и морской парк Hon Mun: $98 за всю группу.',recommendedProductId:'love-travel-hon-mun',selectedOfferId:'offer-1',action:'RECOMMEND',nextQuestionCode:'',evidenceRefs:['cap-offers']},[productEvidence(),offers],'ru','PRICE'));
+});
+
+test('a specific option price question is not mistaken for a read-only catalog list',async()=>{
+  const packet=await catalogEvidence();
+  const result=await extractConversationIntent({env:{AI:{async run(){return {response:{intentPatch:{goal:'PRICE'}}};}}},
+    message:'What is the price of the Robinson & Mini Beach option?',locale:'en',products:packet.data,currentIntent:createInitialTravelIntent('en')});
+  assert.equal(result.goal,'PRICE');assert.equal(result.patch.selectedOption.rateRef.externalId,'2623668');
+});
