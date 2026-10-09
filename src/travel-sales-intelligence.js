@@ -801,12 +801,12 @@ function salesResponseFormat(env,evidence,goal){
   const offers=allOffersFromEvidence(evidence).map(row=>row.offer?.offerId).filter(Boolean);
   const requiredOffers=recommendationOffers(evidence,goal);
   const schema={type:'object',additionalProperties:false,properties:{
-    reply:{type:'string',minLength:1,maxLength:1600},
+    reply:{type:'string',minLength:1,maxLength:900},
     recommendedProductId:{type:'string',enum:[...new Set(requiredOffers.length?requiredOffers.map(row=>row.product?.productId||row.offer.productId):['',...products])]},
     selectedOfferId:{type:'string',enum:[...new Set(requiredOffers.length?requiredOffers.map(row=>row.offer.offerId):['',...offers])]},
     action:{type:'string',enum:requiredOffers.length?['RECOMMEND','OFFER_READY']:SALES_ACTIONS.filter(action=>!['DETAILS','COMPARE','PICKUP'].includes(goal)||!['ASK_DATE','ASK_PARTY','OFFER_READY'].includes(action))},
     nextQuestionCode:{type:'string',...(['DETAILS','COMPARE','PICKUP'].includes(goal)?{enum:['']}: {})},
-    evidenceRefs:{type:'array',minItems:1,items:{type:'string',enum:evidence.map(packet=>packet.evidenceId)}},
+    evidenceRefs:{type:'array',minItems:1,maxItems:Math.max(1,evidence.length),items:{type:'string',enum:evidence.map(packet=>packet.evidenceId)}},
   },required:['reply','recommendedProductId','selectedOfferId','action','nextQuestionCode','evidenceRefs']};
   return {type:'json_schema',json_schema:{name:'lovetravel_sales_answer',strict:true,schema}};
 }
