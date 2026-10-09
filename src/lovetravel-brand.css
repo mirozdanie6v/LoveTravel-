@@ -566,13 +566,17 @@ html.love-travel-branded #catalogScreen .wide-card .card-body h3{
 html.love-travel-branded .bottom-nav{
   display:grid!important;
   grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  column-gap:0!important;
+  padding-inline:4px!important;
 }
 html.love-travel-branded .bottom-nav .nav-btn{
   display:flex!important;
   min-width:0;
+  padding-inline:0!important;
 }
 html.love-travel-branded .bottom-nav .nav-label{
   font-size:inherit!important;
+  white-space:nowrap;
   line-height:1.2;
   text-align:center;
 }
@@ -695,4 +699,8 @@ html.love-travel-branded #bookingScreen .panel{
   background:#fff!important;
   backdrop-filter:none!important;
   -webkit-backdrop-filter:none!important;
+}
+
+@media(max-width:340px){
+  html.love-travel-branded .bottom-nav .nav-btn{font-size:10px!important}
 }
