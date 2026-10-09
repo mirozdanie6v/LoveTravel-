@@ -32,7 +32,7 @@ async function runMobileChatUx(){
     for(const row of cases){
       const context=await browser.newContext({viewport:{width:row.width,height:row.height}});
       const mutations=[],errors=[];
-      const reply=(row.sentence.repeat(50)).slice(0,1600)+'\n'+row.sentence;
+      const reply=((row.sentence.repeat(50)).slice(0,1600)+'\n'+row.sentence).trim();
       await context.route('**/*',async route=>{
         const request=route.request(),url=new URL(request.url());
         if(request.method()==='POST'){
