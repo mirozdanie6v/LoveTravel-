@@ -1,4 +1,3 @@
-import {execFileSync} from 'node:child_process';
 import {mkdir,writeFile} from 'node:fs/promises';
 import {randomBytes,createCipheriv,publicEncrypt,createHash} from 'node:crypto';
 const publicKey="-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAuJ3ooD0V+acIodB+MQJH\nrnpxaVsL+ubEYvbJX7G97B/LB6vLmM6z5ejxnXGvX/ye8+7jP/JYQqB/JtzZa28X\nDm4ZoppuueGntg8S077xP6Li9smFR4s5RZuy0dNPwwxJQgLxn/uatC6oAn1l8RqA\nlXIFirzoHquYC7hjJdDS+1aYGJDJyQ1upzMyZoq7Sm/q8AeqJhalTorHYPtN2ZR1\nDuMxSEsv5Qa7XH1VB2WCIcuCk2yS/zasMEPlZbKqFrASJrhYgVTz8VgpTswXlraF\nSlqT2niAb5Oy002/8qsfdnwIbd73nf8Pq8WwtcZKhOSSi5l2bPxxg5oODWy+aVen\n2QIDAQAB\n-----END PUBLIC KEY-----\n";
@@ -6,8 +5,15 @@ const anchor="2026-10-09 22:36:26";
 const sql="SELECT m.session_id,m.updated_at,m.memory_json,s.snapshot_json FROM ai_conversation_memory m LEFT JOIN travel_shopping_sessions s ON s.owner_session_id=m.session_id WHERE m.updated_at>=datetime('"+anchor+"','-1 hour') ORDER BY m.updated_at DESC LIMIT 30";
 let result;
 try{
- const output=execFileSync(process.execPath,['node_modules/wrangler/bin/wrangler.js','d1','execute','love-travel-v28-db','--remote','--json','--command',sql],{encoding:'utf8',maxBuffer:4*1024*1024,timeout:90000,stdio:['ignore','pipe','pipe']});
- result=JSON.parse(output);
+ const response=await fetch('https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+'/d1/database/db0ac2cd-d809-4221-a333-fc2b1a09406e/query',{
+   method:'POST',headers:{'authorization':'Bearer '+process.env.CLOUDFLARE_API_TOKEN,'content-type':'application/json'},body:JSON.stringify({sql}),signal:AbortSignal.timeout(45000),
+ });
+ const body=await response.json();
+ if(!response.ok||!body.success){
+   console.error(JSON.stringify({stage:'read-only-query',status:response.status,codes:(body.errors||[]).map(e=>e.code),schemaError:(body.errors||[]).map(e=>String(e.message||'').match(/no such (?:table|column): [a-z_\\.]+/i)?.[0]).filter(Boolean)}));
+   process.exit(1);
+ }
+ result=body.result||[];
 }catch{
  console.error('Read-only conversation snapshot failed. No transcript was logged.');process.exit(1);
 }
