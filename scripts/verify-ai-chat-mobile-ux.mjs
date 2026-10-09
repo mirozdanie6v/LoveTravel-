@@ -82,9 +82,9 @@ async function runMobileChatUx(){
         assert.equal(value.overflowY,'visible');
         assert.ok(!['sticky','fixed'].includes(value.inputPosition));
         assert.ok(parseFloat(value.inputFont)>=16);
-        await page.locator('#aiScreen .ai-msg.bot:last-child').evaluate(node=>node.scrollIntoView({block:'start',behavior:'instant'}));
+        await page.locator('#aiScreen .ai-msg.bot').nth(1).evaluate(node=>node.scrollIntoView({block:'start',behavior:'instant'}));
         const outer=page.locator('.content'),before=await outer.evaluate(node=>node.scrollTop);
-        const box=await page.locator('#aiScreen .ai-msg.bot:last-child').boundingBox();
+        const box=await page.locator('#aiScreen .ai-msg.bot').nth(1).boundingBox();
         await page.mouse.move(Math.min(row.width-30,box.x+20),Math.max(150,Math.min(row.height-150,box.y+30)));
         await page.mouse.wheel(0,200);
         await page.waitForFunction(before=>document.querySelector('.content').scrollTop>before+20,before);
