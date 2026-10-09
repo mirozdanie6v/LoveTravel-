@@ -353,9 +353,10 @@ test('a factual question does not resolve another offer or change a prepared sel
   assert.equal(answer.agent.mutationExecuted,false);
 });
 
-function configuredBookingHarness(goal='PICKUP',message='Change pickup from Amiana.'){
+function configuredBookingHarness(goal='PICKUP',message='Change pickup from Amiana.',optionChange=false){
   const selectedDomain=domain();
   selectedDomain.rates.push({id:202});
+  if(optionChange){selectedDomain.rates[0].title='Bai Tranh Beach';selectedDomain.rates[1].title='Mini Beach';}
   selectedDomain.availabilitySlots[0].rates.push({id:202});
   selectedDomain.experience.pickup.places.push({id:502,title:'Amiana'});
   selectedDomain.experience.dropoff={enabled:true,places:[{id:601,title:'Return hotel'}]};
@@ -375,7 +376,7 @@ function configuredBookingHarness(goal='PICKUP',message='Change pickup from Amia
     if(request.url.endsWith('/initialize'))return new Response(JSON.stringify({ok:true,transaction:tx}));
     commands.push(body);
     assert.equal(body.action,'SYNC_SELECTION');assert.equal(body.expectedRevision,tx.revision);
-    const updatedOffer={...tx.quote.offer,offerId:'updated-user-rate',pickup:{mode:'PICKUP',placeRef:{provider:'BOKUN',resourceType:'PICKUP_PLACE',externalId:String(body.selection.pickup.placeId),accountRef:'137689'}},price:{amount:137,currency:'USD'}};
+    const updatedOffer={...tx.quote.offer,rateRef:{...tx.quote.offer.rateRef,externalId:String(body.selection.rateId)},offerId:'updated-user-rate',pickup:{mode:'PICKUP',placeRef:{provider:'BOKUN',resourceType:'PICKUP_PLACE',externalId:String(body.selection.pickup.placeId),accountRef:'137689'}},price:{amount:137,currency:'USD'}};
     tx={...tx,revision:tx.revision+1,selection:canonicalBookingSelectionFromBokun(selectedDomain,body.selection),selectedOfferId:updatedOffer.offerId,quote:{...tx.quote,revision:tx.quote.revision+1,offer:updatedOffer}};
     return new Response(JSON.stringify({ok:true,transaction:tx,resolution:{selection:body.selection}}));
   }})},AI:{async run(_model,input){
@@ -383,7 +384,7 @@ function configuredBookingHarness(goal='PICKUP',message='Change pickup from Amia
     if(input.messages[0].content.includes('Conversation Intelligence parser')){
       return {response:{intentPatch:{locale:'en',goal,...(goal==='PICKUP'?{hotel:'Amiana',pickupPreference:'PICKUP'}:{})}}};
     }
-    return {response:{reply:'The current verified offer is $'+tx.quote.offer.price.amount+'.',recommendedProductId:'love-travel-hon-mun',selectedOfferId:tx.quote.offer.offerId,action:'RECOMMEND',nextQuestionCode:'',evidenceRefs:[]}};
+    return {response:{reply:'The current verified offer '+(optionChange?selectedDomain.rates.find(r=>String(r.id)===String(tx.selection.rateRef.externalId)).title+' ':'')+'is $'+tx.quote.offer.price.amount+'.',recommendedProductId:'love-travel-hon-mun',selectedOfferId:tx.quote.offer.offerId,action:'RECOMMEND',nextQuestionCode:'',evidenceRefs:[]}};
   }}};
   const provider={...fakeProvider(),async getDomains(options){providerCalls.push(options);return [selectedDomain];}};
   const store=fakeStore();
@@ -417,3 +418,26 @@ for(const goal of ['BOOK','PRICE','AVAILABILITY']){
     assert.equal(h.tx().revision,4);assert.equal(h.tx().providerBooking,null);
   });
 }
+
+test('changing a named option preserves every other dimension in the same authoritative UI transaction',async()=>{
+  const h=configuredBookingHarness('GENERAL','Change to Bai Tranh Beach.',true);
+  const result=await h.turn();
+  assert.equal(h.commands.length,1);
+  const {rateId:beforeRate,...before}=h.original;
+  const {rateId:afterRate,...after}=h.commands[0].selection;
+  assert.equal(beforeRate,'202');assert.equal(afterRate,'201');assert.deepEqual(after,before);
+  assert.equal(result.transaction.transactionId,'txn-configured-ui-session-123456789');
+  assert.equal(result.bookingSelection.rateId,'201');assert.equal(result.transaction.quote.offer.rateRef.externalId,'201');
+  assert.equal(result.agent.mutationExecuted,false);assert.equal(h.tx().providerBooking,null);
+  assert.ok(!h.modelInputs.some(text=>text.includes('private@example.test')||text.includes('sensitive_answer_marker')));
+});
+
+test('party correction after UI option selection keeps its non-default rate and all transport/contact/extras',async()=>{
+  const h=configuredBookingHarness('GENERAL','Change the party to 3 adults.');
+  const result=await h.turn();
+  assert.equal(h.commands.length,1);
+  const {participants:oldParty,passengers:oldPassengers,...before}=h.original;
+  const {participants:newParty,passengers:newPassengers,...after}=h.commands[0].selection;
+  assert.deepEqual(after,before);assert.deepEqual(newParty,{'101':3});assert.deepEqual(newPassengers,oldPassengers);
+  assert.equal(result.bookingSelection.rateId,'202');assert.equal(result.agent.mutationExecuted,false);
+});

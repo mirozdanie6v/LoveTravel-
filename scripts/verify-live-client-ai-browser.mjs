@@ -39,7 +39,7 @@ const cases=[
 
 
 const consultationCases=[
-  {locale:'ru',questions:['Что входит в экскурсию Robinson Beach? Дату ещё не выбрали.','Чем она отличается от Hòn Mun?','Какие условия отмены бронирования у этой экскурсии?'],inclusions:/питан|еда|еду|напит/i},
+  {locale:'ru',questions:['Что входит в экскурсию Robinson Beach? Дату ещё не выбрали.','Чем она отличается от Hòn Mun?','Какие условия отмены бронирования у этой экскурсии?'],inclusions:/питан|еда|еду|напит|обед/i},
   {locale:'vi',questions:['Tour Robinson Beach bao gồm những gì? Tôi chưa chọn ngày.','Tour này khác Hòn Mun như thế nào?','Điều kiện hủy đặt tour này là gì?'],inclusions:/ăn|uống|ẩm thực|bữa/i},
   {locale:'en',questions:['What is included in Robinson Beach? We have not chosen a date.','How does it differ from Hòn Mun?','What are the booking cancellation conditions for this tour?'],inclusions:/food|drink|meal|lunch/i},
   {locale:'zh',questions:['Robinson Beach 行程包含什么？我们还没选日期。','它与 Hòn Mun 有什么区别？','这个行程的预订取消政策是什么？'],inclusions:/餐饮|饮食|食品|食物|饮料|午餐|膳食/},

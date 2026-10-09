@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import {readFile} from 'node:fs/promises';
-const client=await readFile(new URL('../src/ai-consultant-v5.js',import.meta.url),'utf8');
+const client=(await readFile(new URL('../src/ai-consultant-v5.js',import.meta.url),'utf8')).replace(/\r\n/g,'\n');
 const semantic=await readFile(new URL('../src/lovetravel-i18n.js',import.meta.url),'utf8');
 const network=await readFile(new URL('../src/ai-network-guard-v8.js',import.meta.url),'utf8');
 function harness(locale='ru'){

@@ -1,5 +1,6 @@
 import {
   canonicalProductFromBokunDomain,
+  bokunProviderRef,
 } from './bokun-provider.js';
 import {
   sha256Hex,
@@ -92,7 +93,7 @@ function participantCategory(domain,role,age=null){
   })||null;
 }
 
-function participantSelection(domain,intent){
+export function participantSelection(domain,intent){
   const result={};
   const add=(category,count)=>{
     if(!category||!count) return;
@@ -121,7 +122,18 @@ function slotFor(domain,date,total){
   })||null;
 }
 
-function rateFor(domain,slot){
+function rateFor(domain,slot,requestedRef=null){
+  if(requestedRef){
+    const verified=bokunProviderRef('RATE',requestedRef.externalId,domain?.provider?.vendorId);
+    if(['provider','resourceType','externalId','accountRef'].some(key=>String(verified[key]||'')!==String(requestedRef[key]||''))){
+      throw new CapabilityPolicyError('option_scope_mismatch','Option does not belong to this provider account',409);
+    }
+    const rate=arr(domain?.rates).find(item=>String(item?.id)===String(requestedRef.externalId));
+    if(!rate) throw new CapabilityPolicyError('option_unavailable','Requested option does not belong to this product',409);
+    const allowed=new Set([...arr(slot?.rates).map(item=>String(item?.id)),...arr(slot?.priceQuotesByRate).map(item=>String(item?.rateId))]);
+    if(!slot||allowed.size&&!allowed.has(String(rate.id))) throw new CapabilityPolicyError('option_unavailable','Requested option is unavailable on this date',409);
+    return rate;
+  }
   const slotDefault=String(slot?.defaultRateId??'');
   if(slotDefault){
     const rate=arr(domain?.rates).find(item=>String(item?.id)===slotDefault);
@@ -176,7 +188,11 @@ export function selectionFromTravelIntent(domain,intent){
     );
   }
   const slot=slotFor(domain,date,total);
-  const rate=rateFor(domain,slot);
+  const preference=valid.optionPreference;
+  if(preference&&canonicalProductFromBokunDomain(domain).productId!==preference.productId){
+    throw new CapabilityPolicyError('option_scope_mismatch','Requested option belongs to a different product',409);
+  }
+  const rate=rateFor(domain,slot,preference?.rateRef);
   return {
     productId:String(domain?.experience?.id||domain?.provider?.productId||''),
     date,
@@ -193,7 +209,7 @@ export function selectionFromTravelIntent(domain,intent){
   };
 }
 
-function productFacts(domain,product){
+function productFacts(domain,product,localizedTitles={}){
   return {
     product,
     facts:{
@@ -201,6 +217,18 @@ function productFacts(domain,product){
       excerpt:str(domain?.experience?.excerpt),
       duration:structuredClone(domain?.experience?.duration||null),
       minAge:domain?.experience?.minAge??null,
+      // Rates are alternative programs belonging to this product, not separate tours.
+      options:arr(domain?.rates).map(rate=>({
+        rateRef:bokunProviderRef('RATE',rate.id,domain?.provider?.vendorId),
+        title:str(rate.title),
+        localizedTitle:str(localizedTitles[String(rate.id)]||rate.title),
+        description:str(rate.description),
+        minPerBooking:rate.minPerBooking??null,
+        maxPerBooking:rate.maxPerBooking??null,
+      })),
+      programScope:'PRODUCT_DESCRIPTION_NOT_OPTION_ITINERARY',
+      included:structuredClone(domain?.experience?.content?.included??null),
+      excluded:structuredClone(domain?.experience?.content?.excluded??null),
       itinerary:arr(domain?.experience?.itinerary).map(item=>({
         title:str(item?.title),
         body:str(item?.body),
@@ -235,12 +263,13 @@ export async function evidenceEnvelope(capability,args,data,now){
 export function createTravelCapabilityBroker({
   provider,
   bookingSessionExecutor=null,
+  optionTitles=async()=>({}),
   now=()=>new Date(),
 }={}){
   if(!provider) throw new TypeError('Travel capability broker requires a provider');
 
   async function searchProducts(args={}){
-    exactKeys(args,['start','end','lang','includePickupPlaces','productIds'],'searchProducts');
+    exactKeys(args,['start','end','lang','locale','includePickupPlaces','productIds'],'searchProducts');
     const start=isoDate(args.start)?args.start:vietnamToday(now());
     const end=isoDate(args.end)?args.end:addDays(start,14);
     const domains=await provider.getDomains({
@@ -253,17 +282,18 @@ export function createTravelCapabilityBroker({
       const product=canonicalProductFromBokunDomain(domain,{
         vendorId:provider.vendorId,
       });
-      return productFacts(domain,product);
+      return productFacts(domain,product,await optionTitles(domain,args.locale||'en'));
     }));
   }
 
   async function compareProducts(args={}){
-    exactKeys(args,['productIds','start','end','lang'],'compareProducts');
+    exactKeys(args,['productIds','start','end','lang','locale'],'compareProducts');
     const products=await searchProducts({
       productIds:args.productIds,
       start:args.start,
       end:args.end,
       lang:args.lang,
+      locale:args.locale,
       includePickupPlaces:false,
     });
     return products;
@@ -284,12 +314,14 @@ export function createTravelCapabilityBroker({
     const results=[];
     for(const domain of domains){
       const product=canonicalProductFromBokunDomain(domain,{vendorId:provider.vendorId});
+      if(intent.optionPreference&&intent.optionPreference.productId!==product.productId) continue;
       try{
         const selection=selectionFromTravelIntent(domain,intent);
         const resolved=await provider.resolveOffer({selection,domain});
         results.push({
           product,
           selection,
+          option:productFacts(domain,product,await optionTitles(domain,intent.locale)).facts.options.find(option=>String(option.rateRef.externalId)===String(selection.rateId))||null,
           offer:resolved.offer,
           readyToQuote:Boolean(resolved.resolution?.readyToQuote),
           readyToBook:Boolean(resolved.resolution?.readyToBook),

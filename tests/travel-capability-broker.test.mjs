@@ -202,3 +202,52 @@ test('declared but unsupported provider mutations fail closed',async()=>{
     error=>error instanceof CapabilityPolicyError&&error.code==='mutation_capability_not_supported',
   );
 });
+
+test('AI discovery preserves all seven Robinson and four Hon Mun options with product ownership',async()=>{
+  const {optionCatalogDomains,optionCatalog}=await import('./fixtures/travel-option-catalog.mjs');
+  const broker=createTravelCapabilityBroker({provider:{vendorId:'137689',async getDomains(){return optionCatalogDomains();}}});
+  const packet=await broker.execute('searchProducts',{},{principal:CAPABILITY_PRINCIPALS.ORCHESTRATOR});
+  assert.deepEqual(packet.data.map(row=>row.facts.options.length),[7,4]);
+  for(const [index,row] of packet.data.entries()){
+    assert.equal(row.product.productId,optionCatalog[index].canonicalId);
+    assert.deepEqual(row.facts.options.map(option=>[option.rateRef.externalId,option.title]),optionCatalog[index].rates);
+    assert.ok(row.facts.options.every(option=>option.rateRef.resourceType==='RATE'&&option.rateRef.accountRef==='137689'));
+    assert.equal(row.facts.included,'Air-conditioned vehicle, snorkeling equipment and lunch.');
+    assert.equal(row.facts.programScope,'PRODUCT_DESCRIPTION_NOT_OPTION_ITINERARY');
+  }
+});
+
+test('all eleven explicit options resolve their own rate and group price without network or mutation',async()=>{
+  const {optionCatalogDomains,optionCatalog}=await import('./fixtures/travel-option-catalog.mjs');
+  const {createBokunProvider}=await import('../src/bokun-provider.js');
+  const domains=optionCatalogDomains();
+  const real=createBokunProvider({now:()=>new Date('2026-10-06T12:00:00Z'),fetchImpl:async()=>{throw new Error('No upstream call allowed in fixture test');}});
+  const broker=createTravelCapabilityBroker({provider:{...real,async getDomains(){return domains;}}});
+  for(const catalog of optionCatalog)for(const [index,[rateId,title]] of catalog.rates.entries()){
+    const wanted={productId:catalog.canonicalId,rateRef:providerRef('RATE',rateId)};
+    const packet=await broker.execute('searchOffers',{intent:intent({party:{adults:2,children:[],infants:0},pickupPreference:'MEET_ON_LOCATION',optionPreference:wanted})});
+    assert.equal(packet.data.length,1);
+    const row=packet.data[0];
+    assert.equal(row.selection.productId,catalog.productId);
+    assert.equal(row.selection.rateId,rateId);
+    assert.equal(row.offer.rateRef.externalId,rateId);
+    assert.equal(row.option.title,title);
+    assert.equal(row.offer.price.amount,100+index*10);
+    assert.equal(row.readyToQuote,true);
+  }
+});
+
+test('unavailable, cross-product and cross-account options never silently become a default offer',async()=>{
+  const {optionCatalogDomains}=await import('./fixtures/travel-option-catalog.mjs');
+  const d=optionCatalogDomains()[0];
+  const wanted={productId:'love-travel-robinson-island',rateRef:providerRef('RATE','2623660')};
+  const requested=intent({party:{adults:2,children:[],infants:0},optionPreference:wanted});
+  for(const slot of d.availabilitySlots){slot.rates=slot.rates.filter(r=>r.id!=='2623660');slot.priceQuotesByRate=slot.priceQuotesByRate.filter(r=>r.rateId!=='2623660');}
+  assert.throws(()=>selectionFromTravelIntent(d,requested),e=>e.code==='option_unavailable');
+  assert.throws(()=>selectionFromTravelIntent(optionCatalogDomains()[1],requested),e=>e.code==='option_scope_mismatch');
+  assert.throws(()=>selectionFromTravelIntent(optionCatalogDomains()[0],{...requested,optionPreference:{...wanted,rateRef:{...wanted.rateRef,accountRef:'other-account'}}}),e=>e.code==='option_scope_mismatch');
+  let resolved=0;
+  const broker=createTravelCapabilityBroker({provider:{vendorId:'137689',async getDomains(){return [d];},async resolveOffer(){resolved++;throw new Error('must not resolve default');}}});
+  const packet=await broker.execute('searchOffers',{intent:requested});
+  assert.equal(resolved,0);assert.equal(packet.data[0].offer,null);assert.equal(packet.data[0].errors[0].code,'option_unavailable');
+});

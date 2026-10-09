@@ -14,7 +14,7 @@ permissions:
 jobs:
   client-ai:
     runs-on: ubuntu-latest
-    timeout-minutes: 7
+    timeout-minutes: 15
     container:
       image: mcr.microsoft.com/playwright:v1.55.0-noble
     steps:
@@ -27,10 +27,26 @@ jobs:
         env:
           LOVE_TRAVEL_LIVE_BASE_URL: https://lovetravel.viiversion.com
         run: node scripts/verify-live-client-ai-browser.mjs
+      - name: Verify all provider options in five locales and exact Quote handoff
+        env:
+          LOVE_TRAVEL_LIVE_BASE_URL: https://lovetravel.viiversion.com
+        run: node scripts/verify-live-ai-option-catalog.mjs
+      - name: Verify complete configuration with all fixture dimensions
+        env:
+          LOVE_TRAVEL_BROWSER_CHANNEL: chromium
+        run: node scripts/verify-restored-booking-ui.mjs
+      - name: Verify complete configuration with fresh read-only provider data
+        env:
+          LOVE_TRAVEL_BROWSER_CHANNEL: chromium
+          LOVE_TRAVEL_LIVE_BASE_URL: https://lovetravel.viiversion.com
+        run: node scripts/verify-restored-booking-ui.mjs --live
       - name: Save actual consultation screenshots
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: ai-dialogue-screenshots
-          path: artifacts/ai-dialogue/*.png
+          path: |
+            artifacts/ai-dialogue/*.png
+            artifacts/ai-options/*
+            artifacts/restoration/*
           if-no-files-found: ignore
