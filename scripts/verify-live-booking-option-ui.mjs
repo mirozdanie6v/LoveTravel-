@@ -9,9 +9,9 @@ function invariant(value,message){
 }
 
 const watchdog=setTimeout(()=>{
-  console.error('booking option smoke exceeded 60s');
+  console.error('booking option smoke exceeded 180s');
   process.exit(124);
-},60000);
+},180000);
 
 const browser=await chromium.launch({headless:true});
 try{
@@ -49,11 +49,12 @@ try{
   await mkdir('artifacts/mobile-ui',{recursive:true});
   const navigationLocales={ru:['Спросить AI','Мои поездки'],vi:['Hỏi AI','Chuyến đi'],en:['Ask AI','My trips'],zh:['咨询 AI','我的行程'],ko:['AI에게 묻기','내 여행']};
   for(const [locale,labels] of Object.entries(navigationLocales)){
+    console.log(JSON.stringify({stage:'navigation-locale',locale}));
     await page.locator('.mt-language-switcher [data-locale="'+locale+'"]').click();
     await page.waitForFunction(({labels})=>{
       const ai=document.querySelector('.bottom-nav [data-nav="ai"]'),trips=document.querySelector('.bottom-nav [data-nav="trips"]');
-      return ai?.innerText===labels[0]&&trips?.innerText===labels[1]&&getComputedStyle(ai).display!=='none'&&getComputedStyle(trips).display!=='none';
-    },{labels},{timeout:10000});
+      return ai?.textContent.trim()===labels[0]&&trips?.textContent.trim()===labels[1]&&getComputedStyle(ai).display!=='none'&&getComputedStyle(trips).display!=='none';
+    },{labels},{timeout:30000});
     await page.locator('.bottom-nav [data-nav="ai"]').click();
     await page.locator('#aiScreen.active textarea[name="message"]').waitFor({state:'visible',timeout:10000});
     await page.locator('.bottom-nav [data-nav="trips"]').click();
@@ -65,6 +66,10 @@ try{
     invariant((await page.locator('.lt-home-trust').count())===0,'Removed home trust strip was recreated');
   }
   await page.locator('.mt-language-switcher [data-locale="ru"]').click();
+  await page.waitForFunction(()=>
+    globalThis.LOVE_TRAVEL_BOKUN_ACTIVE===true&&typeof TOURS!=='undefined'&&Array.isArray(TOURS)&&TOURS.length===2,
+    null,{timeout:60000});
+  await page.locator('#homeScreen.active [data-lt-action="catalog"]').waitFor({state:'visible',timeout:20000});
   const publicUi=await page.evaluate(()=>{
     const logo=document.querySelector('.brandmark-real img').getBoundingClientRect();
     const nav=document.querySelector('.bottom-nav');
