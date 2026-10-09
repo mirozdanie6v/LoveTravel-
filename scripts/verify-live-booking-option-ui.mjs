@@ -72,16 +72,19 @@ try{
     globalThis.LOVE_TRAVEL_BOKUN_ACTIVE===true&&typeof TOURS!=='undefined'&&Array.isArray(TOURS)&&TOURS.length===2,
     null,{timeout:60000});
   await page.locator('#homeScreen.active [data-lt-action="catalog"]').waitFor({state:'visible',timeout:20000});
+  await page.evaluate(()=>document.fonts.ready);
   const publicUi=await page.evaluate(()=>{
     const logo=document.querySelector('.brandmark-real img').getBoundingClientRect();
     const nav=document.querySelector('.bottom-nav');
-    return {navHeight:nav.getBoundingClientRect().height,labelFonts:[...nav.querySelectorAll('.nav-btn')].map(button=>({button:getComputedStyle(button).fontSize,label:getComputedStyle(button.querySelector('.nav-label')).fontSize})),logo:{width:logo.width,height:logo.height},tabs:[...document.querySelectorAll('.bottom-nav .nav-btn')].filter(node=>getComputedStyle(node).display!=='none').map(node=>node.dataset.nav)};
+    return {navHeight:nav.getBoundingClientRect().height,labelFonts:[...nav.querySelectorAll('.nav-btn')].map(button=>({button:getComputedStyle(button).fontSize,label:getComputedStyle(button.querySelector('.nav-label')).fontSize,labelWidth:button.querySelector('.nav-label').getBoundingClientRect().width,buttonWidth:button.getBoundingClientRect().width})),logo:{width:logo.width,height:logo.height},tabs:[...document.querySelectorAll('.bottom-nav .nav-btn')].filter(node=>getComputedStyle(node).display!=='none').map(node=>node.dataset.nav)};
   });
+  console.log(JSON.stringify({stage:'public-navigation-layout',...publicUi}));
+  await page.screenshot({path:'artifacts/mobile-ui/01-home.png'});
+  invariant(publicUi.labelFonts.every(font=>font.labelWidth<=font.buttonWidth+1),'Navigation label exceeds its tap target width');
   invariant(Math.abs(publicUi.logo.width-88)<1&&Math.abs(publicUi.logo.height-88)<1,'Mobile logo is not twice its previous 44px size');
   invariant(publicUi.tabs.join(',')==='home,catalog,ai,trips','Public navigation is incomplete');
   invariant(publicUi.labelFonts.every(font=>font.button===font.label),'Navigation labels inherit icon font size');
   invariant(publicUi.navHeight<80,'Navigation grew beyond its original mobile height');
-  await page.screenshot({path:'artifacts/mobile-ui/01-home.png'});
   await page.locator('.bottom-nav [data-nav="trips"]').click();
   await page.locator('#tripsScreen.active .lt-trips-empty').waitFor({state:'visible',timeout:10000});
   await page.screenshot({path:'artifacts/mobile-ui/02-my-trips.png'});
