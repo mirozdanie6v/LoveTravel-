@@ -678,6 +678,7 @@ test('catalog lists enumerate every provider option without waiting for or trust
   assert.equal(intent.goal,'DETAILS');assert.equal(intent.source,'verified-catalog-intent');
   const result=await composeGroundedSalesPlan({env,message:'List all Robinson tour options.',locale:'en',intent:createInitialTravelIntent('en'),evidence:[packet],goal:'DETAILS'});
   assert.equal(calls,0);assert.equal(result.source,'provider-catalog-options');assert.equal(result.replyAttempts,0);
+  assert.equal(result.reply.split('\n').filter(line=>/^\d+\. /.test(line)).length,7);
   assert.ok(packet.data[0].facts.options.every(o=>result.reply.includes(o.title)));
   assert.equal(result.selectedOfferId,'');assert.equal(result.nextQuestionCode,'');
 });

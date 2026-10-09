@@ -28,33 +28,31 @@
   flex-direction:column;
   min-width:0;
   min-height:0;
-  height:clamp(140px,calc(var(--lt-vv-height,100dvh) - 340px),620px);
-  overflow:hidden;
-  background:#f5eee4;
-  border:1px solid var(--line);
-  border-radius:22px;
-  box-shadow:0 10px 26px rgba(129,65,20,.07);
+  height:auto;
+  overflow:visible;
+  background:transparent;
+  border:0;
+  border-radius:0;
+  box-shadow:none;
 }
 #aiScreen .ai-messages{
   display:flex;
   flex-direction:column;
   gap:8px;
-  flex:1 1 0;
+  flex:0 0 auto;
   min-height:0;
   max-height:none;
-  overflow-y:auto;
-  overflow-x:hidden;
+  overflow:visible;
   overscroll-behavior:auto;
-  padding:16px 14px 12px;
-  border-radius:21px 21px 0 0;
-  background:
-    radial-gradient(circle at 10% 0%,rgba(255,255,255,.65),transparent 38%),
-    #f5eee4;
+  padding:8px 0 16px;
+  border-radius:0;
+  background:transparent;
   scroll-behavior:auto;
 }
 #aiScreen .ai-messages .ai-msg{
   flex:0 0 auto;
   overflow-wrap:anywhere;
+  scroll-margin-top:130px;
   align-self:flex-start;
   max-width:min(82%,620px);
   margin:0;
@@ -79,6 +77,14 @@
   letter-spacing:.02em;
 }
 #aiScreen .ai-msg-text{display:block}
+#aiScreen .ai-msg.bot .ai-msg-text{white-space:normal;line-height:1.55}
+#aiScreen .ai-msg-text p{margin:0}
+#aiScreen .ai-msg-text p+p,
+#aiScreen .ai-msg-text p+.ai-reply-list,
+#aiScreen .ai-msg-text .ai-reply-list+p{margin-top:10px}
+#aiScreen .ai-reply-list{list-style:none;margin:10px 0 0;padding:0}
+#aiScreen .ai-reply-list li{margin:0;padding:0}
+#aiScreen .ai-reply-list li+li{margin-top:7px}
 #aiScreen .ai-messages .ai-msg.user{
   align-self:flex-end;
   border-color:transparent;
@@ -125,7 +131,8 @@
   padding:10px 14px 14px;
   position:relative;
   z-index:2;
-  border-top:1px solid rgba(125,62,29,.1);
+  border:1px solid var(--line);
+  border-radius:18px;
   background:#fff;
 }
 #aiScreen .ai-consultant-input textarea{
@@ -227,7 +234,7 @@
   #aiScreen .ai-chat-subtitle{font-size:10.5px;max-width:34em}
   #aiScreen .ai-messages{
     min-height:0;
-    padding:14px 10px 10px;
+    padding:8px 0 16px;
   }
   #aiScreen .ai-messages .ai-msg{max-width:88%;font-size:13px}
   #aiScreen .ai-quick-replies{width:100%}
