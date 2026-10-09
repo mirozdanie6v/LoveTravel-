@@ -12,6 +12,7 @@ on:
       - 'tests/fixtures/booking-configurator-domains.mjs'
       - 'tests/helpers/booking-ui-harness.mjs'
       - 'scripts/verify-restored-booking-ui.mjs'
+      - 'scripts/verify-ai-chat-mobile-ux.mjs'
       - '.github/workflows/lovetravel-live-bokun-gate.yml'
 
 permissions:
@@ -30,6 +31,8 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: npm test
       - run: npm run build
+      - name: Verify readable mobile chat and unobstructed input
+        run: node scripts/verify-ai-chat-mobile-ux.mjs
       - name: Verify complete local configuration with zero provider writes
         env:
           LOVE_TRAVEL_BROWSER_CHANNEL: chromium
@@ -42,4 +45,6 @@ jobs:
         if: always()
         with:
           name: booking-configuration-parity
-          path: artifacts/restoration/
+          path: |
+            artifacts/restoration/
+            artifacts/ai-chat-ux/

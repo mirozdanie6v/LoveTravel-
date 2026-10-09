@@ -509,8 +509,13 @@ html.love-travel-branded #aiScreen .ai-message.assistant{
 }
 html.love-travel-branded #aiScreen .ai-msg.user,
 html.love-travel-branded #aiScreen .ai-message.user{
-  background:linear-gradient(135deg,var(--lt-blue-bright),var(--lt-blue-deep))!important;
-  color:#fff!important;
+  background:#dbeafe!important;
+  color:var(--lt-ink)!important;
+  border-color:rgba(11,90,168,.2)!important;
+}
+
+html.love-travel-branded #aiScreen .ai-msg.user .ai-msg-author{
+  color:var(--lt-blue-deep)!important;
 }
 
 @media (min-width:680px){
