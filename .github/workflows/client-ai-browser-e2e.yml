@@ -31,6 +31,8 @@ jobs:
         env:
           LOVE_TRAVEL_LIVE_BASE_URL: https://lovetravel.viiversion.com
         run: node scripts/verify-live-ai-option-catalog.mjs
+      - name: Build local configuration acceptance harness
+        run: npm run build
       - name: Verify complete configuration with all fixture dimensions
         env:
           LOVE_TRAVEL_BROWSER_CHANNEL: chromium
