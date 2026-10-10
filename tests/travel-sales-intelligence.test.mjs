@@ -748,3 +748,80 @@ test('a specific option price question is not mistaken for a read-only catalog l
     message:'What is the price of the Robinson & Mini Beach option?',locale:'en',products:packet.data,currentIntent:createInitialTravelIntent('en')});
   assert.equal(result.goal,'PRICE');assert.equal(result.patch.selectedOption.rateRef.externalId,'2623668');
 });
+
+
+test('a null option in an unrelated malformed model patch cannot turn a date answer into a read-only question',async()=>{
+  const packet=await catalogEvidence();
+  const result=await extractConversationIntent({
+    env:{AI:{async run(){return {response:{intentPatch:{locale:null,selectedOption:null}}};}}},
+    message:'Завтра.',locale:'ru',products:packet.data,currentIntent:createInitialTravelIntent('ru'),now:new Date('2026-10-10T01:00:00Z'),
+  });
+  assert.equal(result.goal,'GENERAL');
+  assert.equal(result.patch.dateConstraint.exact,'2026-10-11');
+  assert.equal(result.intentFailureReason,'invalid_schema');
+});
+
+test('short booking answers update only the requested parameters without waiting for model inference',async()=>{
+  const packet=await catalogEvidence();
+  const env={AI:{async run(){throw new Error('Unambiguous continuation must not call the model');}}};
+  const initial=createInitialTravelIntent('ru');
+  const ctx={commercialGoal:'BOOK',currentProductId:packet.data[0].product.productId};
+  const date=await extractConversationIntent({env,message:'Завтра.',locale:'ru',products:packet.data,currentIntent:initial,context:ctx,now:new Date('2026-10-10T01:00:00Z')});
+  assert.equal(date.source,'booking-continuation');assert.equal(date.goal,'BOOK');assert.equal(date.patch.dateConstraint.exact,'2026-10-11');
+  const party=await extractConversationIntent({env,message:'Двое.',locale:'ru',products:packet.data,currentIntent:initial,context:{...ctx,nextQuestionCode:'PARTY'}});
+  assert.equal(party.pendingPartyTotal,2);assert.equal(party.patch.party,undefined,'A total does not prove that both guests are adults');
+  const noChildren=await extractConversationIntent({env,message:'Без детей.',locale:'ru',products:packet.data,currentIntent:initial,context:{...ctx,nextQuestionCode:'PARTY',pendingPartyTotal:2}});
+  assert.deepEqual(noChildren.patch.party,{adults:2,childrenAges:[],infants:0});
+  const pickup=await extractConversationIntent({env,message:'Заберите от Oceanus.',locale:'ru',products:packet.data,currentIntent:initial,context:ctx});
+  assert.equal(pickup.patch.hotel,'Oceanus');assert.equal(pickup.source,'booking-continuation');
+  const yes=await extractConversationIntent({env,message:'Да.',locale:'ru',products:packet.data,currentIntent:initial,context:ctx});
+  assert.equal(yes.goal,'BOOK');assert.equal(yes.bookingRequested,false,'Yes must never become a reserve command');
+});
+
+test('a numeric reply selects the displayed verified option instead of becoming a participant count',async()=>{
+  const packet=await catalogEvidence();const row=packet.data[0];
+  const result=await extractConversationIntent({env:{AI:{async run(){throw Error('No model needed');}}},message:'2',locale:'ru',products:packet.data,currentIntent:createInitialTravelIntent('ru'),context:{nextQuestionCode:'OPTION',optionList:row.facts.options.map(o=>({productId:row.product.productId,rateRef:o.rateRef}))}});
+  assert.deepEqual(result.patch.selectedOption.rateRef,row.facts.options[1].rateRef);
+  assert.equal(result.patch.party,undefined);
+  assert.equal(result.bookingRequested,false);
+});
+
+test('a missing or removed numbered option stays a clarification and never falls back to a default quote',async()=>{
+  const packet=await catalogEvidence(),initial=createInitialTravelIntent('ru');
+  for(const optionList of [[],[{productId:packet.data[0].product.productId,rateRef:{provider:'BOKUN',resourceType:'RATE',externalId:'removed',accountRef:'137689'}}]]){
+    const result=await extractConversationIntent({env:{AI:{async run(){throw Error('No model needed');}}},message:'1',locale:'ru',products:packet.data,currentIntent:initial,context:{commercialGoal:'BOOK',nextQuestionCode:'OPTION',optionList}});
+    assert.equal(result.optionChoiceUnavailable,true);assert.equal(result.goal,'DETAILS');assert.equal(result.patch.selectedOption,undefined);assert.equal(result.patch.party,undefined);
+  }
+});
+
+for(const [locale,date,total,none,yes] of [
+  ['ru','Завтра.','Двое.','Без детей.','Да.'],
+  ['en','Tomorrow.','Two.','No children.','Yes.'],
+  ['vi','Ngày mai.','Hai.','Không có trẻ em.','Vâng.'],
+  ['zh','明天。','两人。','没有孩子。','好的。'],
+  ['ko','내일.','둘.','어린이 없어요.','네.'],
+]){
+  test('short booking dialogue parameters remain semantic in '+locale,async()=>{
+    const packet=await catalogEvidence(),initial=createInitialTravelIntent(locale);
+    const env={AI:{async run(){throw Error('No model needed');}}};
+    const context={commercialGoal:'BOOK',currentProductId:packet.data[0].product.productId};
+    const run=(message,extra={})=>extractConversationIntent({env,message,locale,products:packet.data,currentIntent:initial,context:{...context,...extra},now:new Date('2026-10-10T01:00:00Z')});
+    assert.equal((await run(date)).patch.dateConstraint.exact,'2026-10-11');
+    assert.equal((await run(total,{nextQuestionCode:'PARTY'})).pendingPartyTotal,2);
+    assert.deepEqual((await run(none,{nextQuestionCode:'PARTY',pendingPartyTotal:2})).patch.party,{adults:2,childrenAges:[],infants:0});
+    assert.equal((await run(yes)).bookingRequested,false);
+  });
+}
+
+
+test('a mixed party answer still reaches the model and cannot silently drop a child',async()=>{
+  const packet=await catalogEvidence();let calls=0;
+  const result=await extractConversationIntent({env:{AI:{async run(){calls++;return {response:{intentPatch:{party:{adults:2,childrenAges:[7]},goal:'BOOK'}}};}}},message:'We are two adults and a child aged 7.',locale:'en',products:packet.data,currentIntent:createInitialTravelIntent('en'),context:{commercialGoal:'BOOK',nextQuestionCode:'PARTY'}});
+  assert.equal(calls,1);assert.equal(result.patch.party.adults,2);assert.deepEqual(result.patch.party.childrenAges,[7]);
+});
+
+test('a factual question mentioning tomorrow is not treated as a date answer',async()=>{
+  let calls=0;
+  const result=await extractConversationIntent({env:{AI:{async run(){calls++;return {response:{intentPatch:{goal:'DETAILS'}}};}}},message:'What is the tour duration tomorrow?',locale:'en',products:productEvidence().data,currentIntent:createInitialTravelIntent('en'),context:{commercialGoal:'BOOK',nextQuestionCode:'DATE'}});
+  assert.equal(calls,1);assert.equal(result.goal,'DETAILS');
+});

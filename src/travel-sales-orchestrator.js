@@ -12,6 +12,8 @@ import {
   extractConversationIntent,
   mergeIntentPatch,
   pickupChangeRequested,
+  partyCompositionQuestion,
+  optionChoiceQuestion,
 } from './travel-sales-intelligence.js';
 import {
   createShoppingSession,
@@ -236,7 +238,7 @@ export function createLoveTravelSalesOrchestrator({
       currentIntent:shopping.intent,
       locale,
       products:productsPacket.data,
-      context:{...context,...(activeProduct?{currentProductId:activeProduct.product.productId,currentOption:activeTransaction.selection.rateRef}:{} )},
+      context:{...context,currentProductId:activeProduct?.product.productId||memory.productFocus||'',commercialGoal:memory.commercialGoal||((shopping.intent.optionPreference||activeTransaction?.selection)?'BOOK':null),nextQuestionCode:memory.nextQuestionCode||'',pendingPartyTotal:memory.pendingPartyTotal||null,optionList:memory.optionList||[],...(activeProduct?{currentOption:activeTransaction.selection.rateRef}:{})},
       history:conversation,
       now:now(),
     });
@@ -320,7 +322,7 @@ export function createLoveTravelSalesOrchestrator({
     if(!canonicalScopeUsed&&offersRequested&&exactDate(shopping.intent)&&partyKnown(shopping.intent)){
       const productIds=canonicalToProviderProducts(
         productsPacket,
-        shopping.intent.optionPreference?.productId||extracted.selectedProductId,
+        shopping.intent.optionPreference?.productId||extracted.selectedProductId||memory.productFocus,
       );
       offersPacket=await broker.execute('searchOffers',{
         intent:shopping.intent,
@@ -340,7 +342,11 @@ export function createLoveTravelSalesOrchestrator({
       shopping=next;
     }
 
-    const plan=await composeGroundedSalesPlan({
+    const plan=extracted.optionChoiceUnavailable?{
+      reply:optionChoiceQuestion(locale),recommendedProductId:'',selectedOfferId:'',action:'GENERAL',nextQuestionCode:'OPTION',evidenceRefs:[productsPacket.evidenceId],source:'booking-continuation',degraded:false,
+    }:extracted.pendingPartyTotal?{
+      reply:partyCompositionQuestion(locale,extracted.pendingPartyTotal),recommendedProductId:extracted.selectedProductId||memory.productFocus||'',selectedOfferId:'',action:'ASK_PARTY',nextQuestionCode:'PARTY',evidenceRefs:[productsPacket.evidenceId],source:'booking-continuation',degraded:false,
+    }:await composeGroundedSalesPlan({
       env,
       message,
       locale,
@@ -382,7 +388,21 @@ export function createLoveTravelSalesOrchestrator({
       }
     }
 
-    await saveConversationMemory(env,sessionId,appendTurns(memory,message,plan.reply));
+    const nextMemory=appendTurns(memory,message,plan.reply);
+    if(COMMERCIAL_GOALS.includes(extracted.goal))nextMemory.commercialGoal=extracted.goal;
+    if(extracted.selectedProductId)nextMemory.productFocus=extracted.selectedProductId;
+    if(plan.nextQuestionCode||!readOnlyQuestion)nextMemory.nextQuestionCode=plan.nextQuestionCode||'';
+    if(extracted.pendingPartyTotal)nextMemory.pendingPartyTotal=extracted.pendingPartyTotal;
+    if(intentPatch.party?.adults!==undefined||intentPatch.party===null)delete nextMemory.pendingPartyTotal;
+    if(plan.source==='provider-catalog-options'){
+      nextMemory.nextQuestionCode='OPTION';nextMemory.optionList=[];
+    }
+    if(plan.source==='provider-catalog-options'&&plan.recommendedProductId){
+      nextMemory.productFocus=plan.recommendedProductId;
+      nextMemory.nextQuestionCode='OPTION';
+      nextMemory.optionList=productsPacket.data.find(row=>row.product.productId===plan.recommendedProductId)?.facts?.options.map(option=>({productId:plan.recommendedProductId,rateRef:option.rateRef}))||[];
+    }
+    await saveConversationMemory(env,sessionId,nextMemory);
 
     return {
       reply:plan.reply,
@@ -393,6 +413,7 @@ export function createLoveTravelSalesOrchestrator({
       agent:{
         version:'travel-commerce-sales-v1',
         intentSource:extracted.source,
+        intentFailureReason:extracted.intentFailureReason||null,
         replyFailureReason:plan.replyFailureReason||null,
         replyAttempts:plan.replyAttempts||0,
         replyFailureReasons:plan.replyFailureReasons||[],

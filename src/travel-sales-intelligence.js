@@ -506,6 +506,65 @@ function mergeExplicitOverModel(modelPatch,explicitPatch,message=''){
   return validateIntentPatch(combined);
 }
 
+
+function shortBookingAnswer(message,intent,context,products){
+  const text=normalizedText(message).replace(/[.!?。！？]+$/u,'').trim();
+  const goal=COMMERCIAL_GOALS.includes(context.commercialGoal)?context.commercialGoal:null;
+  const explicit=deterministicExplicitIntentPatch({message,locale:intent.locale,products,context,now:context.now});
+  if(context.nextQuestionCode==='OPTION'&&/^\d{1,2}$/u.test(text)){
+    const choice=arr(context.optionList)[Number(text)-1];
+    if(choice){
+      try{
+        const patch=verifiedOptionPatch({selectedProductId:choice.productId,selectedOption:choice,goal:goal||'BOOK',bookingRequested:false},products);
+        return {patch,handled:true};
+      }catch{}
+    }
+    return {patch:{goal:'DETAILS',bookingRequested:false},optionChoiceUnavailable:true,handled:true};
+  }
+  if(!goal||['DETAILS','COMPARE','PICKUP'].includes(explicit.goal))return null;
+  const totals={one:1,two:2,three:3,four:4,'один':1,'одна':1,'два':2,'двое':2,'три':3,'трое':3,'четыре':4,'четверо':4,mot:1,hai:2,ba:3,bon:4,'一人':1,'两人':2,'兩人':2,'两个人':2,'兩個人':2,'한명':1,'두명':2,'둘':2,'세명':3};
+  const total=/^\d{1,2}$/u.test(text)?Number(text):totals[text.replace(/\s+/g,'')];
+  if(context.nextQuestionCode==='PARTY'&&Number.isInteger(total)&&total>=1&&total<=30){
+    return {patch:{goal,bookingRequested:false},pendingPartyTotal:total,handled:true};
+  }
+  const noChildren=/^(?:без\s+дете[ий]|дете[ий]\s+нет|no\s+(?:children|kids)|without\s+(?:children|kids)|khong\s+co\s+tre\s+em|没有孩子|沒有孩子|没有儿童|沒有兒童|아이\s*없어요|어린이\s*없어요)$/u.test(text);
+  if(noChildren&&(context.pendingPartyTotal||intent.party?.adults)){
+    const adults=context.pendingPartyTotal||intent.party.adults;
+    return {patch:{party:{adults,childrenAges:[],infants:0},goal,bookingRequested:false},handled:true};
+  }
+  const affirmative=/^(?:да|yes|okay|ok|dong\s+y|vang|是|好的|네|예)$/u.test(text);
+  if(affirmative&&(intent.optionPreference||context.currentProductId)){
+    return {patch:{goal,bookingRequested:false},handled:true};
+  }
+  const dateAnswer=explicit.dateConstraint&&/^(?:(?:на|for)\s+)?(?:сегодня|завтра|today|tomorrow|hom\s+nay|ngay\s+mai|今天|明天|오늘|내일|\d{4}-\d{2}-\d{2})$/u.test(text);
+  const adultAnswer=explicit.party?.adults!==undefined&&/^(?:(?:нас|we\s+are|chung\s+toi\s+co)\s+)?(?:(?:\d{1,2}|one|two|three|four)\s+adults?|(?:\d{1,2}|один|одна|два|двое|три|трое|четыре|четверо)\s+взросл(?:ых|ые|ы[йи]|ая)|(?:\d{1,2}|mot|hai|ba|bon)\s+nguoi\s+lon|(?:我们|我們)?(?:\d{1,2}|两|兩|二|一|三|四)\s*(?:位|个|個)?成人|성인\s*(?:\d{1,2}|한|두|세|네)\s*명)$/u.test(text);
+  const pickupAnswer=explicit.hotel&&!/[?？]|\b(?:adults?|children|kids|infants?|tomorrow|today|price|cost|book|reserve)\b|взросл|дет|реб|завтра|сегодня|стоим|цен|брони|nguoi\s+lon|tre\s+em|ngay\s+mai|成人|儿童|孩子|明天|성인|어린이|내일/iu.test(text);
+  if(message.length<=120&&!/[?？]/u.test(message)&&(dateAnswer||adultAnswer||pickupAnswer)){
+    return {patch:{goal,bookingRequested:false},handled:true};
+  }
+  return null;
+}
+
+export function optionChoiceQuestion(locale){
+  return ({
+    ru:'Уточните экскурсию и вариант из актуального списка. Этот номер нельзя однозначно связать с доступным вариантом.',
+    en:'Please specify the tour and an option from the current list. This number cannot be matched to one available option.',
+    vi:'Vui lòng cho biết tour và phương án trong danh sách hiện tại. Không thể xác định một phương án còn có sẵn từ số này.',
+    zh:'请说明行程及当前列表中的选项。无法根据这个编号确定一个可选方案。',
+    ko:'투어와 현재 목록의 옵션을 알려주세요. 이 번호로는 이용 가능한 옵션 하나를 확인할 수 없습니다.',
+  })[locale]||optionChoiceQuestion('en');
+}
+
+export function partyCompositionQuestion(locale,total){
+  return ({
+    ru:'Вы указали '+total+' участников. Сколько из них взрослых и сколько детей? Если есть дети, укажите возраст.',
+    en:'You said '+total+' travellers. How many are adults and how many are children? If there are children, include their ages.',
+    vi:'Bạn cho biết có '+total+' người. Có bao nhiêu người lớn và trẻ em? Nếu có trẻ em, hãy cho biết độ tuổi.',
+    zh:'您说共有 '+total+' 人。其中有几位成人和儿童？如果有儿童，请告诉我年龄。',
+    ko:'총 '+total+'명이라고 하셨습니다. 성인과 어린이는 각각 몇 명인가요? 어린이가 있다면 나이도 알려주세요.',
+  })[locale]||partyCompositionQuestion('en',total);
+}
+
 export async function extractConversationIntent({
   env,
   message,
@@ -516,14 +575,18 @@ export async function extractConversationIntent({
   history=[],
   now=new Date(),
 }={}){
-  const explicitPatch=deterministicExplicitIntentPatch({
+  let explicitPatch=deterministicExplicitIntentPatch({
     message,
     locale,
     products,
     context:{...context,currentProductId:context.currentProductId||currentIntent?.optionPreference?.productId||''},
     now,
   });
+  const continuation=shortBookingAnswer(message,currentIntent||createInitialTravelIntent(locale),{...context,now},products);
+  if(continuation)explicitPatch=validateIntentPatch({...explicitPatch,...continuation.patch});
   const fallback={
+    ...(continuation?.pendingPartyTotal?{pendingPartyTotal:continuation.pendingPartyTotal}:{}),
+    ...(continuation?.optionChoiceUnavailable?{optionChoiceUnavailable:true}:{}),
     patch:explicitPatch,
     explicitPatch,
     selectedProductId:explicitPatch.selectedProductId??null,
@@ -531,6 +594,7 @@ export async function extractConversationIntent({
     bookingRequested:Boolean(explicitPatch.bookingRequested),
     source:'deterministic-explicit',
   };
+  if(continuation?.handled)return {...fallback,source:'booking-continuation'};
   // Enumerating known options requires no model inference or intent mutation.
   if(catalogListQuestion(message)) return {...fallback,source:'verified-catalog-intent'};
   if(!env?.AI||!str(message,1200)) return fallback;
@@ -557,6 +621,8 @@ export async function extractConversationIntent({
     'A request to list/explain options is DETAILS, not a command to change a booking. A request to choose/change an option is GENERAL (or PRICE/BOOK when asked), and must include selectedOption.',
     'Use PICKUP for factual pickup/meeting-point questions. An explicit request to change a hotel, pickup place or pickup mode is GENERAL and must include only the requested changes.',
     'Preserve hotel names exactly as provided by the customer.',
+    'Short answers refer to the last question. CURRENT_INTENT is the stored configuration; do not claim a value was saved if it is not present there.',
+    'Never repeat a confirmation of an already selected verified option. Ask only for the next missing parameter.',
     'CURRENT_INTENT='+JSON.stringify(currentIntent),
     'AVAILABLE_PRODUCTS='+JSON.stringify(modelProductList(products)),
     'CLIENT_CONTEXT_HINTS='+JSON.stringify(context&&typeof context==='object'?context:{}),
@@ -577,7 +643,7 @@ export async function extractConversationIntent({
     });
     const parsed=parseJson(responseText(result));
     const rawPatch=isObject(parsed?.intentPatch)?parsed.intentPatch:{};
-    optionAttempted=Object.prototype.hasOwnProperty.call(rawPatch,'selectedOption');
+    optionAttempted=rawPatch.selectedOption!==undefined&&rawPatch.selectedOption!==null;
     const modelPatch=verifiedOptionPatch(validateIntentPatch(rawPatch),products);
     const patch=verifiedOptionPatch(mergeExplicitOverModel(modelPatch,explicitPatch,message),products);
     return {
@@ -594,7 +660,7 @@ export async function extractConversationIntent({
       // Never degrade a fabricated/cross-product option into a default quote.
       return {...fallback,patch:{...explicitPatch,goal:'DETAILS',bookingRequested:false},goal:'DETAILS',bookingRequested:false};
     }
-    return fallback;
+    return {...fallback,intentFailureReason:error instanceof TypeError?'invalid_schema':salesFailureReason(error)};
   }
 }
 

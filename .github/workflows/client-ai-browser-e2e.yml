@@ -31,6 +31,10 @@ jobs:
         env:
           LOVE_TRAVEL_LIVE_BASE_URL: https://lovetravel.viiversion.com
         run: node scripts/verify-live-client-ai-browser.mjs
+      - name: Verify short booking dialogue preserves one selection and authoritative Quote
+        env:
+          LOVE_TRAVEL_LIVE_BASE_URL: https://lovetravel.viiversion.com
+        run: node scripts/verify-live-ai-short-dialogue.mjs
       - name: Verify all provider options in five locales and exact Quote handoff
         env:
           LOVE_TRAVEL_LIVE_BASE_URL: https://lovetravel.viiversion.com
@@ -56,4 +60,5 @@ jobs:
             artifacts/ai-options/*
             artifacts/restoration/*
             artifacts/ai-chat-ux/*
+            artifacts/ai-short-dialogue/*
           if-no-files-found: ignore
