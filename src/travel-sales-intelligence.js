@@ -1054,6 +1054,7 @@ export async function composeGroundedSalesPlan({
     'Rate-specific conditions require the relevant option; exact prices and available seats require verified offer evidence. Explain missing evidence without inventing it.',
     'If verified AVAILABLE offers exist for this request, choose the best matching offer and return its selectedOfferId with the same recommendedProductId; do not replace a requested recommendation with an unselected comparison.',
     'For a selected offer, explain required bookingDataIssues that remain; selection is preparation, never a created booking.',
+    'Contact details, passenger fields, required booking questions and room numbers are entered in the existing booking form opened by the button below the recommended tour. Chat cannot save those fields. If bookingDataIssues remain, guide the customer to that form and name the missing field types; do not ask them to send those values in chat or claim to have saved them. Do not request another date when only required personal data is missing.',
     'Verified offer date and participantMix take precedence over earlier intent hints. Describe the actual selected offer scope.',
     'If a verified offer exists, recommendation may cite only that offer price/availability.',
     'Every offer.price.amount is the TOTAL for the entire offer.participantMix, including all selected adults/children/infants. State it as a total for that group, never per person or per adult. Do not divide, multiply or invent unit prices.',
