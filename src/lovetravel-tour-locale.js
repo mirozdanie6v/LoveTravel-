@@ -29,6 +29,7 @@
     'Room number':'provider.roomNumber',
     'Private transfer':'provider.privateTransfer',
     'Bring sunscreen':'provider.bringSunscreen',
+    'INFANTS_MUST_SIT_ON_LAPS':'provider.infantsOnLaps',
     'Nha Trang hotels':'provider.nhaTrangHotels',
     'Nha Trang':'provider.nhaTrang',
     'Bến Tàu Du Lịch Nha Trang':'provider.nhaTrangTouristPier',

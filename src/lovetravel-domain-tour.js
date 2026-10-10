@@ -329,7 +329,7 @@
       ...listFromHtml(domain?.experience?.content?.requirements),
       ...listFromHtml(domain?.experience?.content?.attention),
       ...listFromHtml(domain?.experience?.content?.dressCode),
-      ...arr(domain?.experience?.content?.knowBeforeYouGoItems).map(x=>x?.title||x?.text||x?.description||'').filter(Boolean),
+      ...arr(domain?.experience?.content?.knowBeforeYouGoItems).map(x=>typeof x==='string'?x:(x?.title||x?.text||x?.description||'')).filter(Boolean),
       ...(domain?.experience?.passportRequired?[t().passport]:[]),
     ];
     const cancellation=rate?.cancellationPolicy || domain?.cancellationPolicy;

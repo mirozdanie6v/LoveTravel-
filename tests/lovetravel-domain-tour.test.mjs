@@ -41,7 +41,7 @@ test('domain tour visual layer is included after runtime in the production build
   assert.match(build,/lovetravel-domain-tour\.css/);
   assert.match(build,/lovetravel-domain-tour\.js/);
   const runtime=build.indexOf('<script src="/runtime-api.js');
-  const domain=build.indexOf('<script src="/lovetravel-domain-tour.js?v=20261008-interface-restore-v4" defer></script>');
+  const domain=build.indexOf('<script src="/lovetravel-domain-tour.js?v=20261010-provider-information-v1" defer></script>');
   assert.ok(runtime>=0 && domain>runtime);
   assert.match(build,/copyFile\(resolve\(root, 'src\/lovetravel-domain-tour\.js'/);
   assert.match(css,/\.lt-domain-rate\.is-active/);
@@ -112,9 +112,9 @@ test('tour page keeps the existing LoveTravel layout but exposes the requested p
 
 
 test('semantic i18n core loads before provider localization and domain rendering',()=>{
-  const core=build.indexOf('<script src="/lovetravel-i18n.js?v=20261010-ai-contact-v1" defer></script>');
-  const provider=build.indexOf('<script src="/lovetravel-tour-locale.js" defer></script>');
-  const domain=build.indexOf('<script src="/lovetravel-domain-tour.js?v=20261008-interface-restore-v4" defer></script>');
+  const core=build.indexOf('<script src="/lovetravel-i18n.js?v=20261010-provider-information-v1" defer></script>');
+  const provider=build.indexOf('<script src="/lovetravel-tour-locale.js?v=20261010-provider-information-v1" defer></script>');
+  const domain=build.indexOf('<script src="/lovetravel-domain-tour.js?v=20261010-provider-information-v1" defer></script>');
   assert.ok(core>=0 && provider>core && domain>provider);
   assert.match(build,/copyFile\(resolve\(root, 'src\/lovetravel-i18n\.js'/);
 });
