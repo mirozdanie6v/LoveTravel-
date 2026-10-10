@@ -202,6 +202,7 @@
     }
     if (!catalogReady) return;
     if (state.screen === 'home') renderHome();
+    else if(state.screen==='ai')renderAI();
     else showScreen(state.screen);
     try { globalThis.LoveTravelBrand?.apply?.(); } catch (_) {}
     requestAnimationFrame(() => setCatalogGate('ready'));
@@ -213,6 +214,7 @@
       try {
         await loadCanonicalCatalog();
         if(state.screen==='home') renderHome();
+        else if(state.screen==='ai'&&typeof renderAI==='function')renderAI();
         else if(typeof showScreen==='function') showScreen(state.screen);
       } catch (_) {}
     },120);

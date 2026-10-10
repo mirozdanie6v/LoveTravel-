@@ -235,13 +235,28 @@ export function createLoveTravelSalesOrchestrator({
     const activeAdultCount=activeTransaction?.selection
       ? (activeTransaction.selection.participants||[]).filter(item=>item.role==='ADULT').reduce((sum,item)=>sum+Number(item.count||0),0)
       : undefined;
+    const activeParty=activeTransaction?.selection ? Object.fromEntries(['ADULT','CHILD','INFANT'].map(role=>[role,(activeTransaction.selection.participants||[]).filter(item=>item.role===role).reduce((sum,item)=>sum+Number(item.count||0),0)])) : null;
+    if(activeTransaction?.selection){
+      const current=activeTransaction.selection;
+      const party={adults:activeParty.ADULT,infants:activeParty.INFANT};
+      if(activeParty.CHILD===0)party.childrenAges=[];
+      const projected=mergeIntentPatch(shopping.intent,{
+        party,
+        dateConstraint:current.date?{kind:'EXACT',exact:current.date}:null,
+        ...(activeProduct&&current.rateRef?{selectedProductId:activeProduct.product.productId,selectedOption:{productId:activeProduct.product.productId,rateRef:current.rateRef}}:{}),
+      });
+      if(JSON.stringify(projected)!==JSON.stringify(shopping.intent)){
+        const next=setShoppingIntent(shopping,projected,{now:now()});
+        await store.saveShoppingSession(shopping,next,{eventType:'CANONICAL_SELECTION_PROJECTED'});shopping=next;
+      }
+    }
     const extracted=await extractConversationIntent({
       env,
       message,
-      currentIntent:shopping.intent,
+      currentIntent:activeParty && activeParty.CHILD!==shopping.intent.party.children.length ? {...shopping.intent,party:{...shopping.intent.party,children:[]}} : shopping.intent,
       locale,
       products:productsPacket.data,
-      context:{...context,currentAdultCount:activeAdultCount,currentProductId:activeProduct?.product.productId||memory.productFocus||'',commercialGoal:memory.commercialGoal||((shopping.intent.optionPreference||activeTransaction?.selection)?'BOOK':null),nextQuestionCode:memory.nextQuestionCode||'',pendingPartyTotal:memory.pendingPartyTotal||null,optionList:memory.optionList||[],...(activeProduct?{currentOption:activeTransaction.selection.rateRef}:{})},
+      context:{...context,CURRENT_SELECTION:activeParty?{partyCounts:activeParty,date:activeTransaction.selection.date,rateRef:activeTransaction.selection.rateRef}:null,currentAdultCount:activeAdultCount,currentProductId:activeProduct?.product.productId||memory.productFocus||'',commercialGoal:memory.commercialGoal||((shopping.intent.optionPreference||activeTransaction?.selection)?'BOOK':null),nextQuestionCode:memory.nextQuestionCode||'',pendingPartyTotal:memory.pendingPartyTotal||null,optionList:memory.optionList||[],...(activeProduct?{currentOption:activeTransaction.selection.rateRef}:{})},
       history:conversation,
       now:now(),
     });
@@ -355,6 +370,7 @@ export function createLoveTravelSalesOrchestrator({
       locale,
       intent:shopping.intent,
       evidence,
+      currentSelection:(bookingTransaction||activeTransaction)?.selection ? {date:(bookingTransaction||activeTransaction).selection.date,rateRef:(bookingTransaction||activeTransaction).selection.rateRef,participants:(bookingTransaction||activeTransaction).selection.participants.map(({role,count})=>({role,count}))} : null,
       goal:extracted.goal,
       history:conversation,
     });
@@ -437,6 +453,7 @@ export function createLoveTravelSalesOrchestrator({
         draft:bookingTransaction.draft||null,
       } : null,
       bookingSelection,
+      partyCounts:(bookingTransaction||activeTransaction)?.selection ? Object.fromEntries(['ADULT','CHILD','INFANT'].map(role=>[role,((bookingTransaction||activeTransaction).selection.participants||[]).filter(item=>item.role===role).reduce((sum,item)=>sum+Number(item.count||0),0)])) : null,
       shoppingSession:{
         id:shopping.sessionId,
         revision:shopping.revision,

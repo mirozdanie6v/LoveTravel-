@@ -1,6 +1,13 @@
 (() => {
   'use strict';
 
+  const conversationFetch=(...args)=>globalThis.LoveTravelConversation?.request ? globalThis.LoveTravelConversation.request(...args) : fetch(...args);
+  let conversationEpoch=0;
+  globalThis.addEventListener?.('lovetravel:conversation-reset',()=>{
+    conversationEpoch++;requestSeq++;closeSheet();activeProductId=null;transactionSnapshot=null;
+    stateByProduct.clear();resolutionByProduct.clear();calendarByKey.clear();calendarRequestSeqByProduct.clear();bootstrapping.clear();bootstrapPromises.clear();
+  });
+
   const PRODUCT_IDS = new Set(['1287578','1287580']);
   const RELEASE_ID = '2026-10-06-semantic-i18n-core-v1';
   const CHECKOUT_REQUIRED_CUSTOMER_FIELDS = ['firstName','lastName','email','phoneNumber'];
@@ -19,7 +26,7 @@
   const bootstrapPromises = new Map();
 
   async function loadTransaction({applySelection=true}={}){
-    const response=await fetch('/api/travel-commerce/transaction',{
+    const response=await conversationFetch('/api/travel-commerce/transaction',{
       method:'GET',
       cache:'no-store',
       credentials:'same-origin',
@@ -35,7 +42,7 @@
   }
 
   async function transactionAction(action,payload={}){
-    const response=await fetch('/api/travel-commerce/transaction',{
+    const response=await conversationFetch('/api/travel-commerce/transaction',{
       method:'POST',
       headers:{'content-type':'application/json','accept':'application/json'},
       cache:'no-store',
@@ -1248,6 +1255,7 @@
 
   async function bootstrap(productId){
     if(bootstrapping.has(productId)) return;
+    const epoch=conversationEpoch;
     bootstrapping.add(productId);
     activeProductId=productId;
     selection(productId);
@@ -1261,9 +1269,9 @@
       }catch(error){
         console.warn('[LoveTravel] transaction bootstrap unavailable',error?.message||error);
       }
-      if(activeProductId!==productId) return;
+      if(epoch!==conversationEpoch || activeProductId!==productId) return;
       let r=await resolve(productId,{quiet:true});
-      if(activeProductId!==productId) return;
+      if(epoch!==conversationEpoch || activeProductId!==productId) return;
       const current=selection(productId);
       if(!Object.values(current.participants||{}).some(x=>Number(x)>0)){
         const adult=arr(r.constraints?.participants).find(x=>String(x.ticketCategory).toUpperCase()==='ADULT') || arr(r.constraints?.participants)[0];
@@ -1274,9 +1282,11 @@
       }
       render(productId);
     }catch(_){
+      if(epoch!==conversationEpoch)return;
       resolutionByProduct.delete(productId);
       renderPending(productId,{failed:true});
     }finally{
+      if(epoch!==conversationEpoch)return;
       bootstrapping.delete(productId);
       if(activeProductId!==productId) detectProduct();
     }

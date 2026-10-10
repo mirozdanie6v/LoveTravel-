@@ -253,3 +253,18 @@
   #aiScreen .ai-handoff{align-items:stretch;flex-direction:column}
   #aiScreen .ai-handoff button{width:100%}
 }
+
+/* The conversation scrolls with the page; the composer stays above the visible navigation/keyboard. */
+#aiScreen.active .ai-consultant-input{
+  position:fixed;
+  top:var(--ai-composer-top,auto);
+  bottom:auto;
+  left:var(--ai-composer-left,12px);
+  width:var(--ai-composer-width,calc(100% - 24px));
+  z-index:45;
+  margin:0;
+  background:#fff;
+  box-shadow:0 -4px 18px rgba(26,73,105,.10);
+}
+#aiScreen .ai-chat-below{padding-bottom:calc(var(--nav,76px) + 100px + env(safe-area-inset-bottom))}
+#aiScreen .ai-messages .ai-msg{scroll-margin-bottom:180px}

@@ -510,3 +510,19 @@ for(const [locale,none,availability] of [['ru','Без детей.','На зав
     assert.ok(!h.modelInputs.some(text=>text.includes('Conversation Intelligence parser')));
   });
 }
+
+for(const [locale,message] of [['ru','Один взрослый, без детей, на завтра'],['ru','Я еду без детей'],['ru','Без ребёнка'],['ru','Нет детей'],['ru','Только один взрослый, детей нет'],['en','One adult, without kids, tomorrow'],['vi','Một người lớn, không có trẻ em'],['zh','一个成人，没有孩子'],['ko','성인 1명, 아이 없이']]){
+  test('No-child correction inside a full message keeps the exact UI configuration: '+message,async()=>{
+    const h=configuredBookingHarness('BOOK',message,true,false,{101:1,102:1});const result=await h.turn(locale);
+    assert.equal(h.commands.length,1);assert.deepEqual(result.bookingSelection.participants,{'101':1});
+    const {participants,passengers,...before}=h.original;const {participants:nextParty,passengers:nextPassengers,...after}=result.bookingSelection;
+    assert.deepEqual(after,before);assert.deepEqual(result.partyCounts,{ADULT:1,CHILD:0,INFANT:0});
+    assert.equal(result.agent.nextQuestionCode,'OPEN_CONFIGURATOR');assert.equal(result.agent.mutationExecuted,false);assert.equal(h.tx().providerBooking,null);
+  });
+}
+test('Form participant counts replace stale chat intent before interpreting another message',async()=>{
+  const h=configuredBookingHarness('PRICE','What is the price?',false,false,{101:3});const result=await h.turn();
+  assert.equal(result.intent.party.adults,3);assert.deepEqual(result.partyCounts,{ADULT:3,CHILD:0,INFANT:0});
+  assert.ok(h.modelInputs.some(text=>text.includes('CURRENT_INTENT=')&&text.includes('"adults":3')));
+  assert.equal(h.commands.length,0);
+});

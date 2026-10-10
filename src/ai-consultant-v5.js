@@ -3,7 +3,10 @@
 
   const storedLocale = String(globalThis.localStorage?.getItem?.('max-tour-locale-v1') || '').toLowerCase();
   const ACTIVE_LOCALE = ['vi','en','ko','zh'].includes(storedLocale) ? storedLocale : 'ru';
-  const STORAGE_KEY = 'max-tour-ai-consultant-v5-' + ACTIVE_LOCALE;
+  const STORAGE_KEY = 'lovetravel-ai-conversation-v1';
+  const conversation = globalThis.LoveTravelConversation;
+  const conversationId = () => conversation?.id?.() || '';
+  const conversationFetch = (...args) => conversation?.request ? conversation.request(...args) : fetch(...args);
   const BOOKING_INTENT_KEY = 'max-tour-ai-booking-intent-v1';
   const LOCATION_KEY = 'max-tour-ai-location-v6';
   const TIME_ZONE = 'Asia/Ho_Chi_Minh';
@@ -158,13 +161,14 @@
   let state = freshState();
   let pending = false;
   let retryMessage = null;
+  let requestEpoch = 0;
   const semanticText=key=>globalThis.LoveTravelI18n?.t?.(key)||key;
   try {
     const saved = JSON.parse(sessionStorage.getItem(STORAGE_KEY) || 'null');
-    if (saved?.slots && Array.isArray(saved.messages)) state = { ...freshState(), ...saved, slots:{ ...freshSlots(), ...saved.slots } };
+    if (saved?.conversationId === conversationId() && saved?.slots && Array.isArray(saved.messages)) state = { ...freshState(), ...saved, slots:{ ...freshSlots(), ...saved.slots } };
   } catch (_) {}
 
-  function persist() { try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ ...state, messages:state.messages.slice(-MAX_MESSAGES) })); } catch (_) {} }
+  function persist() { try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ ...state, conversationId:conversationId(), messages:state.messages.slice(-MAX_MESSAGES) })); } catch (_) {} }
   function add(role, text, {needsConsultant=false}={}) {
     const value = clean(text, 1800); if (!value) return;
     const last = state.messages[state.messages.length - 1];
@@ -331,6 +335,27 @@
     return evaluate(tour);
   }
 
+  function applyServerState(result) {
+    const intent=result.intent;
+    if(intent){
+      state.slots.adults=Number(intent.party?.adults||0);
+      state.slots.children=(intent.party?.children||[]).map(child=>child.age);
+      state.slots.infants=Number(intent.party?.infants||0);
+      state.slots.date=intent.dateConstraint?.kind==='EXACT'?intent.dateConstraint.exact:'';
+      state.slots.dateError=false;
+      state.slots.preferences=Array.isArray(intent.preferences)?intent.preferences:[];
+      state.slots.destination=intent.destination||'';
+    }
+    if(result.partyCounts){
+      state.slots.adults=Number(result.partyCounts.ADULT||0);
+      // A count is sufficient for display. Never guess an age for booking or model context.
+      state.slots.children=Array(Number(result.partyCounts.CHILD||0)).fill(null);
+      state.slots.infants=Number(result.partyCounts.INFANT||0);
+    }
+    if(result.bookingSelection?.date)state.slots.date=result.bookingSelection.date;
+    state.nextQuestionCode=result.nextQuestionCode;
+  }
+
   function applyServerTour(result) {
     const item = recommendationForTourId(result?.tourId);
     if (!item) return false;
@@ -427,15 +452,14 @@
   }
 
   async function requestAiReply(text) {
-    const response = await fetch('/api/ai/chat', {
+    const response = await conversationFetch('/api/ai/chat', {
       method:'POST', credentials:'same-origin', headers:{ 'content-type':'application/json', 'x-max-tour-locale':ACTIVE_LOCALE },
       body:JSON.stringify({
         locale:ACTIVE_LOCALE,
         message:clean(text,900),
         history:state.messages.filter(item => item.text !== ui().pending).slice(-10).map(item => ({ role:item.role, text:item.text })),
         context:{
-          destination:state.slots.destination, format:state.slots.tripType, people:peopleLabel(), date:state.slots.date,
-          preferences:state.slots.preferences, currentDateVietnam:vietnamTodayIso(), timeZone:TIME_ZONE, locale:ACTIVE_LOCALE,
+          currentDateVietnam:vietnamTodayIso(), timeZone:TIME_ZONE, locale:ACTIVE_LOCALE,
         },
       }),
     });
@@ -447,6 +471,10 @@
       faqIntent:clean(result.faqIntent,120),
       source:clean(result.source,120),
       degraded:Boolean(result.degraded),
+      intent:result.intent,
+      nextQuestionCode:result.agent?.nextQuestionCode || '',
+      partyCounts:result.partyCounts,
+      bookingSelection:result.bookingSelection,
     };
   }
 
@@ -576,6 +604,10 @@
 
   function quickReplies() {
     const s = state.slots, t=ui();
+    if(state.nextQuestionCode==='OPEN_CONFIGURATOR'||state.nextQuestionCode==='CHOOSE_OFFER'||state.nextQuestionCode==='OPTION')return [];
+    if(state.nextQuestionCode==='DATE')return [[t.today,t.today],[t.tomorrow,t.tomorrow]];
+    if(state.nextQuestionCode==='PARTY')return [[t.quickTwoAdults,t.quickTwoAdultsValue],[t.quickChild,t.quickChildValue]];
+    if(state.nextQuestionCode)return [];
     if (!s.preferences.length && !s.destination) return [[t.quickSea,t.quickSeaValue],[t.quickViews,t.quickViewsValue],[t.quickCity,t.quickCityValue]];
     if (!peopleCount()) return [[t.quickTwoAdults,t.quickTwoAdultsValue],[t.quickChild,t.quickChildValue]];
     if (!s.date) return [[t.today,t.today],[t.tomorrow,t.tomorrow],[t.flexible,t.flexible]];
@@ -590,6 +622,7 @@
       const sentences = [...new Intl.Segmenter(ACTIVE_LOCALE,{granularity:'sentence'}).segment(value)].map(row=>row.segment);
       const groups=[];let group='',count=0;
       for(const sentence of sentences){
+        if(/^\s*\d+[.)]\s*$/.test(sentence)){if(group)groups.push(group);group=sentence;count=0;continue;}
         group+=sentence;count++;
         if(count>=2||group.length>=paragraphLimit){groups.push(group);group='';count=0;}
       }
@@ -622,46 +655,39 @@
       return `<div class="ai-msg ${item.role === 'user' ? 'user' : 'bot'}"><span class="ai-msg-author">${esc(item.role === 'user' ? t.user : t.assistant)}</span>${item.role === 'user' ? `<span class="ai-msg-text">${esc(item.text)}</span>` : `<div class="ai-msg-text">${renderReplyText(item.text)}</div>`}${contact}</div>`;
     }).join('');
     const quick = quickReplies();
-    root.innerHTML = `<div class="section-title ai-section-head"><div><h2>${esc(t.assistant)}</h2><p class="ai-chat-subtitle">${esc(t.subtitle)}</p></div><button class="secondary ai-clear" type="button" data-ai-action="clear">${esc(t.clear)}</button></div><section class="ai-consultant-shell"><div class="ai-consultant-main ai-chat-panel"><div class="ai-messages" role="log" aria-live="polite">${messages}</div><form class="ai-consultant-input" data-ai-form="chat"><textarea name="message" rows="1" placeholder="${esc(t.placeholder)}" ${pending ? 'disabled' : ''}></textarea><button class="primary" type="submit" ${pending ? 'disabled' : ''}>→</button></form></div><div class="ai-chat-below">${retryMessage ? `<button class="secondary" type="button" data-ai-action="retry">${esc(semanticText('ai.retry'))}</button>` : ''}${quick.length ? `<div class="ai-quick-replies">${quick.map(([label,value]) => `<button type="button" data-ai-action="quick" data-value="${esc(value)}">${esc(label)}</button>`).join('')}</div>` : ''}${renderRecommendations()}</div></section>`;
+    root.innerHTML = `<div class="section-title ai-section-head"><div><h2>${esc(t.assistant)}</h2><p class="ai-chat-subtitle">${esc(t.subtitle)}</p></div><button class="secondary ai-clear" type="button" data-ai-action="clear">${esc(t.clear)}</button></div><section class="ai-consultant-shell"><div class="ai-consultant-main ai-chat-panel"><div class="ai-messages" role="log" aria-live="polite">${messages}</div><form class="ai-consultant-input" data-ai-form="chat"><textarea name="message" rows="1" aria-label="${esc(t.placeholder)}" placeholder="${esc(t.placeholder)}" ${pending ? 'disabled' : ''}></textarea><button class="primary" type="submit" ${pending ? 'disabled' : ''}>→</button></form></div><div class="ai-chat-below">${retryMessage ? `<button class="secondary" type="button" data-ai-action="retry">${esc(semanticText('ai.retry'))}</button>` : ''}${quick.length ? `<div class="ai-quick-replies">${quick.map(([label,value]) => `<button type="button" data-ai-action="quick" data-value="${esc(value)}">${esc(label)}</button>`).join('')}</div>` : ''}${renderRecommendations()}</div></section>`;
     const input=root.querySelector('textarea[name="message"]');
     if(input&&draft)input.value=draft;
     if(input&&wasEditing){
       try{input.focus({preventScroll:true});}catch{input.focus();}
       if(Number.isInteger(cursorStart)&&Number.isInteger(cursorEnd))input.setSelectionRange?.(cursorStart,cursorEnd);
     }
+    syncComposer(root);
     if (options.scrollToEnd) root.querySelector('.ai-msg:last-child')?.scrollIntoView?.({block:'start',behavior:'auto'});
     persist();
   }
 
   async function handleText(text, root, {retry=false}={}) {
     if (!text || pending) return;
-    if(!retry){add('user', text); parseMessage(text);}
-    if (state.slots.dateError) {
-      const today = vietnamTodayIso();
-      add('bot', localeText(
-        `Эта дата уже прошла. Сегодня во Вьетнаме ${dateLabel(today)}. Выберите ${dateLabel(today, { year:false })} или любую более позднюю дату.`,
-        `Ngày này đã qua. Hôm nay ở Việt Nam là ${dateLabel(today)}. Hãy chọn ${dateLabel(today, { year:false })} hoặc một ngày muộn hơn.`,
-        `That date has already passed. Today in Vietnam is ${dateLabel(today)}. Choose ${dateLabel(today, { year:false })} or any later date.`,
-        `이미 지난 날짜입니다. 베트남 기준 오늘은 ${dateLabel(today)}입니다. ${dateLabel(today, { year:false })} 또는 그 이후 날짜를 선택해 주세요.`,
-        `该日期已经过去。越南今天是 ${dateLabel(today)}。请选择 ${dateLabel(today, { year:false })} 或之后的日期。`
-      ));
-      updateRecommendations(text); render(root, { scrollToEnd:true, discardDraft:true }); return;
-    }
-    updateRecommendations(text);
+    if(!retry)add('user', text);
+    const epoch=++requestEpoch;
     retryMessage = null;
     pending = true; add('bot', ui().pending); render(root, { scrollToEnd:true });
     try {
       const result = await requestAiReply(text);
+      if(epoch!==requestEpoch)return;
+      applyServerState(result);
       if (state.messages.at(-1)?.text === ui().pending) state.messages.pop();
       applyServerTour(result);
       if(result.degraded){retryMessage=text;add('bot',semanticText('ai.unavailable'),{needsConsultant:true});}
       else add('bot',result.reply);
     } catch (error) {
+      if(epoch!==requestEpoch)return;
       console.warn('[LoveTravel AI] consultation request failed',error?.message||error);
       if (state.messages.at(-1)?.text === ui().pending) state.messages.pop();
       retryMessage=text;
       add('bot',semanticText('ai.unavailable'),{needsConsultant:true});
-    } finally { pending = false; render(root, { scrollToEnd:true }); }
+    } finally { if(epoch===requestEpoch){pending = false; render(root, { scrollToEnd:true });} }
   }
 
   function handleClick(root, event) {
@@ -669,7 +695,7 @@
     const action = button.dataset.aiAction;
     if (action === 'quick') void handleText(button.dataset.value || '', root);
     if (action === 'retry' && retryMessage) void handleText(retryMessage,root,{retry:true});
-    if (action === 'clear') { retryMessage=null; state = freshState(); try { sessionStorage.removeItem(STORAGE_KEY); sessionStorage.removeItem(BOOKING_INTENT_KEY); } catch (_) {} render(root,{discardDraft:true}); }
+    if (action === 'clear') { requestEpoch++; pending=false; conversation?.reset?.(); retryMessage=null; state = freshState(); try { sessionStorage.removeItem(STORAGE_KEY); sessionStorage.removeItem(BOOKING_INTENT_KEY); } catch (_) {} render(root,{discardDraft:true}); }
     if (action === 'open-tour') {
       const item = state.recommendations.find(row => row.tour.id === button.dataset.id); if (!item) return;
       state.selectedTourId = item.tour.id; persist();
@@ -680,7 +706,30 @@
     }
   }
 
+  let mountedRoot=null;
+  function syncComposer(root=mountedRoot){
+    const form=root?.querySelector?.('.ai-consultant-input');
+    const screen=root?.closest?.('#aiScreen') || document.querySelector?.('#aiScreen.active');
+    if(!form?.getBoundingClientRect || !screen?.classList?.contains('active'))return;
+    const phone=document.querySelector('.phone');const nav=document.querySelector('.bottom-nav');
+    if(!phone||!nav)return;
+    const viewport=globalThis.visualViewport;
+    const visibleBottom=(viewport?.offsetTop||0)+(viewport?.height||globalThis.innerHeight);
+    const bounds=phone.getBoundingClientRect(),navigation=nav.getBoundingClientRect();
+    const bottom=Math.min(visibleBottom,navigation.top>0?navigation.top:visibleBottom);
+    const left=Math.max(0,bounds.left)+12;
+    form.style.setProperty('--ai-composer-left',left+'px');
+    form.style.setProperty('--ai-composer-width',Math.max(0,Math.min(bounds.right,globalThis.innerWidth)-left-12)+'px');
+    form.style.setProperty('--ai-composer-top',Math.max(viewport?.offsetTop||0,bottom-form.getBoundingClientRect().height-6)+'px');
+  }
+  globalThis.addEventListener?.('resize',()=>syncComposer(),{passive:true});
+  globalThis.addEventListener?.('scroll',()=>syncComposer(),{passive:true});
+  globalThis.visualViewport?.addEventListener('resize',()=>syncComposer(),{passive:true});
+  globalThis.visualViewport?.addEventListener('scroll',()=>syncComposer(),{passive:true});
+  document.addEventListener?.('focusin',()=>syncComposer());
+
   function mount(root) {
+    mountedRoot=root;
     if (!root) return;
     render(root);
     root.onclick = event => handleClick(root, event);
