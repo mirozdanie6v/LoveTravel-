@@ -171,3 +171,14 @@ test('Changing locale continues one conversation; Clear starts a fresh one in ev
   const next=harness('en',null,storage);assert.notEqual(next.c.LoveTravelConversation.id(),id);
   assert.equal(next.c.MaxTourAI._audit.state().messages.length,1);
 });
+
+
+test('Structured snorkeling preferences cannot turn a verified recommendation into a UI failure',async()=>{
+  const {c,root}=harness('ru');
+  c.TOURS.push({id:'1287580',title:'Hon Mun',city:'Нячанг',group:{adult:'$49',from:'$49',departures:[]},individual:{from:'—'},tags:['snorkeling'],audience:[]});
+  c.fetch=async()=>new Response(JSON.stringify({ok:true,reply:'Hon Mun costs $98 for two adults.',bookingSelection:{productId:'1287580'},intent:{party:{adults:2,children:[],infants:0},preferences:[{code:'SNORKELING',weight:1}]},agent:{nextQuestionCode:'OPEN_CONFIGURATOR'}}));
+  await c.MaxTourAI._audit.handleText('Нас двое взрослых, хотим завтра на снорклинг с трансфером от Oceanus. Что посоветуете?',root);
+  assert.equal(c.MaxTourAI._audit.state().messages.at(-1).text,'Hon Mun costs $98 for two adults.');
+  assert.ok(root.innerHTML.includes('data-tour-id="1287580"'));assert.equal(c.MaxTourAI._audit.retry(),null);
+  assert.ok(!root.innerHTML.includes('data-ai-action="quick"'));
+});

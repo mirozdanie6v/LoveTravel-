@@ -344,7 +344,7 @@
       state.slots.infants=Number(intent.party?.infants||0);
       state.slots.date=intent.dateConstraint?.kind==='EXACT'?intent.dateConstraint.exact:'';
       state.slots.dateError=false;
-      state.slots.preferences=Array.isArray(intent.preferences)?intent.preferences:[];
+      state.slots.preferences=Array.isArray(intent.preferences)?intent.preferences.map(value=>typeof value==='string'?value:value?.code).filter(value=>typeof value==='string'):[];
       state.slots.destination=intent.destination||'';
     }
     if(result.partyCounts){
