@@ -51,3 +51,43 @@ for(const row of cases){
  report.cases.push({locale:row.locale,steps:summaries,quote:tx.quote.price,state:tx.state,providerBooking:null});
  await writeFile(folder+'/report.json',JSON.stringify(report,null,2));
 }
+
+{
+ const cookies=new Map();
+ const call=async(path,body)=>{
+   if(body&&path!='/api/ai/chat')assert.equal(body.action,'SYNC_SELECTION','Only selection preparation is allowed');
+   const response=await fetch(base+path,{method:body?'POST':'GET',headers:{'content-type':'application/json',cookie:[...cookies].map(([k,v])=>k+'='+v).join('; ')},...(body?{body:JSON.stringify(body)}:{}),signal:AbortSignal.timeout(45000)});
+   for(const value of response.headers.getSetCookie?.()||[]){const pair=value.split(';')[0],i=pair.indexOf('=');cookies.set(pair.slice(0,i),pair.slice(i+1));}
+   assert.ok(response.ok,'HTTP '+response.status+' '+path);return response.json();
+ };
+ const domains=await call('/api/bokun/domain?locale=en&start='+tomorrow+'&end='+tomorrow);
+ const domain=domains.domains.find(d=>String(d.experience.id)==='1287580');
+ const slot=domain.availabilitySlots.find(s=>s.date===tomorrow&&!s.soldOut&&!s.unavailable);
+ const adult=domain.participants.find(p=>p.ticketCategory==='ADULT'),child=domain.participants.find(p=>p.ticketCategory==='CHILD');
+ assert.ok(slot&&adult&&child,'Live preparation fixture is unavailable');
+ const boot=await call('/api/travel-commerce/transaction');
+ const seed=await call('/api/travel-commerce/transaction',{action:'SYNC_SELECTION',expectedRevision:boot.transaction.revision,selection:{
+   productId:'1287580',date:tomorrow,rateId:'2581229',startTimeId:String(slot.startTimeId),slotId:String(slot.id),
+   participants:{[adult.id]:1,[child.id]:1},pickup:{mode:'MEET_ON_LOCATION'},dropoff:{mode:'NO_DROPOFF'},
+ }});
+ assert.ok(seed.transaction.selection.participants.some(p=>p.role==='CHILD'&&p.count===1),'UI preparation did not contain a child');
+ const messages=['Без детей.','На завтра можно?'];
+ const history=[],steps=[];
+ for(const message of messages){
+   const answer=await call('/api/ai/chat',{locale:'ru',message,history});
+   assert.ok(answer.ok&&!answer.degraded);
+   assert.equal(answer.agent.mutationExecuted,false);
+   assert.equal(answer.intent.party.adults,1,'Chat lost canonical UI adult count');
+   assert.deepEqual(answer.intent.party.children,[]);
+   const {transaction:tx}=await call('/api/travel-commerce/transaction');
+   assert.equal(tx.transactionId,seed.transaction.transactionId,'UI transaction was replaced');
+   assert.equal(tx.selection.date,tomorrow);assert.equal(tx.selection.rateRef.externalId,'2581229');
+   assert.equal(tx.selection.participants.length,1);assert.equal(tx.selection.participants[0].role,'ADULT');assert.equal(tx.selection.participants[0].count,1);
+   assert.ok(tx.quote.price.amount>0);assert.deepEqual(tx.quote.offer.participantMix,tx.selection.participants,'Quote uses old party');
+   assert.equal(tx.providerBooking||null,null);
+   const step={message,reply:answer.reply,quote:tx.quote.price,participants:tx.selection.participants,state:tx.state,providerBooking:null};steps.push(step);console.log(JSON.stringify({source:'controlled UI-to-chat child removal',...step}));
+   history.push({role:'user',text:message},{role:'assistant',text:answer.reply});
+ }
+ report.cases.push({locale:'ru',source:'existing UI selection with one adult and one child, then explicit child removal',steps,providerBooking:null});
+ await writeFile(folder+'/report.json',JSON.stringify(report,null,2));
+}

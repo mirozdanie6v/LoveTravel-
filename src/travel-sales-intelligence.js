@@ -301,7 +301,7 @@ function explicitAdultCount(message){
   const text=normalizedText(message);
   const digitPatterns=[
     /\b(\d{1,2})\s+adults?\b/i,
-    /(\d{1,2})\s*(?:взросл(?:ых|ые|ый)|nguoi lon|位成人|个成人|個成人|명)/iu,
+    /(\d{1,2})\s*(?:взросл(?:ых|ые|ы[йи]|ого|ая)|nguoi lon|位成人|个成人|個成人|명)/iu,
   ];
   for(const pattern of digitPatterns){
     const match=text.match(pattern);
@@ -317,7 +317,7 @@ function explicitAdultCount(message){
     [2,/(?:两|兩)\s*(?:位|个|個)?\s*成人/u],
     [2,/성인\s*두\s*명/u],
     [1,/\b(?:one adult|a single adult)\b/i],
-    [1,/(?:один|одна)\s+взросл/iu],
+    [1,/(?:один|одна|одного|одно[йи])\s+взросл/iu],
     [1,/mot\s+nguoi\s+lon/iu],
     [1,/一\s*(?:位|个|個)?\s*成人/u],
     [1,/성인\s*한\s*명/u],
@@ -528,9 +528,11 @@ function shortBookingAnswer(message,intent,context,products){
     return {patch:{goal,bookingRequested:false},pendingPartyTotal:total,handled:true};
   }
   const noChildren=/^(?:без\s+дете[ий]|дете[ий]\s+нет|no\s+(?:children|kids)|without\s+(?:children|kids)|khong\s+co\s+tre\s+em|没有孩子|沒有孩子|没有儿童|沒有兒童|아이\s*없어요|어린이\s*없어요)$/u.test(text);
-  if(noChildren&&(context.pendingPartyTotal||intent.party?.adults)){
-    const adults=context.pendingPartyTotal||intent.party.adults;
-    return {patch:{party:{adults,childrenAges:[],infants:0},goal,bookingRequested:false},handled:true};
+  if(noChildren){
+    // Removing children is explicit even when adults were chosen in the UI.
+    // A pending total is an explicit correction; otherwise use canonical UI adults.
+    const adults=context.pendingPartyTotal??context.currentAdultCount??intent.party?.adults;
+    return {patch:{party:{...(Number.isInteger(adults)?{adults}:{}),childrenAges:[],infants:0},goal,bookingRequested:false},handled:true};
   }
   const affirmative=/^(?:да|yes|okay|ok|dong\s+y|vang|是|好的|네|예)$/u.test(text);
   if(affirmative&&(intent.optionPreference||context.currentProductId)){
