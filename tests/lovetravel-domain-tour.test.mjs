@@ -40,7 +40,7 @@ test('optional provider entities render only when present',()=>{
 test('domain tour visual layer is included after runtime in the production build',()=>{
   assert.match(build,/lovetravel-domain-tour\.css/);
   assert.match(build,/lovetravel-domain-tour\.js/);
-  const runtime=build.indexOf('<script src="/runtime-api.js" defer></script>');
+  const runtime=build.indexOf('<script src="/runtime-api.js');
   const domain=build.indexOf('<script src="/lovetravel-domain-tour.js?v=20261008-interface-restore-v4" defer></script>');
   assert.ok(runtime>=0 && domain>runtime);
   assert.match(build,/copyFile\(resolve\(root, 'src\/lovetravel-domain-tour\.js'/);

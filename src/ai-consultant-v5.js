@@ -609,6 +609,11 @@
   }
 
   function render(root, options = {}) {
+    const previousInput=root.querySelector('textarea[name="message"]');
+    const keepDraft=!pending&&!options.discardDraft;
+    const draft=keepDraft&&typeof previousInput?.value==='string'?previousInput.value:'';
+    const wasEditing=keepDraft&&document.activeElement===previousInput;
+    const cursorStart=previousInput?.selectionStart,cursorEnd=previousInput?.selectionEnd;
     const t=ui();
     const messages = state.messages.map(item => {
       // Also offer help for unavailable messages saved before this release.
@@ -618,6 +623,12 @@
     }).join('');
     const quick = quickReplies();
     root.innerHTML = `<div class="section-title ai-section-head"><div><h2>${esc(t.assistant)}</h2><p class="ai-chat-subtitle">${esc(t.subtitle)}</p></div><button class="secondary ai-clear" type="button" data-ai-action="clear">${esc(t.clear)}</button></div><section class="ai-consultant-shell"><div class="ai-consultant-main ai-chat-panel"><div class="ai-messages" role="log" aria-live="polite">${messages}</div><form class="ai-consultant-input" data-ai-form="chat"><textarea name="message" rows="1" placeholder="${esc(t.placeholder)}" ${pending ? 'disabled' : ''}></textarea><button class="primary" type="submit" ${pending ? 'disabled' : ''}>→</button></form></div><div class="ai-chat-below">${retryMessage ? `<button class="secondary" type="button" data-ai-action="retry">${esc(semanticText('ai.retry'))}</button>` : ''}${quick.length ? `<div class="ai-quick-replies">${quick.map(([label,value]) => `<button type="button" data-ai-action="quick" data-value="${esc(value)}">${esc(label)}</button>`).join('')}</div>` : ''}${renderRecommendations()}</div></section>`;
+    const input=root.querySelector('textarea[name="message"]');
+    if(input&&draft)input.value=draft;
+    if(input&&wasEditing){
+      try{input.focus({preventScroll:true});}catch{input.focus();}
+      if(Number.isInteger(cursorStart)&&Number.isInteger(cursorEnd))input.setSelectionRange?.(cursorStart,cursorEnd);
+    }
     if (options.scrollToEnd) root.querySelector('.ai-msg:last-child')?.scrollIntoView?.({block:'start',behavior:'auto'});
     persist();
   }
@@ -634,7 +645,7 @@
         `이미 지난 날짜입니다. 베트남 기준 오늘은 ${dateLabel(today)}입니다. ${dateLabel(today, { year:false })} 또는 그 이후 날짜를 선택해 주세요.`,
         `该日期已经过去。越南今天是 ${dateLabel(today)}。请选择 ${dateLabel(today, { year:false })} 或之后的日期。`
       ));
-      updateRecommendations(text); render(root, { scrollToEnd:true }); return;
+      updateRecommendations(text); render(root, { scrollToEnd:true, discardDraft:true }); return;
     }
     updateRecommendations(text);
     retryMessage = null;
@@ -658,7 +669,7 @@
     const action = button.dataset.aiAction;
     if (action === 'quick') void handleText(button.dataset.value || '', root);
     if (action === 'retry' && retryMessage) void handleText(retryMessage,root,{retry:true});
-    if (action === 'clear') { retryMessage=null; state = freshState(); try { sessionStorage.removeItem(STORAGE_KEY); sessionStorage.removeItem(BOOKING_INTENT_KEY); } catch (_) {} render(root); }
+    if (action === 'clear') { retryMessage=null; state = freshState(); try { sessionStorage.removeItem(STORAGE_KEY); sessionStorage.removeItem(BOOKING_INTENT_KEY); } catch (_) {} render(root,{discardDraft:true}); }
     if (action === 'open-tour') {
       const item = state.recommendations.find(row => row.tour.id === button.dataset.id); if (!item) return;
       state.selectedTourId = item.tour.id; persist();

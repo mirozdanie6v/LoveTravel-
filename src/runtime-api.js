@@ -464,7 +464,12 @@
     renderTrips = function(...args) { const result=original.renderTrips.apply(this,args); wireTripControls(); return result; };
 
     original.renderAI = renderAI;
-    renderAI = function(...args) { const result=original.renderAI.apply(this,args); wireAI(); return result; };
+    renderAI = function(...args) {
+      // The current consultant owns the chat lifecycle; the legacy renderer
+      // would erase its typed draft before mount() can preserve it.
+      if(globalThis.MaxTourAI?.mount){wireAI();return;}
+      const result=original.renderAI.apply(this,args);wireAI();return result;
+    };
 
     original.renderAdmin = renderAdmin;
     renderAdmin = function(...args) { const result=original.renderAdmin.apply(this,args); wireAdmin(); return result; };

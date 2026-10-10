@@ -113,3 +113,17 @@ test('an answer does not reopen the keyboard or scroll a separate message viewpo
   assert.ok(scrolled.length>=2);
   assert.equal(scrolled.at(-1).block,'start');
 });
+
+
+test('a consultant remount preserves the active draft and cursor without reintroducing keyboard focus after an answer',()=>{
+  const {c,root}=harness();let focused=0,cursor;
+  let field={value:'Завтра нас двое',selectionStart:4,selectionEnd:7};
+  c.document.activeElement=field;
+  let markup='';
+  Object.defineProperty(root,'innerHTML',{get:()=>markup,set:value=>{markup=value;field={value:'',focus(){focused++;c.document.activeElement=field;},setSelectionRange(a,b){cursor=[a,b];}};}});
+  root.querySelector=selector=>selector==='textarea[name="message"]'?field:null;
+  c.MaxTourAI.mount(root);
+  assert.equal(field.value,'Завтра нас двое');assert.deepEqual(cursor,[4,7]);assert.equal(focused,1);
+  c.MaxTourAI._audit.handleClick(root,{target:{closest:()=>({dataset:{aiAction:'clear'}})}});
+  assert.equal(field.value,'','Explicit Clear must discard the typed draft');
+});
