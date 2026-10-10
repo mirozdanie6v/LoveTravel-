@@ -538,6 +538,12 @@ function shortBookingAnswer(message,intent,context,products){
   if(affirmative&&(intent.optionPreference||context.currentProductId)){
     return {patch:{goal,bookingRequested:false},handled:true};
   }
+  // A short availability follow-up keeps the active transaction scope.
+  // Full factual questions (duration, inclusions, policies) still use consultation.
+  const datedAvailability=explicit.dateConstraint&&/^(?:(?:на\s+)?(?:сегодня|завтра|\d{4}-\d{2}-\d{2})\s+(?:можно|есть\s+места|доступно)|(?:(?:is\s+)?(?:today|tomorrow|\d{4}-\d{2}-\d{2})\s+(?:available|possible)|can\s+we\s+go\s+(?:today|tomorrow|\d{4}-\d{2}-\d{2}))|(?:hom\s+nay|ngay\s+mai|\d{4}-\d{2}-\d{2})\s+(?:con\s+cho\s+khong|co\s+the\s+di\s+khong)|(?:今天|明天|\d{4}-\d{2}-\d{2})(?:可以吗|可以嗎|有空位吗|有空位嗎)|(?:오늘|내일|\d{4}-\d{2}-\d{2})\s*(?:가능해요|가능한가요))$/u.test(text);
+  if(datedAvailability){
+    return {patch:{goal:'AVAILABILITY',bookingRequested:false},handled:true};
+  }
   const dateAnswer=explicit.dateConstraint&&/^(?:(?:на|for)\s+)?(?:сегодня|завтра|today|tomorrow|hom\s+nay|ngay\s+mai|今天|明天|오늘|내일|\d{4}-\d{2}-\d{2})$/u.test(text);
   const adultAnswer=explicit.party?.adults!==undefined&&/^(?:(?:нас|we\s+are|chung\s+toi\s+co)\s+)?(?:(?:\d{1,2}|one|two|three|four)\s+adults?|(?:\d{1,2}|один|одна|два|двое|три|трое|четыре|четверо)\s+взросл(?:ых|ые|ы[йи]|ая)|(?:\d{1,2}|mot|hai|ba|bon)\s+nguoi\s+lon|(?:我们|我們)?(?:\d{1,2}|两|兩|二|一|三|四)\s*(?:位|个|個)?成人|성인\s*(?:\d{1,2}|한|두|세|네)\s*명)$/u.test(text);
   const pickupAnswer=explicit.hotel&&!/[?？]|\b(?:adults?|children|kids|infants?|tomorrow|today|price|cost|book|reserve)\b|взросл|дет|реб|завтра|сегодня|стоим|цен|брони|nguoi\s+lon|tre\s+em|ngay\s+mai|成人|儿童|孩子|明天|성인|어린이|내일/iu.test(text);
