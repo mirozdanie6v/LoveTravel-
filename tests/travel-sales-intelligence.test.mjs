@@ -837,3 +837,44 @@ test('Russian adult counts survive numeric and word-form genitive answers',async
     assert.equal(result.patch.dateConstraint.exact,'2026-10-07',message);
   }
 });
+
+test('an old refusal cannot override a fresh available adult-only offer',()=>{
+  const products=productEvidence(),offers=offerEvidence();
+  offers.data[0].offer.participantMix=[{role:'ADULT',count:1}];
+  const plan={reply:'К сожалению, нет подтвержденных предложений для одного взрослого.',recommendedProductId:'love-travel-hon-mun',selectedOfferId:'offer-1',action:'OFFER_READY',nextQuestionCode:'',evidenceRefs:['cap-offers']};
+  assert.throws(()=>validateGroundedSalesPlan(plan,[products,offers],'ru','BOOK'),/contradicts verified availability/);
+  assert.throws(()=>validateGroundedSalesPlan({...plan,reply:'Все доступные предложения включают одного ребенка.'},[products,offers],'ru','BOOK'),/adult-only/);
+  assert.doesNotThrow(()=>validateGroundedSalesPlan({...plan,reply:'Для одного взрослого предложение доступно.'},[products,offers],'ru','BOOK'));
+});
+test('explicit provider lunch is never excluded by the generated answer',()=>{
+  const packet=productEvidence();
+  packet.data[0].facts={included:'Air-conditioned vehicle<br />Lunch',excluded:'',inclusions:['FOOD_AND_DRINKS'],exclusions:[]};
+  const bad={
+    ru:'Обед не включен.',
+    en:'Lunch is included. Food and drinks are not included.',
+    vi:'Bữa trưa không bao gồm.',
+    zh:'不包含午餐。',
+    ko:'점심은 포함되지 않습니다.',
+  };
+  for(const [locale,reply] of Object.entries(bad)){
+    assert.throws(()=>validateGroundedSalesPlan({reply,recommendedProductId:'love-travel-hon-mun',selectedOfferId:'',action:'GENERAL',nextQuestionCode:'',evidenceRefs:['cap-products']},[packet],locale,'DETAILS'),/contradicts verified lunch/);
+  }
+});
+test('contradictory old assistant claims trigger a corrected generation within the same budget',async()=>{
+  const products=productEvidence(),offers=offerEvidence();
+  offers.data[0].offer.participantMix=[{role:'ADULT',count:1}];
+  let calls=0;
+  const result=await composeGroundedSalesPlan({locale:'en',goal:'BOOK',message:'No children.',intent:createInitialTravelIntent('en'),evidence:[products,offers],
+    history:[{role:'assistant',text:'Only offers with children are available.'}],
+    env:{AI:{run:async()=>{calls++;return {response:{reply:calls===1?'No confirmed offers exist for one adult.':'The current offer is available for one adult at $98.',recommendedProductId:'love-travel-hon-mun',selectedOfferId:'offer-1',action:'OFFER_READY',nextQuestionCode:'',evidenceRefs:['cap-offers']}};}}},
+  });
+  assert.equal(calls,2);assert.equal(result.replyFailureReasons[0],'answer_validation');
+  assert.match(result.reply,/available for one adult/);
+});
+
+test('a correct included lunch is compatible with an unrelated dinner exclusion',()=>{
+  const packet=productEvidence();packet.data[0].facts={included:'Lunch',excluded:'Dinner'};
+  const raw={reply:'Lunch is included. Dinner is not included.',recommendedProductId:'love-travel-hon-mun',selectedOfferId:'',action:'GENERAL',nextQuestionCode:'',evidenceRefs:['cap-products']};
+  assert.doesNotThrow(()=>validateGroundedSalesPlan(raw,[packet],'en','DETAILS'));
+  assert.doesNotThrow(()=>validateGroundedSalesPlan({...raw,reply:'Lunch is included and dinner is not included.'},[packet],'en','DETAILS'));
+});

@@ -730,6 +730,26 @@ function perPersonPrice(reply){
   return /\bper\s+(?:person|adult|guest|travell?er|pax)\b|\beach\s+(?:person|adult|guest)\b|\/\s*(?:person|pax)\b|(?:за|на|с)\s+(?:одного\s+)?(?:человека|взрослого)|mỗi\s*(?:người|khách)|\/\s*người|每人|人均|인당|인\s*당/iu.test(reply);
 }
 
+
+function validateKnownProviderFacts(reply,products,selected,productId,goal){
+  const text=normalizedText(reply.replace(/«[^»]*»|“[^”]*”|"[^"]*"/gu,''));
+  if(COMMERCIAL_GOALS.includes(goal)&&selected?.offer?.availability?.status==='AVAILABLE'){
+    const unavailable=/(?:нет|отсутствуют)\s+(?:(?:подтвержденных|доступных|свободных)\s+)?(?:предложении|предложений|мест)|no\s+(?:(?:confirmed|available)\s+)?(?:offers|seats|availability)|khong\s+co\s+(?:cho|suat|lua\s+chon).{0,25}(?:trong|kha\s+dung)|没有.{0,15}(?:可订|可预订|空位)|예약\s*가능한.{0,15}없/iu.test(text);
+    if(unavailable)throw new TypeError('answer contradicts verified availability');
+    const adultsOnly=selected.offer.participantMix?.length&&selected.offer.participantMix.every(p=>p.role==='ADULT');
+    if(adultsOnly&&/(?:все|только).{0,60}(?:предложени|вариант).{0,60}(?:включают|содержат|с ребенком|с детьми)|(?:all|only).{0,60}(?:offers|options).{0,60}(?:include|require).{0,25}(?:child|children)/iu.test(text)){
+      throw new TypeError('answer contradicts verified adult-only offer');
+    }
+  }
+  const row=products.find(p=>p.product?.productId===productId)||(products.length===1?products[0]:null);
+  const facts=row?.facts;
+  if(goal==='COMPARE'||!facts||!/(?:lunch|обед|bua\s+trua|午餐|점심)/iu.test(normalizedText(facts.included||'')))return;
+  // A product's explicit lunch inclusion cannot become a model-created exclusion.
+  if(/(?:lunch|обед|bua\s+trua|午餐|점심)/iu.test(normalizedText(facts.excluded||'')))return;
+  const mealDenied=/(?:lunch|food\s+and\s+drinks)\s*[:–-]?\s*(?:(?:is|are|was|were)\s+)?(?:not\s+included|excluded)|(?:обед|еда\s+и\s+напитки|питание\s+и\s+напитки)[^.!?\n;,。；]{0,25}(?:не\s+включ|не\s+вход)|(?:bua\s+trua)[^.!?\n;,。；]{0,25}(?:khong\s+bao\s+gom|khong\s+duoc)|午餐[^.!?\n;,。；]{0,12}(?:不包含|不包括|不含)|(?:不包含|不包括|不含)[^.!?\n;,。；]{0,12}午餐|점심[^.!?\n;,。；]{0,15}(?:포함되지|불포함)/iu.test(text);
+  if(mealDenied)throw new TypeError('answer contradicts verified lunch inclusion');
+}
+
 export function validateGroundedSalesPlan(raw,evidence,locale='ru',goal='GENERAL'){
   exactKeys(raw,[
     'reply','recommendedProductId','selectedOfferId','action',
@@ -786,6 +806,7 @@ export function validateGroundedSalesPlan(raw,evidence,locale='ru',goal='GENERAL
   if(locale!=='ru'&&locale!=='zh'&&/[А-Яа-яЁё]/u.test(reply)) throw new TypeError('reply language mismatch');
   if(locale==='zh'&&/[А-Яа-яЁё]/u.test(reply)) throw new TypeError('reply language mismatch');
 
+  validateKnownProviderFacts(reply,products,selected,recommendedProductId,goal);
   return {
     reply,
     recommendedProductId,
@@ -859,7 +880,7 @@ function salesFailureReason(error){
   if(/unknown fields|must be an object|required|must be an array/i.test(message)) return 'invalid_schema';
   if(/paid|upgrade|permission|not authorized/i.test(message)) return 'model_access';
   if(/quota|limit|429|neuron/i.test(message)) return 'model_limits';
-  if(/unverified|not in verified|unknown evidence|language mismatch|comparison omits|catalog answer omits|answer omits/i.test(message)) return 'answer_validation';
+  if(/unverified|not in verified|unknown evidence|language mismatch|comparison omits|catalog answer omits|answer omits|answer contradicts/i.test(message)) return 'answer_validation';
   return 'model_error';
 }
 
@@ -1016,6 +1037,8 @@ export async function composeGroundedSalesPlan({
     'Include the evidence packet IDs supporting the facts in your answer. Preserve official tour names when comparing the two products.',
     'For COMPARE, name both tours and explain concrete differences in their verified programs; a generic statement that they differ is not an answer.',
     'For DETAILS about inclusions, use the included/excluded provider text as well as inclusion categories, and distinguish optional paid activities.',
+    'Never deny an explicitly included item such as lunch. Empty excluded/exclusions fields do not mean that food, drinks or other services are excluded; do not invent exclusions.',
+    'An AVAILABLE verified offer is available for its exact date and participantMix. Never claim that all offers require children when the current verified offer is adults only. Earlier assistant refusals cannot override that fresh offer.',
     'Each facts.options entry is an alternative tour option owned by that product. Never say a product has no options when this list is nonempty.',
     'Different beaches and mud baths in options are alternatives, not consecutive stops in one excursion. Never combine all options into one itinerary.',
     'PRODUCT_DESCRIPTION_NOT_OPTION_ITINERARY describes the product generally, not every option. When optionItineraryStatus is NOT_PROVIDED, detailed timing, stop order and option-specific inclusions are unknown; do not invent them.',
