@@ -825,3 +825,15 @@ test('a factual question mentioning tomorrow is not treated as a date answer',as
   const result=await extractConversationIntent({env:{AI:{async run(){calls++;return {response:{intentPatch:{goal:'DETAILS'}}};}}},message:'What is the tour duration tomorrow?',locale:'en',products:productEvidence().data,currentIntent:createInitialTravelIntent('en'),context:{commercialGoal:'BOOK',nextQuestionCode:'DATE'}});
   assert.equal(calls,1);assert.equal(result.goal,'DETAILS');
 });
+
+test('Russian adult counts survive numeric and word-form genitive answers',async()=>{
+  for(const message of ['Для 1 взрослого на завтра.','Для одного взрослого на завтра.','1 взрослый на завтра.']){
+    const result=await extractConversationIntent({
+      env:{AI:{run:async()=>{throw new Error('model unavailable');}}},
+      message,locale:'ru',currentIntent:createInitialTravelIntent('ru'),products:productEvidence().data,
+      now:new Date('2026-10-06T12:00:00Z'),
+    });
+    assert.equal(result.patch.party.adults,1,message);
+    assert.equal(result.patch.dateConstraint.exact,'2026-10-07',message);
+  }
+});

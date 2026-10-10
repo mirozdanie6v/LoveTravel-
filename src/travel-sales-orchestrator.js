@@ -232,13 +232,16 @@ export function createLoveTravelSalesOrchestrator({
     const activeTransaction=env.BOOKING_SESSIONS?await ensureCommerceTransaction(env,sessionId,{now:now(),locale}):null;
     const activeProviderId=activeTransaction?.selection?.productRef?.externalId;
     const activeProduct=productsPacket.data.find(row=>String(row.product.providerRef?.externalId)===String(activeProviderId||''));
+    const activeAdultCount=activeTransaction?.selection
+      ? (activeTransaction.selection.participants||[]).filter(item=>item.role==='ADULT').reduce((sum,item)=>sum+Number(item.count||0),0)
+      : undefined;
     const extracted=await extractConversationIntent({
       env,
       message,
       currentIntent:shopping.intent,
       locale,
       products:productsPacket.data,
-      context:{...context,currentProductId:activeProduct?.product.productId||memory.productFocus||'',commercialGoal:memory.commercialGoal||((shopping.intent.optionPreference||activeTransaction?.selection)?'BOOK':null),nextQuestionCode:memory.nextQuestionCode||'',pendingPartyTotal:memory.pendingPartyTotal||null,optionList:memory.optionList||[],...(activeProduct?{currentOption:activeTransaction.selection.rateRef}:{})},
+      context:{...context,currentAdultCount:activeAdultCount,currentProductId:activeProduct?.product.productId||memory.productFocus||'',commercialGoal:memory.commercialGoal||((shopping.intent.optionPreference||activeTransaction?.selection)?'BOOK':null),nextQuestionCode:memory.nextQuestionCode||'',pendingPartyTotal:memory.pendingPartyTotal||null,optionList:memory.optionList||[],...(activeProduct?{currentOption:activeTransaction.selection.rateRef}:{})},
       history:conversation,
       now:now(),
     });

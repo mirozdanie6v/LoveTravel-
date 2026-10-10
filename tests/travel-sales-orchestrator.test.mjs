@@ -353,20 +353,21 @@ test('a factual question does not resolve another offer or change a prepared sel
   assert.equal(answer.agent.mutationExecuted,false);
 });
 
-function configuredBookingHarness(goal='PICKUP',message='Change pickup from Amiana.',optionChange=false,modelEcho=false){
+function configuredBookingHarness(goal='PICKUP',message='Change pickup from Amiana.',optionChange=false,modelEcho=false,initialParty=null){
   const selectedDomain=domain();
   selectedDomain.rates.push({id:202});
   if(optionChange){selectedDomain.rates[0].title='Bai Tranh Beach';selectedDomain.rates[1].title='Mini Beach';}
   selectedDomain.availabilitySlots[0].rates.push({id:202});
   selectedDomain.experience.pickup.places.push({id:502,title:'Amiana'});
   selectedDomain.experience.dropoff={enabled:true,places:[{id:601,title:'Return hotel'}]};
-  const ui={productId:'1287580',date:'2026-10-07',slotId:'slot-1',rateId:'202',startTimeId:'301',participants:{101:2},
+  if(initialParty)selectedDomain.participants.push({id:102,title:'Child',ticketCategory:'CHILD',minAge:5,maxAge:9});
+  const ui={productId:'1287580',date:'2026-10-07',slotId:'slot-1',rateId:'202',startTimeId:'301',participants:initialParty||{101:2},
     pickup:{mode:'PICKUP',placeId:'501',roomNumber:'804',answers:{gate:'lobby'}},dropoff:{mode:'DROPOFF',placeId:'601'},
     customer:{firstName:'Demo',lastName:'Passenger',email:'private@example.test',phoneNumber:'000000000'},
     answers:{custom:'sensitive_answer_marker'},extras:{701:1},extraAnswers:{701:{extraQuestion:'extra answer'}},
     passengers:[{categoryId:'101',firstName:'Demo',lastName:'One',answers:{passengerQuestion:'private passenger answer'},extras:{702:{quantity:1,answers:{meal:'vegetarian'}}}}],
   };
-  const selectedOffer={...offer(),offerId:'kept-user-rate',rateRef:{...offer().rateRef,externalId:'202'},price:{amount:123,currency:'USD'}};
+  const selectedOffer={...offer(),participantMix:canonicalBookingSelectionFromBokun(selectedDomain,ui).participants,offerId:'kept-user-rate',rateRef:{...offer().rateRef,externalId:'202'},price:{amount:123,currency:'USD'}};
   let tx={transactionId:'txn-configured-ui-session-123456789',revision:4,state:'QUOTE_READY',selection:canonicalBookingSelectionFromBokun(selectedDomain,ui),
     selectedOfferId:selectedOffer.offerId,quote:{quoteId:'quote-test',revision:1,status:'ACTIVE',expiresAt:'2026-10-06T13:00:00Z',offer:selectedOffer,readyToBook:false,issues:{bookingDataIssues:[]}},providerBooking:null};
   const original=bokunSelectionFromCanonicalSelection(tx.selection);
@@ -376,7 +377,7 @@ function configuredBookingHarness(goal='PICKUP',message='Change pickup from Amia
     if(request.url.endsWith('/initialize'))return new Response(JSON.stringify({ok:true,transaction:tx}));
     commands.push(body);
     assert.equal(body.action,'SYNC_SELECTION');assert.equal(body.expectedRevision,tx.revision);
-    const updatedOffer={...tx.quote.offer,rateRef:{...tx.quote.offer.rateRef,externalId:String(body.selection.rateId)},offerId:'updated-user-rate',pickup:{mode:'PICKUP',placeRef:{provider:'BOKUN',resourceType:'PICKUP_PLACE',externalId:String(body.selection.pickup.placeId),accountRef:'137689'}},price:{amount:137,currency:'USD'}};
+    const updatedOffer={...tx.quote.offer,participantMix:canonicalBookingSelectionFromBokun(selectedDomain,body.selection).participants,rateRef:{...tx.quote.offer.rateRef,externalId:String(body.selection.rateId)},offerId:'updated-user-rate',pickup:{mode:'PICKUP',placeRef:{provider:'BOKUN',resourceType:'PICKUP_PLACE',externalId:String(body.selection.pickup.placeId),accountRef:'137689'}},price:{amount:137,currency:'USD'}};
     tx={...tx,revision:tx.revision+1,selection:canonicalBookingSelectionFromBokun(selectedDomain,body.selection),selectedOfferId:updatedOffer.offerId,quote:{...tx.quote,revision:tx.quote.revision+1,offer:updatedOffer}};
     return new Response(JSON.stringify({ok:true,transaction:tx,resolution:{selection:body.selection}}));
   }})},AI:{async run(_model,input){
@@ -389,7 +390,7 @@ function configuredBookingHarness(goal='PICKUP',message='Change pickup from Amia
   const provider={...fakeProvider(),async getDomains(options){providerCalls.push(options);return [selectedDomain];}};
   const store=fakeStore();
   const app=createLoveTravelSalesOrchestrator({env,store,provider,now:()=>new Date('2026-10-06T12:00:00Z')});
-  return {turn:()=>app.turn({sessionId:'configured-ui-session-123456789',locale:'en',message}),commands,modelInputs,providerCalls,original,tx:()=>tx};
+  return {turn:(locale='en')=>app.turn({sessionId:'configured-ui-session-123456789',locale,message}),commands,modelInputs,providerCalls,original,tx:()=>tx};
 }
 
 test('explicit pickup correction changes only pickup in the existing authoritative UI transaction',async()=>{
@@ -472,3 +473,22 @@ test('a short multi-turn booking dialogue retains the date and converts a clarif
   assert.equal(db._memory().travelSales.commercialGoal,'BOOK');
   assert.ok(calls.filter(c=>c.includePickupPlaces).every(c=>c.productIds?.[0]==='1287580'));
 });
+
+for(const [locale,message] of [['ru','Без детей.'],['en','No children.'],['vi','Không có trẻ em.'],['zh','没有孩子。'],['ko','아이 없어요.']]){
+  test('removing children corrects the existing UI transaction even before chat knows adults: '+locale,async()=>{
+    const h=configuredBookingHarness('BOOK',message,false,false,{101:1,102:1});
+    const result=await h.turn(locale);
+    assert.equal(h.commands.length,1,'Explicit removal must synchronize the existing transaction');
+    const {participants:beforeParty,passengers:beforePassengers,...before}=h.original;
+    const {participants:afterParty,passengers:afterPassengers,...after}=h.commands[0].selection;
+    assert.deepEqual(after,before,'Rate, date, pickup, room, contact and extras remain unchanged');
+    assert.deepEqual(afterParty,{'101':1});
+    assert.equal(result.transaction.transactionId,'txn-configured-ui-session-123456789');
+    assert.equal(result.transaction.quote.offer.participantMix.length,1);
+    assert.equal(result.transaction.quote.offer.participantMix[0].role,'ADULT');
+    assert.equal(result.transaction.quote.offer.participantMix[0].count,1);
+    assert.equal(result.agent.mutationExecuted,false);
+    assert.equal(h.tx().providerBooking,null);
+    assert.ok(!h.modelInputs.some(text=>text.includes('Conversation Intelligence parser')),'The explicit correction must not depend on the model');
+  });
+}
