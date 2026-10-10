@@ -5,17 +5,19 @@ import {readFile} from 'node:fs/promises';
 const client=(await readFile(new URL('../src/ai-consultant-v5.js',import.meta.url),'utf8')).replace(/\r\n/g,'\n');
 const semantic=await readFile(new URL('../src/lovetravel-i18n.js',import.meta.url),'utf8');
 const network=await readFile(new URL('../src/ai-network-guard-v8.js',import.meta.url),'utf8');
-function harness(locale='ru',savedState=null){
-  const storage=new Map();
+const conversationClient=await readFile(new URL('../src/lovetravel-conversation.js',import.meta.url),'utf8');
+function harness(locale='ru',savedState=null,storage=new Map()){
+  const events=new EventTarget();
   const messagesBox={scrollHeight:0,scrollTop:0};
   const root={innerHTML:'',querySelector:selector=>selector==='.ai-messages'?messagesBox:{focus(){}},querySelectorAll:()=>[]};
-  const c={Intl,Date,console,URL,Request,Response,Headers,AbortController,DOMException,setTimeout,clearTimeout,
+  const c={Intl,Date,console,URL,Request,Response,Headers,AbortController,DOMException,crypto,CustomEvent,setTimeout,clearTimeout,
+    addEventListener:events.addEventListener.bind(events),removeEventListener:events.removeEventListener.bind(events),dispatchEvent:events.dispatchEvent.bind(events),
     TOURS:[],localStorage:{getItem:()=>locale,setItem(){}},sessionStorage:{getItem:key=>storage.get(key)||null,setItem:(key,value)=>storage.set(key,value),removeItem:key=>storage.delete(key)},
     document:{documentElement:{lang:locale},readyState:'loading',addEventListener(){},querySelector:()=>null,querySelectorAll:()=>[]},
     location:{origin:'https://lovetravel.viiversion.com',href:'https://lovetravel.viiversion.com/'},
     MutationObserver:class{observe(){}},requestAnimationFrame:callback=>callback()};
-  if(savedState)storage.set('max-tour-ai-consultant-v5-'+locale,JSON.stringify(savedState));
-  c.globalThis=c;vm.createContext(c);vm.runInContext(semantic,c);
+  c.globalThis=c;vm.createContext(c);vm.runInContext(semantic,c);vm.runInContext(conversationClient,c);
+  if(savedState)storage.set('lovetravel-ai-conversation-v1',JSON.stringify({...savedState,conversationId:c.LoveTravelConversation.id()}));
   vm.runInContext(client.replace('    mount,\n    _test:{','    mount,\n    _audit:{handleText,handleClick,state:()=>state,pending:()=>pending,retry:()=>retryMessage},\n    _test:{'),c);
   return {c,root,storage};
 }
@@ -126,4 +128,46 @@ test('a consultant remount preserves the active draft and cursor without reintro
   assert.equal(field.value,'Завтра нас двое');assert.deepEqual(cursor,[4,7]);assert.equal(focused,1);
   c.MaxTourAI._audit.handleClick(root,{target:{closest:()=>({dataset:{aiAction:'clear'}})}});
   assert.equal(field.value,'','Explicit Clear must discard the typed draft');
+});
+
+for(const locale of ['ru','vi','en','zh','ko']){
+  test('Clear isolates the next request and discards a late reply: '+locale,async()=>{
+    const {c,root}=harness(locale);let finish,oldHeader,newHeader;
+    c.fetch=(_url,init)=>{oldHeader=new Headers(init.headers).get('x-lt-conversation-id');return new Promise(resolve=>{finish=resolve;});};
+    const old=c.MaxTourAI._audit.handleText('Book for two adults and a child tomorrow.',root);
+    c.MaxTourAI._audit.handleClick(root,{target:{closest:()=>({dataset:{aiAction:'clear'}})}});
+    assert.equal(c.MaxTourAI._audit.pending(),false);
+    c.fetch=async(_url,init)=>{newHeader=new Headers(init.headers).get('x-lt-conversation-id');const body=JSON.parse(init.body);assert.ok(!body.history.some(row=>row.text.includes('two adults')));return new Response(JSON.stringify({ok:true,reply:'Which tour would you like?',agent:{nextQuestionCode:'PREFERENCE'}}));};
+    await c.MaxTourAI._audit.handleText('I want to book.',root);
+    finish(new Response(JSON.stringify({ok:true,reply:'Old quote: two adults, one child.'})));await old;
+    assert.notEqual(oldHeader,newHeader);assert.equal(newHeader,c.LoveTravelConversation.id());
+    assert.equal(c.MaxTourAI._audit.state().messages.at(-1).text,'Which tour would you like?');
+    assert.ok(!root.innerHTML.includes('Old quote'));assert.equal(c.MaxTourAI._audit.pending(),false);
+  });
+  test('Server state owns participants and ready-form next steps: '+locale,async()=>{
+    const {c,root}=harness(locale);
+    const calls=[];c.fetch=async(_url,init)=>{calls.push(JSON.parse(init.body));return new Response(JSON.stringify({ok:true,reply:'Ready for the form.',intent:{party:{adults:1,children:[],infants:0}},partyCounts:{ADULT:1,CHILD:0,INFANT:0},agent:{nextQuestionCode:'OPEN_CONFIGURATOR'}}));};
+    await c.MaxTourAI._audit.handleText('Нет детей',root);
+    assert.equal(c.MaxTourAI._audit.state().slots.children.length,0);assert.equal(c.MaxTourAI._audit.state().slots.adults,1);
+    assert.ok(!('people' in calls[0].context));assert.ok(!root.innerHTML.includes('data-ai-action="quick"'));
+    await c.MaxTourAI._audit.handleText('Сколько стоит билет для ребёнка?',root);
+    assert.equal(c.MaxTourAI._audit.state().slots.children.length,0);
+  });
+  test('A past date cannot block subsequent factual consultation: '+locale,async()=>{
+    const {c,root}=harness(locale,{slots:{dateError:'2020-01-01'},messages:[]});let count=0;
+    c.fetch=async()=>{count++;return new Response(JSON.stringify({ok:true,reply:'Lunch is included.',intent:{party:{adults:0,children:[],infants:0}}}));};
+    await c.MaxTourAI._audit.handleText('What is included in Hon Mun?',root);
+    assert.equal(count,1);assert.equal(c.MaxTourAI._audit.state().messages.at(-1).text,'Lunch is included.');
+  });
+}
+test('Changing locale continues one conversation; Clear starts a fresh one in every locale',async()=>{
+  const {c,root,storage}=harness('ru');c.fetch=async()=>new Response(JSON.stringify({ok:true,reply:'Robinson has several options.'}));
+  await c.MaxTourAI._audit.handleText('Tell me about Robinson.',root);const id=c.LoveTravelConversation.id();
+  for(const locale of ['vi','en','zh','ko']){
+    const next=harness(locale,null,storage);assert.equal(next.c.LoveTravelConversation.id(),id);
+    assert.ok(next.c.MaxTourAI._audit.state().messages.some(row=>row.text==='Tell me about Robinson.'));
+  }
+  c.MaxTourAI._audit.handleClick(root,{target:{closest:()=>({dataset:{aiAction:'clear'}})}});
+  const next=harness('en',null,storage);assert.notEqual(next.c.LoveTravelConversation.id(),id);
+  assert.equal(next.c.MaxTourAI._audit.state().messages.length,1);
 });

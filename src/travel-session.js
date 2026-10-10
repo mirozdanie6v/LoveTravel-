@@ -26,11 +26,14 @@ export function validSalesSessionId(value){
 export async function ensureSalesSession(request,env){
   const cookies=parseCookie(request.headers.get('cookie')||'');
   const existing=validSalesSessionId(cookies.lt_sales_sid)?cookies.lt_sales_sid:'';
-  const id=existing||crypto.randomUUID();
+  // The conversation ID is shared by chat and BookingConfigurator. A new conversation
+  // creates a new shopping/transaction scope; existing orders remain untouched.
+  const requested=request.headers.get('x-lt-conversation-id');
+  const id=validSalesSessionId(requested)?requested:(existing||crypto.randomUUID());
   await env.DB.prepare(
     'INSERT INTO sessions(id) VALUES(?) ON CONFLICT(id) DO UPDATE SET updated_at=CURRENT_TIMESTAMP'
   ).bind(id).run();
-  return {id,fresh:!existing};
+  return {id,fresh:id!==existing};
 }
 
 export function withSalesSession(response,session){

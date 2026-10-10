@@ -834,7 +834,8 @@
     patchTours();
     try {
       if (typeof state !== 'undefined' && state && typeof showScreen === 'function') {
-        showScreen(state.screen || 'home');
+        if(state.screen==='ai' && typeof renderAI==='function')renderAI();
+        else showScreen(state.screen || 'home');
       } else if (typeof renderHome === 'function') {
         renderHome();
       }

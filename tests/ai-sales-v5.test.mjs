@@ -12,7 +12,7 @@ const worker = await import('../src/worker-profile.js?ai-sales-v5-test');
 
 test('AI consultant v5 source is syntactically valid and wired into build', () => {
   assert.doesNotThrow(() => new vm.Script(ai));
-  assert.match(build, /ai-consultant-v5\.js\?v=20261010-ai-context-v3/);
+  assert.match(build, /ai-consultant-v5\.js\?v=20261010-demo-memory-v1/);
   assert.match(build, /ai-consultant-v5\.css/);
   assert.match(build, /copyFile\(resolve\(root, 'src\/ai-consultant-v5\.js'/);
 });
@@ -90,7 +90,7 @@ test('AI can recommend before every guided slot is filled', () => {
 
 test('AI uses Vietnam date and rejects past calendar dates', () => {
   assert.match(ai, /Asia\/Ho_Chi_Minh/);
-  assert.match(ai, /Эта дата уже прошла/);
+  assert.match(ai, /currentDateVietnam:vietnamTodayIso/);
   assert.equal(worker._test.containsPastDate('Есть выезд 13 сентября 2026', '2026-09-14'), true);
   assert.equal(worker._test.containsPastDate('Есть выезд 15 сентября 2026', '2026-09-14'), false);
   assert.equal(worker._test.containsPastDate('Есть выезд 2026-09-13', '2026-09-14'), true);

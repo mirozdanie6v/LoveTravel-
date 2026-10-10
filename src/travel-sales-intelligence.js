@@ -439,6 +439,11 @@ function explicitCatalogOption(message,products,scopeProductId=''){
   return {option:matches.length===1?matches[0]:null,ambiguous:matches.length>1};
 }
 
+export function explicitNoChildren(message) {
+  const text=normalizedText(message);
+  return /(?:без\s+(?:дете[ий]|реб[её]нк[ао])|(?:нет|не\s+будет)\s+дете[ий]|дете[ий]\s+(?:нет|не\s+едут)|(?:no|without)\s+(?:children|kids)|adults?\s+only|khong\s+(?:co|di\s+cung)\s+tre\s+em|没有(?:孩子|儿童)|沒有(?:孩子|兒童)|不带(?:孩子|儿童)|不帶(?:孩子|兒童)|(?:아이|어린이)\s*(?:없|없이))/u.test(text);
+}
+
 export function deterministicExplicitIntentPatch({
   message,
   locale='ru',
@@ -455,6 +460,7 @@ export function deterministicExplicitIntentPatch({
 
   const adults=explicitAdultCount(message);
   if(adults!==null) patch.party={adults};
+  if(explicitNoChildren(message))patch.party={...(patch.party||{}),childrenAges:[],infants:0};
 
   const preferenceAdds=[];
   if(/snorkel/i.test(text)||/снорк/iu.test(text)||/lan\s+ngam\s+san\s+ho/iu.test(text)||/浮潜|浮潛/u.test(text)||/스노클/u.test(text)){
@@ -527,11 +533,11 @@ function shortBookingAnswer(message,intent,context,products){
   if(context.nextQuestionCode==='PARTY'&&Number.isInteger(total)&&total>=1&&total<=30){
     return {patch:{goal,bookingRequested:false},pendingPartyTotal:total,handled:true};
   }
-  const noChildren=/^(?:без\s+дете[ий]|дете[ий]\s+нет|no\s+(?:children|kids)|without\s+(?:children|kids)|khong\s+co\s+tre\s+em|没有孩子|沒有孩子|没有儿童|沒有兒童|아이\s*없어요|어린이\s*없어요)$/u.test(text);
+  const noChildren=explicitNoChildren(message);
   if(noChildren){
     // Removing children is explicit even when adults were chosen in the UI.
     // A pending total is an explicit correction; otherwise use canonical UI adults.
-    const adults=context.pendingPartyTotal??context.currentAdultCount??intent.party?.adults;
+    const adults=explicit.party?.adults??context.pendingPartyTotal??context.currentAdultCount??intent.party?.adults;
     return {patch:{party:{...(Number.isInteger(adults)?{adults}:{}),childrenAges:[],infants:0},goal,bookingRequested:false},handled:true};
   }
   const affirmative=/^(?:да|yes|okay|ok|dong\s+y|vang|是|好的|네|예)$/u.test(text);
@@ -631,6 +637,7 @@ export async function extractConversationIntent({
     'Preserve hotel names exactly as provided by the customer.',
     'Short answers refer to the last question. CURRENT_INTENT is the stored configuration; do not claim a value was saved if it is not present there.',
     'Never repeat a confirmation of an already selected verified option. Ask only for the next missing parameter.',
+    'CURRENT_SELECTION counts and date, when present, are authoritative over older intent/history. Never copy earlier party values into a patch unless the customer specifies them now.',
     'CURRENT_INTENT='+JSON.stringify(currentIntent),
     'AVAILABLE_PRODUCTS='+JSON.stringify(modelProductList(products)),
     'CLIENT_CONTEXT_HINTS='+JSON.stringify(context&&typeof context==='object'?context:{}),
@@ -1019,6 +1026,7 @@ export async function composeGroundedSalesPlan({
   message,
   locale='ru',
   intent,
+  currentSelection=null,
   evidence=[],
   goal='GENERAL',
   history=[],
@@ -1089,6 +1097,9 @@ export async function composeGroundedSalesPlan({
     'Every offer.price.amount is the TOTAL for the entire offer.participantMix, including all selected adults/children/infants. State it as a total for that group, never per person or per adult. Do not divide, multiply or invent unit prices.',
     'Numeric prices in descriptions are not authoritative offers. Do not repeat prices for optional activities, rentals or extras unless they appear in VERIFIED_OFFER_PRICES. When no offers exist, describe paid extras without numeric prices.',
     'VERIFIED_OFFER_PRICES='+JSON.stringify([...allowedMoney(evidence)]),
+    'Answer briefly in 2–4 short paragraphs. For alternatives use a numbered list, one option per line; never duplicate the same option. Answer the question first and ask at most one necessary next question.',
+    'CURRENT_SELECTION='+JSON.stringify(currentSelection),
+    'Current selection and verified offers override old intent and assistant statements. Do not infer child ages from role counts.',
     'CURRENT_INTENT='+JSON.stringify(intent),
     'CUSTOMER_GOAL='+JSON.stringify(goal),
     'VERIFIED_EVIDENCE='+JSON.stringify(evidenceView),

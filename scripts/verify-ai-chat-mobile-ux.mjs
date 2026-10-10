@@ -30,7 +30,7 @@ async function runMobileChatUx(){
   try{
     for(const row of cases){
       const context=await browser.newContext({viewport:{width:row.width,height:row.height}});
-      const mutations=[],errors=[];let chatIndex=0;
+      const mutations=[],errors=[],conversationHeaders=[];let chatIndex=0;
       const replies=[
         row.sentence.repeat(15).slice(0,1750).trim(),
         [row.sentence.repeat(3).trim(),'1. Robinson & Bich Dam\n2. Robinson & Hon Mun\n3. Robinson & Hon Tam',row.sentence.repeat(3).trim()].join('\n\n'),
@@ -43,7 +43,7 @@ async function runMobileChatUx(){
             mutations.push({path:url.pathname,action});return route.abort();
           }
         }
-        if(url.pathname==='/api/ai/chat')return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({ok:true,reply:replies[chatIndex++],source:'workers-ai-grounded-sales',degraded:false})});
+        if(url.pathname==='/api/ai/chat'){conversationHeaders.push(request.headers()['x-lt-conversation-id']);return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({ok:true,reply:replies[chatIndex++]||'New conversation.',source:'workers-ai-grounded-sales',degraded:false})});}
         if(!live&&!request.url().startsWith(base))return route.fulfill({status:200,contentType:'text/plain',body:''});
         return route.continue();
       });
@@ -81,11 +81,11 @@ async function runMobileChatUx(){
         const background=value.background.match(/[\d.]+/g).map(Number);
         assert.ok(background.length===3||background[3]===1);
         assert.ok(ratio>=4.5&&authorRatio>=4.5);
-        assert.ok(value.form.top>=value.messages.bottom-1,'Composer overlaps messages: '+row.locale);
+        assert.ok(value.form.top>=0&&value.form.bottom<=value.nav.top+1,'Composer hidden by navigation: '+row.locale);
         assert.ok(value.scrollHeight<=value.clientHeight+2,'Message history has its own viewport: '+row.locale);
         assert.ok(value.scrollWidth<=value.clientWidth+1,'Horizontal chat overflow: '+row.locale);
         assert.equal(value.overflowY,'visible');
-        assert.ok(!['sticky','fixed'].includes(value.inputPosition));
+        assert.equal(value.inputPosition,'fixed');
         assert.ok(parseFloat(value.inputFont)>=16);
         await page.locator('#aiScreen .ai-msg.bot').nth(1).evaluate(node=>node.scrollIntoView({block:'start',behavior:'instant'}));
         const outer=page.locator('.content'),before=await outer.evaluate(node=>node.scrollTop);
@@ -97,7 +97,7 @@ async function runMobileChatUx(){
         const tail=page.locator('#aiScreen .ai-msg.bot:last-child .ai-msg-text p').last();
         await tail.evaluate(node=>node.scrollIntoView({block:'center',behavior:'instant'}));
         const tailBox=await tail.boundingBox(),nav=(await metrics()).nav;
-        assert.ok(tailBox.y+tailBox.height<=nav.top+1,'Navigation hides the reply tail');
+        assert.ok(tailBox.y+tailBox.height<=(await metrics()).form.top+1,'Composer hides the reply tail');
         await page.screenshot({path:folder+'/'+row.locale+'-'+row.width+'x'+row.height+'-reply.png'});
         await page.locator('#aiScreen .ai-msg.user').last().evaluate(node=>node.scrollIntoView({block:'center',behavior:'instant'}));
         await page.screenshot({path:folder+'/'+row.locale+'-'+row.width+'x'+row.height+'-user.png'});
@@ -105,14 +105,24 @@ async function runMobileChatUx(){
         if(row.locale==='ru'){
           await page.setViewportSize({width:390,height:500});
           await field.click();await field.fill(row.question);
-          await field.evaluate(node=>node.scrollIntoView({block:'center',behavior:'instant'}));
           const reduced=await metrics();
-          assert.ok(reduced.form.top>=reduced.messages.bottom-1);
+          assert.ok(reduced.form.top>=0);
           assert.ok(reduced.form.top>=0&&reduced.form.bottom<=reduced.nav.top+1,'Input inaccessible at reduced viewport height');
           assert.equal(reduced.overflowY,'visible');
           await page.screenshot({path:folder+'/ru-390x500-reduced-height.png'});
           result.reducedHeight={height:500,inputAccessible:true,nestedChatScroll:false};
         }
+        assert.ok(conversationHeaders[0],'Locale wrapper lost the conversation header: '+row.locale);
+        assert.equal(conversationHeaders[1],conversationHeaders[0]);
+        const previousTx=await (await context.request.get(base+'/api/travel-commerce/transaction',{headers:{'x-lt-conversation-id':conversationHeaders[0]}})).json();
+        await page.locator('#aiScreen [data-ai-action=clear]').click();
+        await field.fill(row.question);await field.press('Enter');
+        await page.waitForFunction(()=>document.querySelector('#aiScreen .ai-msg.bot:last-child')?.textContent.includes('New conversation.'));
+        assert.notEqual(conversationHeaders[2],conversationHeaders[0]);
+        const after=await (await context.request.get(base+'/api/travel-commerce/transaction',{headers:{'x-lt-conversation-id':conversationHeaders[2]}})).json();
+        assert.ok(previousTx.ok&&after.ok);assert.notEqual(after.transaction.transactionId,previousTx.transaction.transactionId);
+        assert.equal(after.selection,null);assert.equal(after.providerBooking,null);
+        result.conversationReset={newTransaction:true,previousSelectionNotInherited:true};
         assert.deepEqual(mutations,[]);assert.deepEqual(errors,[]);
         report.cases.push(result);console.log(JSON.stringify(result));
       }catch(error){
