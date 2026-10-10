@@ -731,7 +731,9 @@
   function mount(root) {
     mountedRoot=root;
     if (!root) return;
-    render(root);
+    // Catalog/locale refreshes can remount repeatedly; keep the active form DOM.
+    if(root.querySelector('[data-ai-form="chat"]')?.tagName==='FORM')syncComposer(root);
+    else render(root);
     root.onclick = event => handleClick(root, event);
     root.onkeydown = event => {
       const textarea = event.target.closest('textarea[name="message"]');
