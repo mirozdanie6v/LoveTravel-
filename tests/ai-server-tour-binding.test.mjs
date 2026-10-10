@@ -78,3 +78,10 @@ test('exact server tour cannot bypass the location guard', () => {
   assert.equal(api.locationAllowsTour(context.TOURS[0]), false);
   assert.equal(api.recommendationForTourId('dalat-premium'), null);
 });
+
+
+test('A verified booking selection binds the native tour card even if the model omitted recommendedProductId',()=>{
+  const {context,api}=boot();
+  context.TOURS.push({...context.TOURS[0],id:'1287580'});
+  assert.equal(api.applyServerTour({tourId:'',bookingSelection:{productId:'1287580'}}),true);
+});

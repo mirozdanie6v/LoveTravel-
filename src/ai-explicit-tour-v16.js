@@ -1,5 +1,6 @@
 (() => {
   'use strict';
+  if(globalThis.LoveTravelConversation)return;
 
   const AI_STATE_KEY = 'max-tour-ai-consultant-v5';
   const lower = value => String(value || '')
@@ -102,6 +103,7 @@
 
 (() => {
   'use strict';
+  if(globalThis.LoveTravelConversation)return;
 
   const AI_STATE_KEY = 'max-tour-ai-consultant-v5';
   const QUESTION_SETS = [
@@ -244,6 +246,7 @@
 
 (() => {
   'use strict';
+  if(globalThis.LoveTravelConversation)return;
 
   const locationTest = globalThis.MaxTourAI?._locationTest;
   if (!locationTest?.inspectInput || !locationTest?.placeFrom || !locationTest?.placesFrom) return;

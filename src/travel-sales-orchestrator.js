@@ -337,7 +337,7 @@ export function createLoveTravelSalesOrchestrator({
       }
     }
     const offersRequested=COMMERCIAL_GOALS.includes(extracted.goal)||(['DISCOVER','GENERAL'].includes(extracted.goal)&&commercialPatch(intentPatch));
-    if(!canonicalScopeUsed&&offersRequested&&exactDate(shopping.intent)&&partyKnown(shopping.intent)){
+    if(!extracted.pendingChildAges&&!canonicalScopeUsed&&offersRequested&&exactDate(shopping.intent)&&partyKnown(shopping.intent)){
       const productIds=canonicalToProviderProducts(
         productsPacket,
         shopping.intent.optionPreference?.productId||extracted.selectedProductId||memory.productFocus,
@@ -360,7 +360,10 @@ export function createLoveTravelSalesOrchestrator({
       shopping=next;
     }
 
-    const plan=extracted.optionChoiceUnavailable?{
+    const plan=extracted.pendingChildAges&&!readOnlyQuestion?{
+      reply:({ru:'Укажите возраст каждого ребёнка: он нужен для правильной категории и цены.',en:'Please give each child’s age so I can select the correct ticket category and price.',vi:'Vui lòng cho biết độ tuổi của từng trẻ để chọn đúng loại vé và giá.',zh:'请告诉我每位儿童的年龄，以便选择正确的票种并计算价格。',ko:'올바른 티켓 종류와 가격을 확인할 수 있도록 어린이 각각의 나이를 알려주세요.'})[locale],
+      recommendedProductId:extracted.selectedProductId||memory.productFocus||'',selectedOfferId:'',action:'ASK_PARTY',nextQuestionCode:'CHILD_AGES',evidenceRefs:[productsPacket.evidenceId],source:'booking-continuation',degraded:false,
+    }:extracted.optionChoiceUnavailable?{
       reply:optionChoiceQuestion(locale),recommendedProductId:'',selectedOfferId:'',action:'GENERAL',nextQuestionCode:'OPTION',evidenceRefs:[productsPacket.evidenceId],source:'booking-continuation',degraded:false,
     }:extracted.pendingPartyTotal?{
       reply:partyCompositionQuestion(locale,extracted.pendingPartyTotal),recommendedProductId:extracted.selectedProductId||memory.productFocus||'',selectedOfferId:'',action:'ASK_PARTY',nextQuestionCode:'PARTY',evidenceRefs:[productsPacket.evidenceId],source:'booking-continuation',degraded:false,
