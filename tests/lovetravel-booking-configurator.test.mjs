@@ -63,7 +63,7 @@ test('production build includes configurator after the domain tour runtime',()=>
   assert.match(build,/lovetravel-booking-configurator\.css/);
   assert.match(build,/lovetravel-booking-configurator\.js/);
   const domain=build.indexOf('<script src="/lovetravel-domain-tour.js?v=20261010-provider-information-v1" defer></script>');
-  const config=build.indexOf('<script src="/lovetravel-booking-configurator.js?v=20261010-demo-memory-v1" defer></script>');
+  const config=build.indexOf('<script src="/lovetravel-booking-configurator.js?v=20261010-demo-memory-v2" defer></script>');
   assert.ok(domain>=0 && config>domain);
 });
 

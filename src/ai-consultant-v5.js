@@ -318,6 +318,7 @@
   function updateRecommendations(text) { state.recommendations = shouldShowRecommendations(text) ? matchTours() : []; }
 
   function locationAllowsTour(tour) {
+    if(conversation && ['1287578','1287580'].includes(String(tour?.id)))return true;
     let location = null;
     try { location = JSON.parse(sessionStorage.getItem(LOCATION_KEY) || 'null'); } catch (_) {}
     if (!location?.origin) return true;
@@ -357,7 +358,7 @@
   }
 
   function applyServerTour(result) {
-    const item = recommendationForTourId(result?.tourId);
+    const item = recommendationForTourId(result?.bookingSelection?.productId || result?.tourId);
     if (!item) return false;
     state.selectedTourId = String(item.tour.id);
     state.recommendations = [item];

@@ -439,6 +439,20 @@ function explicitCatalogOption(message,products,scopeProductId=''){
   return {option:matches.length===1?matches[0]:null,ambiguous:matches.length>1};
 }
 
+export function explicitChildAges(message,context={}) {
+  const text=normalizedText(message);
+  if(context.nextQuestionCode==='CHILD_AGES'&&/^\d{1,2}(?:\s*(?:,|и|and|va|和|및)\s*\d{1,2})*$/u.test(text.trim())){
+    const ages=text.match(/\d+/g).map(Number);return ages.every(age=>age<=17)?ages:[];
+  }
+  const ages=[];
+  const patterns=[
+    /(?:ребен(?:ок|ка|ку|ком)?|дети|детей|child|kid|tre\s*(?:em)?|children|아이|어린이)[^.!?;\n\d]{0,20}(\d{1,2})\s*(?:лет|года?|years?\s*old|years?|tuoi|岁|歲|세)/gu,
+    /(\d{1,2})\s*(?:-?year-?old|岁|歲|세)[^.!?;\n\d]{0,12}(?:child|kid|儿童|孩子|兒童|아이|어린이)/gu,
+  ];
+  for(const pattern of patterns)for(const match of text.matchAll(pattern)){const age=Number(match[1]);if(age<=17)ages.push(age);}
+  return ages;
+}
+
 export function explicitNoChildren(message) {
   const text=normalizedText(message);
   return /(?:без\s+(?:дете[ий]|реб[её]нк[ао])|(?:нет|не\s+будет)\s+дете[ий]|дете[ий]\s+(?:нет|не\s+едут)|(?:no|without)\s+(?:children|kids)|adults?\s+only|khong\s+(?:co|di\s+cung)\s+tre\s+em|没有(?:孩子|儿童)|沒有(?:孩子|兒童)|不带(?:孩子|儿童)|不帶(?:孩子|兒童)|(?:아이|어린이)\s*(?:없|없이))/u.test(text);
@@ -460,6 +474,8 @@ export function deterministicExplicitIntentPatch({
 
   const adults=explicitAdultCount(message);
   if(adults!==null) patch.party={adults};
+  const childAges=explicitChildAges(message,context);
+  if(childAges.length)patch.party={...(patch.party||{}),childrenAges:childAges};
   if(explicitNoChildren(message))patch.party={...(patch.party||{}),childrenAges:[],infants:0};
 
   const preferenceAdds=[];
@@ -533,6 +549,7 @@ function shortBookingAnswer(message,intent,context,products){
   if(context.nextQuestionCode==='PARTY'&&Number.isInteger(total)&&total>=1&&total<=30){
     return {patch:{goal,bookingRequested:false},pendingPartyTotal:total,handled:true};
   }
+  if(context.nextQuestionCode==='CHILD_AGES'&&explicit.party?.childrenAges?.length)return {patch:{party:explicit.party,goal,bookingRequested:false},handled:true};
   const noChildren=explicitNoChildren(message);
   if(noChildren){
     // Removing children is explicit even when adults were chosen in the UI.
@@ -603,6 +620,7 @@ export async function extractConversationIntent({
     ...(continuation?.optionChoiceUnavailable?{optionChoiceUnavailable:true}:{}),
     patch:explicitPatch,
     explicitPatch,
+    pendingChildAges:(explicitPatch.goal==='BOOK'||!/[?？]/u.test(message))&&!explicitNoChildren(message)&&!explicitPatch.party?.childrenAges?.length&&/^(?:.*(?:едем|еду|нас|для|взросл|we|with|nguoi|成人|성인)).*(?:с\s+ребен|и\s+ребен|с\s+детьми|children|child|kids|kid|tre\s+em|儿童|孩子|아이|어린이)/u.test(normalizedText(message)),
     selectedProductId:explicitPatch.selectedProductId??null,
     goal:explicitPatch.goal||'GENERAL',
     bookingRequested:Boolean(explicitPatch.bookingRequested),
@@ -664,6 +682,7 @@ export async function extractConversationIntent({
     return {
       patch,
       explicitPatch,
+      pendingChildAges:Boolean(fallback.pendingChildAges&&!patch.party?.childrenAges?.length),
       selectedProductId:patch.selectedProductId??null,
       goal:patch.goal||'GENERAL',
       bookingRequested:Boolean(patch.bookingRequested),

@@ -1,5 +1,6 @@
 (() => {
   'use strict';
+  if(globalThis.LoveTravelConversation)return;
 
   const LOCATION_KEY = 'max-tour-ai-location-v6';
   const AI_STATE_KEY = 'max-tour-ai-consultant-v5';
