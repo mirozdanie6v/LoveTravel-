@@ -896,3 +896,12 @@ test('an unquotable selection cannot use the prepared-offer response',()=>{
   const plan=deterministicSalesFallback({locale:'en',goal:'BOOK',intent:createInitialTravelIntent('en'),evidence:[offers]});
   assert.notEqual(plan.nextQuestionCode,'OPEN_CONFIGURATOR');
 });
+
+for(const [locale,message] of [['ru','На завтра можно?'],['en','Is tomorrow available?'],['vi','Ngày mai còn chỗ không?'],['zh','明天可以吗？'],['ko','내일 가능해요?']]){
+  test('a short dated availability question follows the active booking in '+locale,async()=>{
+    const packet=await catalogEvidence();let calls=0;
+    const result=await extractConversationIntent({env:{AI:{async run(){calls++;return {response:{intentPatch:{locale:null,selectedOption:null}}};}}},message,locale,products:packet.data,currentIntent:createInitialTravelIntent(locale),context:{commercialGoal:'BOOK',currentProductId:packet.data[0].product.productId,nextQuestionCode:'OPEN_CONFIGURATOR'},now:new Date('2026-10-10T01:00:00Z')});
+    assert.equal(calls,0);assert.equal(result.source,'booking-continuation');assert.equal(result.goal,'AVAILABILITY');assert.equal(result.patch.dateConstraint.exact,'2026-10-11');
+    assert.equal(result.patch.party,undefined);assert.equal(result.patch.selectedOption,undefined);assert.equal(result.bookingRequested,false);
+  });
+}

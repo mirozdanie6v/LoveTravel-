@@ -72,10 +72,13 @@ for(const row of cases){
  }});
  assert.ok(seed.transaction.selection.participants.some(p=>p.role==='CHILD'&&p.count===1),'UI preparation did not contain a child');
  const messages=['Без детей.','На завтра можно?'];
- const history=[],steps=[];
+ const history=[{role:'user',text:'На завтра для одного взрослого без детей.'},{role:'assistant',text:'На завтра нет предложений для одного взрослого. Все предложения включают ребенка. Укажите другую дату.'}],steps=[];
  for(const message of messages){
    const answer=await call('/api/ai/chat',{locale:'ru',message,history});
    assert.ok(answer.ok&&!answer.degraded);
+   assert.equal(answer.source,'provider-exact-offer','A prepared selection must lead to its existing form');
+   assert.equal(answer.agent.action,'OFFER_READY');
+   assert.equal(answer.agent.nextQuestionCode,'OPEN_CONFIGURATOR','No repeated choose/compare loop');
    assert.equal(answer.agent.mutationExecuted,false);
    assert.equal(answer.intent.party.adults,1,'Chat lost canonical UI adult count');
    assert.deepEqual(answer.intent.party.children,[]);

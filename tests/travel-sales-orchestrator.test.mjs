@@ -390,7 +390,7 @@ function configuredBookingHarness(goal='PICKUP',message='Change pickup from Amia
   const provider={...fakeProvider(),async getDomains(options){providerCalls.push(options);return [selectedDomain];}};
   const store=fakeStore();
   const app=createLoveTravelSalesOrchestrator({env,store,provider,now:()=>new Date('2026-10-06T12:00:00Z')});
-  return {turn:(locale='en')=>app.turn({sessionId:'configured-ui-session-123456789',locale,message}),commands,modelInputs,providerCalls,original,tx:()=>tx};
+  return {turn:(locale='en',nextMessage=message)=>app.turn({sessionId:'configured-ui-session-123456789',locale,message:nextMessage}),commands,modelInputs,providerCalls,original,tx:()=>tx};
 }
 
 test('explicit pickup correction changes only pickup in the existing authoritative UI transaction',async()=>{
@@ -490,5 +490,23 @@ for(const [locale,message] of [['ru','Без детей.'],['en','No children.']
     assert.equal(result.agent.mutationExecuted,false);
     assert.equal(h.tx().providerBooking,null);
     assert.ok(!h.modelInputs.some(text=>text.includes('Conversation Intelligence parser')),'The explicit correction must not depend on the model');
+  });
+}
+
+for(const [locale,none,availability] of [['ru','Без детей.','На завтра можно?'],['en','No children.','Is tomorrow available?'],['vi','Không có trẻ em.','Ngày mai còn chỗ không?'],['zh','没有孩子。','明天可以吗？'],['ko','아이 없어요.','내일 가능해요?']]){
+  test('adult-only Quote continues to the existing form after a dated availability question: '+locale,async()=>{
+    const h=configuredBookingHarness('GENERAL',none,true,false,{101:1,102:1});
+    const first=await h.turn(locale);
+    const second=await h.turn(locale,availability);
+    for(const result of [first,second]){
+      assert.equal(result.source,'provider-exact-offer');assert.equal(result.agent.action,'OFFER_READY');assert.equal(result.agent.nextQuestionCode,'OPEN_CONFIGURATOR');
+      assert.equal(result.transaction.transactionId,'txn-configured-ui-session-123456789');assert.equal(result.bookingSelection.rateId,'202');
+      assert.equal(result.agent.mutationExecuted,false);assert.equal(result.transaction.providerBooking||null,null);
+    }
+    assert.equal(second.bookingSelection.date,'2026-10-07');assert.deepEqual(second.bookingSelection.participants,{'101':1});
+    const {participants,passengers,...before}=h.original;
+    const {participants:afterParty,passengers:afterPassengers,...after}=second.bookingSelection;
+    assert.deepEqual(after,before,'Availability must keep the exact rate and all transport/contact/extras');
+    assert.ok(!h.modelInputs.some(text=>text.includes('Conversation Intelligence parser')));
   });
 }
