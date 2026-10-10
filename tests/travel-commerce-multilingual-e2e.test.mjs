@@ -319,7 +319,10 @@ async function runLocaleVertical(locale,config){
     evidence:[products,offers],
     goal:extracted.goal,
   });
-  assert.equal(plan.source,'workers-ai-grounded-sales');
+  assert.equal(plan.source,'provider-exact-offer');
+  assert.equal(plan.nextQuestionCode,'OPEN_CONFIGURATOR');
+  assert.ok(plan.reply.includes(row.offer.date));
+  assert.ok(plan.reply.includes(row.offer.price.amount+' '+row.offer.price.currency));
   assert.equal(plan.selectedOfferId,row.offer.offerId);
   assert.equal(plan.action,'OFFER_READY');
 
