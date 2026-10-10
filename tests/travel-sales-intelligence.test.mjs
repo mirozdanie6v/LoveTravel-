@@ -878,3 +878,21 @@ test('a correct included lunch is compatible with an unrelated dinner exclusion'
   assert.doesNotThrow(()=>validateGroundedSalesPlan(raw,[packet],'en','DETAILS'));
   assert.doesNotThrow(()=>validateGroundedSalesPlan({...raw,reply:'Lunch is included and dinner is not included.'},[packet],'en','DETAILS'));
 });
+
+test('one verified named offer advances to the existing form without another answer-model confirmation',async()=>{
+  const products=productEvidence(),offers=offerEvidence(59);
+  offers.data[0].offer.date='2026-10-11';
+  offers.data[0].offer.participantMix=[{role:'ADULT',count:1}];
+  offers.data[0].option={title:'Hon Tam Mud Bath'};
+  offers.data[0].readyToQuote=true;offers.data[0].readyToBook=false;
+  for(const locale of ['ru','vi','en','zh','ko']){
+    const plan=await composeGroundedSalesPlan({locale,goal:'BOOK',message:'Yes.',intent:createInitialTravelIntent(locale),evidence:[products,offers],history:[{role:'assistant',text:'Only offers with children are available.'}],env:{AI:{run:async()=>{throw new Error('A verified Quote must not need another answer model call');}}}});
+    assert.equal(plan.source,'provider-exact-offer');assert.equal(plan.nextQuestionCode,'OPEN_CONFIGURATOR');assert.equal(plan.selectedOfferId,'offer-1');
+    assert.equal(plan.replyAttempts,0);assert.match(plan.reply,/2026-10-11/);assert.match(plan.reply,/59 USD/);assert.match(plan.reply,/Hon Tam Mud Bath/);
+  }
+});
+test('an unquotable selection cannot use the prepared-offer response',()=>{
+  const offers=offerEvidence(59);offers.data[0].offer.date='2026-10-11';offers.data[0].offer.participantMix=[{role:'ADULT',count:1}];offers.data[0].option={title:'Hon Tam Mud Bath'};offers.data[0].readyToQuote=false;
+  const plan=deterministicSalesFallback({locale:'en',goal:'BOOK',intent:createInitialTravelIntent('en'),evidence:[offers]});
+  assert.notEqual(plan.nextQuestionCode,'OPEN_CONFIGURATOR');
+});

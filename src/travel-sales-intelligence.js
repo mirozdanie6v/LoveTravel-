@@ -947,10 +947,30 @@ function localized(locale,key,vars={}){
   return table[key]?.[locale]||table[key]?.ru||'';
 }
 
+
+function preparedOfferReply(locale,row){
+  const offer=row.offer;
+  const group=Object.fromEntries(['ADULT','CHILD','INFANT'].map(role=>[role,arr(offer.participantMix).filter(p=>p.role===role).reduce((n,p)=>n+Number(p.count||0),0)]));
+  const title=[row.product?.title,row.option?.localizedTitle||row.option?.title].filter(Boolean).join(' — ');
+  const copy={
+    ru:'{title}\n\nДата: {date}. Взрослые: {ADULT}; дети: {CHILD}; младенцы: {INFANT}. Итого: {amount} {currency} за этот состав группы.\n\nОткройте оформление кнопкой под экскурсией, чтобы заполнить и проверить оставшиеся данные. Бронирование ещё не создано.',
+    en:'{title}\n\nDate: {date}. Adults: {ADULT}; children: {CHILD}; infants: {INFANT}. Total: {amount} {currency} for this party.\n\nOpen the booking form using the button below the tour to complete and review the remaining details. No booking has been created.',
+    vi:'{title}\n\nNgày: {date}. Người lớn: {ADULT}; trẻ em: {CHILD}; em bé: {INFANT}. Tổng cộng: {amount} {currency} cho nhóm này.\n\nMở biểu mẫu bằng nút bên dưới tour để điền và kiểm tra các thông tin còn lại. Chưa có đặt chỗ nào được tạo.',
+    zh:'{title}\n\n日期：{date}。成人：{ADULT}；儿童：{CHILD}；婴儿：{INFANT}。本组总价：{amount} {currency}。\n\n请通过行程下方的按钮打开预订表单，填写并核对其余信息。预订尚未创建。',
+    ko:'{title}\n\n날짜: {date}. 성인: {ADULT}, 어린이: {CHILD}, 영유아: {INFANT}. 이 일행의 총금액: {amount} {currency}.\n\n투어 아래 버튼으로 예약 양식을 열어 나머지 정보를 입력하고 확인해 주세요. 아직 예약은 생성되지 않았습니다.',
+  };
+  const vars={title,date:offer.date,...group,amount:offer.price.amount,currency:offer.price.currency};
+  return (copy[locale]||copy.ru).replace(/\{(\w+)\}/g,(_match,key)=>String(vars[key]??''));
+}
+
 export function deterministicSalesFallback({locale='ru',intent,evidence=[],goal='BOOK'}={}){
   const commercial=COMMERCIAL_GOALS.includes(goal);
   const availableOffers=recommendationOffers(evidence,goal);
   const consultationOffers=['DISCOVER','GENERAL'].includes(goal)?availableOffers:[];
+  const prepared=availableOffers.length===1?availableOffers[0]:null;
+  if(commercial&&prepared?.option?.title&&prepared.readyToQuote!==false&&/^\d{4}-\d{2}-\d{2}$/.test(prepared.offer?.date||'')&&arr(prepared.offer?.participantMix).length&&prepared.offer?.price){
+    return {reply:preparedOfferReply(locale,prepared),recommendedProductId:prepared.product?.productId||prepared.offer.productId,selectedOfferId:prepared.offer.offerId,action:'OFFER_READY',nextQuestionCode:'OPEN_CONFIGURATOR',evidenceRefs:evidence.map(item=>item.evidenceId)};
+  }
   if(!commercial&&!consultationOffers.length){
     return {reply:localized(locale,'unavailable'),recommendedProductId:'',selectedOfferId:'',action:'GENERAL',nextQuestionCode:'RETRY',evidenceRefs:evidence.map(item=>item.evidenceId),degraded:true};
   }
@@ -1011,6 +1031,9 @@ export async function composeGroundedSalesPlan({
       evidenceRefs:evidence.filter(packet=>['searchProducts','compareProducts'].includes(packet.capability)).map(packet=>packet.evidenceId),
     },evidence,locale,'DETAILS');
     return {...plan,source:'provider-catalog-options',replyAttempts:0,replyFailureReasons:[]};
+  }
+  if(COMMERCIAL_GOALS.includes(goal)&&fallback.action==='OFFER_READY'&&fallback.nextQuestionCode==='OPEN_CONFIGURATOR'){
+    return {...validateGroundedSalesPlan(fallback,evidence,locale,goal),source:'provider-exact-offer',replyAttempts:0,replyFailureReasons:[]};
   }
   if(COMMERCIAL_GOALS.includes(goal)&&['ASK_DATE','ASK_PARTY'].includes(fallback.action)){
     return {...fallback,source:'deterministic-grounded-fallback'};
