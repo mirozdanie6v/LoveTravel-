@@ -450,3 +450,25 @@ test('a generic price question cannot apply a model-repeated old option over the
   assert.deepEqual(result.bookingSelection,h.original);
   assert.equal(result.transaction.quote.offer.rateRef.externalId,'202');
 });
+
+
+test('a short multi-turn booking dialogue retains the date and converts a clarified total into participants',async()=>{
+  const db=fakeDb(),store=fakeStore();let parserCalls=0;
+  const env={DB:db,AI:{async run(_model,input){
+    if(input.messages[0].content.includes('Conversation Intelligence parser')){
+      parserCalls++;return {response:{intentPatch:{selectedProductId:'love-travel-hon-mun',goal:'BOOK',bookingRequested:true}}};
+    }
+    return {response:{reply:'Hòn Mun is available at $98 for the group.',recommendedProductId:'love-travel-hon-mun',selectedOfferId:'offer-hon-mun',action:'OFFER_READY',nextQuestionCode:'CONFIRM_BOOKING',evidenceRefs:[]}};
+  }}};
+  const calls=[],agent=createLoveTravelSalesOrchestrator({env,store,provider:fakeProvider(calls),now:()=>new Date('2026-10-06T12:00:00Z')});
+  const turn=message=>agent.turn({sessionId:'short-dialogue-session-1234567890',locale:'en',message});
+  const first=await turn('Book Hòn Mun.');assert.equal(first.agent.action,'ASK_DATE');
+  const date=await turn('Tomorrow.');assert.equal(date.intent.dateConstraint.exact,'2026-10-07');assert.equal(date.agent.action,'ASK_PARTY');
+  const total=await turn('Two.');assert.equal(total.intent.party.adults,0);assert.match(total.reply,/2 travellers/);
+  const party=await turn('No children.');assert.equal(party.intent.party.adults,2);assert.equal(party.intent.dateConstraint.exact,'2026-10-07');
+  const pickup=await turn('Pickup from Oceanus.');assert.equal(pickup.intent.hotel,'Oceanus');assert.equal(pickup.intent.party.adults,2);assert.equal(pickup.offers[0].offer.price.amount,98);
+  assert.equal(parserCalls,1,'Known parameters should not be reinterpreted on every short answer');
+  assert.equal(pickup.agent.mutationExecuted,false);
+  assert.equal(db._memory().travelSales.commercialGoal,'BOOK');
+  assert.ok(calls.filter(c=>c.includePickupPlaces).every(c=>c.productIds?.[0]==='1287580'));
+});

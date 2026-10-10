@@ -55,7 +55,12 @@ async function runMobileChatUx(){
         const field=page.locator('#aiScreen.active textarea[name="message"]');
         await field.waitFor({state:'visible'});
         for(let index=0;index<2;index++){
-          await field.fill(row.question);await field.press('Enter');
+          await field.fill(row.question);
+          // Exercise the same refresh path used by delayed bootstrap/catalog reads.
+          await page.evaluate(()=>renderAI());
+          assert.equal(await field.inputValue(),row.question,'Runtime refresh lost the typed draft: '+row.locale);
+          assert.equal(await field.evaluate(node=>node===document.activeElement),true,'Runtime refresh lost editing focus');
+          await field.press('Enter');
           await page.waitForFunction(reply=>document.querySelector('#aiScreen .ai-msg.bot:last-child .ai-msg-text')?.textContent===reply,replies[index],{timeout:10000});
           assert.ok(await page.locator('#aiScreen .ai-msg.bot:last-child .ai-msg-text p').count()>1,'Reply has no paragraphs: '+row.locale);
           assert.equal(await field.evaluate(node=>node===document.activeElement),false,'Reply reopens the keyboard: '+row.locale);
