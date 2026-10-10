@@ -37,7 +37,9 @@ for(const row of cases){
    summaries.push(summary);console.log(JSON.stringify(summary));
    turns.push({message,reply:answer.reply});
  }
- const tx=await call('/api/travel-commerce/transaction');
+ const payload=await call('/api/travel-commerce/transaction');
+ assert.ok(payload.ok&&payload.transaction,'Transaction envelope missing');
+ const tx=payload.transaction;
  assert.equal(tx.providerBooking||null,null,'A provider booking exists');
  assert.notEqual(tx.state,'CONFIRMED');
  assert.equal(tx.selection?.productRef.externalId,'1287578');
