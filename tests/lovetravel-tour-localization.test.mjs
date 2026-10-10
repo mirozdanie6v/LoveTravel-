@@ -44,10 +44,10 @@ test('provider enums and formatting strings live in the unified semantic bundle'
 });
 
 test('semantic core and provider formatter load before runtime tour renderer and configurator',()=>{
-  const core=build.indexOf('<script src="/lovetravel-i18n.js?v=20261010-ai-contact-v1" defer></script>');
-  const l10n=build.indexOf('<script src="/lovetravel-tour-locale.js" defer></script>');
+  const core=build.indexOf('<script src="/lovetravel-i18n.js?v=20261010-provider-information-v1" defer></script>');
+  const l10n=build.indexOf('<script src="/lovetravel-tour-locale.js?v=20261010-provider-information-v1" defer></script>');
   const runtime=build.indexOf('<script src="/runtime-api.js');
-  const domain=build.indexOf('<script src="/lovetravel-domain-tour.js?v=20261008-interface-restore-v4" defer></script>');
+  const domain=build.indexOf('<script src="/lovetravel-domain-tour.js?v=20261010-provider-information-v1" defer></script>');
   const booking=build.indexOf('<script src="/lovetravel-booking-configurator.js?v=20261008-interface-restore-v4" defer></script>');
   assert.ok(core>=0 && l10n>core && runtime>l10n && domain>runtime && booking>domain);
 });
@@ -109,5 +109,45 @@ test('provider presentation executes through the semantic bundle for every local
     assert.equal(api.duration({hours:7,text:'7 hours'}),values.duration);
     assert.equal(api.difficulty('MODERATE'),values.difficulty);
     assert.notEqual(api.formatDate('2026-09-29'),"Tue 29.Sep'26");
+  }
+});
+
+test('provider string and object warnings survive the actual tour markup in every locale',()=>{
+  const expected={
+    ru:'Младенцы должны сидеть на коленях у взрослого',
+    vi:'Trẻ sơ sinh phải ngồi trong lòng người lớn',
+    en:"Infants must sit on an adult's lap",
+    ko:'영유아는 보호자의 무릎에 앉아야 합니다',
+    zh:'婴儿须坐在成人腿上',
+  };
+  for(const [selected,warning] of Object.entries(expected)){
+    const screen={innerHTML:'',dataset:{},classList:{add(){}},querySelector:()=>null,querySelectorAll:()=>[]};
+    const context={
+      document:{documentElement:{lang:selected},querySelector:()=>screen,addEventListener(){},dispatchEvent(){}},
+      localStorage:{getItem:()=>selected,setItem(){}},
+      window:{scrollTo(){}},
+      DOMParser:class {parseFromString(value){return {body:{textContent:String(value).replace(/<[^>]+>/g,'')}};}},
+      CustomEvent:class {},
+      Intl,Date,console,
+    };
+    context.globalThis=context;
+    vm.createContext(context);
+    vm.runInContext(semanticJs,context);
+    vm.runInContext(localeJs,context);
+    // Expose the existing renderer solely inside the isolated test sandbox.
+    vm.runInContext(domainJs.replace('  install();','  globalThis.renderForTest=renderDomain;'),context);
+    context.renderForTest({
+      experience:{id:'1287578',title:'Provider tour',content:{
+        dressCode:false,
+        knowBeforeYouGoItems:['INFANTS_MUST_SIT_ON_LAPS','Translated provider warning',{text:'Object provider warning'}],
+      }},
+      rates:[],availabilitySlots:[],
+    });
+    const panel=screen.innerHTML.split('data-lt-info-panel="important"')[1].split('data-lt-info-panel="cancellation"')[0];
+    assert.ok(panel.includes(warning.replaceAll("'",'&#39;')),selected);
+    assert.ok(panel.includes('Translated provider warning'),selected);
+    assert.ok(panel.includes('Object provider warning'),selected);
+    assert.doesNotMatch(panel,/INFANTS_MUST_SIT_ON_LAPS|<li>false<\/li>|<li>true<\/li>/);
+    assert.ok(screen.innerHTML.includes('data-lt-config="1287578"'),'Configurator remains present');
   }
 });

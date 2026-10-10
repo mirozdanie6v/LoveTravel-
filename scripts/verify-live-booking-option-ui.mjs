@@ -139,6 +139,12 @@ try{
   const productId=String(await page.locator('#tourScreen').getAttribute('data-lt-domain-product')||'');
   invariant(allowedProducts.has(productId),'Unexpected product opened: '+productId);
   console.log(JSON.stringify({stage:'booking-config-ready',productId}));
+  await page.locator('#tourScreen [data-lt-info-tab="important"]').click();
+  const important=await page.locator('#tourScreen [data-lt-info-panel="important"]').innerText();
+  invariant(/младенц|грудн/i.test(important)&&/колен/i.test(important),'Provider infant-on-lap condition is missing');
+  invariant(!/INFANTS_MUST_SIT_ON_LAPS|\b(?:true|false)\b/.test(important),'Raw provider enum or boolean leaked into customer information');
+  await page.screenshot({path:'artifacts/mobile-ui/04-important-information.png'});
+
 
   const steps=await page.locator('#tourScreen .lt-booking-config [data-lt-step]').evaluateAll(nodes=>
     nodes.map(node=>String(node.getAttribute('data-lt-step')||''))
