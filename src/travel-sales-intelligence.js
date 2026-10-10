@@ -787,7 +787,7 @@ export function validateGroundedSalesPlan(raw,evidence,locale='ru',goal='GENERAL
     'reply','recommendedProductId','selectedOfferId','action',
     'nextQuestionCode','evidenceRefs',
   ],'salesPlan');
-  const reply=str(raw.reply,2400);
+  const reply=str(raw.reply,2400).replace(/<br\s*\/?>/gi,'\n');
   if(!reply) throw new TypeError('sales reply is required');
   if(!SALES_ACTIONS.includes(raw.action)) throw new TypeError('invalid sales action');
 

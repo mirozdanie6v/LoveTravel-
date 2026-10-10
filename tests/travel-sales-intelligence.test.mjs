@@ -905,3 +905,11 @@ for(const [locale,message] of [['ru','На завтра можно?'],['en','Is 
     assert.equal(result.patch.party,undefined);assert.equal(result.patch.selectedOption,undefined);assert.equal(result.bookingRequested,false);
   });
 }
+
+
+test('Model line-break tags become plain paragraphs before validation and API delivery',()=>{
+  const plan={reply:'The total is $98.<br><br>Open the form.',recommendedProductId:'love-travel-hon-mun',selectedOfferId:'offer-1',action:'RECOMMEND',nextQuestionCode:'OPEN_CONFIGURATOR',evidenceRefs:['cap-offers']};
+  const result=validateGroundedSalesPlan(plan,[productEvidence(),offerEvidence()],'en','BOOK');
+  assert.equal(result.reply,'The total is $98.\n\nOpen the form.');
+  assert.throws(()=>validateGroundedSalesPlan({...plan,reply:'The total is $99.<br>Open the form.'},[productEvidence(),offerEvidence()],'en','BOOK'),/unverified monetary claim/);
+});
