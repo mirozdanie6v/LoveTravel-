@@ -20,6 +20,7 @@ async function runMobileChatUx(){
     {locale:'zh',width:320,height:568,question:'Robinson Beach 行程包含什么？出发前需要了解哪些信息？',sentence:'您可以选择适合的行程选项。请在确认选择之前阅读行程详情和相关条件。'},
     {locale:'ko',width:360,height:740,question:'Robinson Beach 투어에는 무엇이 포함되며 여행 전에 무엇을 알아야 하나요?',sentence:'알맞은 투어 옵션을 선택할 수 있습니다. 선택을 확정하기 전에 여행 조건을 읽어 주세요. '},
   ];
+  cases.push({...cases[1],productId:'1287580'});
   const contrast=(foreground,background)=>{
     const lum=value=>{
       const rgb=value.match(/[\d.]+/g).slice(0,3).map(Number).map(n=>n/255).map(n=>n<=0.04045?n/12.92:((n+0.055)/1.055)**2.4);
@@ -29,6 +30,7 @@ async function runMobileChatUx(){
   };
   try{
     for(const row of cases){
+      const productId=row.productId||'1287578';
       const context=await browser.newContext({viewport:{width:row.width,height:row.height}});
       const mutations=[],errors=[],conversationHeaders=[];let chatIndex=0;
       const replies=[
@@ -43,7 +45,7 @@ async function runMobileChatUx(){
             mutations.push({path:url.pathname,action});return route.abort();
           }
         }
-        if(url.pathname==='/api/ai/chat'){conversationHeaders.push(request.headers()['x-lt-conversation-id']);return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({ok:true,reply:replies[chatIndex++]||'New conversation.',source:'workers-ai-grounded-sales',degraded:false,tourId:'1287578'})});}
+        if(url.pathname==='/api/ai/chat'){conversationHeaders.push(request.headers()['x-lt-conversation-id']);return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({ok:true,reply:replies[chatIndex++]||'New conversation.',source:'workers-ai-grounded-sales',degraded:false,tourId:productId})});}
         if(!live&&!request.url().startsWith(base))return route.fulfill({status:200,contentType:'text/plain',body:''});
         return route.continue();
       });
@@ -54,7 +56,7 @@ async function runMobileChatUx(){
         await page.locator('#homeScreen [data-lt-action="ai"]').click({timeout:30000});
         const field=page.locator('#aiScreen.active textarea[name="message"]');
         await field.waitFor({state:'visible'});
-        await page.waitForFunction(()=>{try{return TOURS.some(tour=>String(tour.id)==='1287578');}catch{return false;}},{},{timeout:30000});
+        await page.waitForFunction(id=>{try{return TOURS.some(tour=>String(tour.id)===id);}catch{return false;}},productId,{timeout:30000});
         for(let index=0;index<2;index++){
           await field.fill(row.question);
           // Exercise the same refresh path used by delayed bootstrap/catalog reads.
@@ -107,21 +109,33 @@ async function runMobileChatUx(){
         await page.screenshot({path:folder+'/'+row.locale+'-'+row.width+'x'+row.height+'-user.png'});
         const card=page.locator('#aiScreen .ai-recommendations > .tour-card.ai-catalog-card-v7').first();
         await card.waitFor({state:'visible',timeout:30000});
-        const book=page.locator('#aiScreen .ai-recommendations > [data-ai-action="book-tour"][data-id="1287578"]');
+        const book=page.locator('#aiScreen .ai-recommendations > [data-ai-action="book-tour"][data-id="'+productId+'"]');
         await book.scrollIntoViewIfNeeded();
-        const cardView=await page.evaluate(()=>{
+        const cardView=await page.evaluate(productId=>{
           const card=document.querySelector('#aiScreen .ai-recommendations > .tour-card.ai-catalog-card-v7');
-          const button=card.parentElement.querySelector('[data-ai-action="book-tour"][data-id="1287578"]'),form=document.querySelector('#aiScreen .ai-consultant-input');
+          const button=card.parentElement.querySelector('[data-ai-action="book-tour"][data-id="'+productId+'"]'),form=document.querySelector('#aiScreen .ai-consultant-input');
           const r=button.getBoundingClientRect(),f=form.getBoundingClientRect(),nav=document.querySelector('.bottom-nav').getBoundingClientRect();
           const overlaps=f.left<r.right&&f.right>r.left&&f.top<r.bottom&&f.bottom>r.top;
           const hit=document.elementFromPoint(r.left+r.width/2,r.top+r.height/2);
-          return {overlaps,buttonVisible:r.top>=0&&r.bottom<=nav.top+1,buttonReachable:button.contains(hit)};
-        });
+          const photo=card.querySelector('.img-wrap').getBoundingClientRect(),title=card.querySelector('h3'),heading=title.getBoundingClientRect();
+          return {overlaps,buttonVisible:r.top>=0&&r.bottom<=nav.top+1,buttonReachable:button.contains(hit),
+            photoAboveTitle:photo.bottom<=heading.top+1,photoRatio:photo.width/photo.height,
+            fullTitle:title.scrollHeight<=title.clientHeight+1&&getComputedStyle(title).webkitLineClamp==='none',
+            priceColumns:card.querySelectorAll('.price-row .price').length,
+            noPrivateFormat:!/(индивидуаль|private|riêng|私人|프라이빗)/i.test(card.textContent),
+            horizontalOverflow:card.scrollWidth>card.clientWidth+1};
+        },productId);
+        assert.equal(cardView.photoAboveTitle,true,'Photograph compressed beside the title');
+        assert.ok(cardView.photoRatio>1.5&&cardView.photoRatio<1.7,'Photograph has incorrect proportions');
+        assert.equal(cardView.fullTitle,true,'Tour title is truncated');
+        assert.equal(cardView.priceColumns,1,'Unsupported format price is displayed');
+        assert.equal(cardView.noPrivateFormat,true,'Unsupported private tour is advertised');
+        assert.equal(cardView.horizontalOverflow,false,'Recommendation card overflows horizontally');
         assert.equal(cardView.overlaps,false,'Composer overlays the recommendation CTA');
         assert.equal(cardView.buttonVisible,true,'Recommendation CTA hidden by navigation');
         assert.equal(cardView.buttonReachable,true,'Recommendation CTA covered by another element');
-        await page.screenshot({path:folder+'/'+row.locale+'-'+row.width+'x'+row.height+'-card.png'});
-        const result={recommendationCta:cardView,inputPosition:value.inputPosition,locale:row.locale,width:row.width,height:row.height,contrast:Number(ratio.toFixed(2)),authorContrast:Number(authorRatio.toFixed(2)),inputOverlaps:false,pageScroll:true,nestedChatScroll:false,paragraphs:true,listItems:3,automaticKeyboardFocus:false};
+        await page.screenshot({path:folder+'/'+row.locale+'-'+row.width+'x'+row.height+'-'+productId+'-card.png'});
+        const result={productId,recommendationCta:cardView,inputPosition:value.inputPosition,locale:row.locale,width:row.width,height:row.height,contrast:Number(ratio.toFixed(2)),authorContrast:Number(authorRatio.toFixed(2)),inputOverlaps:false,pageScroll:true,nestedChatScroll:false,paragraphs:true,listItems:3,automaticKeyboardFocus:false};
         if(row.locale==='ru'){
           await page.setViewportSize({width:390,height:500});
           await field.click();await field.fill(row.question);
