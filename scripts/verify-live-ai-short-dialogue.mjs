@@ -120,5 +120,14 @@ for(const row of cases){
  const packet=await (await fetch(base+'/api/travel-commerce/transaction',{headers:{'x-lt-conversation-id':conversationId},signal:AbortSignal.timeout(30000)})).json();
  assert.ok(packet.ok);assert.equal(packet.transaction.selection.participants.find(p=>p.role==='ADULT').count,2);assert.equal(packet.transaction.selection.participants.find(p=>p.role==='CHILD').count,1);
  assert.equal(packet.transaction.quote.offer.participantMix.find(p=>p.role==='ADULT').count,2);assert.equal(packet.transaction.quote.offer.participantMix.find(p=>p.role==='CHILD').count,1);assert.equal(packet.providerBooking||null,null);
+ const adviceResponse=await fetch(base+'/api/ai/chat',{method:'POST',headers:{'content-type':'application/json','x-max-tour-locale':'ru','x-lt-conversation-id':conversationId},body:JSON.stringify({locale:'ru',message:'А как выбрать из них, что входит'}),signal:AbortSignal.timeout(45000)});
+ const advice=await adviceResponse.json();assert.ok(adviceResponse.ok&&advice.ok&&!advice.degraded,JSON.stringify(advice));
+ assert.equal(advice.source,'provider-option-guide');assert.equal(advice.agent.mutationExecuted,false);
+ assert.match(advice.reply,/Hon Mun Marine Park|морской парк Hon Mun/iu);assert.match(advice.reply,/Грязевые ванны/iu);assert.match(advice.reply,/Обед/iu);
+ const afterAdvice=await (await fetch(base+'/api/travel-commerce/transaction',{headers:{'x-lt-conversation-id':conversationId},signal:AbortSignal.timeout(30000)})).json();
+ assert.ok(afterAdvice.ok);assert.equal(afterAdvice.transaction.transactionId,packet.transaction.transactionId);
+ assert.deepEqual(afterAdvice.transaction.selection,packet.transaction.selection,'Advice changed the prepared choice');
+ assert.deepEqual(afterAdvice.transaction.quote.price,packet.transaction.quote.price,'Advice changed the exact Quote');assert.equal(afterAdvice.transaction.providerBooking||null,null);
+ report.cases.push({source:'own follow-up asking how to choose and what is included',reply:advice.reply,transactionId:afterAdvice.transaction.transactionId,selectionPreserved:true,quote:afterAdvice.transaction.quote.price,providerBooking:null});
  const result={source:'own real mixed-party sentence with inflected adult count',reply:answer.reply,participants:packet.transaction.selection.participants,quote:packet.transaction.quote.price,providerBooking:null};report.cases.push(result);console.log(JSON.stringify(result));await writeFile(folder+'/report.json',JSON.stringify(report,null,2));
 }
