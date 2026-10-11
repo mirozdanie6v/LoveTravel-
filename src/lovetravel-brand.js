@@ -257,6 +257,8 @@
       localizeLegacyCard(card,lang);
       const priceRow=card.querySelector('.price-row');
       if (!priceRow) return;
+      // Keep the footer below both photo and text columns.
+      if (priceRow.parentElement !== card) card.appendChild(priceRow);
       let action=priceRow.querySelector('.lt-card-action');
       if (!action) {
         action=document.createElement('span');
