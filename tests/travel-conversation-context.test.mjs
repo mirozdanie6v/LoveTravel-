@@ -90,3 +90,15 @@ test('a number from the last two-product list chooses a product and never silent
  const r=await extractConversationIntent({message:'1 вариант',currentIntent:createInitialTravelIntent('ru'),products,locale:'ru',context:{nextQuestionCode:'OPTION',optionList:choices,commercialGoal:'BOOK'},now});
  assert.equal(r.patch.selectedProductId,rob.product.productId);assert.equal(r.patch.selectedOption,undefined);
 });
+
+import {composeGroundedSalesPlan} from '../src/travel-sales-intelligence.js';
+test('priced recommendations receive only eligible rate facts while the full provider catalogue remains available',async()=>{
+ const intent=mergeIntentPatch(createInitialTravelIntent('en'),{dateConstraint:{kind:'EXACT',exact:'2026-10-07'},party:{adults:2}});
+ const offers=await broker.execute('searchOffers',{intent,productIds:['1287578']});const selected=offers.data[0];let checked=false;
+ const result=await composeGroundedSalesPlan({locale:'en',goal:'GENERAL',message:'What do you recommend?',intent,evidence:[productsPacket,offers],env:{AI:{run:async(_model,input)=>{
+  const view=JSON.parse(input.messages[0].content.split('VERIFIED_EVIDENCE=')[1]);const row=view[0].data.find(r=>r.product.productId===rob.product.productId);
+  assert.equal(row.facts.options.length,1);assert.equal(row.facts.options[0].rateRef.externalId,selected.offer.rateRef.externalId);checked=true;
+  return {response:{reply:selected.option.title+' costs '+selected.offer.price.amount+' USD for the whole party.',recommendedProductId:rob.product.productId,selectedOfferId:selected.offer.offerId,action:'RECOMMEND',nextQuestionCode:'',evidenceRefs:[offers.evidenceId]}};
+ }}}});
+ assert.ok(checked);assert.equal(result.source,'workers-ai-grounded-sales');assert.equal(rob.facts.options.length,7);
+});

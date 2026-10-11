@@ -1197,6 +1197,13 @@ export async function composeGroundedSalesPlan({
     capability:packet.capability,
     data:modelEvidenceData(requestedCatalogProduct&&['DETAILS','PICKUP'].includes(goal)&&['searchProducts','compareProducts'].includes(packet.capability)?{...packet,data:arr(packet.data).filter(row=>row.product?.productId===requestedCatalogProduct)}:packet),
   }));
+  const pricedOffers=recommendationOffers(evidence,goal);
+  if(pricedOffers.length&&!catalogRows.length){
+    for(const packet of evidenceView){
+      if(!['searchProducts','compareProducts'].includes(packet.capability))continue;
+      packet.data=arr(packet.data).map(row=>row.facts?{...row,facts:{...row.facts,options:arr(row.facts.options).filter(option=>pricedOffers.some(offer=>offer.product?.productId===row.product.productId&&sameOptionRef(option.rateRef,offer.option?.rateRef||offer.offer?.rateRef)))}}:row);
+    }
+  }
   const system=[
     'You are Sales Intelligence for Nha Trang Love Travel.',
     'You explain and recommend; you never mutate a booking and you never invent commercial facts.',
@@ -1216,6 +1223,7 @@ export async function composeGroundedSalesPlan({
     'Different beaches and mud baths in options are alternatives, not consecutive stops in one excursion. Never combine all options into one itinerary.',
     'PRODUCT_DESCRIPTION_NOT_OPTION_ITINERARY describes the product generally, not every option. When optionItineraryStatus is NOT_PROVIDED, detailed timing, stop order and option-specific inclusions are unknown; do not invent them.',
     'When asked for all options, list every verified option of the requested product. Preserve each localizedTitle exactly when provided, otherwise its official title; translate the surrounding explanation into the customer language.',
+    'When recommending or quoting one selected offer, discuss only that verified option. Do not append a catalogue of other options. Complete alternative lists are handled separately when the customer requests them.',
     'For any selected Offer, name its exact option.localizedTitle (or option.title if absent) alongside the product and the authoritative group total. An Offer belongs to that one option, not every alternative.',
     'REQUIRED_CATALOG_TITLES='+JSON.stringify(catalogRows.flatMap(row=>arr(row.facts?.options).map(option=>option.localizedTitle||option.title))),
     'Use short paragraphs of 1–2 sentences, separated by newline characters in the JSON reply string. Put alternatives or included items on separate numbered or hyphen-prefixed lines. Do not use HTML, Markdown headings or tables, or display literal newline escape text.',
