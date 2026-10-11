@@ -109,3 +109,16 @@ for(const row of cases){
  const clean={source:'fresh conversation with old cookie and deliberately polluted browser history',reply:answer.reply,party:answer.intent.party,selection:answer.bookingSelection,action:answer.agent.action};report.cases.push(clean);console.log(JSON.stringify(clean));
  await writeFile(folder+'/report.json',JSON.stringify(report,null,2));
 }
+
+
+{
+ const conversationId=crypto.randomUUID();
+ const response=await fetch(base+'/api/ai/chat',{method:'POST',headers:{'content-type':'application/json','x-max-tour-locale':'ru','x-lt-conversation-id':conversationId},body:JSON.stringify({locale:'ru',message:'Хочу забронировать Robinson и морской парк Hon Mun завтра для двух взрослых и ребёнка 7 лет.'}),signal:AbortSignal.timeout(45000)});
+ const answer=await response.json();assert.ok(response.ok&&answer.ok&&!answer.degraded,JSON.stringify(answer));
+ assert.equal(answer.intent.party.adults,2);assert.deepEqual(answer.intent.party.children,[{age:7}]);
+ assert.equal(answer.bookingSelection.rateId,'2623660');assert.equal(answer.agent.mutationExecuted,false);
+ const packet=await (await fetch(base+'/api/travel-commerce/transaction',{headers:{'x-lt-conversation-id':conversationId},signal:AbortSignal.timeout(30000)})).json();
+ assert.ok(packet.ok);assert.equal(packet.transaction.selection.participants.find(p=>p.role==='ADULT').count,2);assert.equal(packet.transaction.selection.participants.find(p=>p.role==='CHILD').count,1);
+ assert.equal(packet.transaction.quote.offer.participantMix.find(p=>p.role==='ADULT').count,2);assert.equal(packet.transaction.quote.offer.participantMix.find(p=>p.role==='CHILD').count,1);assert.equal(packet.providerBooking||null,null);
+ const result={source:'own real mixed-party sentence with inflected adult count',reply:answer.reply,participants:packet.transaction.selection.participants,quote:packet.transaction.quote.price,providerBooking:null};report.cases.push(result);console.log(JSON.stringify(result));await writeFile(folder+'/report.json',JSON.stringify(report,null,2));
+}
