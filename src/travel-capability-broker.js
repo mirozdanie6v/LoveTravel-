@@ -301,7 +301,7 @@ export function createTravelCapabilityBroker({
   }
 
   async function searchOffers(args={}){
-    exactKeys(args,['intent','productIds','lang'],'searchOffers');
+    exactKeys(args,['intent','productIds','lang','allOptions'],'searchOffers');
     const intent=validateTravelIntent(args.intent);
     const date=exactIntentDate(intent);
     if(!date) throw new CapabilityPolicyError('exact_date_required','searchOffers requires an exact TravelIntent date',409);
@@ -316,8 +316,10 @@ export function createTravelCapabilityBroker({
     for(const domain of domains){
       const product=canonicalProductFromBokunDomain(domain,{vendorId:provider.vendorId});
       if(intent.optionPreference&&intent.optionPreference.productId!==product.productId) continue;
+      const rateIntents=args.allOptions?(domain.rates||[]).map(rate=>({...intent,optionPreference:{productId:product.productId,rateRef:bokunProviderRef('RATE',rate.id,provider.vendorId)}})):[intent];
+      for(const rateIntent of rateIntents){
       try{
-        const selection=selectionFromTravelIntent(domain,intent);
+        const selection=selectionFromTravelIntent(domain,rateIntent);
         const resolved=await provider.resolveOffer({selection,domain});
         results.push({
           product,
@@ -342,6 +344,7 @@ export function createTravelCapabilityBroker({
           bookingDataIssues:[],
         });
       }
+    }
     }
     return results;
   }

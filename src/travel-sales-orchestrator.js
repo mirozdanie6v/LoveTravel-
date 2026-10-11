@@ -1,3 +1,4 @@
+import {recoverCustomerDate} from './travel-conversation-date.js';
 import {
   bokunSelectionFromCanonicalSelection,
   createBokunProvider,
@@ -14,6 +15,11 @@ import {
   pickupChangeRequested,
   partyCompositionQuestion,
   optionChoiceQuestion,
+  requestedOfferScope,
+  replyOptionChoices,
+  replyPendingQuestion,
+  composeOptionPrices,
+  composeCatalogOptions,
 } from './travel-sales-intelligence.js';
 import {
   createShoppingSession,
@@ -143,8 +149,8 @@ async function loadConversationMemory(env,sessionId){
     const parsed=JSON.parse(row.memory_json);
     const sales=parsed?.travelSales;
     return sales&&typeof sales==='object'?sales:{turns:[]};
-  }catch{
-    return {turns:[]};
+  }catch(error){
+    throw new Error('conversation_memory_unavailable',{cause:error});
   }
 }
 
@@ -161,14 +167,14 @@ async function saveConversationMemory(env,sessionId,memory){
     .bind(sessionId,JSON.stringify(root)).run();
 }
 
-function appendTurns(memory,message,reply){
+function appendTurns(memory,message,reply,at){
   const turns=Array.isArray(memory?.turns)?memory.turns:[];
   return {
     ...memory,
     turns:[
       ...turns,
-      {role:'user',text:str(message,1200)},
-      {role:'assistant',text:str(reply,2400)},
+      {role:'user',text:str(message,1200),at},
+      {role:'assistant',text:str(reply,2400),at},
     ].slice(-20),
   };
 }
@@ -219,6 +225,10 @@ export function createLoveTravelSalesOrchestrator({
     // Browser history may belong to a cleared conversation. Only this server scope owns memory.
     const conversation=memory.turns||[];
 
+    if(!shopping.intent.dateConstraint){
+      const restored=recoverCustomerDate(conversation,{now:now()});
+      if(restored){const next=setShoppingIntent(shopping,mergeIntentPatch(shopping.intent,{dateConstraint:restored}),{now:now()});await store.saveShoppingSession(shopping,next,{eventType:'CUSTOMER_DATE_RECOVERED'});shopping=next;}
+    }
     const date=exactDate(shopping.intent);
     const productsPacket=await broker.execute('searchProducts',{
       start:date||undefined,
@@ -257,17 +267,21 @@ export function createLoveTravelSalesOrchestrator({
       currentIntent:activeParty && activeParty.CHILD!==shopping.intent.party.children.length ? {...shopping.intent,party:{...shopping.intent.party,children:[]}} : shopping.intent,
       locale,
       products:productsPacket.data,
-      context:{...context,CURRENT_SELECTION:activeParty?{partyCounts:activeParty,date:activeTransaction.selection.date,rateRef:activeTransaction.selection.rateRef}:null,currentAdultCount:activeAdultCount,currentProductId:activeProduct?.product.productId||memory.productFocus||'',commercialGoal:memory.commercialGoal||((shopping.intent.optionPreference||activeTransaction?.selection)?'BOOK':null),nextQuestionCode:memory.nextQuestionCode||'',pendingPartyTotal:memory.pendingPartyTotal||null,optionList:memory.optionList||[],...(activeProduct?{currentOption:activeTransaction.selection.rateRef}:{})},
+      context:{...context,CURRENT_SELECTION:activeParty?{partyCounts:activeParty,date:activeTransaction.selection.date,rateRef:activeTransaction.selection.rateRef}:null,currentAdultCount:activeAdultCount,currentProductId:activeProduct?.product.productId||memory.productFocus||'',commercialGoal:memory.commercialGoal||((shopping.intent.optionPreference||activeTransaction?.selection)?'BOOK':null),pendingQuestion:memory.pendingQuestion||null,offerScope:memory.offerScope||'',nextQuestionCode:memory.nextQuestionCode||'',pendingPartyTotal:memory.pendingPartyTotal||null,optionList:memory.optionList||[],...(activeProduct?{currentOption:activeTransaction.selection.rateRef}:{})},
       history:conversation,
       now:now(),
     });
     const readOnlyQuestion=['DETAILS','COMPARE','PICKUP'].includes(extracted.goal);
     const intentPatch={...extracted.patch};
+    if(extracted.offerScope==='ALL_OPTIONS')delete intentPatch.selectedOption;
     const pickupOnlyChange=extracted.goal==='GENERAL'&&pickupChangeRequested(message)&&Boolean(intentPatch.hotel)
       &&!['dateConstraint','party','selectedProductId','selectedOption'].some(key=>Object.prototype.hasOwnProperty.call(extracted.explicitPatch||{},key));
     if(pickupOnlyChange){for(const key of ['dateConstraint','party','selectedProductId','selectedOption','preferenceAdds','preferenceRemoves'])delete intentPatch[key];}
     if(readOnlyQuestion){
-      for(const key of ['dateConstraint','party','hotel','pickupPreference','selectedProductId','selectedOption','bookingRequested']) delete intentPatch[key];
+      for(const key of ['dateConstraint','party','hotel','pickupPreference','selectedProductId','selectedOption','bookingRequested']){
+        if(['dateConstraint','party','hotel','pickupPreference'].includes(key)&&Object.hasOwn(extracted.explicitPatch||{},key))intentPatch[key]=extracted.explicitPatch[key];
+        else delete intentPatch[key];
+      }
     }
     const merged=mergeIntentPatch(shopping.intent,{
       ...intentPatch,
@@ -285,8 +299,12 @@ export function createLoveTravelSalesOrchestrator({
     let bookingTransaction=null;
     let bookingSelection=null;
     let canonicalScopeUsed=false;
-    const currentQuoteRequest=COMMERCIAL_GOALS.includes(extracted.goal)&&!commercialPatch(extracted.explicitPatch||{});
-    const canonicalCorrection=!readOnlyQuestion&&!currentQuoteRequest&&activeProduct&&commercialPatch(intentPatch)
+    const allOptionPrices=extracted.offerScope==='ALL_OPTIONS';
+    const focusProductId=shopping.intent.optionPreference?.productId||extracted.selectedProductId||activeProduct?.product.productId||memory.productFocus||'';
+    const focusProduct=productsPacket.data.find(row=>row.product.productId===focusProductId);
+    const needsOption=COMMERCIAL_GOALS.includes(extracted.goal)&&!allOptionPrices&&!shopping.intent.optionPreference&&(!activeTransaction?.selection||activeProduct?.product.productId!==focusProductId)&&focusProduct?.facts?.options?.length>1;
+    const currentQuoteRequest=!allOptionPrices&&COMMERCIAL_GOALS.includes(extracted.goal)&&!commercialPatch(extracted.explicitPatch||{});
+    const canonicalCorrection=(!readOnlyQuestion||['dateConstraint','party','hotel','pickupPreference'].some(key=>Object.hasOwn(extracted.explicitPatch||{},key)))&&!currentQuoteRequest&&activeProduct&&commercialPatch(intentPatch)
       &&(!intentPatch.selectedProductId||intentPatch.selectedProductId===activeProduct.product.productId);
     if(!extracted.pendingAdultCount&&(pickupOnlyChange||currentQuoteRequest||canonicalCorrection)&&env.BOOKING_SESSIONS){
       const currentTx=activeTransaction;
@@ -338,13 +356,14 @@ export function createLoveTravelSalesOrchestrator({
       }
     }
     const offersRequested=COMMERCIAL_GOALS.includes(extracted.goal)||(['DISCOVER','GENERAL'].includes(extracted.goal)&&commercialPatch(intentPatch));
-    if(!extracted.pendingAdultCount&&!extracted.pendingChildAges&&!canonicalScopeUsed&&offersRequested&&exactDate(shopping.intent)&&partyKnown(shopping.intent)){
+    if(!extracted.pendingAdultCount&&!extracted.pendingChildAges&&(!canonicalScopeUsed||allOptionPrices)&&!needsOption&&offersRequested&&exactDate(shopping.intent)&&partyKnown(shopping.intent)){
       const productIds=canonicalToProviderProducts(
         productsPacket,
         shopping.intent.optionPreference?.productId||extracted.selectedProductId||memory.productFocus,
       );
       offersPacket=await broker.execute('searchOffers',{
-        intent:shopping.intent,
+        intent:allOptionPrices?{...shopping.intent,optionPreference:undefined}:shopping.intent,
+        ...(allOptionPrices?{allOptions:true}:{}),
         ...(productIds?{productIds}:{}),
         lang:'EN',
       },{principal:'ORCHESTRATOR'});
@@ -361,7 +380,13 @@ export function createLoveTravelSalesOrchestrator({
       shopping=next;
     }
 
-    const plan=extracted.correctionNeeded?{
+    const plan=needsOption&&exactDate(shopping.intent)&&partyKnown(shopping.intent)?composeCatalogOptions({locale,evidence,productId:focusProductId}):allOptionPrices&&offeredRows.some(row=>row.offer?.availability?.status==='AVAILABLE')?composeOptionPrices({locale,intent:shopping.intent,evidence,productFocus:memory.productFocus}):extracted.dateReminder&&!exactDate(shopping.intent)?{
+      reply:({ru:'Дата не сохранилась в параметрах этой поездки. Напишите её полностью, например 14 октября; остальные параметры сохранены.',en:'The date is missing from this trip’s saved parameters. Please give the full date; the other parameters are retained.',vi:'Ngày chưa được lưu cho chuyến đi này. Vui lòng ghi ngày và tháng đầy đủ; các thông tin khác vẫn được giữ.',zh:'此行程的日期尚未保存。请提供完整日期，其他参数仍保留。',ko:'이 여행의 날짜가 저장되지 않았습니다. 월과 날짜를 알려주세요. 다른 정보는 유지됩니다.'})[locale],
+      recommendedProductId:memory.productFocus||'',selectedOfferId:'',action:'ASK_DATE',nextQuestionCode:'DATE',evidenceRefs:[productsPacket.evidenceId],source:'booking-continuation',degraded:false,
+    }:extracted.dateClarificationNeeded?{
+      reply:({ru:'Уточните дату полностью, например 14 октября. Указанный день неоднозначен или отсутствует в календаре.',en:'Please give the full date, for example 14 October. That day is ambiguous or is not a valid calendar date.',vi:'Vui lòng ghi ngày và tháng đầy đủ. Ngày này chưa rõ hoặc không hợp lệ.',zh:'请提供完整日期。该日期不明确或不是有效的日历日期。',ko:'날짜와 월을 함께 알려주세요. 날짜가 모호하거나 유효하지 않습니다.'})[locale],
+      recommendedProductId:memory.productFocus||'',selectedOfferId:'',action:'ASK_DATE',nextQuestionCode:'DATE',evidenceRefs:[productsPacket.evidenceId],source:'booking-continuation',degraded:false,
+    }:extracted.correctionNeeded?{
       reply:({ru:'Что исправить: вариант экскурсии, дату или состав группы?',en:'What should I change: the tour option, date, or travellers?',vi:'Bạn muốn đổi lựa chọn tour, ngày hay số khách?',zh:'您想修改行程方案、日期还是出行人数？',ko:'투어 옵션, 날짜, 인원 중 무엇을 수정할까요?'})[locale],
       recommendedProductId:activeProduct?.product.productId||memory.productFocus||'',selectedOfferId:'',action:'GENERAL',nextQuestionCode:'CORRECTION',evidenceRefs:[productsPacket.evidenceId],source:'booking-continuation',degraded:false,
     }:extracted.pendingAdultCount&&!readOnlyQuestion?{
@@ -379,7 +404,7 @@ export function createLoveTravelSalesOrchestrator({
       locale,
       intent:shopping.intent,
       evidence,
-      productFocus:activeProduct?.product.productId||extracted.selectedProductId||memory.productFocus||'',
+      productFocus:readOnlyQuestion?(extracted.explicitPatch?.selectedProductId||activeProduct?.product.productId||shopping.intent.optionPreference?.productId||memory.productFocus||''):(activeProduct?.product.productId||extracted.selectedProductId||memory.productFocus||''),
       currentSelection:(bookingTransaction||activeTransaction)?.selection ? {date:(bookingTransaction||activeTransaction).selection.date,rateRef:(bookingTransaction||activeTransaction).selection.rateRef,participants:(bookingTransaction||activeTransaction).selection.participants.map(({role,count})=>({role,count}))} : null,
       goal:extracted.goal,
       history:conversation,
@@ -417,9 +442,10 @@ export function createLoveTravelSalesOrchestrator({
       }
     }
 
-    const nextMemory=appendTurns(memory,message,plan.reply);
+    const nextMemory=appendTurns(memory,message,plan.reply,now().toISOString());
     if(COMMERCIAL_GOALS.includes(extracted.goal))nextMemory.commercialGoal=extracted.goal;
-    if(extracted.selectedProductId)nextMemory.productFocus=extracted.selectedProductId;
+    if(extracted.selectedProductId&&!readOnlyQuestion)nextMemory.productFocus=extracted.selectedProductId;
+    else if(!nextMemory.productFocus&&plan.recommendedProductId)nextMemory.productFocus=plan.recommendedProductId;
     if(plan.nextQuestionCode||!readOnlyQuestion)nextMemory.nextQuestionCode=plan.nextQuestionCode||'';
     if(extracted.pendingPartyTotal)nextMemory.pendingPartyTotal=extracted.pendingPartyTotal;
     if(intentPatch.party?.adults!==undefined||intentPatch.party===null)delete nextMemory.pendingPartyTotal;
@@ -431,6 +457,11 @@ export function createLoveTravelSalesOrchestrator({
       nextMemory.nextQuestionCode='OPTION';
       nextMemory.optionList=productsPacket.data.find(row=>row.product.productId===plan.recommendedProductId)?.facts?.options.map(option=>({productId:plan.recommendedProductId,rateRef:option.rateRef}))||[];
     }
+    const displayedChoices=plan.choices||replyOptionChoices(plan.reply,productsPacket.data,plan.recommendedProductId||nextMemory.productFocus||'');
+    if(displayedChoices!==null&&displayedChoices!==undefined){nextMemory.optionList=displayedChoices;nextMemory.nextQuestionCode=displayedChoices.some(Boolean)?'OPTION':plan.nextQuestionCode||'';}
+    nextMemory.pendingQuestion=replyPendingQuestion(plan.reply,nextMemory.nextQuestionCode,nextMemory.productFocus);
+    if(extracted.offerScope==='ALL_OPTIONS'&&(!displayedChoices?.length||plan.source==='provider-option-prices'))nextMemory.offerScope='ALL_OPTIONS';
+    else if(displayedChoices?.length||extracted.patch.selectedOption)delete nextMemory.offerScope;
     await saveConversationMemory(env,sessionId,nextMemory);
 
     return {
