@@ -41,7 +41,7 @@ test('LoveTravel build publishes and loads branding after the runtime adapter', 
   assert.match(build,/copyFile\(resolve\(root, 'src\/lovetravel-brand\.css'/);
   assert.match(build,/copyFile\(resolve\(root, 'src\/lovetravel-brand\.js'/);
   const runtimeIndex=build.indexOf('<script src="/runtime-api.js');
-  const brandIndex=build.indexOf('<script src="/lovetravel-brand.js?v=20261009-mobile-nav-v1" defer></script>');
+  const brandIndex=build.indexOf('<script src="/lovetravel-brand.js?v=20261012-catalog-footer-v1" defer></script>');
   assert.ok(runtimeIndex >= 0 && brandIndex > runtimeIndex);
   assert.match(build,/data-project="LoveTravel"/);
 });

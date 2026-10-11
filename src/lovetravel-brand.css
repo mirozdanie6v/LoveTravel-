@@ -709,3 +709,25 @@ html.love-travel-branded #bookingScreen .panel{
 @media(max-width:340px){
   html.love-travel-branded .bottom-nav .nav-btn{font-size:10px!important}
 }
+
+/* Catalogue footer: symmetric insets across the complete native card. */
+html.love-travel-branded #catalogScreen .wide-card>.price-row{
+  grid-column:1/-1;
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;
+  gap:12px!important;
+  margin:0 16px 15px!important;
+  padding-top:12px!important;
+  align-items:center!important;
+  min-width:0;
+}
+html.love-travel-branded #catalogScreen .wide-card>.price-row .lt-card-action{
+  min-width:0;
+  min-height:44px;
+  width:auto;
+  margin:0!important;
+  justify-self:stretch;
+  white-space:normal;
+  text-align:center;
+  line-height:1.3;
+}
