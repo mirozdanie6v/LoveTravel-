@@ -77,3 +77,16 @@ test('all-option price reads resolve every rate under its own product without mu
  assert.ok(packet.data.every(row=>row.product.productId===rob.product.productId&&row.offer.participantMix.every(p=>p.role==='ADULT')));
  assert.equal(intent.optionPreference,undefined);
 });
+
+test('recommendations with a final question retain their explicit trip parameters instead of becoming factual queries',async()=>{
+ for(const [locale,message] of [['ru','Нас двое взрослых, хотим завтра на снорклинг с трансфером от Oceanus. Что посоветуете?'],['en','We are two adults and want snorkeling tomorrow with pickup from Oceanus. What do you recommend?']]){
+  const r=await extractConversationIntent({env:{AI:{run:async()=>{throw Error('controlled model unavailable');}}},message,locale,currentIntent:createInitialTravelIntent(locale),now});
+  assert.notEqual(r.goal,'DETAILS');assert.equal(r.patch.party.adults,2);assert.equal(r.patch.dateConstraint.exact,'2026-10-13');
+ }
+});
+test('a number from the last two-product list chooses a product and never silently picks a rate',async()=>{
+ const reply=products.map((row,i)=>(i+1)+'. '+row.product.title).join('\n');const choices=replyOptionChoices(reply,products);
+ assert.equal(choices[0].productId,rob.product.productId);
+ const r=await extractConversationIntent({message:'1 вариант',currentIntent:createInitialTravelIntent('ru'),products,locale:'ru',context:{nextQuestionCode:'OPTION',optionList:choices,commercialGoal:'BOOK'},now});
+ assert.equal(r.patch.selectedProductId,rob.product.productId);assert.equal(r.patch.selectedOption,undefined);
+});
