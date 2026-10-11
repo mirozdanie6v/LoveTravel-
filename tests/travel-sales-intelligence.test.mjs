@@ -950,3 +950,19 @@ for(const [locale,message] of [['ru','Еду с ребёнком'],['en','Travel
  const result=await extractConversationIntent({env:{AI:{run:async()=>({response:{intentPatch:{party:{adults:2,childrenAges:[7]},goal:'BOOK'}}})}},message,locale,currentIntent:createInitialTravelIntent(locale)});
  assert.equal(result.pendingChildAges,true);assert.equal(result.patch.party?.childrenAges,undefined);
 });
+
+
+for(const [words,count] of [['двух',2],['двоих',2],['троих',3],['четырёх',4]])test('A mixed party preserves the explicitly stated inflected adult count during model failure: '+words,async()=>{
+ const result=await extractConversationIntent({env:{AI:{run:async()=>{throw Error('controlled intent failure')}}},message:'Хочу забронировать Robinson завтра для '+words+' взрослых и ребёнка 7 лет.',locale:'ru',currentIntent:createInitialTravelIntent('ru')});
+ assert.equal(result.patch.party.adults,count);assert.deepEqual(result.patch.party.childrenAges,[7]);assert.equal(result.pendingAdultCount,false);
+});
+test('Unrecognized stated adults require clarification instead of a child-only offer',async()=>{
+ const result=await extractConversationIntent({env:{AI:{run:async()=>{throw Error('controlled intent failure')}}},message:'Хочу забронировать завтра для нескольких взрослых и ребёнка 7 лет.',locale:'ru',currentIntent:createInitialTravelIntent('ru')});
+ assert.equal(result.pendingAdultCount,true);assert.deepEqual(result.patch.party.childrenAges,[7]);assert.equal(result.patch.party.adults,undefined);
+});
+
+test('The model cannot invent a count for several adults, even from an existing party',async()=>{
+ const intent=mergeIntentPatch(createInitialTravelIntent('ru'),{party:{adults:8}});
+ const result=await extractConversationIntent({env:{AI:{run:async()=>({response:{intentPatch:{party:{adults:2,childrenAges:[7]},goal:'BOOK'}}})}},message:'Хочу забронировать для нескольких взрослых и ребёнка 7 лет.',locale:'ru',currentIntent:intent});
+ assert.equal(result.pendingAdultCount,true);assert.equal(result.patch.party.adults,undefined);
+});

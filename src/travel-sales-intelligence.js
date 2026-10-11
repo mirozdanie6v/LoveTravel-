@@ -312,12 +312,15 @@ function explicitAdultCount(message){
   }
   const phrases=[
     [2,/\b(?:two adults|two grown-ups)\b/i],
-    [2,/(?:двое|два)\s+взросл/iu],
+    [2,/(?:двое|два|двух|двоих|двум|двумя|пара|пары)\s+взросл/iu],
     [2,/hai\s+nguoi\s+lon/iu],
     [2,/(?:两|兩)\s*(?:位|个|個)?\s*成人/u],
     [2,/성인\s*두\s*명/u],
     [1,/\b(?:one adult|a single adult)\b/i],
-    [1,/(?:один|одна|одного|одно[йи])\s+взросл/iu],
+    [1,/(?:один|одна|одного|одно[йи]|одному|одним)\s+взросл/iu],
+    [3,/(?:три|трое|трех|троих|трем|тремя)\s+взросл/iu],
+    [4,/(?:четыре|четверо|четырех|четверых|четырем|четырьмя)\s+взросл/iu],
+    [5,/(?:пять|пятеро|пяти|пятерых)\s+взросл/iu],
     [1,/mot\s+nguoi\s+lon/iu],
     [1,/一\s*(?:位|个|個)?\s*成人/u],
     [1,/성인\s*한\s*명/u],
@@ -525,7 +528,7 @@ function currentMessagePatch(modelPatch,explicitPatch,message){
   // Old values survive in canonical state without being copied into new patches.
   if(result.party){
     const party={...result.party};
-    if(!/взросл|(?:нас|едем|еду|вдвоем|один|одна|двое|трое)|\badults?\b|\b(?:we|travellers?|travelers?|people)\b|nguoi|chung\s+toi|成人|我们|我們|성인|명/u.test(text))delete party.adults;
+    if(/несколь|\b(?:several|some)\b|vai\s+nguoi|几位|幾位|몇\s*명/u.test(text)||!/взросл|(?:нас|едем|еду|вдвоем|один|одна|двое|трое)|\badults?\b|\b(?:we|travellers?|travelers?|people)\b|nguoi|chung\s+toi|成人|我们|我們|성인|명/u.test(text))delete party.adults;
     if(!explicitPatch.party?.childrenAges)delete party.childrenAges;
     if(!/младен|груднич|\binfants?\b|\bbab(?:y|ies)\b|em\s+be|婴儿|嬰兒|아기|유아/u.test(text)&&explicitPatch.party?.infants===undefined)delete party.infants;
     if(Object.keys(party).length)result.party=party;else delete result.party;
@@ -643,6 +646,7 @@ export async function extractConversationIntent({
     patch:explicitPatch,
     explicitPatch,
     pendingChildAges:(explicitPatch.goal==='BOOK'||!/[?？]/u.test(message))&&!explicitNoChildren(message)&&!explicitPatch.party?.childrenAges?.length&&(/^(?:.*(?:едем|еду|нас|для|взросл|we|with|nguoi|cung|di|带|帶|成人|아이|어린이|성인)).*(?:с\s+ребен|и\s+ребен|с\s+детьми|children|child|kids|kid|tre\s+em|儿童|孩子|아이|어린이)/u.test(normalizedText(message))||/(?:아이|어린이).*함께/u.test(normalizedText(message))),
+    pendingAdultCount:explicitPatch.party?.adults===undefined&&(!(context.currentAdultCount>0||currentIntent?.party?.adults>0)||/несколь|\b(?:several|some)\b|vai\s+nguoi|几位|幾位|몇\s*명/u.test(normalizedText(message)))&&/взросл|\badults?\b|nguoi\s+lon|成人|성인/u.test(normalizedText(message)),
     selectedProductId:explicitPatch.selectedProductId??null,
     goal:explicitPatch.goal||'GENERAL',
     bookingRequested:Boolean(explicitPatch.bookingRequested),
@@ -705,6 +709,7 @@ export async function extractConversationIntent({
       patch,
       explicitPatch,
       pendingChildAges:Boolean(fallback.pendingChildAges&&!patch.party?.childrenAges?.length),
+      pendingAdultCount:Boolean(fallback.pendingAdultCount&&patch.party?.adults===undefined),
       selectedProductId:patch.selectedProductId??null,
       goal:patch.goal||'GENERAL',
       bookingRequested:Boolean(patch.bookingRequested),

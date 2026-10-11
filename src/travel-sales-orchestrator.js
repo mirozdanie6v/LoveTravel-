@@ -288,7 +288,7 @@ export function createLoveTravelSalesOrchestrator({
     const currentQuoteRequest=COMMERCIAL_GOALS.includes(extracted.goal)&&!commercialPatch(extracted.explicitPatch||{});
     const canonicalCorrection=!readOnlyQuestion&&!currentQuoteRequest&&activeProduct&&commercialPatch(intentPatch)
       &&(!intentPatch.selectedProductId||intentPatch.selectedProductId===activeProduct.product.productId);
-    if((pickupOnlyChange||currentQuoteRequest||canonicalCorrection)&&env.BOOKING_SESSIONS){
+    if(!extracted.pendingAdultCount&&(pickupOnlyChange||currentQuoteRequest||canonicalCorrection)&&env.BOOKING_SESSIONS){
       const currentTx=activeTransaction;
       if(currentTx.selection&&!['RESERVING','FAILED_NEEDS_RECONCILIATION','CONFIRMED','ABANDONED'].includes(currentTx.state)){
         const current=bokunSelectionFromCanonicalSelection(currentTx.selection);
@@ -338,7 +338,7 @@ export function createLoveTravelSalesOrchestrator({
       }
     }
     const offersRequested=COMMERCIAL_GOALS.includes(extracted.goal)||(['DISCOVER','GENERAL'].includes(extracted.goal)&&commercialPatch(intentPatch));
-    if(!extracted.pendingChildAges&&!canonicalScopeUsed&&offersRequested&&exactDate(shopping.intent)&&partyKnown(shopping.intent)){
+    if(!extracted.pendingAdultCount&&!extracted.pendingChildAges&&!canonicalScopeUsed&&offersRequested&&exactDate(shopping.intent)&&partyKnown(shopping.intent)){
       const productIds=canonicalToProviderProducts(
         productsPacket,
         shopping.intent.optionPreference?.productId||extracted.selectedProductId||memory.productFocus,
@@ -364,6 +364,8 @@ export function createLoveTravelSalesOrchestrator({
     const plan=extracted.correctionNeeded?{
       reply:({ru:'Что исправить: вариант экскурсии, дату или состав группы?',en:'What should I change: the tour option, date, or travellers?',vi:'Bạn muốn đổi lựa chọn tour, ngày hay số khách?',zh:'您想修改行程方案、日期还是出行人数？',ko:'투어 옵션, 날짜, 인원 중 무엇을 수정할까요?'})[locale],
       recommendedProductId:activeProduct?.product.productId||memory.productFocus||'',selectedOfferId:'',action:'GENERAL',nextQuestionCode:'CORRECTION',evidenceRefs:[productsPacket.evidenceId],source:'booking-continuation',degraded:false,
+    }:extracted.pendingAdultCount&&!readOnlyQuestion?{
+      reply:({ru:'Сколько взрослых будет в поездке?',en:'How many adults will be travelling?',vi:'Có bao nhiêu người lớn đi cùng?',zh:'有几位成人出行？',ko:'성인은 몇 명인가요?'})[locale],recommendedProductId:extracted.selectedProductId||memory.productFocus||'',selectedOfferId:'',action:'ASK_PARTY',nextQuestionCode:'PARTY',evidenceRefs:[productsPacket.evidenceId],source:'booking-continuation',degraded:false,
     }:extracted.pendingChildAges&&!readOnlyQuestion?{
       reply:({ru:'Укажите возраст каждого ребёнка: он нужен для правильной категории и цены.',en:'Please give each child’s age so I can select the correct ticket category and price.',vi:'Vui lòng cho biết độ tuổi của từng trẻ để chọn đúng loại vé và giá.',zh:'请告诉我每位儿童的年龄，以便选择正确的票种并计算价格。',ko:'올바른 티켓 종류와 가격을 확인할 수 있도록 어린이 각각의 나이를 알려주세요.'})[locale],
       recommendedProductId:extracted.selectedProductId||memory.productFocus||'',selectedOfferId:'',action:'ASK_PARTY',nextQuestionCode:'CHILD_AGES',evidenceRefs:[productsPacket.evidenceId],source:'booking-continuation',degraded:false,
