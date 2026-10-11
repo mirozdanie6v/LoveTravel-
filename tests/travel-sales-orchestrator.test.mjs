@@ -526,3 +526,12 @@ test('Form participant counts replace stale chat intent before interpreting anot
   assert.ok(h.modelInputs.some(text=>text.includes('CURRENT_INTENT=')&&text.includes('"adults":3')));
   assert.equal(h.commands.length,0);
 });
+
+
+test('Fresh server scope does not accept browser history from an older conversation',async()=>{
+ const inputMessages=[];const env={DB:fakeDb(),AI:{run:async(_model,input)=>{inputMessages.push(input.messages);throw Error('controlled unavailable')}}};
+ const orchestrator=createLoveTravelSalesOrchestrator({env,provider:fakeProvider(),now:()=>new Date('2026-10-06T12:00:00Z')});
+ const result=await orchestrator.turn({sessionId:'fresh-no-browser-history-1234567890',locale:'ru',message:'Хочу забронировать',history:[{role:'user',text:'Старый заказ: завтра двое взрослых и ребёнок 7 лет'},{role:'assistant',text:'Old transaction copied from browser'}]});
+ assert.ok(inputMessages.length);assert.ok(inputMessages.every(messages=>!messages.some(row=>/Старый заказ|Old transaction copied/.test(row.content))));
+ assert.equal(result.intent.party.adults,0);assert.deepEqual(result.intent.party.children,[]);assert.equal(result.intent.dateConstraint,undefined);
+});

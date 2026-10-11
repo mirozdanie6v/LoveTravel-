@@ -182,3 +182,12 @@ test('Structured snorkeling preferences cannot turn a verified recommendation in
   assert.ok(root.innerHTML.includes('data-tour-id="1287580"'));assert.equal(c.MaxTourAI._audit.retry(),null);
   assert.ok(!root.innerHTML.includes('data-ai-action="quick"'));
 });
+
+
+test('Missing conversation runtime cannot silently submit against an old persistent cookie',async()=>{
+ const {c,root}=harness();let requests=0;c.fetch=async()=>{requests++;throw Error('Must not send unscoped request')};
+ const runtime=c.LoveTravelConversation;vm.runInContext("globalThis.LoveTravelConversation=undefined",c);
+ await c.MaxTourAI._audit.handleText('Хочу забронировать',root);assert.equal(requests,0);assert.equal(c.MaxTourAI._audit.state().slots.children.length,0);
+ c.LoveTravelConversation=runtime;c.fetch=async()=>{requests++;return new Response(JSON.stringify({ok:true,reply:'На какую дату?',intent:{party:{adults:0,children:[],infants:0}},agent:{nextQuestionCode:'DATE'}}));};
+ await c.MaxTourAI._audit.handleText('Хочу забронировать',root);assert.equal(requests,1);assert.equal(c.MaxTourAI._audit.state().messages.at(-1).text,'На какую дату?');
+});

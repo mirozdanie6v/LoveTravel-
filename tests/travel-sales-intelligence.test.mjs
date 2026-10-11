@@ -657,7 +657,9 @@ test('sales model receives complete option catalogs and included text without th
   });
   assert.equal(result.source,'workers-ai-grounded-sales');
   const view=JSON.parse(prompt.split('VERIFIED_EVIDENCE=')[1]);
-  assert.deepEqual(view[0].data.map(row=>row.facts.options.length),[7,4]);
+  assert.deepEqual(view[0].data.map(row=>row.product.productId),['love-travel-robinson-island']);
+  assert.deepEqual(view[0].data.map(row=>row.facts.options.length),[7]);
+  assert.equal(packet.data[1].facts.options.length,4,'Other product stays available for comparisons; it is not sent for a Robinson-only question');
   assert.ok(!prompt.includes('ALTERNATIVE_STOPS_MUST_NOT_BE_JOINED'));
   assert.ok(prompt.includes('Air-conditioned vehicle, snorkeling equipment and lunch.'));
   assert.ok(view[0].data.every(row=>!row.facts.itinerary&&row.facts.optionItineraryStatus==='NOT_PROVIDED'));
@@ -912,4 +914,39 @@ test('Model line-break tags become plain paragraphs before validation and API de
   const result=validateGroundedSalesPlan(plan,[productEvidence(),offerEvidence()],'en','BOOK');
   assert.equal(result.reply,'The total is $98.\n\nOpen the form.');
   assert.throws(()=>validateGroundedSalesPlan({...plan,reply:'The total is $99.<br>Open the form.'},[productEvidence(),offerEvidence()],'en','BOOK'),/unverified monetary claim/);
+});
+
+
+for(const [locale,message] of [['ru','Хочу забронировать'],['en','I want to book'],['vi','Đặt tour'],['zh','我想预订'],['ko','예약하고 싶어요']]){
+ test('Generic booking cannot import model-invented party and date: '+locale,async()=>{
+  const result=await extractConversationIntent({env:{AI:{run:async()=>({response:{intentPatch:{goal:'BOOK',dateConstraint:{kind:'EXACT',exact:'2026-10-12'},party:{adults:2,childrenAges:[7],infants:0}}}})}},message,locale,currentIntent:createInitialTravelIntent(locale)});
+  assert.equal(result.patch.party,undefined);assert.equal(result.patch.dateConstraint,undefined);
+  const intent=mergeIntentPatch(createInitialTravelIntent(locale),result.patch);
+  assert.deepEqual(intent.party,{adults:0,children:[],infants:0});assert.equal(intent.dateConstraint,undefined);
+ });
+}
+test('Explicit adults do not authorize a copied child or infant',async()=>{
+ const result=await extractConversationIntent({env:{AI:{run:async()=>({response:{intentPatch:{goal:'BOOK',party:{adults:2,childrenAges:[7],infants:1}}}})}},message:'Хочу забронировать для двух взрослых',locale:'ru',currentIntent:createInitialTravelIntent('ru')});
+ assert.equal(result.patch.party.childrenAges,undefined);assert.equal(result.patch.party.infants,undefined);
+});
+test('No after a prepared quote asks what to correct without a selection or party mutation',async()=>{
+ const result=await extractConversationIntent({env:{AI:{run:async()=>{throw Error('Must not invoke model')}}},message:'Нет',locale:'ru',currentIntent:createInitialTravelIntent('ru'),context:{commercialGoal:'BOOK',currentProductId:'love-travel-robinson-island',nextQuestionCode:'OPEN_CONFIGURATOR'}});
+ assert.equal(result.correctionNeeded,true);assert.equal(result.patch.party,undefined);assert.equal(result.patch.dateConstraint,undefined);assert.equal(result.patch.selectedOption,undefined);
+});
+test('A factual follow-up still uses focused provider facts when the model fails',async()=>{
+ const packet=productEvidence();packet.data[0].facts={included:'Lunch\nAir-conditioned vehicle',localizedTitle:'Hòn Mun',options:[]};
+ packet.data.push({product:{productId:'love-travel-robinson-island',title:'Robinson'},facts:{included:'Unrelated provider item'}});
+ const result=await composeGroundedSalesPlan({env:{AI:{run:async()=>{throw Error('controlled model unavailable')}}},message:'А как выбрать из них, что входит',goal:'DETAILS',locale:'ru',productFocus:'love-travel-hon-mun',intent:createInitialTravelIntent('ru'),evidence:[packet]});
+ assert.equal(result.degraded,false);assert.equal(result.recommendedProductId,'love-travel-hon-mun');assert.match(result.reply,/Lunch/);assert.ok(!result.reply.includes('Unrelated provider item'));
+ assert.equal(result.selectedOfferId,'');assert.equal(result.action,'GENERAL');assert.ok(!result.reply.includes('не удалось'));
+});
+test('A focused option-list follow-up lists only the discussed product',async()=>{
+ const packet=await catalogEvidence();
+ const result=await composeGroundedSalesPlan({env:{},message:'Какие варианты есть?',locale:'ru',goal:'DETAILS',intent:createInitialTravelIntent('ru'),productFocus:'love-travel-robinson-island',evidence:[packet]});
+ assert.equal(result.recommendedProductId,'love-travel-robinson-island');assert.ok(!result.reply.includes('Hon Mun Marine Park Snorkeling and Nha Trang Island Tour'));
+});
+
+for(const [locale,message] of [['ru','Еду с ребёнком'],['en','Travelling with a child'],['vi','Đi cùng trẻ em'],['zh','带孩子出行'],['ko','어린이와 함께 여행합니다']])test('With-child shortcut asks age without inserting seven-year-old: '+locale,async()=>{
+ const result=await extractConversationIntent({env:{AI:{run:async()=>({response:{intentPatch:{party:{adults:2,childrenAges:[7]},goal:'BOOK'}}})}},message,locale,currentIntent:createInitialTravelIntent(locale)});
+ assert.equal(result.pendingChildAges,true);assert.equal(result.patch.party?.childrenAges,undefined);
 });
