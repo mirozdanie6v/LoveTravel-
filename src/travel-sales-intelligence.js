@@ -1022,7 +1022,7 @@ function preparedOfferReply(locale,row){
   return (copy[locale]||copy.ru).replace(/\{(\w+)\}/g,(_match,key)=>String(vars[key]??''));
 }
 
-function verifiedFactFallback({locale,intent,evidence,message,productFocus}){
+function verifiedFactFallback({locale,intent,evidence,message,productFocus,currentSelection}){
   const rows=allProductsFromEvidence(evidence);
   const focus=explicitProductId(message,rows)||intent?.optionPreference?.productId||productFocus;
   const row=rows.find(row=>row.product?.productId===focus)||(rows.length===1?rows[0]:null);
@@ -1041,12 +1041,19 @@ function verifiedFactFallback({locale,intent,evidence,message,productFocus}){
     ko:[title+' 설명에 포함된 항목:','각 옵션은 대안이며 한 여행의 모든 정차지가 아닙니다. 옵션별 상세 일정은 별도로 제공되지 않았습니다.','해변, 스노클링, 머드 배스 중 무엇을 선호하시나요?'],
   }[locale]||[];
   if(!copy.length)return null;
-  let reply=included?copy[0]+'\n'+included.split(/\n+/).map(line=>'- '+line.trim()).join('\n'):'';
-  if(optionAdviceQuestion(message))reply+=(reply?'\n\n':'')+copy[1]+'\n\n'+copy[2];
+  const terms={'lunch':{ru:'Обед',en:'Lunch',vi:'Bữa trưa',zh:'午餐',ko:'점심'},'air-conditioned vehicle':{ru:'Транспорт с кондиционером',en:'Air-conditioned vehicle',vi:'Xe có máy lạnh',zh:'空调交通工具',ko:'에어컨 차량'},'use of snorkeling equipment':{ru:'Использование снаряжения для снорклинга',en:'Use of snorkeling equipment',vi:'Sử dụng thiết bị lặn ống thở',zh:'使用浮潜设备',ko:'스노클링 장비 이용'}};
+  let reply=included?copy[0]+'\n'+included.split(/\n+/).map(line=>'- '+(terms[normalizedText(line)]?.[locale]||line.trim())).join('\n'):'';
+  if(optionAdviceQuestion(message)){
+    const labels={ru:['Сейчас выбран вариант: ','Морской парк','Грязевые ванны','Аквариум','Пляж','Какое направление вам интересно?'],en:['Currently selected: ','Marine park','Mud baths','Aquarium','Beach','Which destination interests you?'],vi:['Lựa chọn hiện tại: ','Công viên biển','Tắm bùn','Thủy cung','Bãi biển','Bạn quan tâm điểm đến nào?'],zh:['当前已选方案：','海洋公园','泥浴','水族馆','海滩','您对哪个目的地感兴趣？'],ko:['현재 선택: ','해양 공원','머드 배스','수족관','해변','어느 목적지에 관심이 있으신가요?']}[locale];
+    const options=arr(facts.options),active=options.find(option=>sameOptionRef(option.rateRef,currentSelection?.rateRef||intent?.optionPreference?.rateRef));
+    const types=[/marine park/iu,/mud bath/iu,/aquarium/iu,/beach/iu];
+    const guide=types.flatMap((pattern,index)=>{const option=options.find(option=>pattern.test(option.title));return option?['- '+labels[index+1]+': '+(option.localizedTitle||option.title)]:[];});
+    reply=(active?labels[0]+(active.localizedTitle||active.title)+'\n\n':'')+reply+(reply?'\n\n':'')+copy[1]+(guide.length?'\n\n'+guide.join('\n'):'')+'\n\n'+labels[5];
+  }
   return {reply,recommendedProductId:row.product.productId,selectedOfferId:'',action:'GENERAL',nextQuestionCode:'',evidenceRefs:evidence.filter(packet=>arr(packet.data).some(item=>item.product?.productId===row.product.productId)).map(packet=>packet.evidenceId),degraded:false};
 }
 
-export function deterministicSalesFallback({locale='ru',intent,evidence=[],goal='BOOK',message='',productFocus=''}={}){
+export function deterministicSalesFallback({locale='ru',intent,evidence=[],goal='BOOK',message='',productFocus='',currentSelection=null}={}){
   const commercial=COMMERCIAL_GOALS.includes(goal);
   const availableOffers=recommendationOffers(evidence,goal);
   const consultationOffers=['DISCOVER','GENERAL'].includes(goal)?availableOffers:[];
@@ -1054,7 +1061,7 @@ export function deterministicSalesFallback({locale='ru',intent,evidence=[],goal=
   if(commercial&&prepared?.option?.title&&prepared.readyToQuote!==false&&/^\d{4}-\d{2}-\d{2}$/.test(prepared.offer?.date||'')&&arr(prepared.offer?.participantMix).length&&prepared.offer?.price){
     return {reply:preparedOfferReply(locale,prepared),recommendedProductId:prepared.product?.productId||prepared.offer.productId,selectedOfferId:prepared.offer.offerId,action:'OFFER_READY',nextQuestionCode:'OPEN_CONFIGURATOR',evidenceRefs:evidence.map(item=>item.evidenceId)};
   }
-  const facts=!commercial?verifiedFactFallback({locale,intent,evidence,message,productFocus}):null;
+  const facts=!commercial?verifiedFactFallback({locale,intent,evidence,message,productFocus,currentSelection}):null;
   if(facts)return facts;
   if(!commercial&&!consultationOffers.length){
     return {reply:localized(locale,'unavailable'),recommendedProductId:'',selectedOfferId:'',action:'GENERAL',nextQuestionCode:'RETRY',evidenceRefs:evidence.map(item=>item.evidenceId),degraded:true};
@@ -1104,7 +1111,7 @@ export async function composeGroundedSalesPlan({
   goal='GENERAL',
   history=[],
 }={}){
-  const fallback=deterministicSalesFallback({locale,intent,evidence,goal,message,productFocus});
+  const fallback=deterministicSalesFallback({locale,intent,evidence,goal,message,productFocus,currentSelection});
   const requestedCatalogProduct=explicitProductId(message,allProductsFromEvidence(evidence))||intent?.optionPreference?.productId||productFocus;
   const catalogRows=catalogListQuestion(message)?allProductsFromEvidence(evidence).filter(row=>
     !requestedCatalogProduct||row.product?.productId===requestedCatalogProduct
@@ -1119,6 +1126,7 @@ export async function composeGroundedSalesPlan({
     },evidence,locale,'DETAILS');
     return {...plan,source:'provider-catalog-options',replyAttempts:0,replyFailureReasons:[]};
   }
+  if(optionAdviceQuestion(message)&&!fallback.degraded&&fallback.action==='GENERAL'){const {degraded,...answer}=fallback;return {...validateGroundedSalesPlan(answer,evidence,locale,'DETAILS'),source:'provider-option-guide',replyAttempts:0,replyFailureReasons:[]};}
   if(COMMERCIAL_GOALS.includes(goal)&&fallback.action==='OFFER_READY'&&fallback.nextQuestionCode==='OPEN_CONFIGURATOR'){
     return {...validateGroundedSalesPlan(fallback,evidence,locale,goal),source:'provider-exact-offer',replyAttempts:0,replyFailureReasons:[]};
   }

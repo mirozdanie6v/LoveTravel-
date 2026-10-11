@@ -936,8 +936,8 @@ test('No after a prepared quote asks what to correct without a selection or part
 test('A factual follow-up still uses focused provider facts when the model fails',async()=>{
  const packet=productEvidence();packet.data[0].facts={included:'Lunch\nAir-conditioned vehicle',localizedTitle:'Hòn Mun',options:[]};
  packet.data.push({product:{productId:'love-travel-robinson-island',title:'Robinson'},facts:{included:'Unrelated provider item'}});
- const result=await composeGroundedSalesPlan({env:{AI:{run:async()=>{throw Error('controlled model unavailable')}}},message:'А как выбрать из них, что входит',goal:'DETAILS',locale:'ru',productFocus:'love-travel-hon-mun',intent:createInitialTravelIntent('ru'),evidence:[packet]});
- assert.equal(result.degraded,false);assert.equal(result.recommendedProductId,'love-travel-hon-mun');assert.match(result.reply,/Lunch/);assert.ok(!result.reply.includes('Unrelated provider item'));
+ const result=await composeGroundedSalesPlan({env:{AI:{run:async()=>{throw Error('controlled model unavailable')}}},message:'Что входит в выбранную экскурсию?',goal:'DETAILS',locale:'ru',productFocus:'love-travel-hon-mun',intent:createInitialTravelIntent('ru'),evidence:[packet]});
+ assert.equal(result.degraded,false);assert.equal(result.recommendedProductId,'love-travel-hon-mun');assert.match(result.reply,/Обед/);assert.ok(!result.reply.includes('Unrelated provider item'));
  assert.equal(result.selectedOfferId,'');assert.equal(result.action,'GENERAL');assert.ok(!result.reply.includes('не удалось'));
 });
 test('A focused option-list follow-up lists only the discussed product',async()=>{
@@ -981,4 +981,12 @@ test('Provider caption cannot disguise a recommendation for a different known op
  products.data[0].facts={options:[{title:'Bai Tranh Beach',rateRef:ref('201')},{title:'Hon Tam Mud Bath',rateRef:ref('202')}]};
  const result=await composeGroundedSalesPlan({env:{AI:{run:async()=>({response:{reply:'Выбраны Hon Tam Mud Bath, 98 USD.',recommendedProductId:'love-travel-hon-mun',selectedOfferId:'offer-1',action:'RECOMMEND',nextQuestionCode:'',evidenceRefs:['cap-offers']}})}},message:'Что посоветуете?',locale:'ru',goal:'GENERAL',intent:createInitialTravelIntent('ru'),evidence:[products,offers]});
  assert.notEqual(result.source,'workers-ai-grounded-sales');assert.ok(!result.reply.includes('Выбраны Hon Tam'));
+});
+
+
+for(const locale of ['ru','en','vi','zh','ko'])test('Option advice shows canonical choice and catalog distinctions without another model round: '+locale,async()=>{
+ const packet=await catalogEvidence(),focus=packet.data[0].product.productId,selection={rateRef:packet.data[0].facts.options[1].rateRef};const before=JSON.stringify(selection);
+ const messages={ru:'А как выбрать из них, что входит',en:'How do I choose between them, what is included?',vi:'Chọn thế nào, bao gồm gì?',zh:'怎么选，包含什么？',ko:'어떻게 선택해야 하나요, 무엇이 포함되나요?'};
+ const result=await composeGroundedSalesPlan({env:{AI:{run:async()=>{throw Error('Must not need a model for verified option advice')}}},locale,message:messages[locale],goal:'DETAILS',intent:createInitialTravelIntent(locale),productFocus:focus,currentSelection:selection,evidence:[packet]});
+ assert.equal(result.source,'provider-option-guide');assert.equal(result.recommendedProductId,focus);assert.equal(result.selectedOfferId,'');assert.equal(JSON.stringify(selection),before);assert.ok(result.reply.includes(packet.data[0].facts.options[1].title));assert.match(result.reply,/Hon Tam Mud Bath/);assert.ok(!result.reply.includes(packet.data[1].product.title));assert.equal(result.degraded,undefined);
 });
