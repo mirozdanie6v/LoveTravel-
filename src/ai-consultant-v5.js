@@ -668,7 +668,6 @@
       try{input.focus({preventScroll:true});}catch{input.focus();}
       if(Number.isInteger(cursorStart)&&Number.isInteger(cursorEnd))input.setSelectionRange?.(cursorStart,cursorEnd);
     }
-    syncComposer(root);
     if (options.scrollToEnd) root.querySelector('.ai-msg:last-child')?.scrollIntoView?.({block:'start',behavior:'auto'});
     persist();
   }
@@ -712,34 +711,10 @@
     }
   }
 
-  let mountedRoot=null;
-  function syncComposer(root=mountedRoot){
-    const form=root?.querySelector?.('.ai-consultant-input');
-    const screen=root?.closest?.('#aiScreen') || document.querySelector?.('#aiScreen.active');
-    if(!form?.getBoundingClientRect || !screen?.classList?.contains('active'))return;
-    const phone=document.querySelector('.phone');const nav=document.querySelector('.bottom-nav');
-    if(!phone||!nav)return;
-    const viewport=globalThis.visualViewport;
-    const visibleBottom=(viewport?.offsetTop||0)+(viewport?.height||globalThis.innerHeight);
-    const bounds=phone.getBoundingClientRect(),navigation=nav.getBoundingClientRect();
-    const bottom=Math.min(visibleBottom,navigation.top>0?navigation.top:visibleBottom);
-    const left=Math.max(0,bounds.left)+12;
-    form.style.setProperty('--ai-composer-left',left+'px');
-    form.style.setProperty('--ai-composer-width',Math.max(0,Math.min(bounds.right,globalThis.innerWidth)-left-12)+'px');
-    form.style.setProperty('--ai-composer-top',Math.max(viewport?.offsetTop||0,bottom-form.getBoundingClientRect().height-6)+'px');
-  }
-  globalThis.addEventListener?.('resize',()=>syncComposer(),{passive:true});
-  globalThis.addEventListener?.('scroll',()=>syncComposer(),{passive:true});
-  globalThis.visualViewport?.addEventListener('resize',()=>syncComposer(),{passive:true});
-  globalThis.visualViewport?.addEventListener('scroll',()=>syncComposer(),{passive:true});
-  document.addEventListener?.('focusin',()=>syncComposer());
-
   function mount(root) {
-    mountedRoot=root;
     if (!root) return;
     // Catalog/locale refreshes can remount repeatedly; keep the active form DOM.
-    if(root.querySelector('[data-ai-form="chat"]')?.tagName==='FORM')syncComposer(root);
-    else render(root);
+    if(root.querySelector('[data-ai-form="chat"]')?.tagName!=='FORM')render(root);
     root.onclick = event => handleClick(root, event);
     root.onkeydown = event => {
       const textarea = event.target.closest('textarea[name="message"]');
