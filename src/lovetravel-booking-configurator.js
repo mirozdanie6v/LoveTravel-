@@ -1,7 +1,11 @@
 (() => {
   'use strict';
 
-  const conversationFetch=(...args)=>globalThis.LoveTravelConversation?.request ? globalThis.LoveTravelConversation.request(...args) : fetch(...args);
+  const conversationFetch=(...args)=>{
+    const runtime=globalThis.LoveTravelConversation;
+    if(!runtime?.request)throw new Error('conversation_runtime_unavailable');
+    return runtime.request(...args);
+  };
   let conversationEpoch=0;
   globalThis.addEventListener?.('lovetravel:conversation-reset',()=>{
     conversationEpoch++;requestSeq++;closeSheet();activeProductId=null;transactionSnapshot=null;

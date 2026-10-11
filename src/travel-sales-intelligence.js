@@ -387,9 +387,13 @@ function optionName(value){
   return normalizedText(value).replace(/\band\b/gu,' ').replace(/[^\p{L}\p{N}]+/gu,' ').replace(/\s+/gu,' ').trim();
 }
 
+function optionAdviceQuestion(message){
+  return /как.{0,25}выбрать|что.{0,25}(?:выбрать|из этого|из них)|how.{0,25}(?:choose|pick)|which.{0,25}(?:choose|pick)|chon.{0,20}(?:nao|the nao)|怎么选|怎麼選|如何选|어떻게.{0,15}(?:선택|고르)/iu.test(normalizedText(message));
+}
+
 function catalogListQuestion(message){
   const text=normalizedText(message);
-  if(/\bprice\b|\bcost\b|how much|стоим|цен[ауы]|\bgia\b|价格|价钱|가격|요금/iu.test(text)) return false;
+  if(optionAdviceQuestion(message)||/\bprice\b|\bcost\b|how much|стоим|цен[ауы]|\bgia\b|价格|价钱|가격|요금/iu.test(text)) return false;
   return /вариант|options?|variations?|lua chon|phuong an|选项|選項|옵션/iu.test(text)
     && /все|перечисл|какие|\ball\b|\blist\b|\bwhat\b|\bwhich\b|tat ca|liet ke|nhung|所有|哪些|全部|어떤|모든|목록/iu.test(text);
 }
@@ -446,6 +450,7 @@ export function explicitChildAges(message,context={}) {
   }
   const ages=[];
   const patterns=[
+    /(?:child|kid)\s+aged?\s+(\d{1,2})/gu,
     /(?:ребен(?:ок|ка|ку|ком)?|дети|детей|child|kid|tre\s*(?:em)?|children|아이|어린이)[^.!?;\n\d]{0,20}(\d{1,2})\s*(?:лет|года?|years?\s*old|years?|tuoi|岁|歲|세)/gu,
     /(\d{1,2})\s*(?:-?year-?old|岁|歲|세)[^.!?;\n\d]{0,12}(?:child|kid|儿童|孩子|兒童|아이|어린이)/gu,
   ];
@@ -498,7 +503,7 @@ export function deterministicExplicitIntentPatch({
   if(selectedProductId) patch.selectedProductId=selectedProductId;
   if(option.option) patch.selectedOption=option.option;
 
-  const informationGoal=catalogListQuestion(message)||option.ambiguous?'DETAILS':/compare|difference|сравн|чем.{0,30}отлич|so\s*sanh|khac\s*nhau|区别|比較|비교|차이/iu.test(text)?'COMPARE'
+  const informationGoal=catalogListQuestion(message)||optionAdviceQuestion(message)||option.ambiguous?'DETAILS':/compare|difference|сравн|чем.{0,30}отлич|so\s*sanh|khac\s*nhau|区别|比較|비교|차이/iu.test(text)?'COMPARE'
     :/what.{0,30}(?:included|include|itinerary)|что.{0,30}(?:входит|включено|взять)|услови.{0,30}(?:отмен|брони)|cancellation|booking.{0,20}(?:conditions|policy)|[dđ]ieu\s*kien.{0,20}[dđ]at|chinh\s*sach.{0,20}huy|包含|取消.{0,15}(?:政策|条件)|예약.{0,15}조건|취소.{0,15}(?:규정|정책)/iu.test(text)?'DETAILS':null;
   if(informationGoal){patch.goal=informationGoal;patch.bookingRequested=false;}
   else if(hotel&&pickupChangeRequested(message)){patch.goal='GENERAL';patch.bookingRequested=false;}
@@ -512,6 +517,21 @@ export function deterministicExplicitIntentPatch({
     patch.bookingRequested=true;
   }
   return validateIntentPatch(patch);
+}
+
+function currentMessagePatch(modelPatch,explicitPatch,message){
+  const result={...modelPatch},text=normalizedText(message);
+  // A model patch is a proposed change, not trusted evidence of a traveller.
+  // Old values survive in canonical state without being copied into new patches.
+  if(result.party){
+    const party={...result.party};
+    if(!/взросл|(?:нас|едем|еду|вдвоем|один|одна|двое|трое)|\badults?\b|\b(?:we|travellers?|travelers?|people)\b|nguoi|chung\s+toi|成人|我们|我們|성인|명/u.test(text))delete party.adults;
+    if(!explicitPatch.party?.childrenAges)delete party.childrenAges;
+    if(!/младен|груднич|\binfants?\b|\bbab(?:y|ies)\b|em\s+be|婴儿|嬰兒|아기|유아/u.test(text)&&explicitPatch.party?.infants===undefined)delete party.infants;
+    if(Object.keys(party).length)result.party=party;else delete result.party;
+  }else if(result.party===null&&!explicitPatch.party)delete result.party;
+  if(result.dateConstraint!==undefined&&!explicitPatch.dateConstraint&&!/\d|дат|сегодня|завтра|недел|понедельник|вторник|сред|четверг|пятниц|суббот|воскрес|\b(?:date|today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday|week)\b|ngay|hom|thu|日|月|今天|明天|요일|오늘|내일/u.test(text))delete result.dateConstraint;
+  return result;
 }
 
 function mergeExplicitOverModel(modelPatch,explicitPatch,message=''){
@@ -557,6 +577,7 @@ function shortBookingAnswer(message,intent,context,products){
     const adults=explicit.party?.adults??context.pendingPartyTotal??context.currentAdultCount??intent.party?.adults;
     return {patch:{party:{...(Number.isInteger(adults)?{adults}:{}),childrenAges:[],infants:0},goal,bookingRequested:false},handled:true};
   }
+  if(/^(?:нет|не так|no|nope|khong|不|不是|아니요|아니)$/u.test(text))return {patch:{goal:'DETAILS',bookingRequested:false},correctionNeeded:true,handled:true};
   const affirmative=/^(?:да|yes|okay|ok|dong\s+y|vang|是|好的|네|예)$/u.test(text);
   if(affirmative&&(intent.optionPreference||context.currentProductId)){
     return {patch:{goal,bookingRequested:false},handled:true};
@@ -616,11 +637,12 @@ export async function extractConversationIntent({
   const continuation=shortBookingAnswer(message,currentIntent||createInitialTravelIntent(locale),{...context,now},products);
   if(continuation)explicitPatch=validateIntentPatch({...explicitPatch,...continuation.patch});
   const fallback={
+    ...(continuation?.correctionNeeded?{correctionNeeded:true}:{}),
     ...(continuation?.pendingPartyTotal?{pendingPartyTotal:continuation.pendingPartyTotal}:{}),
     ...(continuation?.optionChoiceUnavailable?{optionChoiceUnavailable:true}:{}),
     patch:explicitPatch,
     explicitPatch,
-    pendingChildAges:(explicitPatch.goal==='BOOK'||!/[?？]/u.test(message))&&!explicitNoChildren(message)&&!explicitPatch.party?.childrenAges?.length&&/^(?:.*(?:едем|еду|нас|для|взросл|we|with|nguoi|成人|성인)).*(?:с\s+ребен|и\s+ребен|с\s+детьми|children|child|kids|kid|tre\s+em|儿童|孩子|아이|어린이)/u.test(normalizedText(message)),
+    pendingChildAges:(explicitPatch.goal==='BOOK'||!/[?？]/u.test(message))&&!explicitNoChildren(message)&&!explicitPatch.party?.childrenAges?.length&&(/^(?:.*(?:едем|еду|нас|для|взросл|we|with|nguoi|cung|di|带|帶|成人|아이|어린이|성인)).*(?:с\s+ребен|и\s+ребен|с\s+детьми|children|child|kids|kid|tre\s+em|儿童|孩子|아이|어린이)/u.test(normalizedText(message))||/(?:아이|어린이).*함께/u.test(normalizedText(message))),
     selectedProductId:explicitPatch.selectedProductId??null,
     goal:explicitPatch.goal||'GENERAL',
     bookingRequested:Boolean(explicitPatch.bookingRequested),
@@ -677,7 +699,7 @@ export async function extractConversationIntent({
     const parsed=parseJson(responseText(result));
     const rawPatch=isObject(parsed?.intentPatch)?parsed.intentPatch:{};
     optionAttempted=rawPatch.selectedOption!==undefined&&rawPatch.selectedOption!==null;
-    const modelPatch=verifiedOptionPatch(validateIntentPatch(rawPatch),products);
+    const modelPatch=verifiedOptionPatch(currentMessagePatch(validateIntentPatch(rawPatch),explicitPatch,message),products);
     const patch=verifiedOptionPatch(mergeExplicitOverModel(modelPatch,explicitPatch,message),products);
     return {
       patch,
@@ -995,7 +1017,31 @@ function preparedOfferReply(locale,row){
   return (copy[locale]||copy.ru).replace(/\{(\w+)\}/g,(_match,key)=>String(vars[key]??''));
 }
 
-export function deterministicSalesFallback({locale='ru',intent,evidence=[],goal='BOOK'}={}){
+function verifiedFactFallback({locale,intent,evidence,message,productFocus}){
+  const rows=allProductsFromEvidence(evidence);
+  const focus=explicitProductId(message,rows)||intent?.optionPreference?.productId||productFocus;
+  const row=rows.find(row=>row.product?.productId===focus)||(rows.length===1?rows[0]:null);
+  if(!row?.facts)return null;
+  const question=normalizedText(message);
+  const includedQuestion=/входит|включ|includ|bao gom|包含|包括|포함/iu.test(question);
+  if(!includedQuestion&&!optionAdviceQuestion(message))return null;
+  const facts=row.facts,title=facts.localizedTitle||row.product.title;
+  const included=String(descriptiveFacts(facts).included||'').replace(/<br\s*\/?>/gi,'\n').replace(/<[^>]*>/g,'').trim();
+  if(!included&&!optionAdviceQuestion(message))return null;
+  const copy={
+    ru:['В описании экскурсии «'+title+'» указано:','Это альтернативные варианты, а не все остановки одной поездки. Подробная программа отдельно для каждого варианта не указана.','Какой отдых вам ближе: пляж, снорклинг или грязевые ванны?'],
+    en:['The description of '+title+' lists:','These are alternative options, not all stops on one trip. Separate detailed itineraries for each option are not provided.','Would you prefer beach time, snorkeling, or mud baths?'],
+    vi:['Mô tả tour '+title+' ghi:','Đây là các lựa chọn thay thế, không phải tất cả điểm dừng trong một chuyến. Không có lịch trình chi tiết riêng cho từng lựa chọn.','Bạn thích bãi biển, lặn ngắm san hô hay tắm bùn?'],
+    zh:[title+'的行程说明列出：','这些是可选方案，并非一次行程中的全部停靠点。没有提供每个方案的独立详细路线。','您更喜欢海滩、浮潜还是泥浴？'],
+    ko:[title+' 설명에 포함된 항목:','각 옵션은 대안이며 한 여행의 모든 정차지가 아닙니다. 옵션별 상세 일정은 별도로 제공되지 않았습니다.','해변, 스노클링, 머드 배스 중 무엇을 선호하시나요?'],
+  }[locale]||[];
+  if(!copy.length)return null;
+  let reply=included?copy[0]+'\n'+included.split(/\n+/).map(line=>'- '+line.trim()).join('\n'):'';
+  if(optionAdviceQuestion(message))reply+=(reply?'\n\n':'')+copy[1]+'\n\n'+copy[2];
+  return {reply,recommendedProductId:row.product.productId,selectedOfferId:'',action:'GENERAL',nextQuestionCode:'',evidenceRefs:evidence.filter(packet=>arr(packet.data).some(item=>item.product?.productId===row.product.productId)).map(packet=>packet.evidenceId),degraded:false};
+}
+
+export function deterministicSalesFallback({locale='ru',intent,evidence=[],goal='BOOK',message='',productFocus=''}={}){
   const commercial=COMMERCIAL_GOALS.includes(goal);
   const availableOffers=recommendationOffers(evidence,goal);
   const consultationOffers=['DISCOVER','GENERAL'].includes(goal)?availableOffers:[];
@@ -1003,6 +1049,8 @@ export function deterministicSalesFallback({locale='ru',intent,evidence=[],goal=
   if(commercial&&prepared?.option?.title&&prepared.readyToQuote!==false&&/^\d{4}-\d{2}-\d{2}$/.test(prepared.offer?.date||'')&&arr(prepared.offer?.participantMix).length&&prepared.offer?.price){
     return {reply:preparedOfferReply(locale,prepared),recommendedProductId:prepared.product?.productId||prepared.offer.productId,selectedOfferId:prepared.offer.offerId,action:'OFFER_READY',nextQuestionCode:'OPEN_CONFIGURATOR',evidenceRefs:evidence.map(item=>item.evidenceId)};
   }
+  const facts=!commercial?verifiedFactFallback({locale,intent,evidence,message,productFocus}):null;
+  if(facts)return facts;
   if(!commercial&&!consultationOffers.length){
     return {reply:localized(locale,'unavailable'),recommendedProductId:'',selectedOfferId:'',action:'GENERAL',nextQuestionCode:'RETRY',evidenceRefs:evidence.map(item=>item.evidenceId),degraded:true};
   }
@@ -1046,12 +1094,13 @@ export async function composeGroundedSalesPlan({
   locale='ru',
   intent,
   currentSelection=null,
+  productFocus='',
   evidence=[],
   goal='GENERAL',
   history=[],
 }={}){
-  const fallback=deterministicSalesFallback({locale,intent,evidence,goal});
-  const requestedCatalogProduct=explicitProductId(message,allProductsFromEvidence(evidence));
+  const fallback=deterministicSalesFallback({locale,intent,evidence,goal,message,productFocus});
+  const requestedCatalogProduct=explicitProductId(message,allProductsFromEvidence(evidence))||intent?.optionPreference?.productId||productFocus;
   const catalogRows=catalogListQuestion(message)?allProductsFromEvidence(evidence).filter(row=>
     !requestedCatalogProduct||row.product?.productId===requestedCatalogProduct
   ):[];
@@ -1078,7 +1127,7 @@ export async function composeGroundedSalesPlan({
     source:packet.source,
     authority:packet.authority,
     capability:packet.capability,
-    data:modelEvidenceData(packet),
+    data:modelEvidenceData(requestedCatalogProduct&&['DETAILS','PICKUP'].includes(goal)&&['searchProducts','compareProducts'].includes(packet.capability)?{...packet,data:arr(packet.data).filter(row=>row.product?.productId===requestedCatalogProduct)}:packet),
   }));
   const system=[
     'You are Sales Intelligence for Nha Trang Love Travel.',

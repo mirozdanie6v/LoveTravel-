@@ -115,6 +115,20 @@ async function runMobileChatUx(){
         assert.ok(conversationHeaders[0],'Locale wrapper lost the conversation header: '+row.locale);
         assert.equal(conversationHeaders[1],conversationHeaders[0]);
         const previousTx=await (await context.request.get(base+'/api/travel-commerce/transaction',{headers:{'x-lt-conversation-id':conversationHeaders[0]}})).json();
+        // A different empty transaction is insufficient: first prepare a real
+        // canonical selection containing a child under the old conversation.
+        if(process.argv.includes('--live')){
+          const packet=await (await context.request.get(base+'/api/bokun/domain?locale=en')).json();
+          const domain=packet.domains.find(d=>String(d.experience.id)==='1287578');
+          assert.ok(domain);
+          const slot=domain.availabilitySlots.find(s=>!s.soldOut&&!s.unavailable&&s.priceQuotesByRate?.length);
+          const adult=domain.participants.find(c=>c.ticketCategory==='ADULT'),child=domain.participants.find(c=>c.ticketCategory==='CHILD');
+          assert.ok(slot&&adult&&child);
+          const response=await context.request.post(base+'/api/travel-commerce/transaction',{headers:{'x-lt-conversation-id':conversationHeaders[0]},data:{action:'SYNC_SELECTION',expectedRevision:previousTx.transaction.revision,selection:{productId:'1287578',date:slot.date,rateId:String(slot.priceQuotesByRate[0].rateId),startTimeId:String(slot.startTimeId),slotId:String(slot.id),participants:{[adult.id]:2,[child.id]:1},pickup:{mode:'MEET_ON_LOCATION'},dropoff:{mode:'NO_DROPOFF'}}}});
+          const seeded=await response.json();assert.ok(seeded.ok,JSON.stringify(seeded));
+          assert.ok(seeded.transaction.selection.participants.some(p=>p.role==='CHILD'&&p.count===1));
+          assert.equal(seeded.providerBooking||null,null);
+        }
         await page.locator('#aiScreen [data-ai-action=clear]').click();
         await field.fill(row.question);await field.press('Enter');
         await page.waitForFunction(()=>document.querySelector('#aiScreen .ai-msg.bot:last-child')?.textContent.includes('New conversation.'));

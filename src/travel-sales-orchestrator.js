@@ -216,7 +216,8 @@ export function createLoveTravelSalesOrchestrator({
     await ensureTravelCommerceRuntimeSchema(env.DB);
     let shopping=await ensureShopping(store,sessionId,locale,now());
     const memory=await loadConversationMemory(env,sessionId);
-    const conversation=memory.turns?.length?memory.turns:history;
+    // Browser history may belong to a cleared conversation. Only this server scope owns memory.
+    const conversation=memory.turns||[];
 
     const date=exactDate(shopping.intent);
     const productsPacket=await broker.execute('searchProducts',{
@@ -360,7 +361,10 @@ export function createLoveTravelSalesOrchestrator({
       shopping=next;
     }
 
-    const plan=extracted.pendingChildAges&&!readOnlyQuestion?{
+    const plan=extracted.correctionNeeded?{
+      reply:({ru:'Что исправить: вариант экскурсии, дату или состав группы?',en:'What should I change: the tour option, date, or travellers?',vi:'Bạn muốn đổi lựa chọn tour, ngày hay số khách?',zh:'您想修改行程方案、日期还是出行人数？',ko:'투어 옵션, 날짜, 인원 중 무엇을 수정할까요?'})[locale],
+      recommendedProductId:activeProduct?.product.productId||memory.productFocus||'',selectedOfferId:'',action:'GENERAL',nextQuestionCode:'CORRECTION',evidenceRefs:[productsPacket.evidenceId],source:'booking-continuation',degraded:false,
+    }:extracted.pendingChildAges&&!readOnlyQuestion?{
       reply:({ru:'Укажите возраст каждого ребёнка: он нужен для правильной категории и цены.',en:'Please give each child’s age so I can select the correct ticket category and price.',vi:'Vui lòng cho biết độ tuổi của từng trẻ để chọn đúng loại vé và giá.',zh:'请告诉我每位儿童的年龄，以便选择正确的票种并计算价格。',ko:'올바른 티켓 종류와 가격을 확인할 수 있도록 어린이 각각의 나이를 알려주세요.'})[locale],
       recommendedProductId:extracted.selectedProductId||memory.productFocus||'',selectedOfferId:'',action:'ASK_PARTY',nextQuestionCode:'CHILD_AGES',evidenceRefs:[productsPacket.evidenceId],source:'booking-continuation',degraded:false,
     }:extracted.optionChoiceUnavailable?{
@@ -373,6 +377,7 @@ export function createLoveTravelSalesOrchestrator({
       locale,
       intent:shopping.intent,
       evidence,
+      productFocus:activeProduct?.product.productId||extracted.selectedProductId||memory.productFocus||'',
       currentSelection:(bookingTransaction||activeTransaction)?.selection ? {date:(bookingTransaction||activeTransaction).selection.date,rateRef:(bookingTransaction||activeTransaction).selection.rateRef,participants:(bookingTransaction||activeTransaction).selection.participants.map(({role,count})=>({role,count}))} : null,
       goal:extracted.goal,
       history:conversation,

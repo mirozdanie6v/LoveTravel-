@@ -94,3 +94,18 @@ for(const row of cases){
  report.cases.push({locale:'ru',source:'existing UI selection with one adult and one child, then explicit child removal',steps,providerBooking:null});
  await writeFile(folder+'/report.json',JSON.stringify(report,null,2));
 }
+
+
+// Mirrors the customer's fresh-looking chat after Clear, while deliberately
+// retaining an old cookie and polluted browser history. Never reserve.
+{
+ const conversationId=crypto.randomUUID();
+ const response=await fetch(base+'/api/ai/chat',{method:'POST',headers:{'content-type':'application/json','x-max-tour-locale':'ru','x-lt-conversation-id':conversationId,cookie:'lt_sales_sid=old-customer-scope-1234567890'},body:JSON.stringify({locale:'ru',message:'Хочу забронировать',history:[{role:'user',text:'Завтра, двое взрослых и ребёнок 7 лет. Robinson и морской парк Hon Mun.'},{role:'assistant',text:'Дата: '+tomorrow+'. Взрослые: 2; дети: 1. Итого 175 USD.'}]}),signal:AbortSignal.timeout(45000)});
+ const answer=await response.json();assert.ok(response.ok&&answer.ok&&!answer.degraded,JSON.stringify(answer));
+ assert.equal(answer.shoppingSession.id,'shopping-'+conversationId);
+ assert.equal(answer.intent.party.adults,0);assert.deepEqual(answer.intent.party.children,[]);assert.equal(answer.intent.dateConstraint,undefined);
+ assert.equal(answer.bookingSelection,null);assert.equal(answer.agent.mutationExecuted,false);
+ assert.ok(['ASK_DATE','ASK_PARTY','ASK_PREFERENCE'].includes(answer.agent.action));
+ const clean={source:'fresh conversation with old cookie and deliberately polluted browser history',reply:answer.reply,party:answer.intent.party,selection:answer.bookingSelection,action:answer.agent.action};report.cases.push(clean);console.log(JSON.stringify(clean));
+ await writeFile(folder+'/report.json',JSON.stringify(report,null,2));
+}
