@@ -43,7 +43,7 @@ async function runMobileChatUx(){
             mutations.push({path:url.pathname,action});return route.abort();
           }
         }
-        if(url.pathname==='/api/ai/chat'){conversationHeaders.push(request.headers()['x-lt-conversation-id']);return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({ok:true,reply:replies[chatIndex++]||'New conversation.',source:'workers-ai-grounded-sales',degraded:false})});}
+        if(url.pathname==='/api/ai/chat'){conversationHeaders.push(request.headers()['x-lt-conversation-id']);return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({ok:true,reply:replies[chatIndex++]||'New conversation.',source:'workers-ai-grounded-sales',degraded:false,tourId:'1287578'})});}
         if(!live&&!request.url().startsWith(base))return route.fulfill({status:200,contentType:'text/plain',body:''});
         return route.continue();
       });
@@ -54,6 +54,7 @@ async function runMobileChatUx(){
         await page.locator('#homeScreen [data-lt-action="ai"]').click({timeout:30000});
         const field=page.locator('#aiScreen.active textarea[name="message"]');
         await field.waitFor({state:'visible'});
+        await page.waitForFunction(()=>{try{return TOURS.some(tour=>String(tour.id)==='1287578');}catch{return false;}},{},{timeout:30000});
         for(let index=0;index<2;index++){
           await field.fill(row.question);
           // Exercise the same refresh path used by delayed bootstrap/catalog reads.
@@ -77,6 +78,7 @@ async function runMobileChatUx(){
             inputPosition:getComputedStyle(form).position,inputFont:getComputedStyle(form.querySelector('textarea')).fontSize,
             foreground:getComputedStyle(user).color,background:getComputedStyle(user).backgroundColor,author:getComputedStyle(author).color};
         });
+        await page.locator('#aiScreen .ai-consultant-input').evaluate(node=>node.scrollIntoView({block:'center',behavior:'instant'}));
         const value=await metrics(),ratio=contrast(value.foreground,value.background),authorRatio=contrast(value.author,value.background);
         const background=value.background.match(/[\d.]+/g).map(Number);
         assert.ok(background.length===3||background[3]===1);
@@ -85,7 +87,8 @@ async function runMobileChatUx(){
         assert.ok(value.scrollHeight<=value.clientHeight+2,'Message history has its own viewport: '+row.locale);
         assert.ok(value.scrollWidth<=value.clientWidth+1,'Horizontal chat overflow: '+row.locale);
         assert.equal(value.overflowY,'visible');
-        assert.equal(value.inputPosition,'fixed');
+        assert.equal(value.inputPosition,'relative','The composer must remain in the page flow');
+        assert.ok(value.form.top>=value.messages.bottom-1,'Composer covers conversation content');
         assert.ok(parseFloat(value.inputFont)>=16);
         await page.locator('#aiScreen .ai-msg.bot').nth(1).evaluate(node=>node.scrollIntoView({block:'start',behavior:'instant'}));
         const outer=page.locator('.content'),before=await outer.evaluate(node=>node.scrollTop);
@@ -97,14 +100,32 @@ async function runMobileChatUx(){
         const tail=page.locator('#aiScreen .ai-msg.bot:last-child .ai-msg-text p').last();
         await tail.evaluate(node=>node.scrollIntoView({block:'center',behavior:'instant'}));
         const tailBox=await tail.boundingBox(),nav=(await metrics()).nav;
-        assert.ok(tailBox.y+tailBox.height<=(await metrics()).form.top+1,'Composer hides the reply tail');
+        assert.ok(tailBox.y+tailBox.height<=nav.top+1,'Navigation hides the reply tail');
+        assert.ok((await metrics()).form.top>=tailBox.y+tailBox.height-1,'Composer overlays the reply tail');
         await page.screenshot({path:folder+'/'+row.locale+'-'+row.width+'x'+row.height+'-reply.png'});
         await page.locator('#aiScreen .ai-msg.user').last().evaluate(node=>node.scrollIntoView({block:'center',behavior:'instant'}));
         await page.screenshot({path:folder+'/'+row.locale+'-'+row.width+'x'+row.height+'-user.png'});
-        const result={locale:row.locale,width:row.width,height:row.height,contrast:Number(ratio.toFixed(2)),authorContrast:Number(authorRatio.toFixed(2)),inputOverlaps:false,pageScroll:true,nestedChatScroll:false,paragraphs:true,listItems:3,automaticKeyboardFocus:false};
+        const card=page.locator('#aiScreen .ai-recommendations > .tour-card.ai-catalog-card-v7').first();
+        await card.waitFor({state:'visible',timeout:30000});
+        const book=page.locator('#aiScreen .ai-recommendations > [data-ai-action="book-tour"][data-id="1287578"]');
+        await book.scrollIntoViewIfNeeded();
+        const cardView=await page.evaluate(()=>{
+          const card=document.querySelector('#aiScreen .ai-recommendations > .tour-card.ai-catalog-card-v7');
+          const button=card.parentElement.querySelector('[data-ai-action="book-tour"][data-id="1287578"]'),form=document.querySelector('#aiScreen .ai-consultant-input');
+          const r=button.getBoundingClientRect(),f=form.getBoundingClientRect(),nav=document.querySelector('.bottom-nav').getBoundingClientRect();
+          const overlaps=f.left<r.right&&f.right>r.left&&f.top<r.bottom&&f.bottom>r.top;
+          const hit=document.elementFromPoint(r.left+r.width/2,r.top+r.height/2);
+          return {overlaps,buttonVisible:r.top>=0&&r.bottom<=nav.top+1,buttonReachable:button.contains(hit)};
+        });
+        assert.equal(cardView.overlaps,false,'Composer overlays the recommendation CTA');
+        assert.equal(cardView.buttonVisible,true,'Recommendation CTA hidden by navigation');
+        assert.equal(cardView.buttonReachable,true,'Recommendation CTA covered by another element');
+        await page.screenshot({path:folder+'/'+row.locale+'-'+row.width+'x'+row.height+'-card.png'});
+        const result={recommendationCta:cardView,inputPosition:value.inputPosition,locale:row.locale,width:row.width,height:row.height,contrast:Number(ratio.toFixed(2)),authorContrast:Number(authorRatio.toFixed(2)),inputOverlaps:false,pageScroll:true,nestedChatScroll:false,paragraphs:true,listItems:3,automaticKeyboardFocus:false};
         if(row.locale==='ru'){
           await page.setViewportSize({width:390,height:500});
           await field.click();await field.fill(row.question);
+          await page.locator('#aiScreen .ai-consultant-input').evaluate(node=>node.scrollIntoView({block:'center',behavior:'instant'}));
           const reduced=await metrics();
           assert.ok(reduced.form.top>=0);
           assert.ok(reduced.form.top>=0&&reduced.form.bottom<=reduced.nav.top+1,'Input inaccessible at reduced viewport height');
