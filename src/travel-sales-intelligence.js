@@ -1,3 +1,4 @@
+import {customerCalendarDate,explicitDateReset} from './travel-conversation-date.js';
 import {
   CONTRACT_SCHEMA_VERSIONS,
   SUPPORTED_LOCALES,
@@ -331,20 +332,8 @@ function explicitAdultCount(message){
   return null;
 }
 
-function explicitDateConstraint(message,now){
-  const text=normalizedText(message);
-  const today=todayVietnam(now);
-  const isoDates=[...text.matchAll(/\b\d{4}-\d{2}-\d{2}\b/gu)].map(match=>match[0]);
-  if(isoDates.length===1&&!Number.isNaN(Date.parse(isoDates[0]+'T00:00:00Z'))){
-    return {kind:'EXACT',exact:isoDates[0]};
-  }
-  if(/\btomorrow\b/i.test(text)||/завтра/iu.test(text)||/ngay\s+mai/iu.test(text)||/明天/u.test(text)||/내일/u.test(text)){
-    return {kind:'EXACT',exact:addIsoDays(today,1)};
-  }
-  if(/\btoday\b/i.test(text)||/сегодня/iu.test(text)||/hom\s+nay/iu.test(text)||/今天/u.test(text)||/오늘/u.test(text)){
-    return {kind:'EXACT',exact:today};
-  }
-  return null;
+function explicitDateConstraint(message,now,context={}){
+  return customerCalendarDate(message,{now,dateAsked:context.nextQuestionCode==='DATE',baseDate:context.currentDate||context.CURRENT_SELECTION?.date||''}).dateConstraint;
 }
 
 export function pickupChangeRequested(message){
@@ -432,9 +421,9 @@ function explicitProductId(message,products=[]){
   return null;
 }
 
-function explicitCatalogOption(message,products,scopeProductId=''){
+function explicitCatalogOption(message,products,scopeProductId='',preferScope=false){
   const text=' '+optionName(message)+' ';
-  const scope=explicitProductId(message,products)||scopeProductId;
+  const scope=preferScope&&scopeProductId?scopeProductId:(explicitProductId(message,products)||scopeProductId);
   const rows=arr(products).filter(row=>!scope||row.product?.productId===scope);
   const matches=rows.flatMap(row=>arr(row.facts?.options).flatMap(option=>{
     const full=optionName(option.title);
@@ -477,8 +466,8 @@ export function deterministicExplicitIntentPatch({
   const patch={
     locale:SUPPORTED_LOCALES.includes(locale)?locale:'ru',
   };
-  const dateConstraint=explicitDateConstraint(message,now);
-  if(dateConstraint) patch.dateConstraint=dateConstraint;
+  const dateConstraint=explicitDateConstraint(message,now,context);
+  if(dateConstraint!==undefined) patch.dateConstraint=dateConstraint;
 
   const adults=explicitAdultCount(message);
   if(adults!==null) patch.party={adults};
@@ -501,12 +490,16 @@ export function deterministicExplicitIntentPatch({
   if(hotel) patch.hotel=hotel;
   if(hotel||pickupCue) patch.pickupPreference='PICKUP';
 
-  const option=explicitCatalogOption(message,products,context.currentProductId||'');
-  const selectedProductId=option.option?.productId||explicitProductId(message,products);
+  const wholeProduct=arr(products).find(row=>optionName(message).includes(optionName(row.product?.title||'missing title')))?.product?.productId;
+  const changingProduct=/^(?:хочу|выбираю|поменяй|смени|book|choose|switch|change|chon|doi|选择|换|선택|변경).{0,35}(?:экскурси|тур\b|tour\b|행)/iu.test(text);
+  const scopedProduct=!wholeProduct&&!changingProduct?context.currentProductId||'':'';
+  const option=explicitCatalogOption(message,products,scopedProduct||context.currentProductId||'',Boolean(scopedProduct));
+  const selectedProductId=option.option?.productId||wholeProduct||(scopedProduct&&explicitProductId(message,products)==='love-travel-hon-mun'?scopedProduct:explicitProductId(message,products));
   if(selectedProductId) patch.selectedProductId=selectedProductId;
   if(option.option) patch.selectedOption=option.option;
 
-  const informationGoal=catalogListQuestion(message)||optionAdviceQuestion(message)||option.ambiguous?'DETAILS':/compare|difference|сравн|чем.{0,30}отлич|so\s*sanh|khac\s*nhau|区别|比較|비교|차이/iu.test(text)?'COMPARE'
+  const factualReference=!/price|cost|available|availability|стоим|цен|доступ|места|gia|价格|가격/iu.test(text)&&/^(?:.*[.?]\s*[-–]?\s*)?(?:это|этот|эта|а это|что|почему|как|is this|does this|what|why|cai nay|day la|这是|这个|이것|이 옵션)/iu.test(text)&&/коралл|входит|включ|coral|includ|san ho|珊瑚|산호|(?:это|этот|this).{0,30}(?:вариант|option)/iu.test(text);
+  const informationGoal=catalogListQuestion(message)||optionAdviceQuestion(message)||option.ambiguous||factualReference?'DETAILS':/compare|difference|сравн|чем.{0,30}отлич|so\s*sanh|khac\s*nhau|区别|比較|비교|차이/iu.test(text)?'COMPARE'
     :/what.{0,30}(?:included|include|itinerary)|что.{0,30}(?:входит|включено|взять)|услови.{0,30}(?:отмен|брони)|cancellation|booking.{0,20}(?:conditions|policy)|[dđ]ieu\s*kien.{0,20}[dđ]at|chinh\s*sach.{0,20}huy|包含|取消.{0,15}(?:政策|条件)|예약.{0,15}조건|취소.{0,15}(?:규정|정책)/iu.test(text)?'DETAILS':null;
   if(informationGoal){patch.goal=informationGoal;patch.bookingRequested=false;}
   else if(hotel&&pickupChangeRequested(message)){patch.goal='GENERAL';patch.bookingRequested=false;}
@@ -519,10 +512,11 @@ export function deterministicExplicitIntentPatch({
     patch.goal='BOOK';
     patch.bookingRequested=true;
   }
+  if(!patch.goal&&/price|cost|how much|стоим|цен|сколько.{0,20}стоит|gia|价格|가격/iu.test(text)){patch.goal='PRICE';patch.bookingRequested=false;}
   return validateIntentPatch(patch);
 }
 
-function currentMessagePatch(modelPatch,explicitPatch,message){
+function currentMessagePatch(modelPatch,explicitPatch,message,context={}){
   const result={...modelPatch},text=normalizedText(message);
   // A model patch is a proposed change, not trusted evidence of a traveller.
   // Old values survive in canonical state without being copied into new patches.
@@ -533,7 +527,10 @@ function currentMessagePatch(modelPatch,explicitPatch,message){
     if(!/младен|груднич|\binfants?\b|\bbab(?:y|ies)\b|em\s+be|婴儿|嬰兒|아기|유아/u.test(text)&&explicitPatch.party?.infants===undefined)delete party.infants;
     if(Object.keys(party).length)result.party=party;else delete result.party;
   }else if(result.party===null&&!explicitPatch.party)delete result.party;
-  if(result.dateConstraint!==undefined&&!explicitPatch.dateConstraint&&!/\d|дат|сегодня|завтра|недел|понедельник|вторник|сред|четверг|пятниц|суббот|воскрес|\b(?:date|today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday|week)\b|ngay|hom|thu|日|月|今天|明天|요일|오늘|내일/u.test(text))delete result.dateConstraint;
+  if(result.dateConstraint===null&&!explicitDateReset(message))delete result.dateConstraint;
+  if(result.dateConstraint!==undefined&&explicitPatch.dateConstraint===undefined&&!/дат|числ|сегодня|завтра|недел|понедельник|вторник|сред|четверг|пятниц|суббот|воскрес|\b(?:date|today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday|week)\b|ngay|hom|thu|日|月|今天|明天|요일|오늘|내일/u.test(text))delete result.dateConstraint;
+  if(result.selectedOption&&!explicitPatch.selectedOption&&!/вариант|option|phuong an|lua chon|选项|옵션|коралл|coral|снорк|snorkel|san ho|珊瑚|산호/u.test(text))delete result.selectedOption;
+  for(const key of ['selectedProductId','selectedOption','hotel','pickupPreference'])if(result[key]===null&&explicitPatch[key]!==null)delete result[key];
   return result;
 }
 
@@ -552,20 +549,53 @@ function mergeExplicitOverModel(modelPatch,explicitPatch,message=''){
 }
 
 
+export function requestedOfferScope(message,context={}){
+ const text=normalizedText(message);
+ const price=/стоим|цен|сколько.{0,15}стоят|\bprice|\bcost|how much|\bgia\b|价格|價錢|价钱|가격|요금/u.test(text);
+ const options=/вариант|options?|phuong an|lua chon|选项|選項|옵션/u.test(text);
+ const all=/все|всех|\ball\b|tat ca|所有|全部|모두|모든/u.test(text);
+ if(price&&options&&(all||/варианты|вариантов|options|phuong an|选项|옵션/u.test(text)))return 'ALL_OPTIONS';
+ if(all&&(context.pendingQuestion?.kind==='PRICE_SCOPE'||context.offerScope==='ALL_OPTIONS'))return 'ALL_OPTIONS';
+ return '';
+}
+export function replyOptionChoices(reply,products,productId=''){
+ const matches=[...String(reply).matchAll(/(?:^|\n|\s)(\d{1,2})[.)]\s+/gu)];
+ if(!matches.length)return null;
+ const choices=[];
+ for(let i=0;i<matches.length;i++){
+  const number=Number(matches[i][1]);
+  if(number!==i+1)return [];
+  const segment=reply.slice(matches[i].index+matches[i][0].length,matches[i+1]?.index??reply.length);
+  const option=explicitCatalogOption(segment,products,productId,true).option;
+  const product=products.filter(row=>[row.product?.title,row.facts?.localizedTitle].filter(Boolean).some(title=>optionName(segment).includes(optionName(title))));
+  choices.push(option||(product.length===1?{productId:product[0].product.productId}:null));
+ }
+ return choices.some(Boolean)?choices:[];
+}
+export function replyPendingQuestion(reply,nextQuestionCode,productId){
+ const text=normalizedText(String(reply).split('\n\n').at(-1));
+ const scope=/цен|price|cost|gia|价格|가격/u.test(text)&&/всех|все|all|tat ca|所有|모든/u.test(text)&&/[?？]/u.test(reply);
+ return {kind:scope?'PRICE_SCOPE':nextQuestionCode||'',productId:productId||''};
+}
+
 function shortBookingAnswer(message,intent,context,products){
   const text=normalizedText(message).replace(/[.!?。！？]+$/u,'').trim();
   const goal=COMMERCIAL_GOALS.includes(context.commercialGoal)?context.commercialGoal:null;
   const explicit=deterministicExplicitIntentPatch({message,locale:intent.locale,products,context,now:context.now});
-  if(context.nextQuestionCode==='OPTION'&&/^\d{1,2}$/u.test(text)){
-    const choice=arr(context.optionList)[Number(text)-1];
+  const ordinal=text.match(/^(?:вариант\s+|option\s+|phuong an\s+)?(\d{1,2})(?:\s*(?:вариант|вариант\s+тура|option|phuong an|번|选项))?$/u);
+  if(ordinal&&(context.nextQuestionCode==='OPTION'||/вариант|option|phuong an|번|选项/u.test(text))){
+    const choice=arr(context.optionList)[Number(ordinal[1])-1];
     if(choice){
       try{
-        const patch=verifiedOptionPatch({selectedProductId:choice.productId,selectedOption:choice,goal:goal||'BOOK',bookingRequested:false},products);
+        const patch=verifiedOptionPatch(validateIntentPatch({selectedProductId:choice.productId,...(choice.rateRef?{selectedOption:{productId:choice.productId,rateRef:choice.rateRef}}:{}),goal:goal||'BOOK',bookingRequested:false}),products);
         return {patch,handled:true};
       }catch{}
     }
     return {patch:{goal:'DETAILS',bookingRequested:false},optionChoiceUnavailable:true,handled:true};
   }
+  if(explicit.selectedOption&&!['DETAILS','COMPARE','PICKUP'].includes(explicit.goal))return {patch:{selectedProductId:explicit.selectedProductId,selectedOption:explicit.selectedOption,goal:explicit.goal||goal||'BOOK',bookingRequested:false},handled:true};
+  if(requestedOfferScope(message,context))return {patch:{goal:'PRICE',bookingRequested:false},offerScope:'ALL_OPTIONS',handled:true};
+  if(context.nextQuestionCode==='DATE'&&/^(?:я уже (?:писала|писал|указала|указал)|i already (?:said|told you)|toi da noi|我已经说过|이미 말했)/u.test(text))return {patch:{goal:goal||'PRICE',bookingRequested:false},dateReminder:true,handled:true};
   if(!goal||['DETAILS','COMPARE','PICKUP'].includes(explicit.goal))return null;
   const totals={one:1,two:2,three:3,four:4,'один':1,'одна':1,'два':2,'двое':2,'три':3,'трое':3,'четыре':4,'четверо':4,mot:1,hai:2,ba:3,bon:4,'一人':1,'两人':2,'兩人':2,'两个人':2,'兩個人':2,'한명':1,'두명':2,'둘':2,'세명':3};
   const total=/^\d{1,2}$/u.test(text)?Number(text):totals[text.replace(/\s+/g,'')];
@@ -591,7 +621,7 @@ function shortBookingAnswer(message,intent,context,products){
   if(datedAvailability){
     return {patch:{goal:'AVAILABILITY',bookingRequested:false},handled:true};
   }
-  const dateAnswer=explicit.dateConstraint&&/^(?:(?:на|for)\s+)?(?:сегодня|завтра|today|tomorrow|hom\s+nay|ngay\s+mai|今天|明天|오늘|내일|\d{4}-\d{2}-\d{2})$/u.test(text);
+  const dateAnswer=explicit.dateConstraint&&(context.nextQuestionCode==='DATE'&&message.length<=40||/^(?:(?:на|for)\s+)?(?:сегодня|завтра|today|tomorrow|hom\s+nay|ngay\s+mai|今天|明天|오늘|내일|\d{4}-\d{2}-\d{2})$/u.test(text));
   const adultAnswer=explicit.party?.adults!==undefined&&/^(?:(?:нас|we\s+are|chung\s+toi\s+co)\s+)?(?:(?:\d{1,2}|one|two|three|four)\s+adults?|(?:\d{1,2}|один|одна|два|двое|три|трое|четыре|четверо)\s+взросл(?:ых|ые|ы[йи]|ая)|(?:\d{1,2}|mot|hai|ba|bon)\s+nguoi\s+lon|(?:我们|我們)?(?:\d{1,2}|两|兩|二|一|三|四)\s*(?:位|个|個)?成人|성인\s*(?:\d{1,2}|한|두|세|네)\s*명)$/u.test(text);
   const pickupAnswer=explicit.hotel&&!/[?？]|\b(?:adults?|children|kids|infants?|tomorrow|today|price|cost|book|reserve)\b|взросл|дет|реб|завтра|сегодня|стоим|цен|брони|nguoi\s+lon|tre\s+em|ngay\s+mai|成人|儿童|孩子|明天|성인|어린이|내일/iu.test(text);
   if(message.length<=120&&!/[?？]/u.test(message)&&(dateAnswer||adultAnswer||pickupAnswer)){
@@ -630,6 +660,8 @@ export async function extractConversationIntent({
   history=[],
   now=new Date(),
 }={}){
+  context={...context,currentDate:context.CURRENT_SELECTION?.date||currentIntent?.dateConstraint?.exact||''};
+  const calendar=customerCalendarDate(message,{now,dateAsked:context.nextQuestionCode==='DATE',baseDate:context.currentDate});
   let explicitPatch=deterministicExplicitIntentPatch({
     message,
     locale,
@@ -645,6 +677,8 @@ export async function extractConversationIntent({
     ...(continuation?.optionChoiceUnavailable?{optionChoiceUnavailable:true}:{}),
     patch:explicitPatch,
     explicitPatch,
+    offerScope:continuation?.offerScope||requestedOfferScope(message,context)||(['DATE','PARTY','CHILD_AGES'].includes(context.nextQuestionCode)?context.offerScope||'':''),
+    dateReminder:Boolean(continuation?.dateReminder),
     pendingChildAges:(explicitPatch.goal==='BOOK'||!/[?？]/u.test(message))&&!explicitNoChildren(message)&&!explicitPatch.party?.childrenAges?.length&&(/^(?:.*(?:едем|еду|нас|для|взросл|we|with|nguoi|cung|di|带|帶|成人|아이|어린이|성인)).*(?:с\s+ребен|и\s+ребен|с\s+детьми|children|child|kids|kid|tre\s+em|儿童|孩子|아이|어린이)/u.test(normalizedText(message))||/(?:아이|어린이).*함께/u.test(normalizedText(message))),
     pendingAdultCount:explicitPatch.party?.adults===undefined&&(!(context.currentAdultCount>0||currentIntent?.party?.adults>0)||/несколь|\b(?:several|some)\b|vai\s+nguoi|几位|幾位|몇\s*명/u.test(normalizedText(message)))&&/взросл|\badults?\b|nguoi\s+lon|成人|성인/u.test(normalizedText(message)),
     selectedProductId:explicitPatch.selectedProductId??null,
@@ -652,6 +686,7 @@ export async function extractConversationIntent({
     bookingRequested:Boolean(explicitPatch.bookingRequested),
     source:'deterministic-explicit',
   };
+  if(calendar.invalidDate)return {...fallback,dateClarificationNeeded:true,goal:'DETAILS',patch:{locale,goal:'DETAILS'}};
   if(continuation?.handled)return {...fallback,source:'booking-continuation'};
   // Enumerating known options requires no model inference or intent mutation.
   if(catalogListQuestion(message)) return {...fallback,source:'verified-catalog-intent'};
@@ -679,6 +714,7 @@ export async function extractConversationIntent({
     'A request to list/explain options is DETAILS, not a command to change a booking. A request to choose/change an option is GENERAL (or PRICE/BOOK when asked), and must include selectedOption.',
     'Use PICKUP for factual pickup/meeting-point questions. An explicit request to change a hotel, pickup place or pickup mode is GENERAL and must include only the requested changes.',
     'Preserve hotel names exactly as provided by the customer.',
+    'Never switch from the current product merely because a destination in its option name is mentioned. A factual question about a named option does not select that option.',
     'Short answers refer to the last question. CURRENT_INTENT is the stored configuration; do not claim a value was saved if it is not present there.',
     'Never repeat a confirmation of an already selected verified option. Ask only for the next missing parameter.',
     'CURRENT_SELECTION counts and date, when present, are authoritative over older intent/history. Never copy earlier party values into a patch unless the customer specifies them now.',
@@ -703,11 +739,13 @@ export async function extractConversationIntent({
     const parsed=parseJson(responseText(result));
     const rawPatch=isObject(parsed?.intentPatch)?parsed.intentPatch:{};
     optionAttempted=rawPatch.selectedOption!==undefined&&rawPatch.selectedOption!==null;
-    const modelPatch=verifiedOptionPatch(currentMessagePatch(validateIntentPatch(rawPatch),explicitPatch,message),products);
+    const modelPatch=verifiedOptionPatch(currentMessagePatch(verifiedOptionPatch(validateIntentPatch(rawPatch),products),explicitPatch,message,context),products);
     const patch=verifiedOptionPatch(mergeExplicitOverModel(modelPatch,explicitPatch,message),products);
     return {
       patch,
       explicitPatch,
+      offerScope:fallback.offerScope,
+      dateReminder:fallback.dateReminder,
       pendingChildAges:Boolean(fallback.pendingChildAges&&!patch.party?.childrenAges?.length),
       pendingAdultCount:Boolean(fallback.pendingAdultCount&&patch.party?.adults===undefined),
       selectedProductId:patch.selectedProductId??null,
@@ -1024,7 +1062,7 @@ function preparedOfferReply(locale,row){
 
 function verifiedFactFallback({locale,intent,evidence,message,productFocus,currentSelection}){
   const rows=allProductsFromEvidence(evidence);
-  const focus=explicitProductId(message,rows)||intent?.optionPreference?.productId||productFocus;
+  const focus=deterministicExplicitIntentPatch({message,locale,products:rows,context:{currentProductId:productFocus||intent?.optionPreference?.productId||''}}).selectedProductId||intent?.optionPreference?.productId||productFocus;
   const row=rows.find(row=>row.product?.productId===focus)||(rows.length===1?rows[0]:null);
   if(!row?.facts)return null;
   const question=normalizedText(message);
@@ -1042,12 +1080,12 @@ function verifiedFactFallback({locale,intent,evidence,message,productFocus,curre
   }[locale]||[];
   if(!copy.length)return null;
   const terms={'lunch':{ru:'Обед',en:'Lunch',vi:'Bữa trưa',zh:'午餐',ko:'점심'},'air-conditioned vehicle':{ru:'Транспорт с кондиционером',en:'Air-conditioned vehicle',vi:'Xe có máy lạnh',zh:'空调交通工具',ko:'에어컨 차량'},'use of snorkeling equipment':{ru:'Использование снаряжения для снорклинга',en:'Use of snorkeling equipment',vi:'Sử dụng thiết bị lặn ống thở',zh:'使用浮潜设备',ko:'스노클링 장비 이용'}};
-  let reply=included?copy[0]+'\n'+included.split(/\n+/).map(line=>'- '+(terms[normalizedText(line)]?.[locale]||line.trim())).join('\n'):'';
+  let reply=included?copy[0]+'\n'+included.split(/\n+/).map(line=>'- '+(terms[normalizedText(line).replace('snorkelling','snorkeling')]?.[locale]||line.trim())).join('\n'):'';
   if(optionAdviceQuestion(message)){
     const labels={ru:['Сейчас выбран вариант: ','Морской парк','Грязевые ванны','Аквариум','Пляж','Какое направление вам интересно?'],en:['Currently selected: ','Marine park','Mud baths','Aquarium','Beach','Which destination interests you?'],vi:['Lựa chọn hiện tại: ','Công viên biển','Tắm bùn','Thủy cung','Bãi biển','Bạn quan tâm điểm đến nào?'],zh:['当前已选方案：','海洋公园','泥浴','水族馆','海滩','您对哪个目的地感兴趣？'],ko:['현재 선택: ','해양 공원','머드 배스','수족관','해변','어느 목적지에 관심이 있으신가요?']}[locale];
     const options=arr(facts.options),active=options.find(option=>sameOptionRef(option.rateRef,currentSelection?.rateRef||intent?.optionPreference?.rateRef));
     const types=[/marine park/iu,/mud bath/iu,/aquarium/iu,/beach/iu];
-    const guide=types.flatMap((pattern,index)=>{const option=options.find(option=>pattern.test(option.title));return option?['- '+labels[index+1]+': '+(option.localizedTitle||option.title)]:[];});
+    const guide=types.flatMap((pattern,index)=>{const option=options.find(option=>pattern.test(option.title));return option?[labels[index+1]+': '+(option.localizedTitle||option.title)]:[];}).map((line,index)=>(index+1)+'. '+line);
     reply=(active?labels[0]+(active.localizedTitle||active.title)+'\n\n':'')+reply+(reply?'\n\n':'')+copy[1]+(guide.length?'\n\n'+guide.join('\n'):'')+'\n\n'+labels[5];
   }
   return {reply,recommendedProductId:row.product.productId,selectedOfferId:'',action:'GENERAL',nextQuestionCode:'',evidenceRefs:evidence.filter(packet=>arr(packet.data).some(item=>item.product?.productId===row.product.productId)).map(packet=>packet.evidenceId),degraded:false};
@@ -1100,6 +1138,30 @@ export function deterministicSalesFallback({locale='ru',intent,evidence=[],goal=
   return {reply:localized(locale,'discover'),recommendedProductId:'',selectedOfferId:'',action:'ASK_PREFERENCE',nextQuestionCode:'PREFERENCE',evidenceRefs:evidence.map(item=>item.evidenceId)};
 }
 
+export function composeCatalogOptions({locale,evidence,productId=''}){
+ const rows=allProductsFromEvidence(evidence).filter(row=>!productId||row.product.productId===productId);
+ let index=0;const choices=[];
+ const choose=({ru:'Какой вариант выбираете?',en:'Which option would you like?',vi:'Bạn chọn phương án nào?',zh:'您选择哪个方案？',ko:'어떤 옵션을 선택하시겠어요?'})[locale];
+ const reply=rows.map(row=>(row.facts.localizedTitle||row.product.title)+':\n'+arr(row.facts.options).map(option=>{choices.push({productId:row.product.productId,rateRef:option.rateRef});return (++index)+'. '+(option.localizedTitle||option.title);}).join('\n')).join('\n\n')+'\n\n'+choose;
+ const plan=validateGroundedSalesPlan({reply,recommendedProductId:rows.length===1?rows[0].product.productId:'',selectedOfferId:'',action:'GENERAL',nextQuestionCode:'OPTION',evidenceRefs:evidence.filter(p=>['searchProducts','compareProducts'].includes(p.capability)).map(p=>p.evidenceId)},evidence,locale,'DETAILS');
+ return {...plan,choices,source:'provider-catalog-options'};
+}
+
+export function composeOptionPrices({locale,intent,evidence,productFocus}){
+ const rows=allOffersFromEvidence(evidence),products=allProductsFromEvidence(evidence);
+ const available=rows.filter(row=>row.offer?.availability?.status==='AVAILABLE'&&row.option?.title);
+ const copy={ru:['Цены на','за весь указанный состав группы','Какой вариант выбираете?'],en:['Prices for','for the whole specified party','Which option would you like?'],vi:['Giá ngày','cho toàn bộ nhóm đã nêu','Bạn chọn phương án nào?'],zh:['日期','所述全部出行人员的总价','您选择哪个方案？'],ko:['날짜','입력한 전체 인원의 총액','어떤 옵션을 선택하시겠어요?']}[locale];
+ const grouped=new Map();for(const row of available){const id=row.product.productId;if(!grouped.has(id))grouped.set(id,[]);grouped.get(id).push(row);}
+ let index=0;const choices=[];
+ const body=[...grouped].map(([id,options])=>{
+  const title=products.find(row=>row.product.productId===id)?.facts?.localizedTitle||options[0].product.title;
+  return title+'\n'+options.map(row=>{choices.push({productId:id,rateRef:row.offer.rateRef});return (++index)+'. '+(row.option.localizedTitle||row.option.title)+' — '+row.offer.price.currency+' '+row.offer.price.amount;}).join('\n');
+ }).join('\n\n');
+ const reply=copy[0]+' '+intent.dateConstraint.exact+' ('+copy[1]+').\n\n'+body+'\n\n'+copy[2];
+ const plan=validateGroundedSalesPlan({reply,recommendedProductId:grouped.size===1?[...grouped.keys()][0]:'',selectedOfferId:'',action:'GENERAL',nextQuestionCode:'OPTION',evidenceRefs:evidence.map(p=>p.evidenceId)},evidence,locale,'DETAILS');
+ return {...plan,source:'provider-option-prices',choices};
+}
+
 export async function composeGroundedSalesPlan({
   env,
   message,
@@ -1112,19 +1174,12 @@ export async function composeGroundedSalesPlan({
   history=[],
 }={}){
   const fallback=deterministicSalesFallback({locale,intent,evidence,goal,message,productFocus,currentSelection});
-  const requestedCatalogProduct=explicitProductId(message,allProductsFromEvidence(evidence))||intent?.optionPreference?.productId||productFocus;
+  const requestedCatalogProduct=deterministicExplicitIntentPatch({message,locale,products:allProductsFromEvidence(evidence),context:{currentProductId:productFocus||intent?.optionPreference?.productId||''}}).selectedProductId||intent?.optionPreference?.productId||productFocus;
   const catalogRows=catalogListQuestion(message)?allProductsFromEvidence(evidence).filter(row=>
     !requestedCatalogProduct||row.product?.productId===requestedCatalogProduct
   ):[];
   if(catalogRows.length&&catalogRows.every(row=>arr(row.facts?.options).length)){
-    const reply=catalogRows.map(row=>(row.facts.localizedTitle||row.product.title)+':\n'+
-      row.facts.options.map((option,index)=>(index+1)+'. '+(option.localizedTitle||option.title)).join('\n')).join('\n\n');
-    const plan=validateGroundedSalesPlan({
-      reply,recommendedProductId:catalogRows.length===1?catalogRows[0].product.productId:'',
-      selectedOfferId:'',action:'GENERAL',nextQuestionCode:'',
-      evidenceRefs:evidence.filter(packet=>['searchProducts','compareProducts'].includes(packet.capability)).map(packet=>packet.evidenceId),
-    },evidence,locale,'DETAILS');
-    return {...plan,source:'provider-catalog-options',replyAttempts:0,replyFailureReasons:[]};
+    return {...composeCatalogOptions({locale,evidence,productId:requestedCatalogProduct}),nextQuestionCode:'',replyAttempts:0,replyFailureReasons:[]};
   }
   if(optionAdviceQuestion(message)&&!fallback.degraded&&fallback.action==='GENERAL'){const {degraded,...answer}=fallback;return {...validateGroundedSalesPlan(answer,evidence,locale,'DETAILS'),source:'provider-option-guide',replyAttempts:0,replyFailureReasons:[]};}
   if(COMMERCIAL_GOALS.includes(goal)&&fallback.action==='OFFER_READY'&&fallback.nextQuestionCode==='OPEN_CONFIGURATOR'){
@@ -1142,6 +1197,13 @@ export async function composeGroundedSalesPlan({
     capability:packet.capability,
     data:modelEvidenceData(requestedCatalogProduct&&['DETAILS','PICKUP'].includes(goal)&&['searchProducts','compareProducts'].includes(packet.capability)?{...packet,data:arr(packet.data).filter(row=>row.product?.productId===requestedCatalogProduct)}:packet),
   }));
+  const pricedOffers=recommendationOffers(evidence,goal);
+  if(pricedOffers.length&&!catalogRows.length){
+    for(const packet of evidenceView){
+      if(!['searchProducts','compareProducts'].includes(packet.capability))continue;
+      packet.data=arr(packet.data).map(row=>row.facts?{...row,facts:{...row.facts,options:arr(row.facts.options).filter(option=>pricedOffers.some(offer=>offer.product?.productId===row.product.productId&&sameOptionRef(option.rateRef,offer.option?.rateRef||offer.offer?.rateRef)))}}:row);
+    }
+  }
   const system=[
     'You are Sales Intelligence for Nha Trang Love Travel.',
     'You explain and recommend; you never mutate a booking and you never invent commercial facts.',
@@ -1161,10 +1223,12 @@ export async function composeGroundedSalesPlan({
     'Different beaches and mud baths in options are alternatives, not consecutive stops in one excursion. Never combine all options into one itinerary.',
     'PRODUCT_DESCRIPTION_NOT_OPTION_ITINERARY describes the product generally, not every option. When optionItineraryStatus is NOT_PROVIDED, detailed timing, stop order and option-specific inclusions are unknown; do not invent them.',
     'When asked for all options, list every verified option of the requested product. Preserve each localizedTitle exactly when provided, otherwise its official title; translate the surrounding explanation into the customer language.',
+    'When recommending or quoting one selected offer, discuss only that verified option. Do not append a catalogue of other options. Complete alternative lists are handled separately when the customer requests them.',
     'For any selected Offer, name its exact option.localizedTitle (or option.title if absent) alongside the product and the authoritative group total. An Offer belongs to that one option, not every alternative.',
     'REQUIRED_CATALOG_TITLES='+JSON.stringify(catalogRows.flatMap(row=>arr(row.facts?.options).map(option=>option.localizedTitle||option.title))),
     'Use short paragraphs of 1–2 sentences, separated by newline characters in the JSON reply string. Put alternatives or included items on separate numbered or hyphen-prefixed lines. Do not use HTML, Markdown headings or tables, or display literal newline escape text.',
-    'For factual DETAILS, COMPARE and PICKUP questions, leave nextQuestionCode empty and do not ask for a date after the answer.',
+    'For factual DETAILS, COMPARE and PICKUP questions, leave nextQuestionCode empty and do not ask for a date after the answer. Never repeat a date question when CURRENT_INTENT or CURRENT_SELECTION already contains a date.',
+    'When showing numbered alternative options, include the exact verified option title in each item and never renumber a programme itinerary as booking options.',
     'action must be one of: '+SALES_ACTIONS.join(', ')+'.',
     'For PRICE, AVAILABILITY or BOOK, ask only for commercial parameters required to calculate an exact offer.',
     'For GENERAL, DETAILS, COMPARE, PICKUP and DISCOVER, answer the question from verified product facts even when date and party are unknown.',
@@ -1225,6 +1289,8 @@ export async function composeGroundedSalesPlan({
         if(![selected.option.title,selected.option.localizedTitle].filter(Boolean).some(title=>replyNames.includes(optionName(title))))parsed.reply=(selected.product?.title||'')+' — '+(selected.option.localizedTitle||selected.option.title)+'\n\n'+parsed.reply;
       }
       const plan=validateGroundedSalesPlan(parsed,evidence,locale,goal);
+      if(exactDateKnown(intent)&&(plan.action==='ASK_DATE'||plan.nextQuestionCode==='DATE'||/на какую дату|на какое число|what date|which date|ngay nao|哪天|어느 날짜/iu.test(plan.reply)))throw new TypeError('answer asks for an already saved date');
+      if(['DETAILS','PICKUP'].includes(goal)&&requestedCatalogProduct&&plan.recommendedProductId&&plan.recommendedProductId!==requestedCatalogProduct)throw new TypeError('answer changes the focused product');
       if(catalogRows.some(row=>arr(row.facts?.options).some(option=>option.title&&![option.title,option.localizedTitle].filter(Boolean).some(title=>optionName(plan.reply).includes(optionName(title)))))){
         throw new TypeError('catalog answer omits a verified option');
       }

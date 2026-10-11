@@ -535,3 +535,11 @@ test('Fresh server scope does not accept browser history from an older conversat
  assert.ok(inputMessages.length);assert.ok(inputMessages.every(messages=>!messages.some(row=>/Старый заказ|Old transaction copied/.test(row.content))));
  assert.equal(result.intent.party.adults,0);assert.deepEqual(result.intent.party.children,[]);assert.equal(result.intent.dateConstraint,undefined);
 });
+
+
+test('failed memory reads are surfaced rather than overwriting the conversation with fresh state',async()=>{
+ let providerReads=0;const db=fakeDb(),prepare=db.prepare;db.prepare=function(sql){if(sql.includes('SELECT memory_json'))throw Error('controlled database read failure');return prepare(sql);};const env={DB:db};
+ const agent=createLoveTravelSalesOrchestrator({env,store:fakeStore(),provider:{getDomains:async()=>{providerReads++;return [];}}});
+ await assert.rejects(agent.turn({sessionId:'memory-read-failure-1234567890',locale:'ru',message:'Для всех'}),/conversation_memory_unavailable/);
+ assert.equal(providerReads,0);
+});
