@@ -1205,6 +1205,17 @@ export async function composeGroundedSalesPlan({
       if(result?.choices?.[0]?.finish_reason==='length'){const error=new Error('sales output truncated');error.code='output_truncated';throw error;}
       const parsed=parseJson(responseText(result));
       if(!parsed){const error=new Error('sales output is not JSON');error.code='invalid_json';throw error;}
+      const selected=allOffersFromEvidence(evidence).find(row=>row.offer?.offerId===parsed.selectedOfferId);
+      if(selected?.option?.title&&parsed.recommendedProductId===(selected.product?.productId||selected.offer.productId)){
+        const replyNames=optionName(parsed.reply);
+        const otherOptions=allProductsFromEvidence(evidence).find(row=>row.product?.productId===parsed.recommendedProductId)?.facts?.options||[];
+        if(otherOptions.some(option=>!sameOptionRef(option.rateRef,selected.option.rateRef||selected.offer.rateRef)&&[option.title,option.localizedTitle].filter(Boolean).some(title=>replyNames.includes(optionName(title.replace(/^Robinson\s*(?:&|and|\+)\s*/iu,'')))))){
+          throw new TypeError('answer contradicts the verified selected option');
+        }
+        // The selected provider offer owns its official caption. Free-form
+        // transliteration must not discard an otherwise valid recommendation.
+        if(![selected.option.title,selected.option.localizedTitle].filter(Boolean).some(title=>replyNames.includes(optionName(title))))parsed.reply=(selected.product?.title||'')+' — '+(selected.option.localizedTitle||selected.option.title)+'\n\n'+parsed.reply;
+      }
       const plan=validateGroundedSalesPlan(parsed,evidence,locale,goal);
       if(catalogRows.some(row=>arr(row.facts?.options).some(option=>option.title&&![option.title,option.localizedTitle].filter(Boolean).some(title=>optionName(plan.reply).includes(optionName(title)))))){
         throw new TypeError('catalog answer omits a verified option');

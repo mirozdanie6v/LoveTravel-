@@ -966,3 +966,19 @@ test('The model cannot invent a count for several adults, even from an existing 
  const result=await extractConversationIntent({env:{AI:{run:async()=>({response:{intentPatch:{party:{adults:2,childrenAges:[7]},goal:'BOOK'}}})}},message:'Хочу забронировать для нескольких взрослых и ребёнка 7 лет.',locale:'ru',currentIntent:intent});
  assert.equal(result.pendingAdultCount,true);assert.equal(result.patch.party.adults,undefined);
 });
+
+
+test('Provider caption completes a translated recommendation without relaxing price validation',async()=>{
+ const products=productEvidence(),offers=offerEvidence();
+ offers.data[0].option={title:'Bai Tranh Beach',rateRef:{externalId:'201'}};offers.data[0].offer.rateRef={externalId:'201'};
+ const run=amount=>composeGroundedSalesPlan({env:{AI:{run:async()=>({response:{reply:'Рекомендую пляж Бай Трань. Общая стоимость '+amount+' USD.',recommendedProductId:'love-travel-hon-mun',selectedOfferId:'offer-1',action:'RECOMMEND',nextQuestionCode:'',evidenceRefs:['cap-offers']}})}},message:'Что посоветуете?',locale:'ru',goal:'GENERAL',intent:createInitialTravelIntent('ru'),evidence:[products,offers]});
+ const valid=await run(98);assert.equal(valid.source,'workers-ai-grounded-sales');assert.match(valid.reply,/Bai Tranh Beach/);assert.equal(valid.selectedOfferId,'offer-1');
+ const invalid=await run(99);assert.notEqual(invalid.source,'workers-ai-grounded-sales');assert.ok(!invalid.reply.includes('99'));
+});
+test('Provider caption cannot disguise a recommendation for a different known option',async()=>{
+ const products=productEvidence(),offers=offerEvidence();const ref=id=>({provider:'BOKUN',resourceType:'RATE',externalId:id,accountRef:'137689'});
+ offers.data[0].option={title:'Bai Tranh Beach',rateRef:ref('201')};offers.data[0].offer.rateRef=ref('201');
+ products.data[0].facts={options:[{title:'Bai Tranh Beach',rateRef:ref('201')},{title:'Hon Tam Mud Bath',rateRef:ref('202')}]};
+ const result=await composeGroundedSalesPlan({env:{AI:{run:async()=>({response:{reply:'Выбраны Hon Tam Mud Bath, 98 USD.',recommendedProductId:'love-travel-hon-mun',selectedOfferId:'offer-1',action:'RECOMMEND',nextQuestionCode:'',evidenceRefs:['cap-offers']}})}},message:'Что посоветуете?',locale:'ru',goal:'GENERAL',intent:createInitialTravelIntent('ru'),evidence:[products,offers]});
+ assert.notEqual(result.source,'workers-ai-grounded-sales');assert.ok(!result.reply.includes('Выбраны Hon Tam'));
+});
