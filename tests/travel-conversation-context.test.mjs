@@ -102,3 +102,10 @@ test('priced recommendations receive only eligible rate facts while the full pro
  }}}});
  assert.ok(checked);assert.equal(result.source,'workers-ai-grounded-sales');assert.equal(rob.facts.options.length,7);
 });
+
+for(const [locale,message] of [['ru','Чем она отличается от Hòn Mun?'],['vi','Tour này khác Hòn Mun như thế nào?'],['en','How does it differ from Hòn Mun?'],['zh','它与 Hòn Mun 有什么区别？'],['ko','이 투어는 Hòn Mun과 어떻게 다른가요?']]){
+ test('a comparative question naming an option never becomes a booking/date request: '+locale,async()=>{
+  const r=await extractConversationIntent({message,locale,products,currentIntent:createInitialTravelIntent(locale),context:{currentProductId:rob.product.productId},now});
+  assert.equal(r.goal,'COMPARE');assert.equal(r.bookingRequested,false);assert.notEqual(r.source,'booking-continuation');
+ });
+}
