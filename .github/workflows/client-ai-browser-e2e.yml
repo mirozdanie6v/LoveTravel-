@@ -43,6 +43,7 @@ jobs:
         env:
           LOVE_TRAVEL_LIVE_BASE_URL: https://lovetravel.viiversion.com
         run: node scripts/verify-live-ai-option-catalog.mjs
+      # A model timeout must exercise one visible retry and remain in the evidence.
       - name: Verify live consultant state, idle DOM, retry and guest isolation
         env:
           LOVE_TRAVEL_BROWSER_CHANNEL: chromium
