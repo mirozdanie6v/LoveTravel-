@@ -113,12 +113,19 @@ try{
       const checked=await checkedResponse.json();
       invariant(checkedResponse.ok()&&checked.readyToQuote,'Fresh read-only Quote revalidation failed: '+JSON.stringify(checked));
       invariant(Number(answer.transaction.quote.price.amount)===Number(checked.quote.total)&&answer.transaction.quote.price.currency===checked.quote.currency,'Quote differs from fresh provider-backed resolution');
+      await h.page.locator('#aiScreen [data-lt-exact-price]').waitFor({state:'visible',timeout:15000});
+      const cardPrice=await h.page.evaluate(id=>MaxTourAI.pricePresentation(id),String(domain.experience.id));
+      const numberLocale={ru:'ru-RU',en:'en-US',vi:'vi-VN',zh:'zh-CN',ko:'ko-KR'}[locale];
+      const exactLabel=Number(answer.transaction.quote.price.amount).toLocaleString(numberLocale,{maximumFractionDigits:2})+' '+answer.transaction.quote.price.currency;
+      invariant(cardPrice?.amount===exactLabel&&String(cardPrice?.rateId)===String(rate.id),'Card price differs from the active Quote');
+      invariant((await h.page.locator('#aiScreen [data-lt-exact-price]').innerText()).includes(exactLabel),'Exact Quote is not visible in the card');
       const book=h.page.locator('#aiScreen [data-ai-action="book-tour"][data-id="'+domain.experience.id+'"]');
       await book.waitFor({state:'visible',timeout:15000});await book.click();
       await h.page.waitForFunction(expected=>document.querySelector('#tourScreen.active [data-lt-config="'+expected.productId+'"][data-lt-config-ready]')
         &&String(globalThis.LoveTravelBookingConfigurator?.selection?.()?.rateId)===expected.rateId
         &&globalThis.LoveTravelBookingConfigurator?.transaction?.()?.transactionId===expected.transactionId,
         {productId:String(domain.experience.id),rateId:String(rate.id),transactionId:answer.transaction.transactionId},{timeout:45000});
+      await h.page.locator('.lt-booking-sheet.is-open').waitFor({state:'visible',timeout:45000});
       const handoff=await h.page.evaluate(()=>({selection:LoveTravelBookingConfigurator.selection(),transaction:LoveTravelBookingConfigurator.transaction(),resolution:LoveTravelBookingConfigurator.resolution()}));
       invariant(handoff.transaction.transactionId===answer.transaction.transactionId,'UI created another transaction');
       invariant(String(handoff.selection.rateId)===String(rate.id)&&handoff.selection.date===date,'Configurator lost the requested option/date');
@@ -127,7 +134,7 @@ try{
       invariant(!h.mutations.length&&!h.errors.length,'Option browser failure: '+JSON.stringify({mutations:h.mutations,errors:h.errors}));
       await h.page.screenshot({path:proofDir+'/'+locale+'-'+domain.experience.id+'-'+rate.id+'-handoff.png'});
       report.options.push({locale,productId:String(domain.experience.id),rateId:String(rate.id),title:nativeRate.title,transactionId:handoff.transaction.transactionId,
-        quote:handoff.transaction.quote.price,readyToQuote:handoff.resolution.readyToQuote,readyToBook:handoff.resolution.readyToBook,source:answer.source,reply:answer.reply,providerBooking:null});
+        quote:handoff.transaction.quote.price,cardExactPrice:exactLabel,formVisible:true,readyToQuote:handoff.resolution.readyToQuote,readyToBook:handoff.resolution.readyToBook,source:answer.source,reply:answer.reply,providerBooking:null});
       console.log(JSON.stringify({stage:'exact-option-handoff',...report.options.at(-1)}));
     }catch(error){await h.page.screenshot({path:proofDir+'/'+rate.id+'-failure.png',fullPage:true}).catch(()=>{});throw error;}
     finally{await h.context.close();}

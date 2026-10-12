@@ -475,6 +475,7 @@ export function createLoveTravelSalesOrchestrator({
     return {
       reply:plan.reply,
       degraded:Boolean(plan.degraded),
+      generationFailed:Boolean(plan.replyFailureReason),
       tourId:externalTourId(productsPacket,plan.recommendedProductId),
       faqIntent:String(extracted.goal||'GENERAL').toLowerCase(),
       source:plan.source,
