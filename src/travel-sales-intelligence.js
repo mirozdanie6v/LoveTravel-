@@ -557,7 +557,8 @@ export function requestedOfferScope(message,context={}){
  const price=/стоим|цен|сколько.{0,15}стоят|\bprice|\bcost|how much|\bgia\b|价格|價錢|价钱|가격|요금/u.test(text);
  const options=/вариант|options?|phuong an|lua chon|选项|選項|옵션/u.test(text);
  const all=/все|всех|\ball\b|tat ca|所有|全部|모두|모든/u.test(text);
- if(price&&options&&(all||/варианты|вариантов|options|phuong an|选项|옵션/u.test(text)))return 'ALL_OPTIONS';
+ const pluralOptions=/варианты|вариантов|\boptions\b|cac\s+(?:phuong an|lua chon)|各.{0,5}(?:选项|選項)|여러\s*옵션/u.test(text);
+ if(price&&options&&(all||pluralOptions))return 'ALL_OPTIONS';
  if(all&&(context.pendingQuestion?.kind==='PRICE_SCOPE'||context.offerScope==='ALL_OPTIONS'))return 'ALL_OPTIONS';
  return '';
 }
