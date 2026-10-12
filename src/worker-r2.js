@@ -1,9 +1,6 @@
 export { BookingSession } from './booking-session-do.js';
 import profileWorker from './worker-profile.js';
-import baseWorker from './worker.js';
-import { compactTourForAi, findTourForQuestion } from './ai-faq-knowledge.js';
-import { selectionFastPath } from './worker-selection-v14.js';
-import { orchestrateAiRequest } from './ai-orchestrator-v23.js';
+import { findTourForQuestion } from './ai-faq-knowledge.js';
 import { handleAdminTourMediaApi } from './admin-tour-media-api.js';
 import {
   fetchLoveTravelBokunDomains,
@@ -306,21 +303,6 @@ function originReply(message) {
   return '';
 }
 
-async function originFastPath(request, url) {
-  if (url.pathname !== '/api/ai/chat' || request.method !== 'POST') return null;
-  const body = await request.clone().json().catch(() => ({}));
-  const reply = originReply(body?.message);
-  if (!reply) return null;
-  return json({
-    ok: true,
-    reply,
-    source: 'origin-fast',
-    faqIntent: 'origin',
-    tourId: '',
-    currentDateVietnam: vietnamTodayIso(),
-  });
-}
-
 function departureIso(value, today) {
   const raw = normalizeRussian(value);
   if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
@@ -344,19 +326,6 @@ function requestedPeople(text) {
   if (/тро(?:их|е)|три/.test(q)) return 3;
   if (/четвер(?:ых|о)|четыре/.test(q)) return 4;
   return 0;
-}
-
-async function loadAvailabilityCatalog(request, env) {
-  if (!env.ASSETS) return [];
-  try {
-    const response = await env.ASSETS.fetch(new Request(new URL('/catalog.v28.json', request.url)));
-    if (!response.ok) return [];
-    const data = await response.json();
-    return Array.isArray(data) ? data.slice(0, 60).map(compactTourForAi) : [];
-  } catch (error) {
-    console.warn('availability catalogue unavailable', error?.message || error);
-    return [];
-  }
 }
 
 function availabilityReply(message, catalog, now = new Date()) {
@@ -393,24 +362,6 @@ function availabilityReply(message, catalog, now = new Date()) {
     tourId: tour.id,
     reply: `На завтра у ${tourName} есть групповой выезд${time}${seatsText}. Для ${people || 'вашего состава'} можно переходить к оформлению — откройте карточку экскурсии.`,
   };
-}
-
-async function availabilityFastPath(request, env, url) {
-  if (url.pathname !== '/api/ai/chat' || request.method !== 'POST') return null;
-  const body = await request.clone().json().catch(() => ({}));
-  const message = String(body?.message || '');
-  if (!/завтра/i.test(message) || !AVAILABILITY_INTENT.test(message)) return null;
-  const catalog = await loadAvailabilityCatalog(request, env);
-  const result = availabilityReply(message, catalog);
-  if (!result?.reply) return null;
-  return json({
-    ok: true,
-    reply: result.reply,
-    source: 'availability-fast',
-    faqIntent: 'availability_tomorrow',
-    tourId: result.tourId || '',
-    currentDateVietnam: vietnamTodayIso(),
-  });
 }
 
 function mediaKey(pathname) {
@@ -541,14 +492,6 @@ export default {
     // mutations from model authority.
     const salesAgentResponse = await handleLoveTravelSalesAgent(request, env, url);
     if (salesAgentResponse) return salesAgentResponse;
-    const orchestrated = await orchestrateAiRequest(request, env, url);
-    if (orchestrated) return orchestrated;
-    const selectionResponse = await selectionFastPath(request, url);
-    if (selectionResponse) return selectionResponse;
-    const originResponse = await originFastPath(request, url);
-    if (originResponse) return originResponse;
-    const availabilityResponse = await availabilityFastPath(request, env, url);
-    if (availabilityResponse) return availabilityResponse;
     const response = await profileWorker.fetch(request, env, ctx);
     return filterAdminHostRoles(response, url);
   },
