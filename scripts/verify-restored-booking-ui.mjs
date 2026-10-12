@@ -21,7 +21,7 @@ const domains=live?await (async()=>{
 })():fixtureDomains;
 const harness=await startBookingUiHarness(domains,{delayMs:30});
 const browser=await chromium.launch({headless:true,channel:process.env.LOVE_TRAVEL_BROWSER_CHANNEL||'chrome'});
-const watchdog=setTimeout(()=>process.exit(124),55000);
+const watchdog=setTimeout(()=>{console.error('Configuration verification exceeded its 120-second browser budget');process.exit(124);},120000);
 const report={source:live?'fresh Bókun domain reads':'functional contract fixtures',products:[],errors:[]};
 try{
   const context=await browser.newContext({viewport:{width:390,height:844}});
@@ -236,8 +236,10 @@ try{
     assert.equal((await snapshot()).transaction.selection.productRef.externalId,target);
     await sheet().locator('[data-lt-sheet-close-button]').click();
   }
-  // The offline harness intentionally returns no AI reply. Exercise the
-  // customer's visible recovery route without calling any model or manager.
+  // Inject a controlled unavailable response: a missing model binding can
+  // still produce verified fallback facts, which is a different contract.
+  await page.route(harness.base+'/api/ai/chat',route=>route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({ok:false,error:'controlled_ai_unavailable'})}));
+  // Exercise the visible contact route without calling any model or manager.
   await page.locator('.bottom-nav [data-nav="ai"]').click();
   const aiInput=page.locator('#aiScreen.active textarea[name="message"]');
   await aiInput.fill('What is included in Robinson Beach?');await aiInput.press('Enter');

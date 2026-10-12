@@ -48,17 +48,6 @@ jobs:
         env:
           LOVE_TRAVEL_BROWSER_CHANNEL: chromium
         run: node scripts/verify-live-consultant-stability.mjs
-      - name: Build local configuration acceptance harness
-        run: npm run build
-      - name: Verify complete configuration with all fixture dimensions
-        env:
-          LOVE_TRAVEL_BROWSER_CHANNEL: chromium
-        run: node scripts/verify-restored-booking-ui.mjs
-      - name: Verify complete configuration with fresh read-only provider data
-        env:
-          LOVE_TRAVEL_BROWSER_CHANNEL: chromium
-          LOVE_TRAVEL_LIVE_BASE_URL: https://lovetravel.viiversion.com
-        run: node scripts/verify-restored-booking-ui.mjs --live
       - name: Save actual consultation screenshots
         if: always()
         uses: actions/upload-artifact@v4
@@ -72,4 +61,34 @@ jobs:
             artifacts/ai-short-dialogue/*
             artifacts/ai-context/*
             artifacts/consultant-live/*
+          if-no-files-found: ignore
+  configuration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    container:
+      image: mcr.microsoft.com/playwright:v1.55.0-noble
+    env:
+      LOVE_TRAVEL_BROWSER_CHANNEL: chromium
+      LOVE_TRAVEL_LIVE_BASE_URL: https://lovetravel.viiversion.com
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+      - name: Install browser and project dependencies
+        run: |
+          npm install --no-fund --no-audit
+          npm install --no-save playwright@1.55.0
+      - name: Build local configuration acceptance harness
+        run: npm run build
+      - name: Verify complete configuration with all fixture dimensions
+        run: node scripts/verify-restored-booking-ui.mjs
+      - name: Verify complete configuration with fresh read-only provider data
+        run: node scripts/verify-restored-booking-ui.mjs --live
+      - name: Save configuration verification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: client-configuration-screenshots
+          path: artifacts/restoration/*
           if-no-files-found: ignore
