@@ -109,3 +109,15 @@ for(const [locale,message] of [['ru','Чем она отличается от H�
   assert.equal(r.goal,'COMPARE');assert.equal(r.bookingRequested,false);assert.notEqual(r.source,'booking-continuation');
  });
 }
+
+
+test('one named option with an exact total is not an all-option price request in any locale',()=>{
+ for(const message of [
+  'Подготовь вариант Robinson & Hon Tam Mud Bath на 2026-10-14, 2 взрослых. Покажи точную итоговую цену.',
+  'Choose the option Robinson & Hon Tam Mud Bath on 2026-10-14, 2 adults. Show the exact total price.',
+  'Chọn phương án Robinson & Tắm bùn Hòn Tằm ngày 2026-10-14, 2 người lớn. Cho biết tổng giá chính xác.',
+  '选择 Robinson & Hon Tam Mud Bath 选项，日期 2026-10-14，2位成人。请给出准确总价。',
+  'Robinson & Hon Tam Mud Bath 옵션을 선택해 주세요. 날짜 2026-10-14, 성인 2명. 정확한 총액을 알려 주세요.',
+ ])assert.equal(requestedOfferScope(message),'',message);
+ for(const message of ['Сколько стоят варианты тура','Prices for all options','Giá tất cả phương án','Giá các phương án','所有选项价格','모든 옵션 가격'])assert.equal(requestedOfferScope(message),'ALL_OPTIONS',message);
+});
