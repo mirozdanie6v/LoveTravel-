@@ -43,3 +43,29 @@ jobs:
         run: npm run build
       - name: Wrangler dry run
         run: npx wrangler deploy --dry-run --config wrangler.jsonc
+
+  consultant-browser:
+    needs: test-build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    container:
+      image: mcr.microsoft.com/playwright:v1.55.0-noble
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - name: Install browser dependency
+        run: npm install --no-save --no-fund --no-audit playwright@1.55.0
+      - name: Build local frontend
+        run: npm run build
+      - name: Verify 55 option-language pairs, idle chat, retry and deletion
+        env:
+          LOVE_TRAVEL_BROWSER_CHANNEL: chromium
+        run: node scripts/verify-consultant-stabilization.mjs
+      - name: Save verification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: consultant-stabilization
+          path: artifacts/consultant-stabilization/

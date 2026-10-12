@@ -4,7 +4,7 @@ import {
   createBokunProvider,
 } from './bokun-provider.js';
 import { localizeDomainFromCache } from './bokun-content-localization.js';
-import { executeBookingSession } from './booking-session-client.js';
+import { executeBookingSession, executeConversationOperation } from './booking-session-client.js';
 import { createTravelCapabilityBroker, evidenceEnvelope, pickupSelection, participantSelection } from './travel-capability-broker.js';
 import {
   COMMERCIAL_GOALS,
@@ -29,6 +29,8 @@ import {
 } from './travel-commerce-transaction.js';
 import { createTravelCommerceStore } from './travel-commerce-store.js';
 import { ensureTravelCommerceRuntimeSchema } from './travel-commerce-migration.js';
+import {composeBookingResponse} from './travel-response-composer.js';
+import {quoteDisplayBinding} from './travel-commerce-quote.js';
 import {
   ensureCommerceTransaction,
   ensureSalesSession,
@@ -348,7 +350,7 @@ export function createLoveTravelSalesOrchestrator({
           // Only commercial evidence goes to the model; the complete selection
           // remains in the authoritative transaction and in the user's UI response.
           offersPacket=await evidenceEnvelope('getOfferDetails',{transactionId:currentTx.transactionId,revision:bookingTransaction.revision},{
-            product,offer:quote.offer,readyToQuote:true,readyToBook:Boolean(quote.readyToBook),
+            product,localizedProductTitle:activeProduct?.facts?.localizedTitle||product.title,offer:quote.offer,readyToQuote:true,readyToBook:Boolean(quote.readyToBook),
             option:activeProduct?.facts?.options.find(option=>String(option.rateRef.externalId)===String(quote.offer.rateRef?.externalId))||null,
             bookingDataIssues:structuredClone(quote.issues?.bookingDataIssues||[]),
           },now());
@@ -380,7 +382,7 @@ export function createLoveTravelSalesOrchestrator({
       shopping=next;
     }
 
-    const plan=needsOption&&exactDate(shopping.intent)&&partyKnown(shopping.intent)?composeCatalogOptions({locale,evidence,productId:focusProductId}):allOptionPrices&&offeredRows.some(row=>row.offer?.availability?.status==='AVAILABLE')?composeOptionPrices({locale,intent:shopping.intent,evidence,productFocus:memory.productFocus}):extracted.dateReminder&&!exactDate(shopping.intent)?{
+    let plan=needsOption&&exactDate(shopping.intent)&&partyKnown(shopping.intent)?composeCatalogOptions({locale,evidence,productId:focusProductId}):allOptionPrices&&offeredRows.some(row=>row.offer?.availability?.status==='AVAILABLE')?composeOptionPrices({locale,intent:shopping.intent,evidence,productFocus:memory.productFocus}):extracted.dateReminder&&!exactDate(shopping.intent)?{
       reply:({ru:'Дата не сохранилась в параметрах этой поездки. Напишите её полностью, например 14 октября; остальные параметры сохранены.',en:'The date is missing from this trip’s saved parameters. Please give the full date; the other parameters are retained.',vi:'Ngày chưa được lưu cho chuyến đi này. Vui lòng ghi ngày và tháng đầy đủ; các thông tin khác vẫn được giữ.',zh:'此行程的日期尚未保存。请提供完整日期，其他参数仍保留。',ko:'이 여행의 날짜가 저장되지 않았습니다. 월과 날짜를 알려주세요. 다른 정보는 유지됩니다.'})[locale],
       recommendedProductId:memory.productFocus||'',selectedOfferId:'',action:'ASK_DATE',nextQuestionCode:'DATE',evidenceRefs:[productsPacket.evidenceId],source:'booking-continuation',degraded:false,
     }:extracted.dateClarificationNeeded?{
@@ -442,7 +444,11 @@ export function createLoveTravelSalesOrchestrator({
       }
     }
 
+    const composed=composeBookingResponse({plan,transaction:bookingTransaction,memory,locale,message,
+      pickupChanged:Boolean(intentPatch.hotel||intentPatch.pickupPreference),hotel:shopping.intent.hotel||''});
+    plan=composed.plan;
     const nextMemory=appendTurns(memory,message,plan.reply,now().toISOString());
+    if(composed.presentation)nextMemory.lastPresentedOffer=composed.presentation;
     if(COMMERCIAL_GOALS.includes(extracted.goal))nextMemory.commercialGoal=extracted.goal;
     if(extracted.selectedProductId&&!readOnlyQuestion)nextMemory.productFocus=extracted.selectedProductId;
     else if(!nextMemory.productFocus&&plan.recommendedProductId)nextMemory.productFocus=plan.recommendedProductId;
@@ -464,12 +470,16 @@ export function createLoveTravelSalesOrchestrator({
     else if(displayedChoices?.length||extracted.patch.selectedOption)delete nextMemory.offerScope;
     await saveConversationMemory(env,sessionId,nextMemory);
 
+    const responseTransaction=bookingTransaction||activeTransaction;
+    const quoteSelection=responseTransaction?.selection?bokunSelectionFromCanonicalSelection(responseTransaction.selection):null;
     return {
       reply:plan.reply,
       degraded:Boolean(plan.degraded),
       tourId:externalTourId(productsPacket,plan.recommendedProductId),
       faqIntent:String(extracted.goal||'GENERAL').toLowerCase(),
       source:plan.source,
+      uiAction:composed.uiAction,
+      quoteBinding:await quoteDisplayBinding(responseTransaction,quoteSelection),
       agent:{
         version:'travel-commerce-sales-v1',
         intentSource:extracted.source,
@@ -485,13 +495,13 @@ export function createLoveTravelSalesOrchestrator({
         bookingRequested:extracted.bookingRequested,
         mutationExecuted:false,
       },
-      transaction:bookingTransaction ? {
-        transactionId:bookingTransaction.transactionId,
-        revision:bookingTransaction.revision,
-        state:bookingTransaction.state,
-        selectedOfferId:bookingTransaction.selectedOfferId||'',
-        quote:bookingTransaction.quote||null,
-        draft:bookingTransaction.draft||null,
+      transaction:responseTransaction ? {
+        transactionId:responseTransaction.transactionId,
+        revision:responseTransaction.revision,
+        state:responseTransaction.state,
+        selectedOfferId:responseTransaction.selectedOfferId||'',
+        quote:responseTransaction.quote||null,
+        draft:responseTransaction.draft||null,
       } : null,
       bookingSelection,
       partyCounts:(bookingTransaction||activeTransaction)?.selection ? Object.fromEntries(['ADULT','CHILD','INFANT'].map(role=>[role,((bookingTransaction||activeTransaction).selection.participants||[]).filter(item=>item.role===role).reduce((sum,item)=>sum+Number(item.count||0),0)])) : null,
@@ -535,22 +545,23 @@ export async function handleLoveTravelSalesAgent(
     return json({ok:false,error:'message_required'},400);
   }
 
-  const session=await ensureSalesSession(request,env);
+  let session;
   try{
-    const orchestrator=createLoveTravelSalesOrchestrator({env});
-    const result=await orchestrator.turn({
-      sessionId:session.id,
+    session=await ensureSalesSession(request,env);
+    const result=await executeConversationOperation(env,session,{
+      action:'TURN',
+      requestId:body.requestId,
       locale:localeFrom(request,body),
       message,
       context:body.context&&typeof body.context==='object'?body.context:{},
       history:Array.isArray(body.history)?body.history:[],
     });
-    return withSalesSession(json({ok:true,...result}),session);
+    return withSalesSession(json(result),session);
   }catch(error){
     console.error('LoveTravel Sales Orchestrator failed',error?.message||error);
     return withSalesSession(json({
       ok:false,
-      error:'sales_orchestrator_unavailable',
-    },502),session);
+      error:error?.code||'sales_orchestrator_unavailable',
+    },Number(error?.status)||502),session);
   }
 }

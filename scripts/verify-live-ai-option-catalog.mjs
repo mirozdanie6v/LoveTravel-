@@ -94,8 +94,10 @@ try{
     finally{await h.context.close();}
   }
   let caseIndex=0;
+  const fullMatrix=process.argv.includes('--full-matrix');
   for(const domain of source)for(const rate of domain.rates){
-    const locale=locales[caseIndex++%locales.length],native=await domains(locale);
+    for(const locale of fullMatrix?locales:[locales[caseIndex++%locales.length]]){
+    const native=await domains(locale);
     const nativeRate=native.find(d=>String(d.experience.id)===String(domain.experience.id)).rates.find(r=>String(r.id)===String(rate.id));
     const h=await start(locale);
     try{
@@ -123,14 +125,16 @@ try{
       invariant(handoff.resolution.readyToQuote&&!handoff.transaction.providerBooking,'Configurator is not quote-ready or a booking exists');
       invariant(handoff.transaction.quote.price.amount===answer.transaction.quote.price.amount,'UI price differs from exact Quote');
       invariant(!h.mutations.length&&!h.errors.length,'Option browser failure: '+JSON.stringify({mutations:h.mutations,errors:h.errors}));
-      await h.page.screenshot({path:proofDir+'/'+domain.experience.id+'-'+rate.id+'-handoff.png'});
+      await h.page.screenshot({path:proofDir+'/'+locale+'-'+domain.experience.id+'-'+rate.id+'-handoff.png'});
       report.options.push({locale,productId:String(domain.experience.id),rateId:String(rate.id),title:nativeRate.title,transactionId:handoff.transaction.transactionId,
         quote:handoff.transaction.quote.price,readyToQuote:handoff.resolution.readyToQuote,readyToBook:handoff.resolution.readyToBook,source:answer.source,reply:answer.reply,providerBooking:null});
       console.log(JSON.stringify({stage:'exact-option-handoff',...report.options.at(-1)}));
     }catch(error){await h.page.screenshot({path:proofDir+'/'+rate.id+'-failure.png',fullPage:true}).catch(()=>{});throw error;}
     finally{await h.context.close();}
+    }
   }
-  invariant(report.catalog.length===10&&report.options.length===11,'Acceptance coverage incomplete');
+  report.coverage={catalogPairs:10,exactQuotePairs:fullMatrix?55:11,fullMatrix};
+  invariant(report.catalog.length===10&&report.options.length===report.coverage.exactQuotePairs,'Acceptance coverage incomplete');
 }catch(error){report.errors.push(error.message);throw error;}
 finally{
   report.finishedAt=new Date().toISOString();

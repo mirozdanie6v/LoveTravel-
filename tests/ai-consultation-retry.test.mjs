@@ -10,15 +10,20 @@ function harness(locale='ru',savedState=null,storage=new Map()){
   const events=new EventTarget();
   const messagesBox={scrollHeight:0,scrollTop:0};
   const root={innerHTML:'',querySelector:selector=>selector==='.ai-messages'?messagesBox:{focus(){}},querySelectorAll:()=>[]};
-  const c={Intl,Date,console,URL,Request,Response,Headers,AbortController,DOMException,crypto,CustomEvent,setTimeout,clearTimeout,
+  const c={Intl,Date,console,URL,Request,Response,Headers,AbortController,AbortSignal,DOMException,crypto,CustomEvent,setTimeout,clearTimeout,
     addEventListener:events.addEventListener.bind(events),removeEventListener:events.removeEventListener.bind(events),dispatchEvent:events.dispatchEvent.bind(events),
     TOURS:[],localStorage:{getItem:()=>locale,setItem(){}},sessionStorage:{getItem:key=>storage.get(key)||null,setItem:(key,value)=>storage.set(key,value),removeItem:key=>storage.delete(key)},
     document:{documentElement:{lang:locale},readyState:'loading',addEventListener(){},querySelector:()=>null,querySelectorAll:()=>[]},
     location:{origin:'https://lovetravel.viiversion.com',href:'https://lovetravel.viiversion.com/'},
     MutationObserver:class{observe(){}},requestAnimationFrame:callback=>callback()};
+  let applicationFetch;
+  Object.defineProperty(c,'fetch',{configurable:true,set:value=>{applicationFetch=value;},get:()=>{
+    const captured=applicationFetch;
+    return (url,init)=>url==='/api/travel-commerce/session'?Promise.resolve(new Response('{"ok":true}')):captured(url,init);
+  }});
   c.globalThis=c;vm.createContext(c);vm.runInContext(semantic,c);vm.runInContext(conversationClient,c);
   if(savedState)storage.set('lovetravel-ai-conversation-v1',JSON.stringify({...savedState,conversationId:c.LoveTravelConversation.id()}));
-  vm.runInContext(client.replace('    mount,\n    _test:{','    mount,\n    _audit:{handleText,handleClick,state:()=>state,pending:()=>pending,retry:()=>retryMessage},\n    _test:{'),c);
+  vm.runInContext(client.replace('    _test:{','    _audit:{handleText,handleClick,deleteSavedData,state:()=>state,pending:()=>pending,retry:()=>retryMessage},\n    _test:{'),c);
   return {c,root,storage};
 }
 for(const locale of ['ru','vi','en','zh','ko']){
@@ -135,6 +140,7 @@ for(const locale of ['ru','vi','en','zh','ko']){
     const {c,root}=harness(locale);let finish,oldHeader,newHeader;
     c.fetch=(_url,init)=>{oldHeader=new Headers(init.headers).get('x-lt-conversation-id');return new Promise(resolve=>{finish=resolve;});};
     const old=c.MaxTourAI._audit.handleText('Book for two adults and a child tomorrow.',root);
+    await new Promise(resolve=>setImmediate(resolve));
     c.MaxTourAI._audit.handleClick(root,{target:{closest:()=>({dataset:{aiAction:'clear'}})}});
     assert.equal(c.MaxTourAI._audit.pending(),false);
     c.fetch=async(_url,init)=>{newHeader=new Headers(init.headers).get('x-lt-conversation-id');const body=JSON.parse(init.body);assert.ok(!body.history.some(row=>row.text.includes('two adults')));return new Response(JSON.stringify({ok:true,reply:'Which tour would you like?',agent:{nextQuestionCode:'PREFERENCE'}}));};
@@ -190,4 +196,49 @@ test('Missing conversation runtime cannot silently submit against an old persist
  await c.MaxTourAI._audit.handleText('Хочу забронировать',root);assert.equal(requests,0);assert.equal(c.MaxTourAI._audit.state().slots.children.length,0);
  c.LoveTravelConversation=runtime;c.fetch=async()=>{requests++;return new Response(JSON.stringify({ok:true,reply:'На какую дату?',intent:{party:{adults:0,children:[],infants:0}},agent:{nextQuestionCode:'DATE'}}));};
  await c.MaxTourAI._audit.handleText('Хочу забронировать',root);assert.equal(requests,1);assert.equal(c.MaxTourAI._audit.state().messages.at(-1).text,'На какую дату?');
+});
+
+test('a server form invitation opens the existing configurator without another confirmation message',async()=>{
+  const {c,root}=harness('en');
+  c.TOURS.push({id:'1287578',title:'Robinson',group:{adult:'$49'}});
+  const calls=[];
+  c.openTour=id=>calls.push('tour:'+id);
+  c.LoveTravelBookingConfigurator={
+    ready:async()=>{calls.push('ready');return true;},
+    refreshTransaction:async()=>({selection:{productId:'1287578',rateId:'201'}}),
+    applySelection:async value=>calls.push('rate:'+value.rateId),open:()=>calls.push('open'),
+  };
+  c.fetch=async()=>new Response(JSON.stringify({ok:true,reply:'Opening the form.',uiAction:'OPEN_CONFIGURATOR',
+    bookingSelection:{productId:'1287578',rateId:'201'},agent:{nextQuestionCode:'OPEN_CONFIGURATOR'}}));
+  await c.MaxTourAI._audit.handleText('Yes.',root);
+  assert.deepEqual(calls,['tour:1287578','ready','rate:201','open']);
+  assert.equal(c.MaxTourAI._audit.state().messages.filter(m=>m.role==='bot'&&m.text.includes('Opening')).length,1);
+});
+
+test('the card shows the bound exact total with cents, and discards mismatched or expired quotes',async()=>{
+  const {c,root}=harness('en');c.TOURS.push({id:'1287578',title:'Robinson',group:{adult:'$49'}});
+  const result={ok:true,reply:'Your total is 97.09 USD.',tourId:'1287578',
+    transaction:{transactionId:'txn-1',revision:4,quote:{transactionId:'txn-1',revision:2,status:'ACTIVE',selectionFingerprint:'current',
+      expiresAt:new Date(Date.now()+60000).toISOString(),price:{amount:97.09,currency:'USD'},offer:{date:'2026-10-13',rateRef:{externalId:'201'}}}},
+    quoteBinding:{transactionId:'txn-1',transactionRevision:4,quoteRevision:2,productId:'1287578',rateId:'201',selectionFingerprint:'current'}};
+  c.fetch=async()=>new Response(JSON.stringify(result));
+  await c.MaxTourAI._audit.handleText('What is the price?',root);
+  assert.equal(c.MaxTourAI.pricePresentation('1287578').amount,'97.09 USD');
+  assert.equal(c.MaxTourAI.pricePresentation('1287580'),null);
+  result.quoteBinding.selectionFingerprint='other';
+  await c.MaxTourAI._audit.handleText('Check again',root);assert.equal(c.MaxTourAI.pricePresentation('1287578'),null);
+  result.quoteBinding.selectionFingerprint='current';result.transaction.quote.expiresAt=new Date(Date.now()-1).toISOString();
+  await c.MaxTourAI._audit.handleText('Check once more',root);assert.equal(c.MaxTourAI.pricePresentation('1287578'),null);
+});
+
+test('successful deletion resets displayed history only after the server confirms it',async()=>{
+  const {c,root}=harness('en');c.confirm=()=>true;
+  c.fetch=async()=>new Response('{"ok":true,"reply":"Lunch is included."}');
+  await c.MaxTourAI._audit.handleText('What is included?',root);
+  const oldId=c.LoveTravelConversation.id();
+  c.fetch=async(url,init)=>{assert.equal(url,'/api/travel-commerce/conversation');assert.equal(JSON.parse(init.body).action,'DELETE_SAVED_DATA');return new Response('{"ok":true,"deleted":1}');};
+  await c.MaxTourAI._audit.deleteSavedData(root);
+  assert.notEqual(c.LoveTravelConversation.id(),oldId);
+  assert.ok(!c.MaxTourAI._audit.state().messages.some(m=>m.text==='Lunch is included.'));
+  assert.equal(c.MaxTourAI._audit.pending(),false);
 });

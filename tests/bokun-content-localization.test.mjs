@@ -146,6 +146,8 @@ test('translates only cache misses and invalidates a field when its Bókun sourc
   assert.equal(stale.localization.source,'source');
   assert.equal(stale.localization.atomic,true);
   assert.equal(stale.localization.translatedFields,0);
+  assert.equal(stale.localization.contentReady,false);
+  assert.equal(stale.localization.contentLocale,'en');
   assert.equal(stale.experience.description,'English description');
   assert.equal(background.length,1);
 
@@ -154,6 +156,8 @@ test('translates only cache misses and invalidates a field when its Bókun sourc
   assert.equal(refreshed.experience.title,'KO:Updated English title');
   assert.equal(refreshed.localization.pendingFields,0);
   assert.equal(refreshed.localization.source,'viiversion-cache');
+  assert.equal(refreshed.localization.contentReady,true);
+  assert.equal(refreshed.localization.contentLocale,'ko');
 });
 
 

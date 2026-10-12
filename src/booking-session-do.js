@@ -3,6 +3,9 @@ import { createBookingSessionRuntime } from './booking-session-runtime.js';
 import { createTravelCommerceStore } from './travel-commerce-store.js';
 import { validateBookingTransaction } from './travel-commerce-contracts.js';
 import { assertBookingMutationsAllowed } from './booking-mutation-policy.js';
+import {createLoveTravelSalesOrchestrator} from './travel-sales-orchestrator.js';
+import {handleTravelTransactionApi} from './travel-transaction-api.js';
+import {requireOwnedConversation,deleteSavedConversations,conversationError,conversationHash} from './travel-conversation-state.js';
 
 const json=(data,status=200)=>new Response(JSON.stringify(data),{
   status,
@@ -97,12 +100,12 @@ export class BookingSession {
     const existing=await store.getTransaction(tx.transactionId);
     if(existing){
       if(!bound) await this.state.storage.put('transaction-id',tx.transactionId);
-      await this.state.storage.put('last-known-transaction',existing);
+      await this.state.storage.delete?.('last-known-transaction');
       return {transaction:existing,reused:true};
     }
     await store.createTransaction(tx);
     await this.state.storage.put('transaction-id',tx.transactionId);
-    await this.state.storage.put('last-known-transaction',tx);
+    await this.state.storage.delete?.('last-known-transaction');
     return {transaction:tx,reused:false};
   }
 
@@ -129,7 +132,7 @@ export class BookingSession {
         draft:body?.draft,
         providerEvidenceRefs:Array.isArray(body?.providerEvidenceRefs)?body.providerEvidenceRefs:[],
       });
-      await this.state.storage.put('last-known-transaction',result.transaction);
+      await this.state.storage.delete?.('last-known-transaction');
       return result;
     }
     if(action==='SYNC_SELECTION'){
@@ -138,7 +141,7 @@ export class BookingSession {
         expectedRevision:Number(body?.expectedRevision),
         selection:body?.selection,
       });
-      await this.state.storage.put('last-known-transaction',result.transaction);
+      await this.state.storage.delete?.('last-known-transaction');
       return result;
     }
     if(action==='RESERVE'){
@@ -149,7 +152,7 @@ export class BookingSession {
         quoteRevision:Number(body?.quoteRevision),
         demoToken:this.requireDemoToken(body?.demoToken),
       });
-      await this.state.storage.put('last-known-transaction',result.transaction);
+      await this.state.storage.delete?.('last-known-transaction');
       return result;
     }
     if(action==='RECONCILE'){
@@ -158,7 +161,7 @@ export class BookingSession {
         expectedRevision:Number(body?.expectedRevision),
         demoToken:this.requireDemoToken(body?.demoToken),
       });
-      await this.state.storage.put('last-known-transaction',result.transaction);
+      await this.state.storage.delete?.('last-known-transaction');
       return result;
     }
     const error=new Error('Unsupported BookingSession action');
@@ -167,9 +170,61 @@ export class BookingSession {
     throw error;
   }
 
+  async performConversation(body){
+    const ownerHash=String(body?.ownerHash||'');
+    if(!/^[a-f0-9]{64}$/.test(ownerHash))throw conversationError('guest_identity_required',400);
+    const bound=await this.state.storage.get('guest-owner');
+    if(bound&&bound!==ownerHash)throw conversationError('guest_identity_mismatch',403);
+    if(!bound)await this.state.storage.put('guest-owner',ownerHash);
+    if(['DELETE_SAVED_DATA','DELETE_EXPIRED'].includes(body.action)){
+      return deleteSavedConversations(this.env,ownerHash,{expiredOnly:body.action==='DELETE_EXPIRED'});
+    }
+    const session={id:String(body.sessionId||''),ownerHash};
+    await requireOwnedConversation(this.env,session);
+    if(body.action==='TURN'){
+      const requestId=String(body.requestId||'');
+      if(requestId&&!/^[A-Za-z0-9-]{20,80}$/.test(requestId))throw conversationError('invalid_request_id',400);
+      const requestHash=requestId?await conversationHash(JSON.stringify({message:body.message,locale:body.locale,context:body.context||{}})):'';
+      if(requestId){
+        const saved=await this.env.DB.prepare('SELECT request_hash,response_json FROM travel_conversation_requests WHERE session_id=? AND request_id=?').bind(session.id,requestId).first();
+        if(saved){
+          if(saved.request_hash!==requestHash)throw conversationError('request_id_reused',409);
+          const answer=JSON.parse(saved.response_json);
+          if(answer.transaction){
+            const current=await this.env.DB.prepare('SELECT revision FROM travel_booking_transactions WHERE transaction_id=?').bind(answer.transaction.transactionId).first();
+            if(!current||current.revision!==answer.transaction.revision)throw conversationError('request_obsolete',409);
+          }
+          return answer;
+        }
+      }
+      const orchestrator=createLoveTravelSalesOrchestrator({env:this.env,provider:this.provider()});
+      const answer=await orchestrator.turn({...body,sessionId:session.id});
+      if(requestId&&!answer.degraded)await this.env.DB.prepare(`INSERT INTO travel_conversation_requests(session_id,request_id,request_hash,response_json) VALUES(?,?,?,?)`)
+        .bind(session.id,requestId,requestHash,JSON.stringify(answer)).run();
+      return answer;
+    }
+    if(body.action==='TRANSACTION'){
+      const request=new Request('https://conversation.internal/api/travel-commerce/transaction',{
+        method:body.method,...(body.method==='POST'?{body:JSON.stringify(body.body)}:{}),
+      });
+      const response=await handleTravelTransactionApi(request,this.env,new URL(request.url),session);
+      return {body:await response.json(),status:response.status};
+    }
+    throw conversationError('unsupported_conversation_action',400);
+  }
+
   async fetch(request){
     try{
       const url=new URL(request.url);
+      if(request.method==='POST'&&url.pathname==='/purge'){
+        await this.exclusive(()=>this.state.storage.delete?.('last-known-transaction'));
+        return json({ok:true});
+      }
+      if(request.method==='POST'&&url.pathname==='/conversation'){
+        const body=await request.json().catch(()=>null);
+        if(!body)return json({ok:false,error:{code:'invalid_json'}},400);
+        return json({ok:true,...await this.exclusive(()=>this.performConversation(body))});
+      }
       if(request.method==='POST'&&url.pathname==='/initialize'){
         const body=await request.json().catch(()=>null);
         if(!body?.transaction) return json({ok:false,error:{code:'transaction_required'}},400);

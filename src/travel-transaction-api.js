@@ -4,8 +4,10 @@ import {
 } from './bokun-provider.js';
 import {
   executeBookingSession,
+  executeConversationOperation,
 } from './booking-session-client.js';
 import { bookingMutationBlockedResponse } from './booking-mutation-policy.js';
+import {quoteDisplayBinding} from './travel-commerce-quote.js';
 import {
   ensureCommerceTransaction,
   ensureSalesSession,
@@ -22,7 +24,8 @@ const json=(data,status=200,headers={})=>new Response(JSON.stringify(data),{
   },
 });
 
-function view(transaction,resolution=null){
+async function view(transaction,resolution=null){
+  const selection=transaction.selection?bokunSelectionFromCanonicalSelection(transaction.selection):null;
   return {
     transaction,
     revision:transaction.revision,
@@ -31,6 +34,7 @@ function view(transaction,resolution=null){
       ? bokunSelectionFromCanonicalSelection(transaction.selection)
       : null,
     quote:transaction.quote||null,
+    quoteBinding:await quoteDisplayBinding(transaction,selection),
     draft:transaction.draft||null,
     approval:transaction.approval||null,
     providerBooking:transaction.providerBooking||null,
@@ -48,7 +52,7 @@ function expectedRevision(body){
   return Number.isInteger(revision)&&revision>=1?revision:null;
 }
 
-export async function handleTravelTransactionApi(request,env,url=new URL(request.url)){
+export async function handleTravelTransactionApi(request,env,url=new URL(request.url),internalSession=null){
   if(url.pathname!=='/api/travel-commerce/transaction') return null;
   const body=request.method==='POST'?await request.clone().json().catch(()=>null):null;
   const action=String(body?.action||'').trim().toUpperCase();
@@ -59,13 +63,18 @@ export async function handleTravelTransactionApi(request,env,url=new URL(request
     return json({ok:false,error:'transaction_runtime_unavailable'},503);
   }
 
-  const session=await ensureSalesSession(request,env);
+  let session=internalSession;
   try{
+    if(!session){
+      session=await ensureSalesSession(request,env);
+      const result=await executeConversationOperation(env,session,{action:'TRANSACTION',method:request.method,body});
+      return withSalesSession(json(result.body,result.status),session);
+    }
     let transaction=await ensureCommerceTransaction(env,session.id);
 
     if(request.method==='GET'){
       const current=await executeBookingSession(env,transaction.transactionId,{action:'GET'});
-      return withSalesSession(json({ok:true,...view(current.transaction)}),session);
+      return withSalesSession(json({ok:true,...await view(current.transaction)}),session);
     }
     if(request.method!=='POST'){
       return withSalesSession(json({ok:false,error:'method_not_allowed'},405,{allow:'GET, POST'}),session);
@@ -89,7 +98,7 @@ export async function handleTravelTransactionApi(request,env,url=new URL(request
         expectedRevision:revision,
         selection:body.selection,
       });
-      return withSalesSession(json({ok:true,...view(result.transaction,result.resolution)}),session);
+      return withSalesSession(json({ok:true,...await view(result.transaction,result.resolution)}),session);
     }
 
     if(action==='APPROVE'){
@@ -108,7 +117,7 @@ export async function handleTravelTransactionApi(request,env,url=new URL(request
           quoteRevision,
         },
       });
-      return withSalesSession(json({ok:true,...view(result.transaction),receipt:result.receipt||null}),session);
+      return withSalesSession(json({ok:true,...await view(result.transaction),receipt:result.receipt||null}),session);
     }
 
     return withSalesSession(json({ok:false,error:'unsupported_action'},400),session);

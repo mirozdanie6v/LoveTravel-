@@ -403,6 +403,19 @@
       cards.forEach(card => {
         const id = String(card.dataset.tourId || '');
         if (!id) return;
+        const prices=card.querySelector?.('.price-row');
+        if(prices){
+          const exact=globalThis.MaxTourAI?.pricePresentation?.(id);
+          if(exact){
+            if(card._ltCatalogPriceHtml===undefined)card._ltCatalogPriceHtml=prices.innerHTML;
+            const esc=value=>String(value).replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+            const desired=`<div data-lt-exact-price="" data-rate-id="${esc(exact.rateId)}"><div class="mini">${esc(exact.label)} · ${esc(exact.date)}</div><div class="price">${esc(exact.amount)}</div></div>`;
+            if(prices.innerHTML!==desired)prices.innerHTML=desired;
+          }else if(card._ltCatalogPriceHtml!==undefined){
+            if(prices.innerHTML!==card._ltCatalogPriceHtml)prices.innerHTML=card._ltCatalogPriceHtml;
+            delete card._ltCatalogPriceHtml;
+          }
+        }
         let button = [...list.querySelectorAll(':scope > .ai-catalog-book-v23')].find(node => String(node.dataset.id || '') === id);
         if (!button) {
           button = document.createElement('button');
@@ -411,13 +424,22 @@
           button.dataset.aiAction = 'book-tour';
           button.dataset.id = id;
         }
-        button.textContent = bookLabel();
+        const label = bookLabel();
+        if (button.textContent !== label) button.textContent = label;
         if (card.nextElementSibling !== button) card.after(button);
       });
     });
   }
 
   let scheduled = false;
+  const observedRoots = new WeakSet();
+  function observeSalesRoot(root) {
+    if (!root || observedRoots.has(root)) return;
+    observedRoots.add(root);
+    new MutationObserver(mutations => {
+      if (mutations.some(item => item.target === root || root.contains(item.target))) refreshSalesUi();
+    }).observe(root, { childList:true, subtree:true });
+  }
   function refreshSalesUi() {
     if (scheduled) return;
     scheduled = true;
@@ -425,14 +447,19 @@
       scheduled = false;
       const root = document.querySelector('#aiScreen,#ai,[data-screen="ai"]') || document.querySelector('.ai-consultant-shell')?.parentElement;
       if (!root) return;
+      observeSalesRoot(root);
       // Native v5 owns localized quick replies and conversation state.
       ensureBookingButtons(root);
     });
   }
 
-  new MutationObserver(refreshSalesUi).observe(document.documentElement, { childList:true, subtree:true });
-  document.addEventListener('click', refreshSalesUi, true);
-  document.addEventListener('submit', refreshSalesUi, true);
+  const previous = globalThis.MaxTourAI;
+  if (previous?.mount) globalThis.MaxTourAI = { ...previous, mount(root) {
+    previous.mount(root);
+    observeSalesRoot(root);
+    refreshSalesUi();
+  }};
+  globalThis.addEventListener?.('lovetravel:quote-changed',refreshSalesUi);
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', refreshSalesUi, { once:true });
   else refreshSalesUi();
 

@@ -27,7 +27,14 @@
     ko:{user:'회원',assistant:'AI 도우미',results:'추천 투어',forLabel:'대상',details:'자세히 보기',book:'예약하기',subtitle:'원하는 여행과 조건을 알려주세요. 맞는 투어를 추천하고 예약 단계까지 안내해 드립니다.',clear:'지우기',placeholder:'메시지를 입력하세요...',pending:'찾는 중…',priceTbd:'가격 확인 중',partyUnknown:'인원 미입력',adultShort:'성인',childShort:'아동',infantShort:'유아',reasonBudget:'가격이 더 유리함',reasonSea:'바다 / 섬',reasonNature:'멋진 풍경',reasonChildren:'어린이 동반 적합',reasonDefault:'요청에 적합',exactDeparture:'출발 가능',nearestDeparture:'가장 가까운 출발',individualDate:'프라이빗 날짜는 예약 시 확정',datesTbd:'출발 날짜 확인 중',quickSea:'바다와 섬',quickSeaValue:'바다와 섬 투어를 원해요',quickViews:'멋진 풍경',quickViewsValue:'자연과 멋진 풍경을 원해요',quickCity:'시티투어',quickCityValue:'시티투어를 원해요',quickTwoAdults:'성인 2명',quickTwoAdultsValue:'성인 2명입니다',quickChild:'어린이 동반',quickChildValue:'어린이와 함께 여행합니다',today:'오늘',tomorrow:'내일',flexible:'날짜 유동적'},
     zh:{user:'您',assistant:'AI 顾问',results:'适合您的行程',forLabel:'适用于',details:'查看详情',book:'预订',subtitle:'告诉我您想去哪里、希望怎样游玩。我会推荐合适的行程并带您完成预订流程。',clear:'清除',placeholder:'输入消息…',pending:'正在查询…',priceTbd:'价格待确认',partyUnknown:'未填写出行人数',adultShort:'成人',childShort:'儿童',infantShort:'婴儿',reasonBudget:'价格更划算',reasonSea:'海岛',reasonNature:'风景优美',reasonChildren:'适合儿童',reasonDefault:'符合您的需求',exactDeparture:'有可订班次',nearestDeparture:'最近班次',individualDate:'私人行程日期在预订时确认',datesTbd:'日期待确认',quickSea:'海岛',quickSeaValue:'我想去海岛',quickViews:'自然风光',quickViewsValue:'我想看自然风光',quickCity:'城市观光',quickCityValue:'我想参加城市观光',quickTwoAdults:'2 位成人',quickTwoAdultsValue:'我们有 2 位成人',quickChild:'带儿童',quickChildValue:'带孩子出行',today:'今天',tomorrow:'明天',flexible:'日期灵活'}
   });
-  const ui = () => UI[ACTIVE_LOCALE] || UI.ru;
+  const CONVERSATION_UI={
+    ru:{clear:'Новый диалог',deleteData:'Удалить сохранённые диалоги',deleteConfirm:'Удалить сохранённые диалоги и незавершённые формы в этом браузере? Созданные заказы сохранятся.',deleteFailed:'Не удалось удалить данные. Повторите попытку.'},
+    en:{clear:'New conversation',deleteData:'Delete saved conversations',deleteConfirm:'Delete saved conversations and unfinished forms in this browser? Existing orders will be retained.',deleteFailed:'Could not delete the data. Please try again.'},
+    vi:{clear:'Cuộc trò chuyện mới',deleteData:'Xóa các cuộc trò chuyện đã lưu',deleteConfirm:'Xóa các cuộc trò chuyện và biểu mẫu chưa hoàn tất trong trình duyệt này? Các đơn đã tạo vẫn được giữ.',deleteFailed:'Không thể xóa dữ liệu. Vui lòng thử lại.'},
+    zh:{clear:'新对话',deleteData:'删除已保存的对话',deleteConfirm:'删除此浏览器中已保存的对话和未完成的表单？已创建的订单将保留。',deleteFailed:'无法删除数据，请重试。'},
+    ko:{clear:'새 대화',deleteData:'저장된 대화 삭제',deleteConfirm:'이 브라우저의 저장된 대화와 미완성 양식을 삭제할까요? 생성된 주문은 유지됩니다.',deleteFailed:'데이터를 삭제하지 못했습니다. 다시 시도해 주세요.'},
+  };
+  const ui = () => ({...(UI[ACTIVE_LOCALE] || UI.ru),...CONVERSATION_UI[ACTIVE_LOCALE]});
   const catalog = () => { try { return Array.isArray(TOURS) ? TOURS : []; } catch (_) { return []; } };
 
   function vietnamTodayIso() {
@@ -165,7 +172,40 @@
   let state = freshState();
   let pending = false;
   let retryMessage = null;
+  let retryRequestId=null;
   let requestEpoch = 0;
+  let quotedOffer=null,quoteExpiryTimer=null,mountedRoot=null;
+  function setQuotedOffer(result={}){
+    clearTimeout(quoteExpiryTimer);quotedOffer=null;
+    const tx=result.transaction,quote=tx?.quote,binding=result.quoteBinding;
+    if(quote?.status==='ACTIVE'&&binding&&binding.transactionId===tx.transactionId
+      &&quote.transactionId===tx.transactionId&&binding.transactionRevision===tx.revision
+      &&binding.quoteRevision===quote.revision&&binding.selectionFingerprint===quote.selectionFingerprint
+      &&Number.isFinite(Number(quote.price?.amount))&&quote.price?.currency&&Date.parse(quote.expiresAt)>Date.now()){
+      quotedOffer={quote,binding};
+      quoteExpiryTimer=setTimeout(()=>{
+        quotedOffer=null;
+        if(mountedRoot)render(mountedRoot);
+        globalThis.dispatchEvent?.(new CustomEvent('lovetravel:quote-changed'));
+      },Math.max(1,Date.parse(quote.expiresAt)-Date.now()));
+    }
+    globalThis.dispatchEvent?.(new CustomEvent('lovetravel:quote-changed'));
+  }
+  function pricePresentation(productId){
+    if(!quotedOffer||String(quotedOffer.binding.productId)!==String(productId)
+      ||Date.parse(quotedOffer.quote.expiresAt)<=Date.now())return null;
+    const {quote,binding}=quotedOffer;
+    const amount=Number(quote.price.amount).toLocaleString(ACTIVE_LOCALE==='ru'?'ru-RU':ACTIVE_LOCALE==='vi'?'vi-VN':ACTIVE_LOCALE==='ko'?'ko-KR':ACTIVE_LOCALE==='zh'?'zh-CN':'en-US',{maximumFractionDigits:2});
+    return {amount:amount+' '+quote.price.currency,
+      label:localeText('Итого за группу','Tổng cộng cho nhóm','Total for your party','일행 총금액','本组总价'),
+      date:quote.offer.date,rateId:binding.rateId};
+  }
+  globalThis.addEventListener?.('lovetravel:selection-changing',()=>setQuotedOffer());
+  globalThis.addEventListener?.('lovetravel:conversation-reset',()=>setQuotedOffer());
+  globalThis.addEventListener?.('lovetravel:transaction-changed',event=>{
+    setQuotedOffer(event.detail);
+    if(mountedRoot)render(mountedRoot);
+  });
   const semanticText=key=>globalThis.LoveTravelI18n?.t?.(key)||key;
   try {
     const saved = JSON.parse(sessionStorage.getItem(STORAGE_KEY) || 'null');
@@ -341,6 +381,7 @@
   }
 
   function applyServerState(result) {
+    setQuotedOffer(result);
     const intent=result.intent;
     if(intent){
       state.slots.adults=Number(intent.party?.adults||0);
@@ -370,6 +411,8 @@
   }
 
   function recommendationPrice(item) {
+    const exact=pricePresentation(item.tour.id);
+    if(exact)return exact.label+': '+exact.amount;
     const g=moneyLabel(item.groupPrice), p=moneyLabel(item.individualPrice);
     if (ACTIVE_LOCALE === 'zh') {
       if (item.format === 'compare') return [item.groupPrice && `拼团 ${g} 起`, item.individualPrice && `私人 ${p} 起`].filter(Boolean).join(' · ');
@@ -456,12 +499,13 @@
     );
   }
 
-  async function requestAiReply(text) {
+  async function requestAiReply(text,requestId) {
     const response = await conversationFetch('/api/ai/chat', {
       method:'POST', credentials:'same-origin', headers:{ 'content-type':'application/json', 'x-max-tour-locale':ACTIVE_LOCALE },
       body:JSON.stringify({
         locale:ACTIVE_LOCALE,
         message:clean(text,900),
+        requestId,
         history:state.messages.filter(item => item.text !== ui().pending).slice(-10).map(item => ({ role:item.role, text:item.text })),
         context:{
           currentDateVietnam:vietnamTodayIso(), timeZone:TIME_ZONE, locale:ACTIVE_LOCALE,
@@ -469,7 +513,7 @@
       }),
     });
     const result = await response.json().catch(() => ({}));
-    if (!response.ok || !result.ok || !result.reply) throw new Error(result.error || 'ai_unavailable');
+    if (!response.ok || !result.ok || !result.reply) throw Object.assign(new Error(result.error || 'ai_unavailable'),{code:result.error});
     return {
       reply:clean(result.reply,1800),
       tourId:clean(result.tourId,120),
@@ -480,6 +524,9 @@
       nextQuestionCode:result.agent?.nextQuestionCode || '',
       partyCounts:result.partyCounts,
       bookingSelection:result.bookingSelection,
+      uiAction:result.uiAction,
+      transaction:result.transaction,
+      quoteBinding:result.quoteBinding,
     };
   }
 
@@ -570,22 +617,26 @@
     if (attempt < 12) setTimeout(() => continueToBooking(intent, attempt + 1), 120);
   }
 
-  async function startBooking(item, root) {
+  async function startBooking(item, root, {announce=true}={}) {
     if (!item?.tour?.id) return;
     state.selectedTourId = item.tour.id;
     persist();
-    add('bot', localeText(
-      `Открываю бронирование «${item.tour.title}». Уже выбранные параметры беру из текущей транзакции.`,
-      `Đang mở đặt tour “${item.tour.title}”. Các thông tin đã chọn được lấy từ giao dịch hiện tại.`,
-      `Opening booking for “${item.tour.title}”. Your selected details are coming from the current booking transaction.`,
-      `“${item.tour.title}” 예약을 열고 있습니다. 선택한 정보는 현재 예약 트랜잭션에서 불러옵니다.`,
-      `正在打开“${item.tour.title}”的预订。已选择的信息将从当前预订事务中读取。`
+    if(announce)add('bot', localeText(
+      `Открываю форму «${item.tour.title}» с выбранными параметрами.`,
+      `Đang mở biểu mẫu “${item.tour.title}” với các thông tin đã chọn.`,
+      `Opening the form for “${item.tour.title}” with your selected details.`,
+      `선택한 정보로 “${item.tour.title}” 양식을 열고 있습니다.`,
+      `正在打开“${item.tour.title}”的表单，保留已选信息。`
     ));
     render(root, { scrollToEnd:true });
     try {
       if (typeof openTour === 'function') openTour(item.tour.id);
       const configurator=globalThis.LoveTravelBookingConfigurator;
       if(!configurator) return;
+      const handoffConversationId=conversationId();
+      const handoffEpoch=requestEpoch;
+      if(await configurator.ready?.(item.tour.id)===false)return;
+      if(handoffConversationId!==conversationId()||handoffEpoch!==requestEpoch)return;
       const snapshot=await configurator.refreshTransaction?.();
       if(snapshot?.selection&&String(snapshot.selection.productId||'')===String(item.tour.id)){
         await configurator.applySelection?.(snapshot.selection);
@@ -662,6 +713,7 @@
     }).join('');
     const quick = quickReplies();
     root.innerHTML = `<div class="section-title ai-section-head"><div><h2>${esc(t.assistant)}</h2><p class="ai-chat-subtitle">${esc(t.subtitle)}</p></div><button class="secondary ai-clear" type="button" data-ai-action="clear">${esc(t.clear)}</button></div><section class="ai-consultant-shell"><div class="ai-consultant-main ai-chat-panel"><div class="ai-messages" role="log" aria-live="polite">${messages}</div><form class="ai-consultant-input" data-ai-form="chat"><textarea name="message" rows="1" aria-label="${esc(t.placeholder)}" placeholder="${esc(t.placeholder)}" ${pending ? 'disabled' : ''}></textarea><button class="primary" type="submit" ${pending ? 'disabled' : ''}>→</button></form></div><div class="ai-chat-below">${retryMessage ? `<button class="secondary" type="button" data-ai-action="retry">${esc(semanticText('ai.retry'))}</button>` : ''}${quick.length ? `<div class="ai-quick-replies">${quick.map(([label,value]) => `<button type="button" data-ai-action="quick" data-value="${esc(value)}">${esc(label)}</button>`).join('')}</div>` : ''}${renderRecommendations()}</div></section>`;
+    root.querySelector('.ai-chat-below')?.insertAdjacentHTML?.('beforeend',`<button class="secondary ai-delete" type="button" data-ai-action="delete-data" ${pending?'disabled':''}>${esc(t.deleteData)}</button>`);
     const input=root.querySelector('textarea[name="message"]');
     if(input&&draft)input.value=draft;
     if(input&&wasEditing){
@@ -675,19 +727,28 @@
   async function handleText(text, root, {retry=false}={}) {
     if (!text || pending) return;
     if(!retry)add('user', text);
+    if(!retry||!retryRequestId)retryRequestId=crypto.randomUUID();
+    setQuotedOffer();
     const epoch=++requestEpoch;
     retryMessage = null;
     pending = true; add('bot', ui().pending); render(root, { scrollToEnd:true });
     try {
-      const result = await requestAiReply(text);
+      const result = await requestAiReply(text,retryRequestId);
       if(epoch!==requestEpoch)return;
       applyServerState(result);
       if (state.messages.at(-1)?.text === ui().pending) state.messages.pop();
       applyServerTour(result);
       if(result.degraded){retryMessage=text;add('bot',semanticText('ai.unavailable'),{needsConsultant:true});}
-      else add('bot',result.reply);
+      else {
+        add('bot',result.reply);
+        if(result.uiAction==='OPEN_CONFIGURATOR'&&result.bookingSelection?.productId){
+          const item=state.recommendations.find(row=>String(row.tour.id)===String(result.bookingSelection.productId));
+          if(item)await startBooking(item,root,{announce:false});
+        }
+      }
     } catch (error) {
       if(epoch!==requestEpoch)return;
+      if(error?.code==='request_obsolete'||error?.code==='request_id_reused')retryRequestId=null;
       console.warn('[LoveTravel AI] consultation request failed',error?.message||error);
       if (state.messages.at(-1)?.text === ui().pending) state.messages.pop();
       retryMessage=text;
@@ -700,6 +761,7 @@
     const action = button.dataset.aiAction;
     if (action === 'quick') void handleText(button.dataset.value || '', root);
     if (action === 'retry' && retryMessage) void handleText(retryMessage,root,{retry:true});
+    if (action === 'delete-data'&&!pending) void deleteSavedData(root);
     if (action === 'clear') { requestEpoch++; pending=false; globalThis.LoveTravelConversation?.reset?.(); retryMessage=null; state = freshState(); try { sessionStorage.removeItem(STORAGE_KEY); sessionStorage.removeItem(BOOKING_INTENT_KEY); } catch (_) {} render(root,{discardDraft:true}); }
     if (action === 'open-tour') {
       const item = state.recommendations.find(row => row.tour.id === button.dataset.id); if (!item) return;
@@ -711,8 +773,25 @@
     }
   }
 
+  async function deleteSavedData(root){
+    const t=ui();
+    if(!globalThis.confirm(t.deleteConfirm))return;
+    pending=true;const epoch=++requestEpoch;render(root);
+    try{
+      const response=await conversationFetch('/api/travel-commerce/conversation',{
+        method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'DELETE_SAVED_DATA'}),
+      });
+      if(!response.ok)throw new Error('delete_failed');
+      if(epoch!==requestEpoch)return;
+      globalThis.LoveTravelConversation.reset();retryMessage=null;state=freshState();
+      sessionStorage.removeItem(STORAGE_KEY);sessionStorage.removeItem(BOOKING_INTENT_KEY);
+    }catch{if(epoch===requestEpoch)add('bot',t.deleteFailed);}
+    finally{if(epoch===requestEpoch){pending=false;render(root,{discardDraft:true});}}
+  }
+
   function mount(root) {
     if (!root) return;
+    mountedRoot=root;
     // Catalog/locale refreshes can remount repeatedly; keep the active form DOM.
     if(root.querySelector('[data-ai-form="chat"]')?.tagName!=='FORM')render(root);
     root.onclick = event => handleClick(root, event);
@@ -730,6 +809,7 @@
 
   globalThis.MaxTourAI = {
     mount,
+    pricePresentation,
     _test:{
       renderReplyText, vietnamTodayIso, parseDate, parseParty, departureIso, isDiscoveryIntent, isBookingIntent,
       recommendationForTourId, applyServerTour, locationAllowsTour, dispatchValue, prefillBooking,

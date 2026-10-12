@@ -2,19 +2,25 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {ensureSalesSession,shoppingSessionIdForSalesSession,transactionIdForSalesSession} from '../src/travel-session.js';
 import {explicitNoChildren,extractConversationIntent,createInitialTravelIntent} from '../src/travel-sales-intelligence.js';
+import {startBookingUiHarness} from './helpers/booking-ui-harness.mjs';
+import {configurationDomains} from './fixtures/booking-configurator-domains.mjs';
 
 test('A new conversation overrides the persistent cookie for both chat and transaction',async()=>{
-  const rows=[];const env={DB:{prepare:()=>({bind:id=>({run:async()=>rows.push(id)})})}};
+  const h=await startBookingUiHarness(configurationDomains()),env=h.env;
+  try{
   const old='old-conversation-1234567890',fresh='new-conversation-1234567890';
+  const previous=await ensureSalesSession(new Request('https://example.test/api/ai/chat',{headers:{cookie:h.fixtureCookie,'x-lt-conversation-id':old}}),env);
+  let current;
   for(const path of ['/api/ai/chat','/api/travel-commerce/transaction']){
-    const result=await ensureSalesSession(new Request('https://example.test'+path,{headers:{cookie:'lt_sales_sid='+old,'x-lt-conversation-id':fresh}}),env);
-    assert.equal(result.id,fresh);assert.equal(result.fresh,true);
-    assert.notEqual(shoppingSessionIdForSalesSession(result.id),shoppingSessionIdForSalesSession(old));
-    assert.notEqual(transactionIdForSalesSession(result.id),transactionIdForSalesSession(old));
+    const result=await ensureSalesSession(new Request('https://example.test'+path,{headers:{cookie:h.fixtureCookie,'x-lt-conversation-id':fresh}}),env);
+    assert.equal(result.conversationId,fresh);assert.equal(result.fresh,false);
+    assert.notEqual(shoppingSessionIdForSalesSession(result.id),shoppingSessionIdForSalesSession(previous.id));
+    assert.notEqual(transactionIdForSalesSession(result.id),transactionIdForSalesSession(previous.id));
+    if(current)assert.equal(result.id,current.id);current=result;
   }
-  assert.deepEqual(rows,[fresh,fresh]);
-  const fallback=await ensureSalesSession(new Request('https://example.test/api/ai/chat',{headers:{cookie:'lt_sales_sid='+old}}),env);
-  assert.equal(fallback.id,old);assert.equal(fallback.fresh,false);
+  const fallback=await ensureSalesSession(new Request('https://example.test/api/ai/chat',{headers:{cookie:h.fixtureCookie}}),env);
+  assert.notEqual(fallback.id,previous.id);assert.notEqual(fallback.id,current.id);assert.equal(fallback.fresh,false);
+  }finally{await h.close();}
 });
 test('A child-price factual question cannot add a child to the party',async()=>{
   assert.equal(explicitNoChildren('Сколько стоит билет для ребёнка?'),false);

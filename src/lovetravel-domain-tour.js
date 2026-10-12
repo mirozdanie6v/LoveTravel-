@@ -350,6 +350,7 @@
           '<div class="lt-domain-live"><span></span>'+esc(t().live)+'</div>'+
           '<h1>'+esc(localizedProductTitle(domain))+'</h1>'+
           '<p>'+esc(localizedProductDescription(domain))+'</p>'+
+          (l10n()?.translationNotice?.(domain)?'<p class="lt-booking-note" data-lt-translation-notice role="status">'+esc(l10n().translationNotice(domain))+'</p>':'')+
           '<div class="lt-domain-facts">'+
             (domain.experience.duration?.text?'<div><small>'+esc(t().duration)+'</small><b>'+esc(l10n()?.duration?.(domain.experience.duration)??domain.experience.duration.text)+'</b></div>':'')+
             (languages.length?'<div><small>'+esc(t().languages)+'</small><b>'+esc(languages.join(' · '))+'</b></div>':'')+

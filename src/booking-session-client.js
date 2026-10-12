@@ -38,3 +38,11 @@ export async function executeBookingSession(env,transactionId,command){
   const stub=stubFor(env,transactionId);
   return call(stub,'/execute',{...command,transactionId});
 }
+
+// Chat, UI changes and deletion share one queue for a guest, including parallel tabs.
+// Booking commands use another object, so an orchestrator call cannot deadlock itself.
+export async function executeConversationOperation(env,session,operation){
+  return call(stubFor(env,'guest-'+session.ownerHash),'/conversation',{
+    ...operation,sessionId:session.id,ownerHash:session.ownerHash,
+  });
+}

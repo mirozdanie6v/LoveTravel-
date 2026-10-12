@@ -42,6 +42,7 @@
     const txSelection=data.selection;
     const productId=String(txSelection?.productId||'');
     if(applySelection&&PRODUCT_IDS.has(productId)) saveSelection(productId,txSelection);
+    globalThis.dispatchEvent?.(new CustomEvent('lovetravel:transaction-changed',{detail:data}));
     return data;
   }
 
@@ -61,6 +62,7 @@
       throw error;
     }
     if(data.transaction) transactionSnapshot=data.transaction;
+    globalThis.dispatchEvent?.(new CustomEvent('lovetravel:transaction-changed',{detail:data}));
     return data;
   }
 
@@ -72,6 +74,7 @@
         selection:selection(productId),
       });
       if(data.selection) saveSelection(productId,data.selection);
+      globalThis.dispatchEvent?.(new CustomEvent('lovetravel:transaction-changed',{detail:data}));
       return data;
     }catch(error){
       if(retryStale&&Number(error.status)===409){
@@ -114,6 +117,7 @@
     return stateByProduct.get(productId);
   }
   function saveSelection(productId,next){
+    globalThis.dispatchEvent?.(new CustomEvent('lovetravel:selection-changing'));
     stateByProduct.set(productId,next);
     return next;
   }
@@ -465,6 +469,7 @@
         '<div><span class="lt-booking-config__eyebrow"><i></i>'+esc(t().live)+'</span><h2>'+esc(t().title)+'</h2></div>'+
         '<div class="lt-booking-config__quote"><small>'+esc(quoteLabel(r))+'</small><strong>'+esc(quote)+'</strong></div>'+
       '</div>'+
+      (globalThis.LoveTravelTourLocale?.translationNotice?.(r.product)?'<p class="lt-booking-note" data-lt-translation-notice role="status">'+esc(globalThis.LoveTravelTourLocale.translationNotice(r.product))+'</p>':'')+
       '<div class="lt-booking-config__grid">'+
         stepButton('date',t().date,dateSummary(r),Boolean(r?.resolved?.slot))+
         stepButton('option',t().option,optionSummary(r),Boolean(r?.resolved?.rate))+
