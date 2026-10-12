@@ -68,8 +68,14 @@ try{
     const history=[];
     for(const [index,message] of row.questions.entries()){
       const evidence=await broker.execute('searchProducts',{lang:'EN',includePickupPlaces:false},{principal:'ORCHESTRATOR'});
-      const response=await fetch('http://127.0.0.1:8799',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({format:'json_schema',locale:row.locale,message,evidence,history,goal:index===1?'COMPARE':'DETAILS'}),signal:AbortSignal.timeout(25000)});
-      const result=await response.json();
+      const requestBody=JSON.stringify({format:'json_schema',locale:row.locale,message,evidence,history,goal:index===1?'COMPARE':'DETAILS'});
+      let response=await fetch('http://127.0.0.1:8799',{method:'POST',headers:{'content-type':'application/json'},body:requestBody,signal:AbortSignal.timeout(25000)});
+      let result=await response.json();
+      if(result.plan?.replyFailureReason==='timeout'){
+        console.log(JSON.stringify({stage:'preview-dialogue-visible-retry',locale:row.locale,index,firstAttempt:result}));
+        response=await fetch('http://127.0.0.1:8799',{method:'POST',headers:{'content-type':'application/json'},body:requestBody,signal:AbortSignal.timeout(25000)});
+        result=await response.json();
+      }
       const plan=result.plan;
       console.log(JSON.stringify({stage:'preview-dialogue',locale:row.locale,index,status:response.status,ms:result.ms,plan,...(plan?.degraded?{raw:result.raw}:{})}));
       if(!response.ok||plan?.source!=='workers-ai-grounded-sales'||plan.degraded)throw new Error('Actual binding consultation failed: '+row.locale+' '+JSON.stringify(result));

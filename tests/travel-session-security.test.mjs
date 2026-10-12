@@ -132,3 +132,27 @@ test('retention also removes old unsigned drafts and their audit snapshots, pres
     assert.equal((await h.env.DB.prepare('SELECT state FROM travel_booking_transactions WHERE transaction_id=?').bind('txn-legacy-order-session-1234567890').first()).state,'CONFIRMED');
   }finally{await h.close();}
 });
+test('a grounded fallback after model failure is visible but cannot freeze the retry receipt',async()=>{
+ const domains=configurationDomains();domains[0].experience.content.included='Lunch';
+ let healthy=false,calls=0;
+ const h=await startBookingUiHarness(domains,{AI:{async run(_model,input){
+  calls++;
+  if(!healthy)throw Object.assign(new Error('Controlled answer timeout'),{code:'ai_timeout'});
+  if(input.messages[0].content.includes('Conversation Intelligence parser'))return {response:{intentPatch:{goal:'DETAILS',selectedProductId:'love-travel-robinson-island'}}};
+  return {response:{reply:'Robinson includes lunch.',recommendedProductId:'love-travel-robinson-island',selectedOfferId:'',action:'GENERAL',nextQuestionCode:'',evidenceRefs:[]}};
+ }}});
+ try{
+  const session=await ensureSalesSession(request(),h.env);
+  const operation={action:'TURN',locale:'en',message:'What is included in Robinson?',requestId:crypto.randomUUID()};
+  const first=await executeConversationOperation(h.env,session,operation);
+  assert.equal(first.degraded,false);assert.match(first.reply,/Lunch/i);assert.equal(first.agent.replyFailureReason,'timeout');
+  assert.equal(first.generationFailed,true);
+  assert.equal(h.sqlite.prepare('SELECT count(*) AS n FROM travel_conversation_requests').get().n,0);
+  const before=calls;healthy=true;
+  const retried=await executeConversationOperation(h.env,session,operation);
+  assert.ok(calls>before);assert.equal(retried.generationFailed,false);assert.equal(retried.source,'workers-ai-grounded-sales');
+  assert.equal(h.sqlite.prepare('SELECT count(*) AS n FROM travel_conversation_requests').get().n,1);
+  assert.deepEqual(await executeConversationOperation(h.env,session,operation),retried);
+  assert.equal(h.upstreamCalls(),0);
+ }finally{await h.close();}
+});

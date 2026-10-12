@@ -242,3 +242,17 @@ test('successful deletion resets displayed history only after the server confirm
   assert.ok(!c.MaxTourAI._audit.state().messages.some(m=>m.text==='Lunch is included.'));
   assert.equal(c.MaxTourAI._audit.pending(),false);
 });
+
+test('a verified fallback preserves useful facts and offers model retry without duplicating the user message',async()=>{
+ const {c,root}=harness('ko');let calls=0;const ids=[];
+ c.fetch=async(_url,init)=>{ids.push(JSON.parse(init.body).requestId);calls++;return new Response(JSON.stringify(calls===1
+  ?{ok:true,reply:'Lunch is included.',degraded:false,generationFailed:true,source:'deterministic-grounded-fallback',agent:{replyFailureReason:'timeout'}}
+  :{ok:true,reply:'Lunch and transport are included.',generationFailed:false,source:'workers-ai-grounded-sales'}));};
+ const ui=c.MaxTourAI._audit;
+ await ui.handleText('What is included?',root);
+ assert.ok(root.innerHTML.includes('Lunch is included.'));assert.ok(root.innerHTML.includes('data-ai-action="retry"'));
+ assert.equal(ui.state().messages.filter(m=>m.role==='user').length,1);
+ await ui.handleText(ui.retry(),root,{retry:true});
+ assert.equal(calls,2);assert.equal(ids[0],ids[1]);assert.equal(ui.state().messages.filter(m=>m.role==='user').length,1);
+ assert.ok(root.innerHTML.includes('Lunch and transport are included.'));assert.ok(!root.innerHTML.includes('data-ai-action="retry"'));
+});

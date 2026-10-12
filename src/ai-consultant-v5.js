@@ -520,6 +520,7 @@
       faqIntent:clean(result.faqIntent,120),
       source:clean(result.source,120),
       degraded:Boolean(result.degraded),
+      generationFailed:Boolean(result.generationFailed),
       intent:result.intent,
       nextQuestionCode:result.agent?.nextQuestionCode || '',
       partyCounts:result.partyCounts,
@@ -741,6 +742,7 @@
       if(result.degraded){retryMessage=text;add('bot',semanticText('ai.unavailable'),{needsConsultant:true});}
       else {
         add('bot',result.reply);
+        if(result.generationFailed)retryMessage=text;
         if(result.uiAction==='OPEN_CONFIGURATOR'&&result.bookingSelection?.productId){
           const item=state.recommendations.find(row=>String(row.tour.id)===String(result.bookingSelection.productId));
           if(item)await startBooking(item,root,{announce:false});

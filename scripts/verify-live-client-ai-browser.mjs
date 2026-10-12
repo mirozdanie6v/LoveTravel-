@@ -74,7 +74,7 @@ async function verifyConsultation(browser){
       await field.fill(question);await field.press('Enter');
       let response=await responsePromise;let answer=await response.json();
       let attempts=1;
-      if(response.ok()&&answer.degraded&&['timeout','output_truncated','invalid_json'].includes(answer.agent?.replyFailureReason)){
+      if(response.ok()&&(answer.degraded||answer.generationFailed)&&['timeout','output_truncated','invalid_json'].includes(answer.agent?.replyFailureReason)){
         // Exercise the customer's visible recovery path once. A wrong price,
         // bad evidence or invalid selection remains a hard failure.
         const retry=page.locator('#aiScreen [data-ai-action="retry"]');

@@ -199,7 +199,7 @@ export class BookingSession {
       }
       const orchestrator=createLoveTravelSalesOrchestrator({env:this.env,provider:this.provider()});
       const answer=await orchestrator.turn({...body,sessionId:session.id});
-      if(requestId&&!answer.degraded)await this.env.DB.prepare(`INSERT INTO travel_conversation_requests(session_id,request_id,request_hash,response_json) VALUES(?,?,?,?)`)
+      if(requestId&&!answer.degraded&&!answer.generationFailed)await this.env.DB.prepare(`INSERT INTO travel_conversation_requests(session_id,request_id,request_hash,response_json) VALUES(?,?,?,?)`)
         .bind(session.id,requestId,requestHash,JSON.stringify(answer)).run();
       return answer;
     }
