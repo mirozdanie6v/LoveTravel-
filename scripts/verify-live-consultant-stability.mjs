@@ -93,10 +93,20 @@ try{
  const revoked=await a.context.request.get(base+'/api/travel-commerce/transaction',{headers:{'x-lt-conversation-id':id}});assert.equal(revoked.status(),410);
  assert.equal((await tx(b,id)).transaction.transactionId,tb.transaction.transactionId);
  report.checks.guestIsolationAndDeletion={differentTransactions:true,oldScopeStatus:410,otherGuestPreserved:true};
+ // Reproduce a guest whose old bootstrap registered a default conversation.
+ const legacyDefault=await h.context.request.get(base+'/api/travel-commerce/transaction');assert.ok(legacyDefault.ok());
+ const guestBefore=(await h.context.cookies(base)).find(c=>c.name==='__Host-lt_guest')?.value;
  h.page.once('dialog',d=>d.accept());const beforeDelete=await h.page.evaluate(()=>LoveTravelConversation.id());
  await h.page.locator('#aiScreen [data-ai-action="delete-data"]').click();await h.page.waitForFunction(id=>LoveTravelConversation.id()!==id,beforeDelete);
  const old=await h.context.request.get(base+'/api/travel-commerce/transaction',{headers:{'x-lt-conversation-id':oldId}});assert.equal(old.status(),410);
  report.checks.deleteUi={reset:true,earlierScopeStatus:410};
+ await h.page.reload({waitUntil:'domcontentloaded'});
+ await h.page.locator('#homeScreen [data-lt-action="ai"]').click();
+ const afterReload=await ask(h.page,'Что входит в экскурсию Robinson Beach?');
+ const guestAfter=(await h.context.cookies(base)).find(c=>c.name==='__Host-lt_guest')?.value;
+ assert.equal(guestAfter,guestBefore);assert.equal(afterReload.source,'workers-ai-grounded-sales');
+ const defaultStillDeleted=await h.context.request.get(base+'/api/travel-commerce/transaction');assert.equal(defaultStillDeleted.status(),410);
+ report.checks.deleteReload={sameGuest:true,replySource:afterReload.source,oldDefaultScopeStatus:410};
  assert.deepEqual(report.errors,[]);assert.deepEqual(report.blockedMutations,[]);report.passed=true;
  console.log(JSON.stringify({stage:'stability-result',checks:report.checks,assets:report.assets,passed:true}));
 }catch(e){report.errors.push(e.stack||e.message);process.exitCode=1;console.error(e.stack);for(const c of contexts)await c.pages()[0]?.screenshot({path:proof+'/failure-'+contexts.indexOf(c)+'.png'}).catch(()=>{});}
