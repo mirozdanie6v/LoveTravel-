@@ -100,7 +100,7 @@ try{
   );
 
   const tx=await page.evaluate(async()=>{
-    const response=await fetch('/api/travel-commerce/transaction',{
+    const response=await LoveTravelConversation.request('/api/travel-commerce/transaction',{
       method:'GET',
       cache:'no-store',
       credentials:'same-origin',

@@ -79,12 +79,12 @@ try{
         const nativeDomain=native.find(d=>String(d.experience.id)===String(domain.experience.id));
         const answer=await ask(h.page,catalogQuestions[locale](domain.experience.title));
         invariant(answer.source==='provider-catalog-options'&&!answer.degraded,'Provider catalog question degraded: '+locale+' '+JSON.stringify(answer));
-        invariant(!(answer.offers||[]).length&&!answer.transaction,'Catalog question prepared a commercial selection: '+locale);
+        invariant(!(answer.offers||[]).length&&!answer.bookingSelection&&!answer.transaction?.quote,'Catalog question prepared a commercial selection: '+locale);
         for(const rate of domain.rates){
           const translated=nativeDomain.rates.find(r=>String(r.id)===String(rate.id));
           invariant(includesTitle(answer.reply,rate.title,translated?.title),'Missing option '+rate.id+' in '+locale+': '+answer.reply);
         }
-        const tx=await (await h.context.request.get(base+'/api/travel-commerce/transaction')).json();
+        const tx=await (await h.context.request.get(base+'/api/travel-commerce/transaction',{headers:{'x-lt-conversation-id':await h.page.evaluate(()=>LoveTravelConversation.id())}})).json();
         invariant(!tx.selection&&!tx.providerBooking,'Catalog question changed the canonical booking state');
         report.catalog.push({locale,productId:String(domain.experience.id),rates:domain.rates.map(r=>String(r.id)),reply:answer.reply});
       }
