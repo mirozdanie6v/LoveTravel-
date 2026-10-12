@@ -380,7 +380,7 @@ function optionName(value){
 }
 
 function optionAdviceQuestion(message){
-  return /как.{0,25}выбрать|что.{0,25}(?:выбрать|из этого|из них)|how.{0,25}(?:choose|pick)|which.{0,25}(?:choose|pick)|chon.{0,20}(?:nao|the nao)|怎么选|怎麼選|如何选|어떻게.{0,15}(?:선택|고르)/iu.test(normalizedText(message));
+  return /(?:чем.{0,25}отлич.{0,25}вариант|вариант.{0,25}отлич|options?.{0,25}differ|differences?.{0,25}options?)|как.{0,25}выбрать|что.{0,25}(?:выбрать|из этого|из них)|how.{0,25}(?:choose|pick)|which.{0,25}(?:choose|pick)|chon.{0,20}(?:nao|the nao)|怎么选|怎麼選|如何选|어떻게.{0,15}(?:선택|고르)/iu.test(normalizedText(message));
 }
 
 function catalogListQuestion(message){
@@ -498,8 +498,11 @@ export function deterministicExplicitIntentPatch({
   if(selectedProductId) patch.selectedProductId=selectedProductId;
   if(option.option) patch.selectedOption=option.option;
 
-  const factualReference=!/price|cost|available|availability|стоим|цен|доступ|места|gia|价格|가격/iu.test(text)&&/^(?:.*[.?]\s*[-–]?\s*)?(?:это|этот|эта|а это|что|почему|как|is this|does this|what|why|cai nay|day la|这是|这个|이것|이 옵션)/iu.test(text)&&/коралл|входит|включ|coral|includ|san ho|珊瑚|산호|(?:это|этот|this).{0,30}(?:вариант|option)/iu.test(text);
-  const informationGoal=catalogListQuestion(message)||optionAdviceQuestion(message)||option.ambiguous||factualReference?'DETAILS':/compare|difference|сравн|чем.{0,30}отлич|so\s*sanh|khac\s*nhau|区别|比較|비교|차이/iu.test(text)?'COMPARE'
+  const commercialQuestion=/price|cost|available|availability|стоим|цен|доступ|места|gia|价格|가격|заброн|\bbook\b|\breserve\b|[dđ]at|预订|預訂|예약/iu.test(text);
+  const recommendationQuestion=/совет|recommend|suggest|de xuat|tu van|推荐|推薦|추천/iu.test(text);
+  const factualReference=!commercialQuestion&&!recommendationQuestion&&(/[?？]/u.test(message)||/^(?:что|это|этот|эта|почему|как|what|why|how|is this|does this|cai nay|day la|这是|这个|이것|이 옵션)/iu.test(text))&&(/коралл|входит|включ|coral|includ|san ho|珊瑚|산호|(?:это|этот|this).{0,30}(?:вариант|option)/iu.test(text));
+  const comparisonQuestion=/compare|differ|сравн|чем.{0,30}отлич|so\s*sanh|\bkhac\b|区别|比較|비교|차이|다르|다른/iu.test(text);
+  const informationGoal=catalogListQuestion(message)||optionAdviceQuestion(message)||option.ambiguous?'DETAILS':comparisonQuestion?'COMPARE':factualReference?'DETAILS'
     :/what.{0,30}(?:included|include|itinerary)|что.{0,30}(?:входит|включено|взять)|услови.{0,30}(?:отмен|брони)|cancellation|booking.{0,20}(?:conditions|policy)|[dđ]ieu\s*kien.{0,20}[dđ]at|chinh\s*sach.{0,20}huy|包含|取消.{0,15}(?:政策|条件)|예약.{0,15}조건|취소.{0,15}(?:규정|정책)/iu.test(text)?'DETAILS':null;
   if(informationGoal){patch.goal=informationGoal;patch.bookingRequested=false;}
   else if(hotel&&pickupChangeRequested(message)){patch.goal='GENERAL';patch.bookingRequested=false;}
@@ -593,7 +596,7 @@ function shortBookingAnswer(message,intent,context,products){
     }
     return {patch:{goal:'DETAILS',bookingRequested:false},optionChoiceUnavailable:true,handled:true};
   }
-  if(explicit.selectedOption&&!['DETAILS','COMPARE','PICKUP'].includes(explicit.goal))return {patch:{selectedProductId:explicit.selectedProductId,selectedOption:explicit.selectedOption,goal:explicit.goal||goal||'BOOK',bookingRequested:false},handled:true};
+  if(explicit.selectedOption&&!['DETAILS','COMPARE','PICKUP'].includes(explicit.goal)&&(!/[?？]/u.test(message)||COMMERCIAL_GOALS.includes(explicit.goal)))return {patch:{selectedProductId:explicit.selectedProductId,selectedOption:explicit.selectedOption,goal:explicit.goal||goal||'BOOK',bookingRequested:false},handled:true};
   if(requestedOfferScope(message,context))return {patch:{goal:'PRICE',bookingRequested:false},offerScope:'ALL_OPTIONS',handled:true};
   if(context.nextQuestionCode==='DATE'&&/^(?:я уже (?:писала|писал|указала|указал)|i already (?:said|told you)|toi da noi|我已经说过|이미 말했)/u.test(text))return {patch:{goal:goal||'PRICE',bookingRequested:false},dateReminder:true,handled:true};
   if(!goal||['DETAILS','COMPARE','PICKUP'].includes(explicit.goal))return null;

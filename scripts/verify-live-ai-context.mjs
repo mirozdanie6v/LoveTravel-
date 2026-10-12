@@ -46,7 +46,7 @@ try{
   const data=await send(message);assert.equal(data.source,'provider-option-prices');assert.equal(data.offers.length,7);assert.equal(data.intent.dateConstraint.exact,date);assert.ok(data.offers.every(row=>row.productId==='love-travel-robinson-island'));assert.doesNotMatch(data.reply,/На какую дату/);
   const tx=await transaction();assert.equal(tx.transaction.transactionId,kept.transaction.transactionId);assert.equal(tx.selection.rateId,'2623660');assert.equal(tx.selection.date,date);
  }
- await page.locator('#aiScreen .ai-recommendations').evaluate(n=>n.scrollIntoView({block:'center'}));await page.screenshot({path:folder+'/ru-all-option-prices.png'});
+ await page.locator('#aiScreen .ai-msg.bot:last-child').evaluate(n=>n.scrollIntoView({block:'center'}));await page.screenshot({path:folder+'/ru-all-option-prices.png'});
  const oldId=conversationId;await page.locator('#aiScreen [data-ai-action="clear"]').click();conversationId='';
  await send('Хочу забронировать экскурсию Hon Mun Marine Park Snorkeling and Nha Trang Island Tour');assert.notEqual(conversationId,oldId);assert.equal((await transaction()).selection||null,null);
  await send(shortDate);const second=await send('2 взрослых');assert.equal(second.source,'provider-catalog-options');assert.equal(second.tourId,'1287580');
