@@ -25,7 +25,7 @@ export function validSalesSessionId(value){
   return /^[A-Za-z0-9._:-]{20,160}$/.test(String(value||''));
 }
 
-export async function ensureSalesSession(request,env){
+export async function ensureSalesGuest(request,env){
   const origin=request.headers.get('origin');
   if((origin&&origin!==new URL(request.url).origin)||request.headers.get('sec-fetch-site')==='cross-site'){
     throw conversationError('conversation_origin_denied',403);
@@ -44,9 +44,14 @@ export async function ensureSalesSession(request,env){
     await env.DB.prepare('INSERT INTO travel_guest_sessions(token_hash,default_conversation_id) VALUES(?,?)')
       .bind(ownerHash,owner.default_conversation_id).run();
   }else await env.DB.prepare('UPDATE travel_guest_sessions SET updated_at=CURRENT_TIMESTAMP WHERE token_hash=?').bind(ownerHash).run();
+  return {ownerHash,defaultConversationId:owner.default_conversation_id,fresh,token};
+}
+
+export async function ensureSalesSession(request,env){
+  const {ownerHash,defaultConversationId,fresh,token}=await ensureSalesGuest(request,env);
   // A client ID is a tab/conversation selector, never an access credential.
   const requested=request.headers.get('x-lt-conversation-id');
-  const conversationId=validSalesSessionId(requested)?requested:owner.default_conversation_id;
+  const conversationId=validSalesSessionId(requested)?requested:defaultConversationId;
   const id=await conversationHash(ownerHash+':'+conversationId);
   const prior=await env.DB.prepare('SELECT revoked_at FROM travel_conversations WHERE session_id=?').bind(id).first();
   if(prior?.revoked_at)throw conversationError('conversation_deleted',410);

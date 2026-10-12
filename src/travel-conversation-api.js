@@ -1,4 +1,4 @@
-import {ensureSalesSession,withSalesSession} from './travel-session.js';
+import {ensureSalesGuest,ensureSalesSession,withSalesSession} from './travel-session.js';
 import {executeConversationOperation} from './booking-session-client.js';
 const json=(body,status=200)=>new Response(JSON.stringify(body),{status,headers:{'content-type':'application/json','cache-control':'no-store'}});
 export async function handleTravelConversationApi(request,env,url=new URL(request.url)){
@@ -7,7 +7,8 @@ export async function handleTravelConversationApi(request,env,url=new URL(reques
   try{
     if(url.pathname.endsWith('/session')&&request.method!=='GET')return json({ok:false,error:'method_not_allowed'},405);
     if(url.pathname.endsWith('/conversation')&&request.method!=='POST')return json({ok:false,error:'method_not_allowed'},405);
-    session=await ensureSalesSession(request,env);
+    // Credential bootstrap must not reopen or require a deleted default dialogue.
+    session=url.pathname.endsWith('/session')?await ensureSalesGuest(request,env):await ensureSalesSession(request,env);
     if(url.pathname.endsWith('/session'))return withSalesSession(json({ok:true}),session);
     const body=await request.json().catch(()=>null);
     if(body?.action!=='DELETE_SAVED_DATA')return withSalesSession(json({ok:false,error:'unsupported_action'},400),session);
