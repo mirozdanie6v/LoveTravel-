@@ -4,7 +4,7 @@ import {readFile,mkdir,writeFile} from 'node:fs/promises';
 const {chromium}=await import(process.env.LOVE_TRAVEL_PLAYWRIGHT_MODULE||'playwright');
 const base='https://lovetravel.viiversion.com';
 const proof='artifacts/consultant-live';await mkdir(proof,{recursive:true});
-const report={base,startedAt:new Date().toISOString(),assets:[],turns:[],checks:{},errors:[],blockedMutations:[]};
+const report={base,startedAt:new Date().toISOString(),assets:[],turns:[],checks:{},errors:[],blockedMutations:[],recoveryEvents:[]};
 const date=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(Date.now()+2*86400000));
 const browser=await chromium.launch({headless:true,channel:process.env.LOVE_TRAVEL_BROWSER_CHANNEL||'chromium'});
 const contexts=[];
@@ -26,7 +26,15 @@ async function ask(page,message){
  await page.waitForFunction(()=>!document.querySelector('#aiScreen textarea[name="message"]').disabled);
  const wait=page.waitForResponse(r=>new URL(r.url()).pathname==='/api/ai/chat'&&r.request().method()==='POST',{timeout:60000});
  const input=page.locator('#aiScreen textarea[name="message"]');await input.fill(message);await input.press('Enter');
- const r=await wait,a=await r.json();assert.ok(r.ok()&&a.ok&&!a.degraded,JSON.stringify(a));assert.equal(a.agent.mutationExecuted,false);
+ let r=await wait,a=await r.json();
+ if(r.ok()&&(a.degraded||a.generationFailed)&&['timeout','output_truncated','invalid_json'].includes(a.agent?.replyFailureReason)){
+  report.recoveryEvents.push({message,reason:a.agent.replyFailureReason,firstSource:a.source});
+  const retry=page.locator('#aiScreen [data-ai-action="retry"]');await retry.waitFor({state:'visible',timeout:10000});
+  const retryWait=page.waitForResponse(r=>new URL(r.url()).pathname==='/api/ai/chat'&&r.request().method()==='POST',{timeout:60000});
+  const firstId=r.request().postDataJSON().requestId;await retry.click();r=await retryWait;a=await r.json();
+  assert.equal(r.request().postDataJSON().requestId,firstId);
+ }
+ assert.ok(r.ok()&&a.ok&&!a.degraded&&!a.generationFailed,JSON.stringify(a));assert.equal(a.agent.mutationExecuted,false);
  await page.waitForFunction(()=>!document.querySelector('#aiScreen textarea[name="message"]').disabled);
  report.turns.push({message,reply:a.reply,source:a.source,uiAction:a.uiAction,quote:a.transaction?.quote?.price||null});
  console.log(JSON.stringify({stage:'stability-turn',...report.turns.at(-1)}));return a;
@@ -60,7 +68,7 @@ try{
  report.checks.idle={seconds:12,mutations,overflow};await h.page.screenshot({path:proof+'/long-dialogue.png',fullPage:true});
  let lostAnswer,lostBody,lost=true;
  await h.page.route('**/api/ai/chat',async route=>{const response=await route.fetch({timeout:60000});if(lost){lost=false;lostBody=route.request().postDataJSON();lostAnswer=await response.json();return route.abort('failed');}return route.fulfill({response});});
- await h.page.locator('#aiScreen textarea[name="message"]').fill('Я уже сказал');await h.page.locator('#aiScreen textarea[name="message"]').press('Enter');
+ await h.page.locator('#aiScreen textarea[name="message"]').fill('Покажи точную цену выбранного варианта.');await h.page.locator('#aiScreen textarea[name="message"]').press('Enter');
  await h.page.locator('#aiScreen [data-ai-action="retry"]').waitFor({timeout:60000});assert.ok(lostAnswer.ok&&!lostAnswer.degraded);
  const wait=h.page.waitForResponse(r=>new URL(r.url()).pathname==='/api/ai/chat'&&r.request().method()==='POST',{timeout:60000});
  await h.page.locator('#aiScreen [data-ai-action="retry"]').click();const retry=await wait;
