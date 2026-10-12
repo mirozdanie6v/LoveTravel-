@@ -99,8 +99,16 @@ for(const row of cases){
 // Mirrors the customer's fresh-looking chat after Clear, while deliberately
 // retaining an old cookie and polluted browser history. Never reserve.
 {
+ const cookies=new Map();
+ const call=async(path,options={})=>{
+   const headers=new Headers(options.headers||{});
+   if(cookies.size)headers.set('cookie',[...cookies].map(([key,value])=>key+'='+value).join('; '));
+   const response=await fetch(base+path,{...options,headers});
+   for(const value of response.headers.getSetCookie?.()||[]){const pair=value.split(';')[0],at=pair.indexOf('=');cookies.set(pair.slice(0,at),pair.slice(at+1));}
+   return response;
+ };
  const conversationId=crypto.randomUUID();
- const response=await fetch(base+'/api/ai/chat',{method:'POST',headers:{'content-type':'application/json','x-max-tour-locale':'ru','x-lt-conversation-id':conversationId,cookie:'lt_sales_sid=old-customer-scope-1234567890'},body:JSON.stringify({locale:'ru',message:'Хочу забронировать',history:[{role:'user',text:'Завтра, двое взрослых и ребёнок 7 лет. Robinson и морской парк Hon Mun.'},{role:'assistant',text:'Дата: '+tomorrow+'. Взрослые: 2; дети: 1. Итого 175 USD.'}]}),signal:AbortSignal.timeout(45000)});
+ const response=await call('/api/ai/chat',{method:'POST',headers:{'content-type':'application/json','x-max-tour-locale':'ru','x-lt-conversation-id':conversationId,cookie:'lt_sales_sid=old-customer-scope-1234567890'},body:JSON.stringify({locale:'ru',message:'Хочу забронировать',history:[{role:'user',text:'Завтра, двое взрослых и ребёнок 7 лет. Robinson и морской парк Hon Mun.'},{role:'assistant',text:'Дата: '+tomorrow+'. Взрослые: 2; дети: 1. Итого 175 USD.'}]}),signal:AbortSignal.timeout(45000)});
  const answer=await response.json();assert.ok(response.ok&&answer.ok&&!answer.degraded,JSON.stringify(answer));
  assert.match(answer.shoppingSession.id,/^shopping-[a-f0-9]{64}$/);
  assert.equal(answer.intent.party.adults,0);assert.deepEqual(answer.intent.party.children,[]);assert.equal(answer.intent.dateConstraint,undefined);
@@ -112,19 +120,27 @@ for(const row of cases){
 
 
 {
+ const cookies=new Map();
+ const call=async(path,options={})=>{
+   const headers=new Headers(options.headers||{});
+   if(cookies.size)headers.set('cookie',[...cookies].map(([key,value])=>key+'='+value).join('; '));
+   const response=await fetch(base+path,{...options,headers});
+   for(const value of response.headers.getSetCookie?.()||[]){const pair=value.split(';')[0],at=pair.indexOf('=');cookies.set(pair.slice(0,at),pair.slice(at+1));}
+   return response;
+ };
  const conversationId=crypto.randomUUID();
- const response=await fetch(base+'/api/ai/chat',{method:'POST',headers:{'content-type':'application/json','x-max-tour-locale':'ru','x-lt-conversation-id':conversationId},body:JSON.stringify({locale:'ru',message:'Хочу забронировать Robinson и морской парк Hon Mun завтра для двух взрослых и ребёнка 7 лет.'}),signal:AbortSignal.timeout(45000)});
+ const response=await call('/api/ai/chat',{method:'POST',headers:{'content-type':'application/json','x-max-tour-locale':'ru','x-lt-conversation-id':conversationId},body:JSON.stringify({locale:'ru',message:'Хочу забронировать Robinson и морской парк Hon Mun завтра для двух взрослых и ребёнка 7 лет.'}),signal:AbortSignal.timeout(45000)});
  const answer=await response.json();assert.ok(response.ok&&answer.ok&&!answer.degraded,JSON.stringify(answer));
  assert.equal(answer.intent.party.adults,2);assert.deepEqual(answer.intent.party.children,[{age:7}]);
  assert.equal(answer.bookingSelection.rateId,'2623660');assert.equal(answer.agent.mutationExecuted,false);
- const packet=await (await fetch(base+'/api/travel-commerce/transaction',{headers:{'x-lt-conversation-id':conversationId},signal:AbortSignal.timeout(30000)})).json();
+ const packet=await (await call('/api/travel-commerce/transaction',{headers:{'x-lt-conversation-id':conversationId},signal:AbortSignal.timeout(30000)})).json();
  assert.ok(packet.ok);assert.equal(packet.transaction.selection.participants.find(p=>p.role==='ADULT').count,2);assert.equal(packet.transaction.selection.participants.find(p=>p.role==='CHILD').count,1);
  assert.equal(packet.transaction.quote.offer.participantMix.find(p=>p.role==='ADULT').count,2);assert.equal(packet.transaction.quote.offer.participantMix.find(p=>p.role==='CHILD').count,1);assert.equal(packet.providerBooking||null,null);
- const adviceResponse=await fetch(base+'/api/ai/chat',{method:'POST',headers:{'content-type':'application/json','x-max-tour-locale':'ru','x-lt-conversation-id':conversationId},body:JSON.stringify({locale:'ru',message:'А как выбрать из них, что входит'}),signal:AbortSignal.timeout(45000)});
+ const adviceResponse=await call('/api/ai/chat',{method:'POST',headers:{'content-type':'application/json','x-max-tour-locale':'ru','x-lt-conversation-id':conversationId},body:JSON.stringify({locale:'ru',message:'А как выбрать из них, что входит'}),signal:AbortSignal.timeout(45000)});
  const advice=await adviceResponse.json();assert.ok(adviceResponse.ok&&advice.ok&&!advice.degraded,JSON.stringify(advice));
  assert.equal(advice.source,'provider-option-guide');assert.equal(advice.agent.mutationExecuted,false);
  assert.match(advice.reply,/Hon Mun Marine Park|морской парк Hon Mun/iu);assert.match(advice.reply,/Грязевые ванны/iu);assert.match(advice.reply,/Обед/iu);
- const afterAdvice=await (await fetch(base+'/api/travel-commerce/transaction',{headers:{'x-lt-conversation-id':conversationId},signal:AbortSignal.timeout(30000)})).json();
+ const afterAdvice=await (await call('/api/travel-commerce/transaction',{headers:{'x-lt-conversation-id':conversationId},signal:AbortSignal.timeout(30000)})).json();
  assert.ok(afterAdvice.ok);assert.equal(afterAdvice.transaction.transactionId,packet.transaction.transactionId);
  assert.deepEqual(afterAdvice.transaction.selection,packet.transaction.selection,'Advice changed the prepared choice');
  assert.deepEqual(afterAdvice.transaction.quote.price,packet.transaction.quote.price,'Advice changed the exact Quote');assert.equal(afterAdvice.transaction.providerBooking||null,null);

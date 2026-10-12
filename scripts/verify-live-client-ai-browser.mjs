@@ -94,7 +94,7 @@ async function verifyConsultation(browser){
       if(index===1)invariant(/Robinson|Робинсон|로빈슨|鲁滨逊/i.test(answer.reply)&&/H[oò]n\s*Mun|Хон.{0,3}Мун|혼.{0,2}문/i.test(answer.reply),'Comparison lost the previously discussed tour: '+row.locale+' '+answer.reply);
       previousReply=answer.reply;
       await page.waitForFunction(reply=>[...document.querySelectorAll('#aiScreen .ai-msg.bot .ai-msg-text')].some(node=>node.textContent===reply),answer.reply,{timeout:10000});
-      const txResponse=await context.request.get(base+'/api/travel-commerce/transaction');
+      const txResponse=await context.request.get(base+'/api/travel-commerce/transaction',{headers:{'x-lt-conversation-id':await page.evaluate(()=>LoveTravelConversation.id())}});
       const tx=await txResponse.json();
       invariant(txResponse.ok()&&!tx.providerBooking&&!tx.selection,'Consultation changed a booking configuration: '+row.locale);
       invariant(mutations.length===0,'Consultation attempted a booking mutation');
