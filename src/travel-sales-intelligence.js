@@ -1,4 +1,5 @@
 import {customerCalendarDate,explicitDateReset} from './travel-conversation-date.js';
+import {acceptsBookingForm} from './travel-response-composer.js';
 import {
   CONTRACT_SCHEMA_VERSIONS,
   SUPPORTED_LOCALES,
@@ -615,8 +616,11 @@ function shortBookingAnswer(message,intent,context,products){
     return {patch:{party:{...(Number.isInteger(adults)?{adults}:{}),childrenAges:[],infants:0},goal,bookingRequested:false},handled:true};
   }
   if(/^(?:нет|не так|no|nope|khong|不|不是|아니요|아니)$/u.test(text))return {patch:{goal:'DETAILS',bookingRequested:false},correctionNeeded:true,handled:true};
-  const affirmative=/^(?:да|yes|okay|ok|dong\s+y|vang|是|好的|네|예)$/u.test(text);
+  const affirmative=acceptsBookingForm(message);
   if(affirmative&&(intent.optionPreference||context.currentProductId)){
+    return {patch:{goal,bookingRequested:false},handled:true};
+  }
+  if(context.nextQuestionCode==='OPEN_CONFIGURATOR'&&/^(?:я уже (?:сказал|сказала|писал|писала|указал|указала)|i already (?:said|told you)|toi da noi|我已经说过|이미 말했)/u.test(text)){
     return {patch:{goal,bookingRequested:false},handled:true};
   }
   // A short availability follow-up keeps the active transaction scope.

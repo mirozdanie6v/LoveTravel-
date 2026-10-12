@@ -487,6 +487,7 @@
       nextQuestionCode:result.agent?.nextQuestionCode || '',
       partyCounts:result.partyCounts,
       bookingSelection:result.bookingSelection,
+      uiAction:result.uiAction,
     };
   }
 
@@ -577,16 +578,16 @@
     if (attempt < 12) setTimeout(() => continueToBooking(intent, attempt + 1), 120);
   }
 
-  async function startBooking(item, root) {
+  async function startBooking(item, root, {announce=true}={}) {
     if (!item?.tour?.id) return;
     state.selectedTourId = item.tour.id;
     persist();
-    add('bot', localeText(
-      `Открываю бронирование «${item.tour.title}». Уже выбранные параметры беру из текущей транзакции.`,
-      `Đang mở đặt tour “${item.tour.title}”. Các thông tin đã chọn được lấy từ giao dịch hiện tại.`,
-      `Opening booking for “${item.tour.title}”. Your selected details are coming from the current booking transaction.`,
-      `“${item.tour.title}” 예약을 열고 있습니다. 선택한 정보는 현재 예약 트랜잭션에서 불러옵니다.`,
-      `正在打开“${item.tour.title}”的预订。已选择的信息将从当前预订事务中读取。`
+    if(announce)add('bot', localeText(
+      `Открываю форму «${item.tour.title}» с выбранными параметрами.`,
+      `Đang mở biểu mẫu “${item.tour.title}” với các thông tin đã chọn.`,
+      `Opening the form for “${item.tour.title}” with your selected details.`,
+      `선택한 정보로 “${item.tour.title}” 양식을 열고 있습니다.`,
+      `正在打开“${item.tour.title}”的表单，保留已选信息。`
     ));
     render(root, { scrollToEnd:true });
     try {
@@ -693,7 +694,13 @@
       if (state.messages.at(-1)?.text === ui().pending) state.messages.pop();
       applyServerTour(result);
       if(result.degraded){retryMessage=text;add('bot',semanticText('ai.unavailable'),{needsConsultant:true});}
-      else add('bot',result.reply);
+      else {
+        add('bot',result.reply);
+        if(result.uiAction==='OPEN_CONFIGURATOR'&&result.bookingSelection?.productId){
+          const item=state.recommendations.find(row=>String(row.tour.id)===String(result.bookingSelection.productId));
+          if(item)await startBooking(item,root,{announce:false});
+        }
+      }
     } catch (error) {
       if(epoch!==requestEpoch)return;
       console.warn('[LoveTravel AI] consultation request failed',error?.message||error);

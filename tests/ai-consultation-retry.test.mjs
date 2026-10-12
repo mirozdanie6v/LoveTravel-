@@ -197,3 +197,19 @@ test('Missing conversation runtime cannot silently submit against an old persist
  c.LoveTravelConversation=runtime;c.fetch=async()=>{requests++;return new Response(JSON.stringify({ok:true,reply:'На какую дату?',intent:{party:{adults:0,children:[],infants:0}},agent:{nextQuestionCode:'DATE'}}));};
  await c.MaxTourAI._audit.handleText('Хочу забронировать',root);assert.equal(requests,1);assert.equal(c.MaxTourAI._audit.state().messages.at(-1).text,'На какую дату?');
 });
+
+test('a server form invitation opens the existing configurator without another confirmation message',async()=>{
+  const {c,root}=harness('en');
+  c.TOURS.push({id:'1287578',title:'Robinson',group:{adult:'$49'}});
+  const calls=[];
+  c.openTour=id=>calls.push('tour:'+id);
+  c.LoveTravelBookingConfigurator={
+    refreshTransaction:async()=>({selection:{productId:'1287578',rateId:'201'}}),
+    applySelection:async value=>calls.push('rate:'+value.rateId),open:()=>calls.push('open'),
+  };
+  c.fetch=async()=>new Response(JSON.stringify({ok:true,reply:'Opening the form.',uiAction:'OPEN_CONFIGURATOR',
+    bookingSelection:{productId:'1287578',rateId:'201'},agent:{nextQuestionCode:'OPEN_CONFIGURATOR'}}));
+  await c.MaxTourAI._audit.handleText('Yes.',root);
+  assert.deepEqual(calls,['tour:1287578','rate:201','open']);
+  assert.equal(c.MaxTourAI._audit.state().messages.filter(m=>m.role==='bot'&&m.text.includes('Opening')).length,1);
+});
