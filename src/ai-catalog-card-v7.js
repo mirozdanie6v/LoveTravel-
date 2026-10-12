@@ -403,6 +403,19 @@
       cards.forEach(card => {
         const id = String(card.dataset.tourId || '');
         if (!id) return;
+        const prices=card.querySelector?.('.price-row');
+        if(prices){
+          const exact=globalThis.MaxTourAI?.pricePresentation?.(id);
+          if(exact){
+            if(card._ltCatalogPriceHtml===undefined)card._ltCatalogPriceHtml=prices.innerHTML;
+            const esc=value=>String(value).replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+            const desired=`<div data-lt-exact-price data-rate-id="${esc(exact.rateId)}"><div class="mini">${esc(exact.label)} · ${esc(exact.date)}</div><div class="price">${esc(exact.amount)}</div></div>`;
+            if(prices.innerHTML!==desired)prices.innerHTML=desired;
+          }else if(card._ltCatalogPriceHtml!==undefined){
+            if(prices.innerHTML!==card._ltCatalogPriceHtml)prices.innerHTML=card._ltCatalogPriceHtml;
+            delete card._ltCatalogPriceHtml;
+          }
+        }
         let button = [...list.querySelectorAll(':scope > .ai-catalog-book-v23')].find(node => String(node.dataset.id || '') === id);
         if (!button) {
           button = document.createElement('button');
@@ -446,6 +459,7 @@
     observeSalesRoot(root);
     refreshSalesUi();
   }};
+  globalThis.addEventListener?.('lovetravel:quote-changed',refreshSalesUi);
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', refreshSalesUi, { once:true });
   else refreshSalesUi();
 

@@ -72,6 +72,15 @@ export async function selectionFingerprint(selection={}){
   return sha256Hex(materialQuoteSelection(selection));
 }
 
+export async function quoteDisplayBinding(transaction,selection){
+  const quote=transaction?.quote;
+  if(!quote||quote.status!=='ACTIVE'||!selection||quote.transactionId!==transaction.transactionId)return null;
+  const fingerprint=await selectionFingerprint(selection);
+  if(fingerprint!==quote.selectionFingerprint)return null;
+  return {transactionId:transaction.transactionId,transactionRevision:transaction.revision,
+    quoteRevision:quote.revision,selectionFingerprint:fingerprint,productId:String(selection.productId),rateId:String(selection.rateId)};
+}
+
 function semanticFieldCode(path,code=''){
   const source=str(path)||str(code)||'UNKNOWN';
   const normalized=source

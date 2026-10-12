@@ -173,6 +173,38 @@
   let pending = false;
   let retryMessage = null;
   let requestEpoch = 0;
+  let quotedOffer=null,quoteExpiryTimer=null,mountedRoot=null;
+  function setQuotedOffer(result={}){
+    clearTimeout(quoteExpiryTimer);quotedOffer=null;
+    const tx=result.transaction,quote=tx?.quote,binding=result.quoteBinding;
+    if(quote?.status==='ACTIVE'&&binding&&binding.transactionId===tx.transactionId
+      &&quote.transactionId===tx.transactionId&&binding.transactionRevision===tx.revision
+      &&binding.quoteRevision===quote.revision&&binding.selectionFingerprint===quote.selectionFingerprint
+      &&Number.isFinite(Number(quote.price?.amount))&&quote.price?.currency&&Date.parse(quote.expiresAt)>Date.now()){
+      quotedOffer={quote,binding};
+      quoteExpiryTimer=setTimeout(()=>{
+        quotedOffer=null;
+        if(mountedRoot)render(mountedRoot);
+        globalThis.dispatchEvent?.(new CustomEvent('lovetravel:quote-changed'));
+      },Math.max(1,Date.parse(quote.expiresAt)-Date.now()));
+    }
+    globalThis.dispatchEvent?.(new CustomEvent('lovetravel:quote-changed'));
+  }
+  function pricePresentation(productId){
+    if(!quotedOffer||String(quotedOffer.binding.productId)!==String(productId)
+      ||Date.parse(quotedOffer.quote.expiresAt)<=Date.now())return null;
+    const {quote,binding}=quotedOffer;
+    const amount=Number(quote.price.amount).toLocaleString(ACTIVE_LOCALE==='ru'?'ru-RU':ACTIVE_LOCALE==='vi'?'vi-VN':ACTIVE_LOCALE==='ko'?'ko-KR':ACTIVE_LOCALE==='zh'?'zh-CN':'en-US',{maximumFractionDigits:2});
+    return {amount:amount+' '+quote.price.currency,
+      label:localeText('Итого за группу','Tổng cộng cho nhóm','Total for your party','일행 총금액','本组总价'),
+      date:quote.offer.date,rateId:binding.rateId};
+  }
+  globalThis.addEventListener?.('lovetravel:selection-changing',()=>setQuotedOffer());
+  globalThis.addEventListener?.('lovetravel:conversation-reset',()=>setQuotedOffer());
+  globalThis.addEventListener?.('lovetravel:transaction-changed',event=>{
+    setQuotedOffer(event.detail);
+    if(mountedRoot)render(mountedRoot);
+  });
   const semanticText=key=>globalThis.LoveTravelI18n?.t?.(key)||key;
   try {
     const saved = JSON.parse(sessionStorage.getItem(STORAGE_KEY) || 'null');
@@ -348,6 +380,7 @@
   }
 
   function applyServerState(result) {
+    setQuotedOffer(result);
     const intent=result.intent;
     if(intent){
       state.slots.adults=Number(intent.party?.adults||0);
@@ -377,6 +410,8 @@
   }
 
   function recommendationPrice(item) {
+    const exact=pricePresentation(item.tour.id);
+    if(exact)return exact.label+': '+exact.amount;
     const g=moneyLabel(item.groupPrice), p=moneyLabel(item.individualPrice);
     if (ACTIVE_LOCALE === 'zh') {
       if (item.format === 'compare') return [item.groupPrice && `拼团 ${g} 起`, item.individualPrice && `私人 ${p} 起`].filter(Boolean).join(' · ');
@@ -488,6 +523,8 @@
       partyCounts:result.partyCounts,
       bookingSelection:result.bookingSelection,
       uiAction:result.uiAction,
+      transaction:result.transaction,
+      quoteBinding:result.quoteBinding,
     };
   }
 
@@ -684,6 +721,7 @@
   async function handleText(text, root, {retry=false}={}) {
     if (!text || pending) return;
     if(!retry)add('user', text);
+    setQuotedOffer();
     const epoch=++requestEpoch;
     retryMessage = null;
     pending = true; add('bot', ui().pending); render(root, { scrollToEnd:true });
@@ -745,6 +783,7 @@
 
   function mount(root) {
     if (!root) return;
+    mountedRoot=root;
     // Catalog/locale refreshes can remount repeatedly; keep the active form DOM.
     if(root.querySelector('[data-ai-form="chat"]')?.tagName!=='FORM')render(root);
     root.onclick = event => handleClick(root, event);
@@ -762,6 +801,7 @@
 
   globalThis.MaxTourAI = {
     mount,
+    pricePresentation,
     _test:{
       renderReplyText, vietnamTodayIso, parseDate, parseParty, departureIso, isDiscoveryIntent, isBookingIntent,
       recommendationForTourId, applyServerTour, locationAllowsTour, dispatchValue, prefillBooking,

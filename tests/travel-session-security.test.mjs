@@ -5,6 +5,7 @@ import {configurationDomains} from './fixtures/booking-configurator-domains.mjs'
 import {ensureSalesSession,withSalesSession} from '../src/travel-session.js';
 import {executeConversationOperation} from '../src/booking-session-client.js';
 import {cleanupExpiredConversations} from '../src/travel-conversation-state.js';
+import {quoteDisplayBinding} from '../src/travel-commerce-quote.js';
 
 const request=(cookie,id='shared-client-conversation-12345')=>new Request('https://example.test/api/ai/chat',{
   headers:{...(cookie?{cookie}:{}),'x-lt-conversation-id':id},
@@ -79,5 +80,23 @@ test('scheduled retention removes old dialogue and draft records while retaining
     await cleanupExpiredConversations(h.env);
     assert.equal(await h.env.DB.prepare('SELECT memory_json FROM ai_conversation_memory WHERE session_id=?').bind(a.id).first(),null);
     assert.ok(await h.env.DB.prepare('SELECT memory_json FROM ai_conversation_memory WHERE session_id=?').bind(b.id).first());
+  }finally{await h.close();}
+});
+
+test('exact display price binds to the full selection, including extras and transport',async()=>{
+  const domains=configurationDomains(),h=await startBookingUiHarness(domains);
+  try{
+    const session=await ensureSalesSession(request(),h.env);
+    const initial=await executeConversationOperation(h.env,session,{action:'TRANSACTION',method:'GET'});
+    const selection={productId:domains[0].experience.id,date:domains[0].availabilitySlots[0].date,rateId:'201',startTimeId:'301',
+      participants:{101:2},pickup:{mode:'MEET_ON_LOCATION'},dropoff:{mode:'NO_DROPOFF'}};
+    const result=await executeConversationOperation(h.env,session,{action:'TRANSACTION',method:'POST',body:{action:'SYNC_SELECTION',expectedRevision:initial.body.revision,selection}});
+    assert.equal(result.status,200);assert.ok(result.body.quoteBinding);
+    const actual=result.body.selection,tx=result.body.transaction;
+    assert.equal(result.body.quoteBinding.selectionFingerprint,tx.quote.selectionFingerprint);
+    for(const patch of [{extras:{701:1}},{date:'2026-10-20'},{rateId:'202'},
+      {participants:{101:1}},{pickup:{mode:'PICKUP',placeId:'501'}}]){
+      assert.equal(await quoteDisplayBinding(tx,{...actual,...patch}),null);
+    }
   }finally{await h.close();}
 });

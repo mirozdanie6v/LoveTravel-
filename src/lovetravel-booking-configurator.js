@@ -42,6 +42,7 @@
     const txSelection=data.selection;
     const productId=String(txSelection?.productId||'');
     if(applySelection&&PRODUCT_IDS.has(productId)) saveSelection(productId,txSelection);
+    globalThis.dispatchEvent?.(new CustomEvent('lovetravel:transaction-changed',{detail:data}));
     return data;
   }
 
@@ -61,6 +62,7 @@
       throw error;
     }
     if(data.transaction) transactionSnapshot=data.transaction;
+    globalThis.dispatchEvent?.(new CustomEvent('lovetravel:transaction-changed',{detail:data}));
     return data;
   }
 
@@ -72,6 +74,7 @@
         selection:selection(productId),
       });
       if(data.selection) saveSelection(productId,data.selection);
+      globalThis.dispatchEvent?.(new CustomEvent('lovetravel:transaction-changed',{detail:data}));
       return data;
     }catch(error){
       if(retryStale&&Number(error.status)===409){
@@ -114,6 +117,7 @@
     return stateByProduct.get(productId);
   }
   function saveSelection(productId,next){
+    globalThis.dispatchEvent?.(new CustomEvent('lovetravel:selection-changing'));
     stateByProduct.set(productId,next);
     return next;
   }

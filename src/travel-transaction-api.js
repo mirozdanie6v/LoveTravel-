@@ -7,6 +7,7 @@ import {
   executeConversationOperation,
 } from './booking-session-client.js';
 import { bookingMutationBlockedResponse } from './booking-mutation-policy.js';
+import {quoteDisplayBinding} from './travel-commerce-quote.js';
 import {
   ensureCommerceTransaction,
   ensureSalesSession,
@@ -23,7 +24,8 @@ const json=(data,status=200,headers={})=>new Response(JSON.stringify(data),{
   },
 });
 
-function view(transaction,resolution=null){
+async function view(transaction,resolution=null){
+  const selection=transaction.selection?bokunSelectionFromCanonicalSelection(transaction.selection):null;
   return {
     transaction,
     revision:transaction.revision,
@@ -32,6 +34,7 @@ function view(transaction,resolution=null){
       ? bokunSelectionFromCanonicalSelection(transaction.selection)
       : null,
     quote:transaction.quote||null,
+    quoteBinding:await quoteDisplayBinding(transaction,selection),
     draft:transaction.draft||null,
     approval:transaction.approval||null,
     providerBooking:transaction.providerBooking||null,
@@ -71,7 +74,7 @@ export async function handleTravelTransactionApi(request,env,url=new URL(request
 
     if(request.method==='GET'){
       const current=await executeBookingSession(env,transaction.transactionId,{action:'GET'});
-      return withSalesSession(json({ok:true,...view(current.transaction)}),session);
+      return withSalesSession(json({ok:true,...await view(current.transaction)}),session);
     }
     if(request.method!=='POST'){
       return withSalesSession(json({ok:false,error:'method_not_allowed'},405,{allow:'GET, POST'}),session);
@@ -95,7 +98,7 @@ export async function handleTravelTransactionApi(request,env,url=new URL(request
         expectedRevision:revision,
         selection:body.selection,
       });
-      return withSalesSession(json({ok:true,...view(result.transaction,result.resolution)}),session);
+      return withSalesSession(json({ok:true,...await view(result.transaction,result.resolution)}),session);
     }
 
     if(action==='APPROVE'){
@@ -114,7 +117,7 @@ export async function handleTravelTransactionApi(request,env,url=new URL(request
           quoteRevision,
         },
       });
-      return withSalesSession(json({ok:true,...view(result.transaction),receipt:result.receipt||null}),session);
+      return withSalesSession(json({ok:true,...await view(result.transaction),receipt:result.receipt||null}),session);
     }
 
     return withSalesSession(json({ok:false,error:'unsupported_action'},400),session);

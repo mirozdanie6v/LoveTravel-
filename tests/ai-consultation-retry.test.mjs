@@ -23,7 +23,7 @@ function harness(locale='ru',savedState=null,storage=new Map()){
   }});
   c.globalThis=c;vm.createContext(c);vm.runInContext(semantic,c);vm.runInContext(conversationClient,c);
   if(savedState)storage.set('lovetravel-ai-conversation-v1',JSON.stringify({...savedState,conversationId:c.LoveTravelConversation.id()}));
-  vm.runInContext(client.replace('    mount,\n    _test:{','    mount,\n    _audit:{handleText,handleClick,state:()=>state,pending:()=>pending,retry:()=>retryMessage},\n    _test:{'),c);
+  vm.runInContext(client.replace('    _test:{','    _audit:{handleText,handleClick,state:()=>state,pending:()=>pending,retry:()=>retryMessage},\n    _test:{'),c);
   return {c,root,storage};
 }
 for(const locale of ['ru','vi','en','zh','ko']){
@@ -212,4 +212,20 @@ test('a server form invitation opens the existing configurator without another c
   await c.MaxTourAI._audit.handleText('Yes.',root);
   assert.deepEqual(calls,['tour:1287578','rate:201','open']);
   assert.equal(c.MaxTourAI._audit.state().messages.filter(m=>m.role==='bot'&&m.text.includes('Opening')).length,1);
+});
+
+test('the card shows the bound exact total with cents, and discards mismatched or expired quotes',async()=>{
+  const {c,root}=harness('en');c.TOURS.push({id:'1287578',title:'Robinson',group:{adult:'$49'}});
+  const result={ok:true,reply:'Your total is 97.09 USD.',tourId:'1287578',
+    transaction:{transactionId:'txn-1',revision:4,quote:{transactionId:'txn-1',revision:2,status:'ACTIVE',selectionFingerprint:'current',
+      expiresAt:new Date(Date.now()+60000).toISOString(),price:{amount:97.09,currency:'USD'},offer:{date:'2026-10-13',rateRef:{externalId:'201'}}}},
+    quoteBinding:{transactionId:'txn-1',transactionRevision:4,quoteRevision:2,productId:'1287578',rateId:'201',selectionFingerprint:'current'}};
+  c.fetch=async()=>new Response(JSON.stringify(result));
+  await c.MaxTourAI._audit.handleText('What is the price?',root);
+  assert.equal(c.MaxTourAI.pricePresentation('1287578').amount,'97.09 USD');
+  assert.equal(c.MaxTourAI.pricePresentation('1287580'),null);
+  result.quoteBinding.selectionFingerprint='other';
+  await c.MaxTourAI._audit.handleText('Check again',root);assert.equal(c.MaxTourAI.pricePresentation('1287578'),null);
+  result.quoteBinding.selectionFingerprint='current';result.transaction.quote.expiresAt=new Date(Date.now()-1).toISOString();
+  await c.MaxTourAI._audit.handleText('Check once more',root);assert.equal(c.MaxTourAI.pricePresentation('1287578'),null);
 });

@@ -30,6 +30,7 @@ import {
 import { createTravelCommerceStore } from './travel-commerce-store.js';
 import { ensureTravelCommerceRuntimeSchema } from './travel-commerce-migration.js';
 import {composeBookingResponse} from './travel-response-composer.js';
+import {quoteDisplayBinding} from './travel-commerce-quote.js';
 import {
   ensureCommerceTransaction,
   ensureSalesSession,
@@ -469,6 +470,8 @@ export function createLoveTravelSalesOrchestrator({
     else if(displayedChoices?.length||extracted.patch.selectedOption)delete nextMemory.offerScope;
     await saveConversationMemory(env,sessionId,nextMemory);
 
+    const responseTransaction=bookingTransaction||activeTransaction;
+    const quoteSelection=responseTransaction?.selection?bokunSelectionFromCanonicalSelection(responseTransaction.selection):null;
     return {
       reply:plan.reply,
       degraded:Boolean(plan.degraded),
@@ -476,6 +479,7 @@ export function createLoveTravelSalesOrchestrator({
       faqIntent:String(extracted.goal||'GENERAL').toLowerCase(),
       source:plan.source,
       uiAction:composed.uiAction,
+      quoteBinding:await quoteDisplayBinding(responseTransaction,quoteSelection),
       agent:{
         version:'travel-commerce-sales-v1',
         intentSource:extracted.source,
@@ -491,13 +495,13 @@ export function createLoveTravelSalesOrchestrator({
         bookingRequested:extracted.bookingRequested,
         mutationExecuted:false,
       },
-      transaction:bookingTransaction ? {
-        transactionId:bookingTransaction.transactionId,
-        revision:bookingTransaction.revision,
-        state:bookingTransaction.state,
-        selectedOfferId:bookingTransaction.selectedOfferId||'',
-        quote:bookingTransaction.quote||null,
-        draft:bookingTransaction.draft||null,
+      transaction:responseTransaction ? {
+        transactionId:responseTransaction.transactionId,
+        revision:responseTransaction.revision,
+        state:responseTransaction.state,
+        selectedOfferId:responseTransaction.selectedOfferId||'',
+        quote:responseTransaction.quote||null,
+        draft:responseTransaction.draft||null,
       } : null,
       bookingSelection,
       partyCounts:(bookingTransaction||activeTransaction)?.selection ? Object.fromEntries(['ADULT','CHILD','INFANT'].map(role=>[role,((bookingTransaction||activeTransaction).selection.participants||[]).filter(item=>item.role===role).reduce((sum,item)=>sum+Number(item.count||0),0)])) : null,
