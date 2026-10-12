@@ -4,7 +4,7 @@ import {
   createBokunProvider,
 } from './bokun-provider.js';
 import { localizeDomainFromCache } from './bokun-content-localization.js';
-import { executeBookingSession } from './booking-session-client.js';
+import { executeBookingSession, executeConversationOperation } from './booking-session-client.js';
 import { createTravelCapabilityBroker, evidenceEnvelope, pickupSelection, participantSelection } from './travel-capability-broker.js';
 import {
   COMMERCIAL_GOALS,
@@ -535,22 +535,22 @@ export async function handleLoveTravelSalesAgent(
     return json({ok:false,error:'message_required'},400);
   }
 
-  const session=await ensureSalesSession(request,env);
+  let session;
   try{
-    const orchestrator=createLoveTravelSalesOrchestrator({env});
-    const result=await orchestrator.turn({
-      sessionId:session.id,
+    session=await ensureSalesSession(request,env);
+    const result=await executeConversationOperation(env,session,{
+      action:'TURN',
       locale:localeFrom(request,body),
       message,
       context:body.context&&typeof body.context==='object'?body.context:{},
       history:Array.isArray(body.history)?body.history:[],
     });
-    return withSalesSession(json({ok:true,...result}),session);
+    return withSalesSession(json(result),session);
   }catch(error){
     console.error('LoveTravel Sales Orchestrator failed',error?.message||error);
     return withSalesSession(json({
       ok:false,
-      error:'sales_orchestrator_unavailable',
-    },502),session);
+      error:error?.code||'sales_orchestrator_unavailable',
+    },Number(error?.status)||502),session);
   }
 }

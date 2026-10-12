@@ -21,6 +21,8 @@ import { createBokunProvider } from './bokun-provider.js';
 import { handleLoveTravelSalesAgent } from './travel-sales-orchestrator.js';
 import { handleTravelTransactionApi } from './travel-transaction-api.js';
 import { handleBlockedBookingRoute } from './booking-mutation-policy.js';
+import {handleTravelConversationApi} from './travel-conversation-api.js';
+import {cleanupExpiredConversations} from './travel-conversation-state.js';
 
 const CONTENT_TYPES = {
   jpg: 'image/jpeg',
@@ -526,6 +528,8 @@ export default {
     if (url.pathname.startsWith('/tour-media/')) {
       return serveTourMedia(request, env, url.pathname);
     }
+    const conversationResponse=await handleTravelConversationApi(request,env,url);
+    if(conversationResponse)return conversationResponse;
     const transactionResponse = await handleTravelTransactionApi(request, env, url);
     if (transactionResponse) return transactionResponse;
     const bookingSelectionResponse = await handleLoveTravelBookingSelection(request, env, url, ctx);
@@ -550,6 +554,9 @@ export default {
   },
 
   async scheduled(_controller, env, ctx) {
+    ctx.waitUntil(cleanupExpiredConversations(env).catch(error=>{
+      console.error('Scheduled conversation cleanup failed',error?.code||'cleanup_failed');
+    }));
     ctx.waitUntil(refreshBokunLocalizationCache(env).catch(error => {
       console.error('Scheduled Bókun localization sync failed', error?.message || error);
     }));

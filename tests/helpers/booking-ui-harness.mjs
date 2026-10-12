@@ -7,6 +7,9 @@ import { createBokunProvider } from '../../src/bokun-provider.js';
 import { projectBokunDomainToLegacyTour } from '../../src/bokun-adapter.js';
 import { handleTravelTransactionApi } from '../../src/travel-transaction-api.js';
 import { handleBlockedBookingRoute } from '../../src/booking-mutation-policy.js';
+import {ensureSalesSession} from '../../src/travel-session.js';
+import {handleTravelConversationApi} from '../../src/travel-conversation-api.js';
+import {handleLoveTravelSalesAgent} from '../../src/travel-sales-orchestrator.js';
 
 const root=resolve(import.meta.dirname,'../..');
 class Statement {
@@ -20,10 +23,11 @@ class Statement {
 
 // Runs the production transaction API, Durable Object, store, resolver and
 // Quote code. Only D1/DO hosting and provider input data are substituted.
-export async function startBookingUiHarness(domains,{delayMs=0,presentationDomains=domains}={}){
+export async function startBookingUiHarness(domains,{delayMs=0,presentationDomains=domains,AI=null}={}){
   const sqlite=new DatabaseSync(':memory:');
   sqlite.exec(await readFile(resolve(root,'migrations/0001_init.sql'),'utf8'));
   sqlite.exec(await readFile(resolve(root,'migrations/0008_travel_commerce_runtime.sql'),'utf8'));
+  sqlite.exec(await readFile(resolve(root,'migrations/0006_ai_conversation_memory.sql'),'utf8'));
   const DB={
     prepare:sql=>new Statement(sqlite,sql),
     async batch(statements){
@@ -43,19 +47,21 @@ export async function startBookingUiHarness(domains,{delayMs=0,presentationDomai
     if(delayMs) await new Promise(r=>setTimeout(r,delayMs));
     const domain=domains.find(d=>String(d.experience.id)===String(options.selection?.productId));
     return provider.resolveOffer({...options,domain});
-  }};
-  const env={DB,BOOKING_SESSIONS:{
+  },async getDomains({productIds}={}){return structuredClone(domains.filter(d=>!productIds||productIds.includes(String(d.experience.id))));}};
+  const env={DB,AI,BOOKING_SESSIONS:{
     idFromName:id=>id,
     get(id){
       if(!sessions.has(id)){
         const storage=new Map();
-        const session=new BookingSession({storage:{get:async k=>storage.get(k),put:async(k,v)=>storage.set(k,v)}},env);
+        const session=new BookingSession({storage:{get:async k=>storage.get(k),put:async(k,v)=>storage.set(k,v),delete:async k=>storage.delete(k)}},env);
         session.provider=()=>providerForFixture;
         sessions.set(id,session);
       }
       return sessions.get(id);
     },
   }};
+  const guest=await ensureSalesSession(new Request('http://127.0.0.1/api/travel-commerce/session'),env);
+  const fixtureCookie='__Host-lt_guest='+guest.token;
   const json=data=>new Response(JSON.stringify(data),{headers:{'content-type':'application/json'}});
   const server=createServer(async(req,res)=>{
     try{
@@ -63,10 +69,12 @@ export async function startBookingUiHarness(domains,{delayMs=0,presentationDomai
       const body=Buffer.concat(parts).toString();
       const url=new URL(req.url,'http://127.0.0.1');
       requests.push({path:url.pathname,method:req.method,body:body?JSON.parse(body):null});
-      const headers={...req.headers,cookie:'lt_sales_sid=acceptance-session-00000001'};
+      const headers={...req.headers,cookie:req.headers.cookie||fixtureCookie};
       const request=new Request(url,{method:req.method,headers,...(body?{body}:{})});
       let response=handleBlockedBookingRoute(request,url);
+      if(!response)response=await handleTravelConversationApi(request,env,url);
       if(!response) response=await handleTravelTransactionApi(request,env,url);
+      if(!response)response=await handleLoveTravelSalesAgent(request,env,url);
       if(!response&&url.pathname==='/api/bokun/domain') response=json({ok:true,schema:'lovetravel.bokun-domain.v1',domains:presentationDomains});
       if(!response&&url.pathname==='/api/bokun/tours') response=json({ok:true,source:'bokun',vendorId:'137689',tours:domains.map(projectBokunDomainToLegacyTour)});
       if(!response&&url.pathname==='/api/bokun/booking-selection/resolve'){
@@ -89,7 +97,7 @@ export async function startBookingUiHarness(domains,{delayMs=0,presentationDomai
   });
   await new Promise(r=>server.listen(0,'127.0.0.1',r));
   return {
-    base:`http://127.0.0.1:${server.address().port}`,requests,env,
+    base:`http://127.0.0.1:${server.address().port}`,requests,env,sqlite,fixtureCookie,
     upstreamCalls:()=>upstreamCalls,
     async close(){await new Promise(r=>server.close(r));sqlite.close();},
   };

@@ -10,12 +10,17 @@ function harness(locale='ru',savedState=null,storage=new Map()){
   const events=new EventTarget();
   const messagesBox={scrollHeight:0,scrollTop:0};
   const root={innerHTML:'',querySelector:selector=>selector==='.ai-messages'?messagesBox:{focus(){}},querySelectorAll:()=>[]};
-  const c={Intl,Date,console,URL,Request,Response,Headers,AbortController,DOMException,crypto,CustomEvent,setTimeout,clearTimeout,
+  const c={Intl,Date,console,URL,Request,Response,Headers,AbortController,AbortSignal,DOMException,crypto,CustomEvent,setTimeout,clearTimeout,
     addEventListener:events.addEventListener.bind(events),removeEventListener:events.removeEventListener.bind(events),dispatchEvent:events.dispatchEvent.bind(events),
     TOURS:[],localStorage:{getItem:()=>locale,setItem(){}},sessionStorage:{getItem:key=>storage.get(key)||null,setItem:(key,value)=>storage.set(key,value),removeItem:key=>storage.delete(key)},
     document:{documentElement:{lang:locale},readyState:'loading',addEventListener(){},querySelector:()=>null,querySelectorAll:()=>[]},
     location:{origin:'https://lovetravel.viiversion.com',href:'https://lovetravel.viiversion.com/'},
     MutationObserver:class{observe(){}},requestAnimationFrame:callback=>callback()};
+  let applicationFetch;
+  Object.defineProperty(c,'fetch',{configurable:true,set:value=>{applicationFetch=value;},get:()=>{
+    const captured=applicationFetch;
+    return (url,init)=>url==='/api/travel-commerce/session'?Promise.resolve(new Response('{"ok":true}')):captured(url,init);
+  }});
   c.globalThis=c;vm.createContext(c);vm.runInContext(semantic,c);vm.runInContext(conversationClient,c);
   if(savedState)storage.set('lovetravel-ai-conversation-v1',JSON.stringify({...savedState,conversationId:c.LoveTravelConversation.id()}));
   vm.runInContext(client.replace('    mount,\n    _test:{','    mount,\n    _audit:{handleText,handleClick,state:()=>state,pending:()=>pending,retry:()=>retryMessage},\n    _test:{'),c);
@@ -135,6 +140,7 @@ for(const locale of ['ru','vi','en','zh','ko']){
     const {c,root}=harness(locale);let finish,oldHeader,newHeader;
     c.fetch=(_url,init)=>{oldHeader=new Headers(init.headers).get('x-lt-conversation-id');return new Promise(resolve=>{finish=resolve;});};
     const old=c.MaxTourAI._audit.handleText('Book for two adults and a child tomorrow.',root);
+    await new Promise(resolve=>setImmediate(resolve));
     c.MaxTourAI._audit.handleClick(root,{target:{closest:()=>({dataset:{aiAction:'clear'}})}});
     assert.equal(c.MaxTourAI._audit.pending(),false);
     c.fetch=async(_url,init)=>{newHeader=new Headers(init.headers).get('x-lt-conversation-id');const body=JSON.parse(init.body);assert.ok(!body.history.some(row=>row.text.includes('two adults')));return new Response(JSON.stringify({ok:true,reply:'Which tour would you like?',agent:{nextQuestionCode:'PREFERENCE'}}));};

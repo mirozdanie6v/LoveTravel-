@@ -102,7 +102,7 @@ for(const row of cases){
  const conversationId=crypto.randomUUID();
  const response=await fetch(base+'/api/ai/chat',{method:'POST',headers:{'content-type':'application/json','x-max-tour-locale':'ru','x-lt-conversation-id':conversationId,cookie:'lt_sales_sid=old-customer-scope-1234567890'},body:JSON.stringify({locale:'ru',message:'Хочу забронировать',history:[{role:'user',text:'Завтра, двое взрослых и ребёнок 7 лет. Robinson и морской парк Hon Mun.'},{role:'assistant',text:'Дата: '+tomorrow+'. Взрослые: 2; дети: 1. Итого 175 USD.'}]}),signal:AbortSignal.timeout(45000)});
  const answer=await response.json();assert.ok(response.ok&&answer.ok&&!answer.degraded,JSON.stringify(answer));
- assert.equal(answer.shoppingSession.id,'shopping-'+conversationId);
+ assert.match(answer.shoppingSession.id,/^shopping-[a-f0-9]{64}$/);
  assert.equal(answer.intent.party.adults,0);assert.deepEqual(answer.intent.party.children,[]);assert.equal(answer.intent.dateConstraint,undefined);
  assert.equal(answer.bookingSelection,null);assert.equal(answer.agent.mutationExecuted,false);
  assert.ok(['ASK_DATE','ASK_PARTY','ASK_PREFERENCE'].includes(answer.agent.action));

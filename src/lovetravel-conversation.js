@@ -3,6 +3,19 @@
   const KEY='lovetravel-active-conversation-v1';
   const MAX_IDLE_MS=24*60*60*1000;
   let active;
+  let sessionReady;
+  function ensureGuest(){
+    if(!sessionReady){
+      const bootstrap=async()=>{
+        const response=await fetch('/api/travel-commerce/session',{signal:AbortSignal.timeout(15000)});
+        if(!response.ok)throw new Error('guest_session_unavailable');
+      };
+      sessionReady=(globalThis.navigator?.locks?.request
+        ?navigator.locks.request('lovetravel-guest-bootstrap',bootstrap):bootstrap())
+        .catch(error=>{sessionReady=null;throw error;});
+    }
+    return sessionReady;
+  }
   const valid=value=>/^[A-Za-z0-9._:-]{20,160}$/.test(String(value||''));
   function save(){try{sessionStorage.setItem(KEY,JSON.stringify(active));}catch{}}
   function fresh(){return {id:crypto.randomUUID(),touchedAt:Date.now()};}
@@ -22,6 +35,8 @@
     globalThis.addEventListener?.('lovetravel:conversation-reset',abort,{once:true});
     const timer=setTimeout(()=>controller.abort(new DOMException('Request timed out','TimeoutError')),35000);
     try{
+      await ensureGuest();
+      if(controller.signal.aborted||active.id!==id)throw new DOMException('Conversation changed','AbortError');
       const response=await fetch(input,{...init,headers:Object.fromEntries(headers),signal:controller.signal});
       // Await the body too: a clear between response headers and JSON must not restore old state.
       const body=await response.text();

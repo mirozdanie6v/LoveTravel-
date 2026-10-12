@@ -9,13 +9,15 @@ import {
 import { createTravelCommerceStore } from './travel-commerce-store.js';
 import { createInitialTravelIntent } from './travel-sales-intelligence.js';
 import { ensureTravelCommerceRuntimeSchema } from './travel-commerce-migration.js';
+import {GUEST_COOKIE,ensureConversationSchema,conversationHash,conversationError} from './travel-conversation-state.js';
 
 const str=(value,max=180)=>String(value??'').trim().slice(0,max);
 
 export function parseCookie(header=''){
   return Object.fromEntries(String(header).split(';').map(value=>value.trim()).filter(Boolean).map(part=>{
     const index=part.indexOf('=');
-    return index<0?[part,'']:[part.slice(0,index),decodeURIComponent(part.slice(index+1))];
+    if(index<0)return [part,''];
+    try{return [part.slice(0,index),decodeURIComponent(part.slice(index+1))];}catch{return [part.slice(0,index),''];}
   }));
 }
 
@@ -24,24 +26,44 @@ export function validSalesSessionId(value){
 }
 
 export async function ensureSalesSession(request,env){
+  const origin=request.headers.get('origin');
+  if((origin&&origin!==new URL(request.url).origin)||request.headers.get('sec-fetch-site')==='cross-site'){
+    throw conversationError('conversation_origin_denied',403);
+  }
+  await ensureConversationSchema(env.DB);
   const cookies=parseCookie(request.headers.get('cookie')||'');
-  const existing=validSalesSessionId(cookies.lt_sales_sid)?cookies.lt_sales_sid:'';
-  // The conversation ID is shared by chat and BookingConfigurator. A new conversation
-  // creates a new shopping/transaction scope; existing orders remain untouched.
+  let token=/^[a-f0-9]{64}$/.test(cookies[GUEST_COOKIE]||'')?cookies[GUEST_COOKIE]:'';
+  let ownerHash=token?await conversationHash(token):'';
+  let owner=ownerHash?await env.DB.prepare(`SELECT default_conversation_id FROM travel_guest_sessions
+    WHERE token_hash=? AND datetime(updated_at)>=datetime('now','-30 days')`).bind(ownerHash).first():null;
+  const fresh=!owner;
+  if(!owner){
+    token=(crypto.randomUUID()+crypto.randomUUID()).replaceAll('-','');
+    ownerHash=await conversationHash(token);
+    owner={default_conversation_id:crypto.randomUUID()};
+    await env.DB.prepare('INSERT INTO travel_guest_sessions(token_hash,default_conversation_id) VALUES(?,?)')
+      .bind(ownerHash,owner.default_conversation_id).run();
+  }else await env.DB.prepare('UPDATE travel_guest_sessions SET updated_at=CURRENT_TIMESTAMP WHERE token_hash=?').bind(ownerHash).run();
+  // A client ID is a tab/conversation selector, never an access credential.
   const requested=request.headers.get('x-lt-conversation-id');
-  const id=validSalesSessionId(requested)?requested:(existing||crypto.randomUUID());
+  const conversationId=validSalesSessionId(requested)?requested:owner.default_conversation_id;
+  const id=await conversationHash(ownerHash+':'+conversationId);
+  const prior=await env.DB.prepare('SELECT revoked_at FROM travel_conversations WHERE session_id=?').bind(id).first();
+  if(prior?.revoked_at)throw conversationError('conversation_deleted',410);
   await env.DB.prepare(
     'INSERT INTO sessions(id) VALUES(?) ON CONFLICT(id) DO UPDATE SET updated_at=CURRENT_TIMESTAMP'
   ).bind(id).run();
-  return {id,fresh:id!==existing};
+  await env.DB.prepare(`INSERT INTO travel_conversations(session_id,owner_hash,client_id) VALUES(?,?,?)
+    ON CONFLICT(session_id) DO UPDATE SET updated_at=CURRENT_TIMESTAMP`).bind(id,ownerHash,conversationId).run();
+  return {id,ownerHash,conversationId,fresh,token};
 }
 
 export function withSalesSession(response,session){
-  if(!session?.fresh) return response;
+  if(!session?.token) return response;
   const headers=new Headers(response.headers);
   headers.append(
     'set-cookie',
-    `lt_sales_sid=${encodeURIComponent(session.id)}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=2592000`,
+    `${GUEST_COOKIE}=${session.token}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=2592000`,
   );
   return new Response(response.body,{
     status:response.status,

@@ -27,7 +27,14 @@
     ko:{user:'회원',assistant:'AI 도우미',results:'추천 투어',forLabel:'대상',details:'자세히 보기',book:'예약하기',subtitle:'원하는 여행과 조건을 알려주세요. 맞는 투어를 추천하고 예약 단계까지 안내해 드립니다.',clear:'지우기',placeholder:'메시지를 입력하세요...',pending:'찾는 중…',priceTbd:'가격 확인 중',partyUnknown:'인원 미입력',adultShort:'성인',childShort:'아동',infantShort:'유아',reasonBudget:'가격이 더 유리함',reasonSea:'바다 / 섬',reasonNature:'멋진 풍경',reasonChildren:'어린이 동반 적합',reasonDefault:'요청에 적합',exactDeparture:'출발 가능',nearestDeparture:'가장 가까운 출발',individualDate:'프라이빗 날짜는 예약 시 확정',datesTbd:'출발 날짜 확인 중',quickSea:'바다와 섬',quickSeaValue:'바다와 섬 투어를 원해요',quickViews:'멋진 풍경',quickViewsValue:'자연과 멋진 풍경을 원해요',quickCity:'시티투어',quickCityValue:'시티투어를 원해요',quickTwoAdults:'성인 2명',quickTwoAdultsValue:'성인 2명입니다',quickChild:'어린이 동반',quickChildValue:'어린이와 함께 여행합니다',today:'오늘',tomorrow:'내일',flexible:'날짜 유동적'},
     zh:{user:'您',assistant:'AI 顾问',results:'适合您的行程',forLabel:'适用于',details:'查看详情',book:'预订',subtitle:'告诉我您想去哪里、希望怎样游玩。我会推荐合适的行程并带您完成预订流程。',clear:'清除',placeholder:'输入消息…',pending:'正在查询…',priceTbd:'价格待确认',partyUnknown:'未填写出行人数',adultShort:'成人',childShort:'儿童',infantShort:'婴儿',reasonBudget:'价格更划算',reasonSea:'海岛',reasonNature:'风景优美',reasonChildren:'适合儿童',reasonDefault:'符合您的需求',exactDeparture:'有可订班次',nearestDeparture:'最近班次',individualDate:'私人行程日期在预订时确认',datesTbd:'日期待确认',quickSea:'海岛',quickSeaValue:'我想去海岛',quickViews:'自然风光',quickViewsValue:'我想看自然风光',quickCity:'城市观光',quickCityValue:'我想参加城市观光',quickTwoAdults:'2 位成人',quickTwoAdultsValue:'我们有 2 位成人',quickChild:'带儿童',quickChildValue:'带孩子出行',today:'今天',tomorrow:'明天',flexible:'日期灵活'}
   });
-  const ui = () => UI[ACTIVE_LOCALE] || UI.ru;
+  const CONVERSATION_UI={
+    ru:{clear:'Новый диалог',deleteData:'Удалить сохранённые диалоги',deleteConfirm:'Удалить сохранённые диалоги и незавершённые формы в этом браузере? Созданные заказы сохранятся.',deleteFailed:'Не удалось удалить данные. Повторите попытку.'},
+    en:{clear:'New conversation',deleteData:'Delete saved conversations',deleteConfirm:'Delete saved conversations and unfinished forms in this browser? Existing orders will be retained.',deleteFailed:'Could not delete the data. Please try again.'},
+    vi:{clear:'Cuộc trò chuyện mới',deleteData:'Xóa các cuộc trò chuyện đã lưu',deleteConfirm:'Xóa các cuộc trò chuyện và biểu mẫu chưa hoàn tất trong trình duyệt này? Các đơn đã tạo vẫn được giữ.',deleteFailed:'Không thể xóa dữ liệu. Vui lòng thử lại.'},
+    zh:{clear:'新对话',deleteData:'删除已保存的对话',deleteConfirm:'删除此浏览器中已保存的对话和未完成的表单？已创建的订单将保留。',deleteFailed:'无法删除数据，请重试。'},
+    ko:{clear:'새 대화',deleteData:'저장된 대화 삭제',deleteConfirm:'이 브라우저의 저장된 대화와 미완성 양식을 삭제할까요? 생성된 주문은 유지됩니다.',deleteFailed:'데이터를 삭제하지 못했습니다. 다시 시도해 주세요.'},
+  };
+  const ui = () => ({...(UI[ACTIVE_LOCALE] || UI.ru),...CONVERSATION_UI[ACTIVE_LOCALE]});
   const catalog = () => { try { return Array.isArray(TOURS) ? TOURS : []; } catch (_) { return []; } };
 
   function vietnamTodayIso() {
@@ -662,6 +669,7 @@
     }).join('');
     const quick = quickReplies();
     root.innerHTML = `<div class="section-title ai-section-head"><div><h2>${esc(t.assistant)}</h2><p class="ai-chat-subtitle">${esc(t.subtitle)}</p></div><button class="secondary ai-clear" type="button" data-ai-action="clear">${esc(t.clear)}</button></div><section class="ai-consultant-shell"><div class="ai-consultant-main ai-chat-panel"><div class="ai-messages" role="log" aria-live="polite">${messages}</div><form class="ai-consultant-input" data-ai-form="chat"><textarea name="message" rows="1" aria-label="${esc(t.placeholder)}" placeholder="${esc(t.placeholder)}" ${pending ? 'disabled' : ''}></textarea><button class="primary" type="submit" ${pending ? 'disabled' : ''}>→</button></form></div><div class="ai-chat-below">${retryMessage ? `<button class="secondary" type="button" data-ai-action="retry">${esc(semanticText('ai.retry'))}</button>` : ''}${quick.length ? `<div class="ai-quick-replies">${quick.map(([label,value]) => `<button type="button" data-ai-action="quick" data-value="${esc(value)}">${esc(label)}</button>`).join('')}</div>` : ''}${renderRecommendations()}</div></section>`;
+    root.querySelector('.ai-chat-below')?.insertAdjacentHTML?.('beforeend',`<button class="secondary ai-delete" type="button" data-ai-action="delete-data" ${pending?'disabled':''}>${esc(t.deleteData)}</button>`);
     const input=root.querySelector('textarea[name="message"]');
     if(input&&draft)input.value=draft;
     if(input&&wasEditing){
@@ -700,6 +708,7 @@
     const action = button.dataset.aiAction;
     if (action === 'quick') void handleText(button.dataset.value || '', root);
     if (action === 'retry' && retryMessage) void handleText(retryMessage,root,{retry:true});
+    if (action === 'delete-data'&&!pending) void deleteSavedData(root);
     if (action === 'clear') { requestEpoch++; pending=false; globalThis.LoveTravelConversation?.reset?.(); retryMessage=null; state = freshState(); try { sessionStorage.removeItem(STORAGE_KEY); sessionStorage.removeItem(BOOKING_INTENT_KEY); } catch (_) {} render(root,{discardDraft:true}); }
     if (action === 'open-tour') {
       const item = state.recommendations.find(row => row.tour.id === button.dataset.id); if (!item) return;
@@ -709,6 +718,22 @@
     if (action === 'book-tour') {
       const item = state.recommendations.find(row => row.tour.id === button.dataset.id); if (item) startBooking(item, root);
     }
+  }
+
+  async function deleteSavedData(root){
+    const t=ui();
+    if(!globalThis.confirm(t.deleteConfirm))return;
+    pending=true;const epoch=++requestEpoch;render(root);
+    try{
+      const response=await conversationFetch('/api/travel-commerce/conversation',{
+        method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'DELETE_SAVED_DATA'}),
+      });
+      if(!response.ok)throw new Error('delete_failed');
+      if(epoch!==requestEpoch)return;
+      globalThis.LoveTravelConversation.reset();retryMessage=null;state=freshState();
+      sessionStorage.removeItem(STORAGE_KEY);sessionStorage.removeItem(BOOKING_INTENT_KEY);
+    }catch{if(epoch===requestEpoch)add('bot',t.deleteFailed);}
+    finally{if(epoch===requestEpoch){pending=false;render(root,{discardDraft:true});}}
   }
 
   function mount(root) {

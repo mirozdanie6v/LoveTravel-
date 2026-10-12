@@ -4,6 +4,7 @@ import {
 } from './bokun-provider.js';
 import {
   executeBookingSession,
+  executeConversationOperation,
 } from './booking-session-client.js';
 import { bookingMutationBlockedResponse } from './booking-mutation-policy.js';
 import {
@@ -48,7 +49,7 @@ function expectedRevision(body){
   return Number.isInteger(revision)&&revision>=1?revision:null;
 }
 
-export async function handleTravelTransactionApi(request,env,url=new URL(request.url)){
+export async function handleTravelTransactionApi(request,env,url=new URL(request.url),internalSession=null){
   if(url.pathname!=='/api/travel-commerce/transaction') return null;
   const body=request.method==='POST'?await request.clone().json().catch(()=>null):null;
   const action=String(body?.action||'').trim().toUpperCase();
@@ -59,8 +60,13 @@ export async function handleTravelTransactionApi(request,env,url=new URL(request
     return json({ok:false,error:'transaction_runtime_unavailable'},503);
   }
 
-  const session=await ensureSalesSession(request,env);
+  let session=internalSession;
   try{
+    if(!session){
+      session=await ensureSalesSession(request,env);
+      const result=await executeConversationOperation(env,session,{action:'TRANSACTION',method:request.method,body});
+      return withSalesSession(json(result.body,result.status),session);
+    }
     let transaction=await ensureCommerceTransaction(env,session.id);
 
     if(request.method==='GET'){
