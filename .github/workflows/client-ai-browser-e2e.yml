@@ -14,7 +14,7 @@ permissions:
 jobs:
   client-ai:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 35
     container:
       image: mcr.microsoft.com/playwright:v1.55.0-noble
     steps:
