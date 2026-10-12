@@ -1,10 +1,10 @@
 import {chromium} from 'playwright';
-import {mkdir,writeFile} from 'node:fs/promises';
+import {mkdir,writeFile,readFile} from 'node:fs/promises';
 
 const base=String(process.env.LOVE_TRAVEL_LIVE_BASE_URL||'https://lovetravel.viiversion.com').replace(/\/$/,'');
 const proofDir='artifacts/ai-options';
 await mkdir(proofDir,{recursive:true});
-const report={base,startedAt:new Date().toISOString(),catalog:[],options:[],errors:[]};
+let report={base,startedAt:new Date().toISOString(),catalog:[],options:[],errors:[],recoveryEvents:[]};
 const invariant=(condition,message)=>{if(!condition)throw new Error(message);};
 const name=value=>String(value||'').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/\band\b/gu,' ').replace(/[^\p{L}\p{N}]+/gu,' ').replace(/\s+/gu,' ').trim();
 const includesTitle=(reply,...titles)=>titles.filter(Boolean).some(title=>name(reply).includes(name(title)));
@@ -30,6 +30,12 @@ const vietnamDay=()=>{
 };
 const addDay=iso=>{const d=new Date(iso+'T00:00:00Z');d.setUTCDate(d.getUTCDate()+1);return d.toISOString().slice(0,10);};
 const date=addDay(vietnamDay());
+if(process.argv.includes('--resume')){
+  const prior=JSON.parse(await readFile(proofDir+'/report.json','utf8'));
+  if(prior.base!==base||prior.catalog.length!==10||!prior.options.every(row=>row.formVisible&&row.reply.includes(date)))throw new Error('Cannot resume another site, date or incomplete form check');
+  report={...report,catalog:prior.catalog,options:prior.options,previousRuns:[...(prior.previousRuns||[]),{startedAt:prior.startedAt,finishedAt:prior.finishedAt,passedPairs:prior.options.length,errors:prior.errors}],recoveryEvents:prior.recoveryEvents||[]};
+}
+report.date=date;
 const browser=await chromium.launch({headless:true});
 const probe=await browser.newContext();
 async function domains(locale){
@@ -62,7 +68,14 @@ async function start(locale){
 async function ask(page,question){
   const responsePromise=page.waitForResponse(r=>r.url().includes('/api/ai/chat')&&r.request().method()==='POST',{timeout:45000});
   const field=page.locator('#aiScreen.active textarea[name="message"]');await field.fill(question);await field.press('Enter');
-  const response=await responsePromise,answer=await response.json();
+  let response;
+  try{response=await responsePromise;}catch(error){
+    await page.locator('#aiScreen [data-ai-action="retry"]').waitFor({state:'visible',timeout:10000});
+    report.recoveryEvents.push({question,kind:'lost-or-delayed-response',error:error.message});
+    const retried=page.waitForResponse(r=>r.url().includes('/api/ai/chat')&&r.request().method()==='POST',{timeout:45000});
+    await page.locator('#aiScreen [data-ai-action="retry"]').click();response=await retried;
+  }
+  const answer=await response.json();
   invariant(response.ok()&&answer.ok,'AI API failed: '+JSON.stringify(answer));
   invariant(answer.agent?.mutationExecuted===false,'AI reports a mutation');
   await page.waitForFunction(reply=>[...document.querySelectorAll('#aiScreen .ai-msg.bot .ai-msg-text')].some(node=>node.textContent===reply),answer.reply,{timeout:15000});
@@ -71,7 +84,7 @@ async function ask(page,question){
 try{
   const source=await domains('en');
   invariant(source[0].rates.length===7&&source[1].rates.length===4,'Provider catalog ownership/count changed; review before acceptance');
-  for(const locale of locales){
+  for(const locale of process.argv.includes('--resume')?[]:locales){
     const native=locale==='en'?source:await domains(locale);
     const h=await start(locale);
     try{
@@ -97,6 +110,7 @@ try{
   const fullMatrix=process.argv.includes('--full-matrix');
   for(const domain of source)for(const rate of domain.rates){
     for(const locale of fullMatrix?locales:[locales[caseIndex++%locales.length]]){
+    if(report.options.some(row=>row.locale===locale&&row.productId===String(domain.experience.id)&&row.rateId===String(rate.id)))continue;
     const native=await domains(locale);
     const nativeRate=native.find(d=>String(d.experience.id)===String(domain.experience.id)).rates.find(r=>String(r.id)===String(rate.id));
     const h=await start(locale);
