@@ -316,6 +316,7 @@ export function createTravelCapabilityBroker({
     for(const domain of domains){
       const product=canonicalProductFromBokunDomain(domain,{vendorId:provider.vendorId});
       if(intent.optionPreference&&intent.optionPreference.productId!==product.productId) continue;
+      const facts=productFacts(domain,product,await optionTitles(domain,intent.locale)).facts;
       const rateIntents=args.allOptions?(domain.rates||[]).map(rate=>({...intent,optionPreference:{productId:product.productId,rateRef:bokunProviderRef('RATE',rate.id,provider.vendorId)}})):[intent];
       for(const rateIntent of rateIntents){
       try{
@@ -323,8 +324,9 @@ export function createTravelCapabilityBroker({
         const resolved=await provider.resolveOffer({selection,domain});
         results.push({
           product,
+          localizedProductTitle:facts.localizedTitle,
           selection,
-          option:productFacts(domain,product,await optionTitles(domain,intent.locale)).facts.options.find(option=>String(option.rateRef.externalId)===String(selection.rateId))||null,
+          option:facts.options.find(option=>String(option.rateRef.externalId)===String(selection.rateId))||null,
           offer:resolved.offer,
           readyToQuote:Boolean(resolved.resolution?.readyToQuote),
           readyToBook:Boolean(resolved.resolution?.readyToBook),

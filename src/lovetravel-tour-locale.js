@@ -137,9 +137,20 @@
 
   function serverLocalizationMatches(value){
     const meta=value?.localization;
-    if(!meta || meta.locale!==locale() || Number(meta.pendingFields||0)!==0) return false;
+    if(!meta || meta.locale!==locale()) return false;
+    if(meta.source==='viiversion-cache-stale'&&meta.staleWhileRevalidate&&Number(meta.translatedFields)>0)return true;
+    if(Number(meta.pendingFields||0)!==0)return false;
     if(meta.source==='viiversion-cache') return true;
     return locale()==='en' && meta.source==='bokun-native';
+  }
+  function translationNotice(value){
+    if(locale()==='en'||serverLocalizationMatches(value))return '';
+    return ({
+      ru:'Полный перевод условий пока не готов. Ниже показан английский оригинал. Уточните непонятные условия у консультанта перед подтверждением.',
+      vi:'Bản dịch đầy đủ các điều kiện chưa sẵn sàng. Nội dung gốc tiếng Anh được hiển thị bên dưới. Vui lòng hỏi tư vấn viên nếu có điều kiện chưa rõ trước khi xác nhận.',
+      zh:'完整的条款翻译尚未准备好，下方显示英文原文。确认前，请向顾问核实不清楚的条款。',
+      ko:'전체 조건 번역이 아직 준비되지 않아 아래에 영어 원문이 표시됩니다. 확인 전에 이해하기 어려운 조건을 상담원에게 문의해 주세요.',
+    })[locale()]||'';
   }
 
   function localizeCatalogTour(tour){
@@ -224,6 +235,7 @@
     minutes,
     localizeCatalogTour,
     localizeQuestion,
-    serverLocalizationMatches
+    serverLocalizationMatches,
+    translationNotice
   });
 })();

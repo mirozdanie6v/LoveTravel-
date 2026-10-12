@@ -393,6 +393,8 @@ export async function localizeDomainFromCache(domain, env, requestedLocale, ctx 
     clone.localization = {
       locale,
       source:'bokun-native',
+      contentReady:true,
+      contentLocale:'en',
       translatedFields:0,
       pendingFields:0,
     };
@@ -443,6 +445,8 @@ export async function localizeDomainFromCache(domain, env, requestedLocale, ctx 
   clone.localization = {
     locale,
     source:complete ? 'viiversion-cache' : staleComplete ? 'viiversion-cache-stale' : 'source',
+    contentReady:Boolean(applied),
+    contentLocale:applied?locale:'en',
     translatedFields:applied ? fields.length : 0,
     pendingFields,
     atomic:true,

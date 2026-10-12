@@ -1056,7 +1056,7 @@ function localized(locale,key,vars={}){
 function preparedOfferReply(locale,row){
   const offer=row.offer;
   const group=Object.fromEntries(['ADULT','CHILD','INFANT'].map(role=>[role,arr(offer.participantMix).filter(p=>p.role===role).reduce((n,p)=>n+Number(p.count||0),0)]));
-  const title=[row.product?.title,row.option?.localizedTitle||row.option?.title].filter(Boolean).join(' — ');
+  const title=[row.localizedProductTitle||row.product?.title,row.option?.localizedTitle||row.option?.title].filter(Boolean).join(' — ');
   const copy={
     ru:'{title}\n\nДата: {date}. Взрослые: {ADULT}; дети: {CHILD}; младенцы: {INFANT}. Итого: {amount} {currency} за этот состав группы.\n\nОткройте оформление кнопкой под экскурсией, чтобы заполнить и проверить оставшиеся данные. Бронирование ещё не создано.',
     en:'{title}\n\nDate: {date}. Adults: {ADULT}; children: {CHILD}; infants: {INFANT}. Total: {amount} {currency} for this party.\n\nOpen the booking form using the button below the tour to complete and review the remaining details. No booking has been created.',

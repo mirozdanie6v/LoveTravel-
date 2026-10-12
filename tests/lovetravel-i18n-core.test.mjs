@@ -32,6 +32,20 @@ test('semantic i18n core has complete key parity for every supported locale',()=
   assert.ok(base.length>=175);
 });
 
+test('incomplete translations are identified in the selected language, while complete same-source caches remain usable',async()=>{
+  const localeSource=await readFile(resolve(root,'src/lovetravel-tour-locale.js'),'utf8');
+  for(const locale of ['ru','vi','en','ko','zh']){
+    const context={Intl,localStorage:{getItem:()=>locale},LoveTravelI18n:load(locale)};
+    context.globalThis=context;vm.createContext(context);vm.runInContext(localeSource,context);
+    const api=context.LoveTravelTourLocale;
+    const pending={localization:{locale,source:'source',pendingFields:3,contentReady:false}};
+    assert.equal(Boolean(api.translationNotice(pending)),locale!=='en');
+    assert.equal(api.translationNotice({localization:{locale,source:locale==='en'?'bokun-native':'viiversion-cache',pendingFields:0}}),'');
+    const stale={localization:{locale,source:'viiversion-cache-stale',pendingFields:4,translatedFields:12,staleWhileRevalidate:true}};
+    assert.equal(api.translationNotice(stale),'');
+  }
+});
+
 test('semantic keys resolve customer UI copy without source-language lookup',()=>{
   const zh=load('zh');
   assert.equal(zh.t('tour.meeting'),'集合地点');

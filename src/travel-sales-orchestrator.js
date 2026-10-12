@@ -350,7 +350,7 @@ export function createLoveTravelSalesOrchestrator({
           // Only commercial evidence goes to the model; the complete selection
           // remains in the authoritative transaction and in the user's UI response.
           offersPacket=await evidenceEnvelope('getOfferDetails',{transactionId:currentTx.transactionId,revision:bookingTransaction.revision},{
-            product,offer:quote.offer,readyToQuote:true,readyToBook:Boolean(quote.readyToBook),
+            product,localizedProductTitle:activeProduct?.facts?.localizedTitle||product.title,offer:quote.offer,readyToQuote:true,readyToBook:Boolean(quote.readyToBook),
             option:activeProduct?.facts?.options.find(option=>String(option.rateRef.externalId)===String(quote.offer.rateRef?.externalId))||null,
             bookingDataIssues:structuredClone(quote.issues?.bookingDataIssues||[]),
           },now());
