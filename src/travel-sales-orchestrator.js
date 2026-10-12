@@ -550,6 +550,7 @@ export async function handleLoveTravelSalesAgent(
     session=await ensureSalesSession(request,env);
     const result=await executeConversationOperation(env,session,{
       action:'TURN',
+      requestId:body.requestId,
       locale:localeFrom(request,body),
       message,
       context:body.context&&typeof body.context==='object'?body.context:{},

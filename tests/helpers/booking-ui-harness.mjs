@@ -23,7 +23,7 @@ class Statement {
 
 // Runs the production transaction API, Durable Object, store, resolver and
 // Quote code. Only D1/DO hosting and provider input data are substituted.
-export async function startBookingUiHarness(domains,{delayMs=0,presentationDomains=domains,AI=null}={}){
+export async function startBookingUiHarness(domains,{delayMs=0,presentationDomains=domains,AI=null,sharedGuest=true}={}){
   const sqlite=new DatabaseSync(':memory:');
   sqlite.exec(await readFile(resolve(root,'migrations/0001_init.sql'),'utf8'));
   sqlite.exec(await readFile(resolve(root,'migrations/0008_travel_commerce_runtime.sql'),'utf8'));
@@ -67,9 +67,9 @@ export async function startBookingUiHarness(domains,{delayMs=0,presentationDomai
     try{
       const parts=[];for await(const part of req) parts.push(part);
       const body=Buffer.concat(parts).toString();
-      const url=new URL(req.url,'http://127.0.0.1');
+      const url=new URL(req.url,'http://'+req.headers.host);
       requests.push({path:url.pathname,method:req.method,body:body?JSON.parse(body):null});
-      const headers={...req.headers,cookie:req.headers.cookie||fixtureCookie};
+      const headers={...req.headers,cookie:req.headers.cookie||(sharedGuest?fixtureCookie:'')};
       const request=new Request(url,{method:req.method,headers,...(body?{body}:{})});
       let response=handleBlockedBookingRoute(request,url);
       if(!response)response=await handleTravelConversationApi(request,env,url);

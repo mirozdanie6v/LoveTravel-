@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {composeBookingResponse} from '../src/travel-response-composer.js';
+import {composeBookingResponse,acceptsBookingForm} from '../src/travel-response-composer.js';
 const plan={source:'provider-exact-offer',reply:'Tour, tomorrow, two adults, 118 USD. Open the form.',nextQuestionCode:'OPEN_CONFIGURATOR'};
 const transaction={transactionId:'txn-1',quote:{offer:{productId:'tour-1',date:'2026-10-13',rateRef:{externalId:'rate-1'},participantMix:[{role:'ADULT',count:2}],price:{amount:118,currency:'USD'}}}};
 test('a pickup follow-up acknowledges the hotel rather than repeating the whole quote',()=>{
@@ -26,4 +26,9 @@ test('inclusion numbering becomes readable bullets while choice numbering is pre
   assert.match(result.plan.reply,/\n- Boat\n- Equipment\n- Lunch/);assert.ok(!result.plan.reply.includes('3.'));
   const choices=composeBookingResponse({plan:{source:'provider-catalog-options',nextQuestionCode:'OPTION',reply:'1. Beach\n2. Mud baths'},locale:'en',message:'What is included?',memory:{}});
   assert.equal(choices.plan.reply,'1. Beach\n2. Mud baths');
+});
+
+test('form acceptance recognizes all five languages without losing Korean syllables',()=>{
+  for(const message of ['Да','Yes.','Vâng','네','예','好的','Давайте этот','이걸로 할게요'])assert.equal(acceptsBookingForm(message),true,message);
+  for(const message of ['Нет','No','아니요','What is included?'])assert.equal(acceptsBookingForm(message),false,message);
 });

@@ -1,5 +1,5 @@
 import {stableJson} from './travel-commerce-quote.js';
-const normalized=value=>String(value||'').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[.!?。！？]+$/u,'').trim();
+const normalized=value=>String(value||'').trim().toLowerCase().normalize('NFD').replace(/([a-z])[\u0300-\u036f]+/g,'$1').normalize('NFC').replace(/đ/g,'d').replace(/[.!?。！？]+$/u,'').trim();
 export const acceptsBookingForm=message=>/^(?:да|yes|okay|ok|dong\s+y|vang|是|好的|네|예|давайте этот|беру этот|let'?s take (?:it|this)|choose this|chon cai nay|就选这个|이걸로 할게요)$/u.test(normalized(message));
 const copy={
   ru:{open:'Открываю форму с выбранными параметрами. Проверьте данные перед подтверждением.',retained:'Выбранные условия сохранены. Можно перейти к форме кнопкой под экскурсией.',pickup:hotel=>'Отель «'+hotel+'» указан в запросе. Место и возможность трансфера проверьте в форме.'},

@@ -172,6 +172,7 @@
   let state = freshState();
   let pending = false;
   let retryMessage = null;
+  let retryRequestId=null;
   let requestEpoch = 0;
   let quotedOffer=null,quoteExpiryTimer=null,mountedRoot=null;
   function setQuotedOffer(result={}){
@@ -498,12 +499,13 @@
     );
   }
 
-  async function requestAiReply(text) {
+  async function requestAiReply(text,requestId) {
     const response = await conversationFetch('/api/ai/chat', {
       method:'POST', credentials:'same-origin', headers:{ 'content-type':'application/json', 'x-max-tour-locale':ACTIVE_LOCALE },
       body:JSON.stringify({
         locale:ACTIVE_LOCALE,
         message:clean(text,900),
+        requestId,
         history:state.messages.filter(item => item.text !== ui().pending).slice(-10).map(item => ({ role:item.role, text:item.text })),
         context:{
           currentDateVietnam:vietnamTodayIso(), timeZone:TIME_ZONE, locale:ACTIVE_LOCALE,
@@ -511,7 +513,7 @@
       }),
     });
     const result = await response.json().catch(() => ({}));
-    if (!response.ok || !result.ok || !result.reply) throw new Error(result.error || 'ai_unavailable');
+    if (!response.ok || !result.ok || !result.reply) throw Object.assign(new Error(result.error || 'ai_unavailable'),{code:result.error});
     return {
       reply:clean(result.reply,1800),
       tourId:clean(result.tourId,120),
@@ -631,6 +633,10 @@
       if (typeof openTour === 'function') openTour(item.tour.id);
       const configurator=globalThis.LoveTravelBookingConfigurator;
       if(!configurator) return;
+      const handoffConversationId=conversationId();
+      const handoffEpoch=requestEpoch;
+      if(await configurator.ready?.(item.tour.id)===false)return;
+      if(handoffConversationId!==conversationId()||handoffEpoch!==requestEpoch)return;
       const snapshot=await configurator.refreshTransaction?.();
       if(snapshot?.selection&&String(snapshot.selection.productId||'')===String(item.tour.id)){
         await configurator.applySelection?.(snapshot.selection);
@@ -721,12 +727,13 @@
   async function handleText(text, root, {retry=false}={}) {
     if (!text || pending) return;
     if(!retry)add('user', text);
+    if(!retry||!retryRequestId)retryRequestId=crypto.randomUUID();
     setQuotedOffer();
     const epoch=++requestEpoch;
     retryMessage = null;
     pending = true; add('bot', ui().pending); render(root, { scrollToEnd:true });
     try {
-      const result = await requestAiReply(text);
+      const result = await requestAiReply(text,retryRequestId);
       if(epoch!==requestEpoch)return;
       applyServerState(result);
       if (state.messages.at(-1)?.text === ui().pending) state.messages.pop();
@@ -741,6 +748,7 @@
       }
     } catch (error) {
       if(epoch!==requestEpoch)return;
+      if(error?.code==='request_obsolete'||error?.code==='request_id_reused')retryRequestId=null;
       console.warn('[LoveTravel AI] consultation request failed',error?.message||error);
       if (state.messages.at(-1)?.text === ui().pending) state.messages.pop();
       retryMessage=text;

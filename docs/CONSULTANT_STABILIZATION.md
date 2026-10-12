@@ -85,3 +85,31 @@ a release consideration.
 Browser acceptance, final totals and release limitations are recorded after the
 last verification run. Production deployment is a separate step: merging this
 repository's main branch automatically triggers a production release.
+
+## Final acceptance
+
+All 723 Node tests passed; media validation, frontend build and diff whitespace checks passed.
+
+- 55 of 55 option/language pairs passed against the local production API,
+  real BookingSession class, SQLite/D1 adapter and deterministic provider fixtures.
+- A 15-turn dialogue preserved its selected transaction and had zero DOM mutations
+  during a 12-second idle measurement. Mobile layout had no horizontal overflow.
+- Accepting the form invitation waits for configurator readiness before opening it.
+- A completed turn whose HTTP response is lost can be retrieved by request ID
+  without adding a second turn. Reusing an ID for different content is rejected;
+  replies tied to an obsolete transaction revision are not replayed.
+- Deletion, isolated guests using the same client ID and old-scope revocation passed.
+- Automatic retention also covers old unsigned draft scopes; provider-confirmed,
+  reserving and reconciliation records remain protected.
+- Production public GETs found complete cached content for both products in all
+  five languages (10 product/language combinations, 55 option/language entries).
+  The field-by-field snapshot is a review aid, not native-speaker certification.
+- Browser evidence: `artifacts/consultant-stabilization/browser-report.json` and
+  locale screenshots. Translation review: `localization-review.json` in that folder.
+
+The browser suite uses provider fixtures and no live model. Unit tests exercise
+model inference, grounding, failure handling and multilingual corrections with
+controlled model responses. Published production code and production D1 have not
+been changed. Cloudflare staging checks with the live model/provider and native
+review of key translated conditions remain release gates. Main-branch merge must
+be reviewed separately because it triggers production deployment.

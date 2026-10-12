@@ -83,12 +83,15 @@ test('upgraded booking CTA is localized from the active LoveTravel locale', () =
   assert.match(v7, /const label = bookLabel\(\)/);
 });
 
-test('booking CTA refresh settles after insertion and ignores changes outside the chat', () => {
+test('booking CTA refresh settles with an exact price and ignores changes outside the chat', () => {
   const frames = [], observers = [];
   let mutations = 0, writes = 0;
   const card = { dataset:{tourId:'1287578'}, nextElementSibling:null, after(button) {
     this.nextElementSibling = button; emit(list);
   }};
+  let priceHtml='<div>from 49 USD</div>',priceWrites=0;
+  const prices={get innerHTML(){return priceHtml;},set innerHTML(value){priceWrites++;priceHtml=value.replace(/ data-lt-exact-price(?=\s)/g,' data-lt-exact-price=""');emit(list);}};
+  card.querySelector=()=>prices;
   const list = { querySelectorAll(selector) {
     return selector.includes('tour-card') ? [card] : card.nextElementSibling ? [card.nextElementSibling] : [];
   }};
@@ -106,12 +109,14 @@ test('booking CTA refresh settles after insertion and ignores changes outside th
   };
   const start = v7.indexOf("(() => {", v7.indexOf("(() => {")+1);
   vm.runInNewContext(v7.slice(start), {document,localStorage:{getItem:()=> 'en'},
+    MaxTourAI:{pricePresentation:()=>({amount:'97.09 USD',label:'Total for your party',date:'2026-10-13',rateId:'201'})},
     MutationObserver:class {constructor(callback){this.callback=callback;observers.push(this);}observe(target){this.target=target;}},
     requestAnimationFrame:callback=>frames.push(callback),
   });
   for(let i=0;i<10&&frames.length;i++)frames.shift()();
   assert.equal(card.nextElementSibling.textContent,'Book');
   assert.equal(writes,1,'An unchanged label must not replace its text node');
+  assert.equal(priceWrites,1,'Browser serialization of an empty attribute must not restart the price refresh');
   assert.equal(frames.length,0,'Chat must become idle after the card is mounted');
   const settled=mutations;
   emit({});

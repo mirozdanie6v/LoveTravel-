@@ -5,7 +5,7 @@ import { validateBookingTransaction } from './travel-commerce-contracts.js';
 import { assertBookingMutationsAllowed } from './booking-mutation-policy.js';
 import {createLoveTravelSalesOrchestrator} from './travel-sales-orchestrator.js';
 import {handleTravelTransactionApi} from './travel-transaction-api.js';
-import {requireOwnedConversation,deleteSavedConversations,conversationError} from './travel-conversation-state.js';
+import {requireOwnedConversation,deleteSavedConversations,conversationError,conversationHash} from './travel-conversation-state.js';
 
 const json=(data,status=200)=>new Response(JSON.stringify(data),{
   status,
@@ -182,8 +182,26 @@ export class BookingSession {
     const session={id:String(body.sessionId||''),ownerHash};
     await requireOwnedConversation(this.env,session);
     if(body.action==='TURN'){
+      const requestId=String(body.requestId||'');
+      if(requestId&&!/^[A-Za-z0-9-]{20,80}$/.test(requestId))throw conversationError('invalid_request_id',400);
+      const requestHash=requestId?await conversationHash(JSON.stringify({message:body.message,locale:body.locale,context:body.context||{}})):'';
+      if(requestId){
+        const saved=await this.env.DB.prepare('SELECT request_hash,response_json FROM travel_conversation_requests WHERE session_id=? AND request_id=?').bind(session.id,requestId).first();
+        if(saved){
+          if(saved.request_hash!==requestHash)throw conversationError('request_id_reused',409);
+          const answer=JSON.parse(saved.response_json);
+          if(answer.transaction){
+            const current=await this.env.DB.prepare('SELECT revision FROM travel_booking_transactions WHERE transaction_id=?').bind(answer.transaction.transactionId).first();
+            if(!current||current.revision!==answer.transaction.revision)throw conversationError('request_obsolete',409);
+          }
+          return answer;
+        }
+      }
       const orchestrator=createLoveTravelSalesOrchestrator({env:this.env,provider:this.provider()});
-      return orchestrator.turn({...body,sessionId:session.id});
+      const answer=await orchestrator.turn({...body,sessionId:session.id});
+      if(requestId&&!answer.degraded)await this.env.DB.prepare(`INSERT INTO travel_conversation_requests(session_id,request_id,request_hash,response_json) VALUES(?,?,?,?)`)
+        .bind(session.id,requestId,requestHash,JSON.stringify(answer)).run();
+      return answer;
     }
     if(body.action==='TRANSACTION'){
       const request=new Request('https://conversation.internal/api/travel-commerce/transaction',{

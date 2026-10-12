@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {startBookingUiHarness} from './helpers/booking-ui-harness.mjs';
 import {configurationDomains} from './fixtures/booking-configurator-domains.mjs';
-import {ensureSalesSession,withSalesSession} from '../src/travel-session.js';
+import {ensureSalesSession,withSalesSession,ensureCommerceTransaction} from '../src/travel-session.js';
 import {executeConversationOperation} from '../src/booking-session-client.js';
 import {cleanupExpiredConversations} from '../src/travel-conversation-state.js';
 import {quoteDisplayBinding} from '../src/travel-commerce-quote.js';
@@ -98,5 +98,37 @@ test('exact display price binds to the full selection, including extras and tran
       {participants:{101:1}},{pickup:{mode:'PICKUP',placeId:'501'}}]){
       assert.equal(await quoteDisplayBinding(tx,{...actual,...patch}),null);
     }
+  }finally{await h.close();}
+});
+
+test('retry after a lost response reuses the completed turn, while a reused request ID with different text is rejected',async()=>{
+  const domains=configurationDomains();domains[0].experience.content.included='Lunch';
+  const h=await startBookingUiHarness(domains);
+  try{
+    const session=await ensureSalesSession(request(),h.env);
+    const operation={action:'TURN',locale:'en',message:'What is included in Robinson?',requestId:crypto.randomUUID()};
+    const first=await executeConversationOperation(h.env,session,operation);
+    const retried=await executeConversationOperation(h.env,session,operation);
+    assert.deepEqual(retried,first);
+    const memory=JSON.parse((await h.env.DB.prepare('SELECT memory_json FROM ai_conversation_memory WHERE session_id=?').bind(session.id).first()).memory_json);
+    assert.equal(memory.travelSales.turns.length,2,'Retry must not append a second user/assistant pair');
+    await assert.rejects(()=>executeConversationOperation(h.env,session,{...operation,message:'Another question'}),e=>e.status===409);
+  }finally{await h.close();}
+});
+
+test('retention also removes old unsigned drafts and their audit snapshots, preserving provider-order records',async()=>{
+  const h=await startBookingUiHarness(configurationDomains());
+  try{
+    const date=new Date(Date.now()-31*86400000);
+    for(const id of ['legacy-draft-session-1234567890','legacy-order-session-1234567890']){
+      await h.env.DB.prepare('INSERT INTO sessions(id) VALUES(?)').bind(id).run();
+      await ensureCommerceTransaction(h.env,id,{now:date});
+    }
+    // Retention uses the persisted order-state column to protect business records.
+    await h.env.DB.prepare("UPDATE travel_booking_transactions SET state='CONFIRMED' WHERE transaction_id=?").bind('txn-legacy-order-session-1234567890').run();
+    await cleanupExpiredConversations(h.env);
+    assert.equal(await h.env.DB.prepare('SELECT state FROM travel_booking_transactions WHERE transaction_id=?').bind('txn-legacy-draft-session-1234567890').first(),null);
+    assert.equal(h.sqlite.prepare('SELECT count(*) AS count FROM travel_transaction_audit WHERE shopping_session_id=?').get('shopping-legacy-draft-session-1234567890').count,0);
+    assert.equal((await h.env.DB.prepare('SELECT state FROM travel_booking_transactions WHERE transaction_id=?').bind('txn-legacy-order-session-1234567890').first()).state,'CONFIRMED');
   }finally{await h.close();}
 });

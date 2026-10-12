@@ -409,7 +409,7 @@
           if(exact){
             if(card._ltCatalogPriceHtml===undefined)card._ltCatalogPriceHtml=prices.innerHTML;
             const esc=value=>String(value).replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
-            const desired=`<div data-lt-exact-price data-rate-id="${esc(exact.rateId)}"><div class="mini">${esc(exact.label)} · ${esc(exact.date)}</div><div class="price">${esc(exact.amount)}</div></div>`;
+            const desired=`<div data-lt-exact-price="" data-rate-id="${esc(exact.rateId)}"><div class="mini">${esc(exact.label)} · ${esc(exact.date)}</div><div class="price">${esc(exact.amount)}</div></div>`;
             if(prices.innerHTML!==desired)prices.innerHTML=desired;
           }else if(card._ltCatalogPriceHtml!==undefined){
             if(prices.innerHTML!==card._ltCatalogPriceHtml)prices.innerHTML=card._ltCatalogPriceHtml;

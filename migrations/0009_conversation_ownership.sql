@@ -12,3 +12,11 @@ CREATE TABLE IF NOT EXISTS travel_conversations (
 );
 CREATE INDEX IF NOT EXISTS idx_travel_conversations_owner ON travel_conversations(owner_hash);
 CREATE INDEX IF NOT EXISTS idx_travel_conversations_age ON travel_conversations(updated_at);
+CREATE TABLE IF NOT EXISTS travel_conversation_requests (
+  session_id TEXT NOT NULL,
+  request_id TEXT NOT NULL,
+  request_hash TEXT NOT NULL,
+  response_json TEXT NOT NULL,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY(session_id,request_id)
+);

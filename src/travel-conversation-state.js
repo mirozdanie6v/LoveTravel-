@@ -12,6 +12,11 @@ const schema=[
   )`,
   'CREATE INDEX IF NOT EXISTS idx_travel_conversations_owner ON travel_conversations(owner_hash)',
   'CREATE INDEX IF NOT EXISTS idx_travel_conversations_age ON travel_conversations(updated_at)',
+  `CREATE TABLE IF NOT EXISTS travel_conversation_requests (
+    session_id TEXT NOT NULL, request_id TEXT NOT NULL, request_hash TEXT NOT NULL,
+    response_json TEXT NOT NULL, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY(session_id,request_id)
+  )`,
 ];
 const ready=new WeakMap();
 export async function ensureConversationSchema(db){
@@ -46,6 +51,7 @@ export async function deleteSavedConversations(env,ownerHash,{expiredOnly=false}
     const statements=[
       env.DB.prepare('UPDATE travel_conversations SET revoked_at=CURRENT_TIMESTAMP WHERE session_id=?').bind(id),
       env.DB.prepare('DELETE FROM ai_conversation_memory WHERE session_id=?').bind(id),
+      env.DB.prepare('DELETE FROM travel_conversation_requests WHERE session_id=?').bind(id),
     ];
     if(!protectedOrder){
       statements.push(
@@ -76,11 +82,36 @@ export async function cleanupExpiredConversations(env){
     }));
     if(!response.ok)throw conversationError('conversation_retention_cleanup_failed',502);
   }
+  // Old unsigned scopes cannot be resumed after the ownership upgrade. Remove
+  // their inactive drafts too; finished or unresolved provider orders stay intact.
+  const legacy=await env.DB.prepare(`SELECT tx.transaction_id,tx.shopping_session_id
+    FROM travel_booking_transactions tx
+    LEFT JOIN travel_shopping_sessions shop ON shop.session_id=tx.shopping_session_id
+    WHERE datetime(tx.updated_at)<datetime('now','-30 days')
+      AND tx.state NOT IN ('CONFIRMED','RESERVING','FAILED_NEEDS_RECONCILIATION')
+      AND NOT EXISTS (SELECT 1 FROM travel_conversations c WHERE c.session_id=shop.owner_session_id)
+    LIMIT 100`).all();
+  for(const row of legacy.results||[]){
+    await env.DB.batch([
+      env.DB.prepare('DELETE FROM travel_command_receipts WHERE transaction_id=?').bind(row.transaction_id),
+      env.DB.prepare('DELETE FROM travel_provider_evidence WHERE transaction_id=?').bind(row.transaction_id),
+      env.DB.prepare('DELETE FROM travel_transaction_audit WHERE transaction_id=?').bind(row.transaction_id),
+      env.DB.prepare('DELETE FROM travel_booking_transactions WHERE transaction_id=?').bind(row.transaction_id),
+      env.DB.prepare(`DELETE FROM travel_transaction_audit WHERE shopping_session_id=?
+        AND NOT EXISTS (SELECT 1 FROM travel_booking_transactions WHERE shopping_session_id=?)`).bind(row.shopping_session_id,row.shopping_session_id),
+      env.DB.prepare(`DELETE FROM travel_shopping_sessions WHERE session_id=?
+        AND NOT EXISTS (SELECT 1 FROM travel_booking_transactions WHERE shopping_session_id=?)`).bind(row.shopping_session_id,row.shopping_session_id),
+    ]);
+    const stub=env.BOOKING_SESSIONS.get(env.BOOKING_SESSIONS.idFromName(row.transaction_id));
+    const response=await stub.fetch(new Request('https://booking-session.internal/purge',{method:'POST'}));
+    if(!response.ok)throw conversationError('legacy_draft_cleanup_failed',502);
+  }
   // Tombstones contain no dialogue or passenger data, and prevent old requests
   // from recreating deleted scopes during the lifetime of the guest cookie.
   await env.DB.batch([
     env.DB.prepare("DELETE FROM travel_conversations WHERE datetime(revoked_at)<datetime('now','-30 days')"),
     env.DB.prepare("DELETE FROM travel_guest_sessions WHERE datetime(updated_at)<datetime('now','-30 days')"),
     env.DB.prepare("DELETE FROM ai_conversation_memory WHERE datetime(updated_at)<datetime('now','-30 days')"),
+    env.DB.prepare("DELETE FROM travel_conversation_requests WHERE datetime(updated_at)<datetime('now','-30 days')"),
   ]);
 }
