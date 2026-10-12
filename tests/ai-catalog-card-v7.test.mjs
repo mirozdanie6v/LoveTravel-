@@ -80,5 +80,41 @@ test('compatibility layer does not rewrite authoritative server AI replies', () 
 test('upgraded booking CTA is localized from the active LoveTravel locale', () => {
   assert.match(v7, /max-tour-locale-v1/);
   assert.match(v7, /en:'Book'/);
-  assert.match(v7, /button\.textContent = bookLabel\(\)/);
+  assert.match(v7, /const label = bookLabel\(\)/);
+});
+
+test('booking CTA refresh settles after insertion and ignores changes outside the chat', () => {
+  const frames = [], observers = [];
+  let mutations = 0, writes = 0;
+  const card = { dataset:{tourId:'1287578'}, nextElementSibling:null, after(button) {
+    this.nextElementSibling = button; emit(list);
+  }};
+  const list = { querySelectorAll(selector) {
+    return selector.includes('tour-card') ? [card] : card.nextElementSibling ? [card.nextElementSibling] : [];
+  }};
+  const root = { contains:node=>node===list, querySelectorAll:()=>[list] };
+  function emit(target) {
+    mutations++;
+    for (const observer of observers) observer.callback([{target,addedNodes:[{}],removedNodes:[]}]);
+  }
+  const document = {
+    documentElement:{}, readyState:'complete', head:{append(){}},
+    getElementById:()=>({}), querySelector:()=>root, addEventListener(){},
+    createElement:()=>({dataset:{}, get textContent(){return this.label||'';},set textContent(value){
+      writes++; this.label=value; emit(list);
+    }}),
+  };
+  const start = v7.indexOf("(() => {", v7.indexOf("(() => {")+1);
+  vm.runInNewContext(v7.slice(start), {document,localStorage:{getItem:()=> 'en'},
+    MutationObserver:class {constructor(callback){this.callback=callback;observers.push(this);}observe(target){this.target=target;}},
+    requestAnimationFrame:callback=>frames.push(callback),
+  });
+  for(let i=0;i<10&&frames.length;i++)frames.shift()();
+  assert.equal(card.nextElementSibling.textContent,'Book');
+  assert.equal(writes,1,'An unchanged label must not replace its text node');
+  assert.equal(frames.length,0,'Chat must become idle after the card is mounted');
+  const settled=mutations;
+  emit({});
+  assert.equal(frames.length,0,'Unrelated document changes must not refresh sales UI');
+  assert.equal(mutations,settled+1);
 });

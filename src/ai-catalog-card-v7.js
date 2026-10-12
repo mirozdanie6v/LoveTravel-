@@ -411,13 +411,22 @@
           button.dataset.aiAction = 'book-tour';
           button.dataset.id = id;
         }
-        button.textContent = bookLabel();
+        const label = bookLabel();
+        if (button.textContent !== label) button.textContent = label;
         if (card.nextElementSibling !== button) card.after(button);
       });
     });
   }
 
   let scheduled = false;
+  const observedRoots = new WeakSet();
+  function observeSalesRoot(root) {
+    if (!root || observedRoots.has(root)) return;
+    observedRoots.add(root);
+    new MutationObserver(mutations => {
+      if (mutations.some(item => item.target === root || root.contains(item.target))) refreshSalesUi();
+    }).observe(root, { childList:true, subtree:true });
+  }
   function refreshSalesUi() {
     if (scheduled) return;
     scheduled = true;
@@ -425,14 +434,18 @@
       scheduled = false;
       const root = document.querySelector('#aiScreen,#ai,[data-screen="ai"]') || document.querySelector('.ai-consultant-shell')?.parentElement;
       if (!root) return;
+      observeSalesRoot(root);
       // Native v5 owns localized quick replies and conversation state.
       ensureBookingButtons(root);
     });
   }
 
-  new MutationObserver(refreshSalesUi).observe(document.documentElement, { childList:true, subtree:true });
-  document.addEventListener('click', refreshSalesUi, true);
-  document.addEventListener('submit', refreshSalesUi, true);
+  const previous = globalThis.MaxTourAI;
+  if (previous?.mount) globalThis.MaxTourAI = { ...previous, mount(root) {
+    previous.mount(root);
+    observeSalesRoot(root);
+    refreshSalesUi();
+  }};
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', refreshSalesUi, { once:true });
   else refreshSalesUi();
 
