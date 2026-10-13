@@ -63,6 +63,10 @@ jobs:
         env:
           LOVE_TRAVEL_BROWSER_CHANNEL: chromium
         run: node scripts/verify-consultant-stabilization.mjs
+      - name: Verify readable replies, administrator contact and option cards
+        env:
+          LOVE_TRAVEL_BROWSER_CHANNEL: chromium
+        run: node scripts/verify-consultant-readable-ui.mjs
       - name: Save verification evidence
         if: always()
         uses: actions/upload-artifact@v4

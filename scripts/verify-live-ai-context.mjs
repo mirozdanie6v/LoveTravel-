@@ -27,7 +27,10 @@ try{
   const wait=page.waitForResponse(r=>new URL(r.url()).pathname==='/api/ai/chat'&&r.request().postDataJSON()?.message===message,{timeout:45000});
   await field.fill(message);await field.press('Enter');const response=await wait;const data=await response.json();assert.ok(data.ok,JSON.stringify(data));
   const id=response.request().headers()['x-lt-conversation-id'];assert.ok(id);if(conversationId)assert.equal(id,conversationId);else conversationId=id;
-  await page.waitForFunction(reply=>document.querySelector('#aiScreen .ai-msg.bot:last-child .ai-msg-text')?.textContent===reply,data.reply,{timeout:10000});
+  if(data.optionCatalog){
+    const expected=data.optionCatalog.groups.flatMap(group=>group.options);
+    await page.waitForFunction(rows=>{const cards=[...document.querySelectorAll('#aiScreen .ai-msg.bot:last-child .ai-option-card')];return cards.length===rows.length&&rows.every((row,i)=>cards[i].dataset.rateId===row.rateId&&cards[i].querySelector('b').textContent.includes(row.title));},expected,{timeout:10000});
+  }else await page.waitForFunction(reply=>document.querySelector('#aiScreen .ai-msg.bot:last-child .ai-msg-text')?.textContent===reply,data.reply,{timeout:10000});
   report.turns.push({message,reply:data.reply,source:data.source,intent:data.intent,agent:data.agent,quote:data.transaction?.quote||null});
   console.log(JSON.stringify({message,source:data.source,date:data.intent?.dateConstraint?.exact,rate:data.bookingSelection?.rateId,reply:data.reply}));
   return data;

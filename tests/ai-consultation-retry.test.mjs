@@ -99,7 +99,7 @@ test('reply paragraphs and lists retain every character while escaping provider 
   assert.equal((html.match(/<li>/g)||[]).length,2);
   assert.ok(!html.includes('<img'));
   assert.ok(html.includes('&lt;img src=x onerror=alert(1)&gt;'));
-  assert.ok(html.includes('$98.00 for 2 adults.'));
+  assert.ok(html.replace(/<[^>]+>/g,'').includes('$98.00 for 2 adults.'));
   assert.equal(html.replace(/<[^>]+>/g,'').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>'),text);
 });
 
@@ -250,9 +250,34 @@ test('a verified fallback preserves useful facts and offers model retry without 
   :{ok:true,reply:'Lunch and transport are included.',generationFailed:false,source:'workers-ai-grounded-sales'}));};
  const ui=c.MaxTourAI._audit;
  await ui.handleText('What is included?',root);
- assert.ok(root.innerHTML.includes('Lunch is included.'));assert.ok(root.innerHTML.includes('data-ai-action="retry"'));
+ assert.ok(root.innerHTML.replace(/<[^>]+>/g,'').includes('Lunch is included.'));assert.ok(root.innerHTML.includes('data-ai-action="retry"'));
  assert.equal(ui.state().messages.filter(m=>m.role==='user').length,1);
  await ui.handleText(ui.retry(),root,{retry:true});
  assert.equal(calls,2);assert.equal(ids[0],ids[1]);assert.equal(ui.state().messages.filter(m=>m.role==='user').length,1);
- assert.ok(root.innerHTML.includes('Lunch and transport are included.'));assert.ok(!root.innerHTML.includes('data-ai-action="retry"'));
+ assert.ok(root.innerHTML.replace(/<[^>]+>/g,'').includes('Lunch and transport are included.'));assert.ok(!root.innerHTML.includes('data-ai-action="retry"'));
+});
+test('administrator contact is always below the composer and remains available after a successful reply',async()=>{
+ const {c,root}=harness('ru');c.MaxTourAI.mount(root);
+ assert.equal((root.innerHTML.match(/data-ai-contact/g)||[]).length,1);
+ assert.ok(root.innerHTML.indexOf('data-ai-contact')>root.innerHTML.indexOf('</form>'));
+ assert.ok(root.innerHTML.includes('Связаться с администратором'));
+ c.fetch=async()=>new Response(JSON.stringify({ok:true,reply:'Обед включён.'}));
+ await c.MaxTourAI._audit.handleText('Что входит?',root);
+ assert.equal((root.innerHTML.match(/data-ai-contact/g)||[]).length,1);
+ assert.ok(root.innerHTML.includes('<strong>Обед</strong>'));
+});
+
+test('option cards show descriptions and cents, escape all content and submit only an explicit choice',async()=>{
+ const {c,root}=harness('ru');const sent=[];
+ const optionCatalog={summary:'Варианты и цены',question:'Выберите вариант',footnote:'Цены от',groups:[{externalProductId:'1287578',title:'Robinson',options:[{index:1,rateId:'201',title:'Robinson <img src=x onerror=alert(1)>',description:'Beach & <script>bad()</script>',price:{amount:35.77,currency:'USD',kind:'FROM_ADULT'}}]}]};
+ c.fetch=async(_url,init)=>{sent.push(JSON.parse(init.body).message);return new Response(JSON.stringify(sent.length===1?{ok:true,reply:'1. Robinson',optionCatalog}:{ok:true,reply:'На какую дату?'}));};
+ await c.MaxTourAI._audit.handleText('Какие варианты?',root);
+ assert.equal(sent.length,1);assert.equal((root.innerHTML.match(/class="ai-option-card"/g)||[]).length,1);
+ assert.ok(root.innerHTML.includes('$35.77'));assert.ok(root.innerHTML.includes('за взрослого'));
+ assert.ok(!root.innerHTML.includes('<img'));assert.ok(!root.innerHTML.includes('<script>'));
+ assert.ok(root.innerHTML.includes('&lt;script&gt;'));assert.ok(root.innerHTML.includes('ai-option-description'));
+ const message='Выбираю «Robinson»: «Robinson & Mini Beach»';
+ c.MaxTourAI._audit.handleClick(root,{target:{closest:()=>({dataset:{aiAction:'choose-option',value:message}})}});
+ await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(sent.length,2);assert.equal(sent[1],message);
 });

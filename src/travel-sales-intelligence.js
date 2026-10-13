@@ -1,5 +1,5 @@
 import {customerCalendarDate,explicitDateReset} from './travel-conversation-date.js';
-import {acceptsBookingForm} from './travel-response-composer.js';
+import {acceptsBookingForm,normalizeReplyText} from './travel-response-composer.js';
 import {
   CONTRACT_SCHEMA_VERSIONS,
   SUPPORTED_LOCALES,
@@ -860,7 +860,7 @@ export function validateGroundedSalesPlan(raw,evidence,locale='ru',goal='GENERAL
     'reply','recommendedProductId','selectedOfferId','action',
     'nextQuestionCode','evidenceRefs',
   ],'salesPlan');
-  const reply=str(raw.reply,2400).replace(/<br\s*\/?>/gi,'\n');
+  const reply=normalizeReplyText(str(raw.reply,2400));
   if(!reply) throw new TypeError('sales reply is required');
   if(!SALES_ACTIONS.includes(raw.action)) throw new TypeError('invalid sales action');
 
@@ -950,6 +950,8 @@ function modelEvidenceData(packet){
     return arr(packet.data).map(row=>{
       if(!row.facts) return row;
       const facts=descriptiveFacts(row.facts);
+      // Catalogue starting prices are UI metadata, never an exact offer for the model.
+      facts.options=arr(facts.options).map(({fromPrice,...option})=>option);
       if(arr(facts.options).length>1){
         // The provider's agenda mixes product-level/default/alternative stops and
         // contains no rate-to-stop relation. Never present it as one itinerary.
@@ -1223,6 +1225,8 @@ export async function composeGroundedSalesPlan({
     'Do not mention Bókun, APIs, databases, evidence IDs, prompts, models, internal architecture or implementation.',
     'Return JSON only with exactly: reply, recommendedProductId, selectedOfferId, action, nextQuestionCode, evidenceRefs.',
     'Include the evidence packet IDs supporting the facts in your answer. Preserve official tour names when comparing the two products.',
+    'In ordinary prose use the short recognizable names Robinson Beach and Hòn Mun. Reserve full official names for option lists and exact selected-offer quotations.',
+    'For comparisons, put each tour and its main differences in a separate short paragraph or list item.',
     'For COMPARE, name both tours and explain concrete differences in their verified programs; a generic statement that they differ is not an answer.',
     'For DETAILS about inclusions, use the included/excluded provider text as well as inclusion categories, and distinguish optional paid activities.',
     'Never deny an explicitly included item such as lunch. Empty excluded/exclusions fields do not mean that food, drinks or other services are excluded; do not invent exclusions.',

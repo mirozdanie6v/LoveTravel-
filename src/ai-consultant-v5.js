@@ -213,11 +213,11 @@
   } catch (_) {}
 
   function persist() { try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ ...state, conversationId:conversationId(), messages:state.messages.slice(-MAX_MESSAGES) })); } catch (_) {} }
-  function add(role, text, {needsConsultant=false}={}) {
-    const value = clean(text, 1800); if (!value) return;
+  function add(role, text, {needsConsultant=false,optionCatalog=null}={}) {
+    const value = clean(text, 2400); if (!value) return;
     const last = state.messages[state.messages.length - 1];
     if (last?.role === role && last.text === value) return;
-    state.messages.push({ role, text:value, ...(needsConsultant?{needsConsultant:true}:{}) }); state.messages = state.messages.slice(-MAX_MESSAGES);
+    state.messages.push({ role, text:value, ...(needsConsultant?{needsConsultant:true}:{}), ...(optionCatalog?{optionCatalog}:{}) }); state.messages = state.messages.slice(-MAX_MESSAGES);
   }
   function peopleCount() { return Number(state.slots.adults || 0) + state.slots.children.length + Number(state.slots.infants || 0); }
   function peopleLabel() {
@@ -515,7 +515,8 @@
     const result = await response.json().catch(() => ({}));
     if (!response.ok || !result.ok || !result.reply) throw Object.assign(new Error(result.error || 'ai_unavailable'),{code:result.error});
     return {
-      reply:clean(result.reply,1800),
+      reply:clean(result.reply,2400),
+      optionCatalog:result.optionCatalog||null,
       tourId:clean(result.tourId,120),
       faqIntent:clean(result.faqIntent,120),
       source:clean(result.source,120),
@@ -673,10 +674,19 @@
   }
 
   // Keep the original text and escape every fragment; only these fixed tags are rendered.
+  function normalizeReplyText(value){
+  return String(value??'').replace(/<br\s*\/?>/gi,'\n').replace(/\r\n?/g,'\n')
+    .replace(/\\+(?:r\\+)?n/g,'\n').replace(/\/n(?=[\s\d\-*•\p{Lu}])/gu,'\n')
+    .replace(/\.n\./gu,'.\n\n').replace(/([.!?])n{1,2}(?=\p{Lu})/gu,'$1\n\n')
+    .replace(/[ \t]{2,}(?=(?:[-*•]|\d{1,2}[.)])\s+\p{L})/gu,'\n')
+    .replace(/\*\*([^*\n]+)\*\*/g,'$1');
+}
+
   function renderReplyText(text) {
+    text=normalizeReplyText(text);
     const paragraph = value => {
-      const paragraphLimit=ACTIVE_LOCALE==='zh'?100:300;
-      if (value.length <= paragraphLimit || typeof Intl.Segmenter !== 'function') return '<p>'+esc(value)+'</p>';
+      const paragraphLimit=ACTIVE_LOCALE==='zh'?80:180;
+      if (value.length <= paragraphLimit || typeof Intl.Segmenter !== 'function') return '<p>'+renderInline(value)+'</p>';
       const sentences = [...new Intl.Segmenter(ACTIVE_LOCALE,{granularity:'sentence'}).segment(value)].map(row=>row.segment);
       const groups=[];let group='',count=0;
       for(const sentence of sentences){
@@ -685,7 +695,7 @@
         if(count>=2||group.length>=paragraphLimit){groups.push(group);group='';count=0;}
       }
       if(group)groups.push(group);
-      return groups.map(part=>'<p>'+esc(part)+'</p>').join('');
+      return groups.map(part=>'<p>'+renderInline(part)+'</p>').join('');
     };
     const lines=String(text??'').split(/(\n+)/);let html='',list='';
     for(const line of lines){
@@ -693,10 +703,34 @@
       if(!line)continue;
       const kind=/^\s*\d+[.)]\s+/.test(line)?'ol':/^\s*[-*•]\s+/.test(line)?'ul':'';
       if(kind!==list){if(list)html+='</'+list+'>';if(kind)html+='<'+kind+' class="ai-reply-list">';list=kind;}
-      html+=kind?'<li>'+esc(line)+'</li>':paragraph(line);
+      html+=kind?'<li>'+renderInline(line)+'</li>':paragraph(line);
     }
     if(list)html+='</'+list+'>';
     return html;
+  }
+
+
+  function renderInline(value){
+    const escaped=esc(value);
+    return escaped.replace(/(?:Robinson(?:\s*(?:Island|Beach))?|H[oò]n\s*(?:Mun|Tam|Tằm)|Mini Beach|Bãi Tranh|Bích Đầm|Робинсон|Хон Мун|Хон Там|снорклинг(?:а|ом)?|сноркелинг(?:а|ом)?|обед|трансфер(?:а|ом)?|условия отмены|snorkell?ing|lunch|pickup|cancellation|bữa trưa|lặn ống thở|đưa đón|取消|浮潜|午餐|스노클링|점심|픽업)|(?:\b(?:USD|VND|EUR)\s*\d[\d\s.,]*|\$\s*\d[\d.,]*|\b\d{4}-\d{2}-\d{2}\b)/giu,match=>'<strong>'+match+'</strong>');
+  }
+  function catalogBasis(catalog){
+    const kinds=(catalog?.groups||[]).flatMap(group=>(group.options||[]).map(option=>option.price?.kind));
+    return kinds.length&&kinds.every(kind=>kind==='FROM_ADULT')?localeText('за взрослого','mỗi người lớn','per adult','성인 1명','每位成人'):kinds.length&&kinds.every(kind=>kind==='FROM_BOOKING')?localeText('за заказ','mỗi đặt chỗ','per booking','예약당','每笔订单'):'';
+  }
+  function renderOptionCatalog(catalog){
+    if(!Array.isArray(catalog?.groups)||!catalog.groups.length)return '';
+    return '<div class="ai-option-catalog">'+catalog.groups.map(group=>'<section class="ai-option-group">'+(catalog.groups.length>1?'<h3>'+esc(group.externalProductId==='1287578'?'Robinson Beach':group.externalProductId==='1287580'?'Hòn Mun':group.title)+'</h3>':'')+'<div class="ai-option-list">'+(group.options||[]).map(option=>{
+      const key='tour.ratePresentation.'+option.rateId,curated=semanticText(key);
+      const description=curated&&curated!==key?curated:option.description;
+      const candidate=option.price;
+      const price=candidate&&typeof candidate.amount==='number'&&Number.isFinite(candidate.amount)&&candidate.amount>=0&&/^[A-Z]{3}$/.test(candidate.currency||'')?candidate:null;
+      const label=price?.kind==='GROUP_TOTAL'?localeText('За группу','Cho nhóm','For your party','일행 총액','本组总价'):localeText('от','từ','from','부터','起');
+      const basis=price?.kind==='FROM_ADULT'?localeText('за взрослого','mỗi người lớn','per adult','성인 1명','每位成人'):price?.kind==='FROM_BOOKING'?localeText('за заказ','mỗi đặt chỗ','per booking','예약당','每笔订单'):'';
+      const amount=price?(price.currency==='USD'?'$'+price.amount.toLocaleString('en-US',{maximumFractionDigits:2}):new Intl.NumberFormat(ACTIVE_LOCALE,{style:'currency',currency:price.currency,maximumFractionDigits:2}).format(price.amount)):ui().priceTbd;
+      const value=localeText('Выбираю','Tôi chọn','I choose','선택할게요','我选择')+' «'+group.title+'»: «'+option.title+'»';
+      return '<button type="button" class="ai-option-card" data-ai-action="choose-option" data-product-id="'+esc(group.externalProductId)+'" data-rate-id="'+esc(option.rateId)+'" data-value="'+esc(value)+'" '+(pending?'disabled':'')+'><span class="ai-option-copy"><b>'+esc(option.title)+'</b>'+(description?'<span class="ai-option-description">'+esc(description)+'</span>':'')+'</span><span class="ai-option-price"><small>'+esc(price?label:'')+'</small><strong class="'+(price?'':'ai-price-unavailable')+'" '+(price?'aria-label="'+esc(price.amount+' '+price.currency)+'"':'')+'>'+esc(amount)+'</strong>'+(basis&&!catalogBasis(catalog)?'<small>'+esc(basis)+'</small>':'')+'</span></button>';
+    }).join('')+'</div></section>').join('')+(catalog.footnote?'<p class="ai-option-note">'+esc(catalog.footnote)+'</p>':'')+'<p class="ai-option-question">'+esc(catalog.question)+'</p></div>';
   }
 
   function render(root, options = {}) {
@@ -707,13 +741,13 @@
     const cursorStart=previousInput?.selectionStart,cursorEnd=previousInput?.selectionEnd;
     const t=ui();
     const messages = state.messages.map(item => {
-      // Also offer help for unavailable messages saved before this release.
-      const needsConsultant=item.role==='bot'&&(item.needsConsultant||item.text===semanticText('ai.unavailable'));
-      const contact=needsConsultant?`<a class="ai-consultant-contact" data-ai-contact href="${esc(CONSULTANT_CONTACT_URL)}" target="_blank" rel="noopener noreferrer">${esc(semanticText('ai.contactConsultant'))}</a>`:'';
-      return `<div class="ai-msg ${item.role === 'user' ? 'user' : 'bot'}"><span class="ai-msg-author">${esc(item.role === 'user' ? t.user : t.assistant)}</span>${item.role === 'user' ? `<span class="ai-msg-text">${esc(item.text)}</span>` : `<div class="ai-msg-text">${renderReplyText(item.text)}</div>`}${contact}</div>`;
+      const hasOptions=item.role==='bot'&&item.optionCatalog?.groups?.length;
+      const basis=hasOptions?catalogBasis(item.optionCatalog):'';
+      const body=hasOptions?'<p>'+esc(item.optionCatalog.summary+(basis?' — '+basis:''))+'</p>':renderReplyText(item.text);
+      return `<div class="ai-msg ${item.role === 'user' ? 'user' : 'bot'}${hasOptions?' ai-msg-options':''}"><span class="ai-msg-author">${esc(item.role === 'user' ? t.user : t.assistant)}</span>${item.role === 'user' ? `<span class="ai-msg-text">${esc(item.text)}</span>` : `<div class="ai-msg-text">${body}</div>`}${hasOptions?renderOptionCatalog(item.optionCatalog):''}</div>`;
     }).join('');
     const quick = quickReplies();
-    root.innerHTML = `<div class="section-title ai-section-head"><div><h2>${esc(t.assistant)}</h2><p class="ai-chat-subtitle">${esc(t.subtitle)}</p></div><button class="secondary ai-clear" type="button" data-ai-action="clear">${esc(t.clear)}</button></div><section class="ai-consultant-shell"><div class="ai-consultant-main ai-chat-panel"><div class="ai-messages" role="log" aria-live="polite">${messages}</div><form class="ai-consultant-input" data-ai-form="chat"><textarea name="message" rows="1" aria-label="${esc(t.placeholder)}" placeholder="${esc(t.placeholder)}" ${pending ? 'disabled' : ''}></textarea><button class="primary" type="submit" ${pending ? 'disabled' : ''}>→</button></form></div><div class="ai-chat-below">${retryMessage ? `<button class="secondary" type="button" data-ai-action="retry">${esc(semanticText('ai.retry'))}</button>` : ''}${quick.length ? `<div class="ai-quick-replies">${quick.map(([label,value]) => `<button type="button" data-ai-action="quick" data-value="${esc(value)}">${esc(label)}</button>`).join('')}</div>` : ''}${renderRecommendations()}</div></section>`;
+    root.innerHTML = `<div class="section-title ai-section-head"><div><h2>${esc(t.assistant)}</h2><p class="ai-chat-subtitle">${esc(t.subtitle)}</p></div><button class="secondary ai-clear" type="button" data-ai-action="clear">${esc(t.clear)}</button></div><section class="ai-consultant-shell"><div class="ai-consultant-main ai-chat-panel"><div class="ai-messages" role="log" aria-live="polite">${messages}</div><form class="ai-consultant-input" data-ai-form="chat"><textarea name="message" rows="1" aria-label="${esc(t.placeholder)}" placeholder="${esc(t.placeholder)}" ${pending ? 'disabled' : ''}></textarea><button class="primary" type="submit" ${pending ? 'disabled' : ''}>→</button></form><a class="ai-consultant-contact ai-administrator-contact" data-ai-contact href="${esc(CONSULTANT_CONTACT_URL)}" target="_blank" rel="noopener noreferrer">${esc(semanticText('ai.contactConsultant'))}</a></div><div class="ai-chat-below">${retryMessage ? `<button class="secondary" type="button" data-ai-action="retry">${esc(semanticText('ai.retry'))}</button>` : ''}${quick.length ? `<div class="ai-quick-replies">${quick.map(([label,value]) => `<button type="button" data-ai-action="quick" data-value="${esc(value)}">${esc(label)}</button>`).join('')}</div>` : ''}${renderRecommendations()}</div></section>`;
     root.querySelector('.ai-chat-below')?.insertAdjacentHTML?.('beforeend',`<button class="secondary ai-delete" type="button" data-ai-action="delete-data" ${pending?'disabled':''}>${esc(t.deleteData)}</button>`);
     const input=root.querySelector('textarea[name="message"]');
     if(input&&draft)input.value=draft;
@@ -741,7 +775,8 @@
       applyServerTour(result);
       if(result.degraded){retryMessage=text;add('bot',semanticText('ai.unavailable'),{needsConsultant:true});}
       else {
-        add('bot',result.reply);
+        add('bot',result.reply,{optionCatalog:result.optionCatalog});
+        if(result.optionCatalog)state.recommendations=[];
         if(result.generationFailed)retryMessage=text;
         if(result.uiAction==='OPEN_CONFIGURATOR'&&result.bookingSelection?.productId){
           const item=state.recommendations.find(row=>String(row.tour.id)===String(result.bookingSelection.productId));
@@ -761,7 +796,7 @@
   function handleClick(root, event) {
     const button = event.target.closest('[data-ai-action]'); if (!button) return;
     const action = button.dataset.aiAction;
-    if (action === 'quick') void handleText(button.dataset.value || '', root);
+    if (action === 'quick'||action==='choose-option') void handleText(button.dataset.value || '', root);
     if (action === 'retry' && retryMessage) void handleText(retryMessage,root,{retry:true});
     if (action === 'delete-data'&&!pending) void deleteSavedData(root);
     if (action === 'clear') { requestEpoch++; pending=false; globalThis.LoveTravelConversation?.reset?.(); retryMessage=null; state = freshState(); try { sessionStorage.removeItem(STORAGE_KEY); sessionStorage.removeItem(BOOKING_INTENT_KEY); } catch (_) {} render(root,{discardDraft:true}); }
@@ -813,7 +848,7 @@
     mount,
     pricePresentation,
     _test:{
-      renderReplyText, vietnamTodayIso, parseDate, parseParty, departureIso, isDiscoveryIntent, isBookingIntent,
+      renderReplyText, renderOptionCatalog, vietnamTodayIso, parseDate, parseParty, departureIso, isDiscoveryIntent, isBookingIntent,
       recommendationForTourId, applyServerTour, locationAllowsTour, dispatchValue, prefillBooking,
     },
   };
