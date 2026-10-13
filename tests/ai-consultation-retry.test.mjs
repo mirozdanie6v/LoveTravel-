@@ -1,3 +1,4 @@
+import {screenshotReply,screenshotReplyClean} from './fixtures/chat-newline-artifacts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
@@ -280,4 +281,11 @@ test('option cards show descriptions and cents, escape all content and submit on
  c.MaxTourAI._audit.handleClick(root,{target:{closest:()=>({dataset:{aiAction:'choose-option',value:message}})}});
  await new Promise(resolve=>setImmediate(resolve));
  assert.equal(sent.length,2);assert.equal(sent[1],message);
+});
+test('the exact screenshot reply renders a real two-item list, including history saved before this fix',()=>{
+ const {c,root}=harness('ru',{slots:{adults:0,children:[],infants:0},messages:[{role:'bot',text:screenshotReply}]});
+ const html=c.MaxTourAI._test.renderReplyText(screenshotReply);
+ assert.equal((html.match(/<li>/g)||[]).length,2);assert.ok(!html.includes('.n-'));
+ assert.equal(html.replace(/<[^>]+>/g,''),screenshotReplyClean);
+ c.MaxTourAI.mount(root);assert.equal((root.innerHTML.match(/<li>/g)||[]).length,2);assert.ok(!root.innerHTML.includes('.n-'));assert.ok(root.innerHTML.includes('Связаться с администратором'));
 });
