@@ -9,7 +9,6 @@ import { handleTravelTransactionApi } from '../../src/travel-transaction-api.js'
 import { handleBlockedBookingRoute } from '../../src/booking-mutation-policy.js';
 import {handleTravelBookingAccessApi} from '../../src/travel-booking-access.js';
 import {handleTravelBookingsApi} from '../../src/travel-bookings-api.js';
-import {conversationHash} from '../../src/travel-conversation-state.js';
 import {ensureSalesSession} from '../../src/travel-session.js';
 import {handleTravelConversationApi} from '../../src/travel-conversation-api.js';
 import {handleLoveTravelSalesAgent} from '../../src/travel-sales-orchestrator.js';
@@ -44,7 +43,6 @@ export async function startBookingUiHarness(domains,{delayMs=0,presentationDomai
   let upstreamCalls=0;
   let reservationCalls=0;
   const savedBookings=new Map();
-  const invite='a'.repeat(64);
   const provider=createBokunProvider({fetchImpl:async()=>{
     upstreamCalls+=1;
     throw new Error('Unexpected upstream request in configuration acceptance');
@@ -72,7 +70,7 @@ export async function startBookingUiHarness(domains,{delayMs=0,presentationDomai
     return booking?.missingReadback?null:structuredClone(savedBookings.get(externalBookingReference)||null);
   },
   async getDomains({productIds}={}){return structuredClone(domains.filter(d=>!productIds||productIds.includes(String(d.experience.id))));}};
-  const env={DB,AI,...(booking?{CLIENT_BOOKING_ENABLED:'true',BOKUN_CLIENT_BOOKING_TOKEN:'fixture-provider-secret',CLIENT_BOOKING_INVITE_SHA256:await conversationHash(invite),CLIENT_BOOKING_EXPIRES_AT:'2030-01-01T00:00:00Z'}:{}),BOOKING_SESSIONS:{
+  const env={DB,AI,...(booking?{CLIENT_BOOKING_ENABLED:'true',BOKUN_CLIENT_BOOKING_TOKEN:'fixture-provider-secret'}:{}),BOOKING_SESSIONS:{
     idFromName:id=>id,
     get(id){
       if(!sessions.has(id)){
@@ -123,7 +121,7 @@ export async function startBookingUiHarness(domains,{delayMs=0,presentationDomai
   });
   await new Promise(r=>server.listen(0,'127.0.0.1',r));
   return {
-    invite,reservationCalls:()=>reservationCalls,
+    reservationCalls:()=>reservationCalls,
     base:`http://127.0.0.1:${server.address().port}`,requests,env,sqlite,fixtureCookie,
     upstreamCalls:()=>upstreamCalls,
     async close(){await new Promise(r=>server.close(r));sqlite.close();},

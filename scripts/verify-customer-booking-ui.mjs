@@ -14,7 +14,7 @@ for(const [locale,mode] of [['ru','normal'],['en','normal'],['vi','normal'],['ko
   await context.route('**/*',route=>route.request().url().startsWith(h.base)?route.continue():route.fulfill({status:200,body:''}));
   const page=await context.newPage();page.on('pageerror',e=>report.errors.push(e.message));
   await page.addInitScript(locale=>localStorage.setItem('max-tour-locale-v1',locale),locale);
-  await page.goto(h.base+'/#booking-invite='+h.invite,{waitUntil:'domcontentloaded'});
+  await page.goto(h.base,{waitUntil:'domcontentloaded'});
   await page.waitForFunction(()=>globalThis.LOVE_TRAVEL_BOKUN_ACTIVE===true&&globalThis.LoveTravelBookings?.snapshot().loaded);
   assert.equal(new URL(page.url()).hash,'');
   const access=await page.evaluate(async()=>await (await LoveTravelConversation.request('/api/travel-commerce/access')).json());
