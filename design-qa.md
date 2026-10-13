@@ -24,7 +24,7 @@ No remaining P0/P1/P2 presentation findings in the tested states. Card descripti
 - `ru-reply-contact.png`: paragraph separation, selective emphasis, contact beneath composer.
 - `ru-options-first-three.png`: name/description/price layout matching the supplied example.
 - `ru-options-last.png`: last option visible without navigation overlap.
-- `report.json`: RU/EN/VI/KO/ZH mobile checks using fresh read-only public Bókun domains and controlled local model responses.
-- 732 Node tests passed, including price authority, explicit card choice, text escaping and persistent contact.
+- `report.json`: latest RU/EN/VI/KO/ZH mobile checks with local provider fixtures and controlled model responses, including switching between the two tour lists. Fresh public Bókun checks are also recorded in `artifacts/consultant-live/readable-browser-final.txt`.
+- 733 Node tests passed, including price authority, explicit card choice, text escaping and persistent contact.
 
 The browser report discloses controlled local model responses. Deployment and live-model acceptance are recorded separately; this document does not claim native-speaker translation review or real booking creation.
