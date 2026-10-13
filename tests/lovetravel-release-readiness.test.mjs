@@ -70,7 +70,7 @@ test('booking path remains resolver-backed and covers pickup, customer and quest
   assert.match(booking, /CHECKOUT_REQUIRED_CUSTOMER_FIELDS = \['firstName','lastName','email','phoneNumber'\]/);
 });
 
-test('customer Bókun mutation is hard-disabled while the restored interface is validated', () => {
+test('customer booking uses explicit canonical confirmation while legacy mutations stay blocked', () => {
   assert.doesNotMatch(workerR2, /\/api\/bokun\/client-demo\/submit/);
   assert.doesNotMatch(workerR2, /handleLoveTravelClientDemoBooking/);
   assert.match(workerR2, /handleTravelTransactionApi/);
@@ -82,7 +82,8 @@ test('customer Bókun mutation is hard-disabled while the restored interface is 
 
   assert.match(booking, /\/api\/travel-commerce\/transaction/);
   assert.match(booking, /transactionAction\('APPROVE'/);
-  assert.doesNotMatch(booking, /transactionAction\('RESERVE'/);
+  assert.match(booking, /transactionAction\('RESERVE'/);
+  assert.match(booking, /confirmBooking:true/);
   assert.doesNotMatch(booking, /\/api\/bokun\/client-demo\/submit/);
 
   assert.match(postDeploySmoke, /404\|410\|423/);

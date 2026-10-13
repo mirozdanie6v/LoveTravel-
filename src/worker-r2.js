@@ -18,6 +18,8 @@ import { createBokunProvider } from './bokun-provider.js';
 import { handleLoveTravelSalesAgent } from './travel-sales-orchestrator.js';
 import { handleTravelTransactionApi } from './travel-transaction-api.js';
 import { handleBlockedBookingRoute } from './booking-mutation-policy.js';
+import {handleTravelBookingAccessApi} from './travel-booking-access.js';
+import {handleTravelBookingsApi} from './travel-bookings-api.js';
 import {handleTravelConversationApi} from './travel-conversation-api.js';
 import {cleanupExpiredConversations} from './travel-conversation-state.js';
 
@@ -479,6 +481,10 @@ export default {
     if (url.pathname.startsWith('/tour-media/')) {
       return serveTourMedia(request, env, url.pathname);
     }
+    const accessResponse=await handleTravelBookingAccessApi(request,env,url);
+    if(accessResponse)return accessResponse;
+    const bookingsResponse=await handleTravelBookingsApi(request,env,url);
+    if(bookingsResponse)return bookingsResponse;
     const conversationResponse=await handleTravelConversationApi(request,env,url);
     if(conversationResponse)return conversationResponse;
     const transactionResponse = await handleTravelTransactionApi(request, env, url);

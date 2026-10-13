@@ -731,3 +731,5 @@ html.love-travel-branded #catalogScreen .wide-card>.price-row .lt-card-action{
   text-align:center;
   line-height:1.3;
 }
+
+.lt-real-booking{margin:16px 0;padding:20px;overflow-wrap:anywhere}.lt-real-booking h3{margin:0 0 12px}.lt-real-booking p{margin:8px 0}.lt-booking-review p{display:grid;gap:5px;margin:0 0 14px}.lt-booking-review small{color:#617985}.lt-booking-review strong{overflow-wrap:anywhere}

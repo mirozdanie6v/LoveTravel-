@@ -10,7 +10,10 @@
     "AI_MODEL": "@cf/google/gemma-4-26b-a4b-it",
     "BOKUN_TRANSLATION_MODEL": "@cf/google/gemma-4-26b-a4b-it",
     "USD_RUB_RATE": "84.2569",
-    "BOKUN_INTEGRATION_BASE_URL": "https://integration.viiversion.com"
+    "BOKUN_INTEGRATION_BASE_URL": "https://integration.viiversion.com",
+    "CLIENT_BOOKING_ENABLED": "true",
+    "CLIENT_BOOKING_INVITE_SHA256": "70408e03905af74216555a0865236be84c2624647cf9153b458c8262c1908533",
+    "CLIENT_BOOKING_EXPIRES_AT": "2026-11-12T10:04:15.302Z"
   },
   "ai": {
     "binding": "AI"

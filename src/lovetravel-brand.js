@@ -318,14 +318,27 @@
   }
 
   function renderLoveTravelTrips(){
-    const screen=document.getElementById('tripsScreen');
-    if(!screen)return;
-    const lang=locale();
-    if(screen.dataset.ltTripsLocale===lang&&screen.querySelector('.lt-trips-empty'))return;
-    screen.dataset.ltTripsLocale=lang;
-    screen.innerHTML='<div class="section-title"><h2 id="lt-trips-title">'+escapeMarkup(semantic('navigation.trips'))+'</h2></div>'
-      +'<section class="panel lt-trips-empty" aria-labelledby="lt-trips-title"><h3>'+escapeMarkup(semantic('trips.bookings'))+'</h3>'
-      +'<p>'+escapeMarkup(semantic('trips.placeholder'))+'</p><button class="secondary" type="button" data-lt-action="catalog">'+escapeMarkup(semantic('trips.explore'))+'</button></section>';
+    const screen=document.getElementById('tripsScreen');if(!screen)return;
+    const snapshot=globalThis.LoveTravelBookings?.snapshot?.()||{bookings:[],loaded:false,error:false};
+    const signature=JSON.stringify([locale(),snapshot]);if(screen.dataset.ltTripsSignature===signature)return;
+    screen.dataset.ltTripsSignature=signature;
+    const b=key=>semantic('booking.'+key);
+    let tours=[];try{tours=TOURS;}catch(_){}
+    const cards=snapshot.bookings.map(item=>{
+      const selection=item.selection||{},booking=item.providerBooking;
+      const product=tours.find(tour=>String(tour.id)===String(selection.productId));
+      const option=globalThis.LoveTravelDomainTour?.rateContent?.(selection.productId,selection.rateId)?.title||'';
+      const status=booking?(booking.status==='CONFIRMED'?b('bookingConfirmed'):b('bookingReserved')):b('bookingPending');
+      const paid=booking?(booking.paymentType==='NOT_PAID'?b('bookingUnpaid'):b('bookingPaymentUnknown')):'';
+      const price=item.price?globalThis.LoveTravelI18n?.money?.(item.price.amount,item.price.currency)||item.price.amount+' '+item.price.currency:'';
+      return '<article class="panel lt-real-booking"><h3>'+escapeMarkup(product?.title||selection.productId)+'</h3>'+
+        (option?'<p><strong>'+escapeMarkup(option)+'</strong></p>':'')+'<p>'+escapeMarkup(selection.date||'')+'</p>'+
+        (booking?'<p>'+escapeMarkup(b('bookingNumber'))+' <strong>'+escapeMarkup(booking.confirmationCode)+'</strong></p>':'')+
+        '<p role="status"><strong>'+escapeMarkup(status)+'</strong></p>'+(paid?'<p>'+escapeMarkup(paid)+'</p>':'')+
+        '<p><strong>'+escapeMarkup(price)+'</strong></p>'+(!booking?'<p>'+escapeMarkup(b('bookingPendingNote'))+'</p>':'')+'</article>';
+    }).join('');
+    const empty='<section class="panel lt-trips-empty" aria-labelledby="lt-trips-title"><h3>'+escapeMarkup(semantic('trips.bookings'))+'</h3><p>'+escapeMarkup(snapshot.error?semantic('tour.loadError'):snapshot.loaded?semantic('trips.placeholder'):semantic('tour.loading'))+'</p><button class="secondary" type="button" data-lt-action="catalog">'+escapeMarkup(semantic('trips.explore'))+'</button></section>';
+    screen.innerHTML='<div class="section-title"><h2 id="lt-trips-title">'+escapeMarkup(semantic('navigation.trips'))+'</h2></div>'+cards+(cards?'':empty);
     wireActions(screen);
   }
 

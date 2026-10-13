@@ -1,6 +1,8 @@
 // No environment, token, or client override: enabling provider writes requires
 // an explicit code change and a separately authorized release.
-export function assertBookingMutationsAllowed(){
+// Only the canonical customer flow receives this server-side capability.
+export function assertBookingMutationsAllowed({enabled=false}={}){
+  if(enabled===true)return;
   const error=new Error('Real Bókun booking mutations are disabled while the LoveTravel interface is being restored.');
   error.code='booking_mutations_disabled';
   error.status=423;

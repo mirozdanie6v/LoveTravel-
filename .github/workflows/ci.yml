@@ -67,9 +67,15 @@ jobs:
         env:
           LOVE_TRAVEL_BROWSER_CHANNEL: chromium
         run: node scripts/verify-consultant-readable-ui.mjs
+      - name: Verify customer booking UI with isolated provider fixtures
+        env:
+          LOVE_TRAVEL_BROWSER_CHANNEL: chromium
+        run: node scripts/verify-customer-booking-ui.mjs
       - name: Save verification evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: consultant-stabilization
-          path: artifacts/consultant-stabilization/
+          path: |
+            artifacts/consultant-stabilization/
+            artifacts/customer-booking/

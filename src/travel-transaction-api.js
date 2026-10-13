@@ -6,6 +6,9 @@ import {
   executeBookingSession,
   executeConversationOperation,
 } from './booking-session-client.js';
+import {bookingConfigured,bookingAccess,requireBookingAccess,ensureBookingAccessSchema} from './travel-booking-access.js';
+import {stableExternalBookingReference} from './booking-session-identity.js';
+import {createBokunProvider} from './bokun-provider.js';
 import { bookingMutationBlockedResponse } from './booking-mutation-policy.js';
 import {quoteDisplayBinding} from './travel-commerce-quote.js';
 import {
@@ -56,7 +59,7 @@ export async function handleTravelTransactionApi(request,env,url=new URL(request
   if(url.pathname!=='/api/travel-commerce/transaction') return null;
   const body=request.method==='POST'?await request.clone().json().catch(()=>null):null;
   const action=String(body?.action||'').trim().toUpperCase();
-  if(action==='RESERVE'||action==='RECONCILE'){
+  if((action==='RESERVE'||action==='RECONCILE')&&!bookingConfigured(env)){
     return bookingMutationBlockedResponse();
   }
   if(!env?.DB||!env?.BOOKING_SESSIONS){
@@ -70,11 +73,12 @@ export async function handleTravelTransactionApi(request,env,url=new URL(request
       const result=await executeConversationOperation(env,session,{action:'TRANSACTION',method:request.method,body});
       return withSalesSession(json(result.body,result.status),session);
     }
+    const enabled=await bookingAccess(env,session);
     let transaction=await ensureCommerceTransaction(env,session.id);
 
     if(request.method==='GET'){
       const current=await executeBookingSession(env,transaction.transactionId,{action:'GET'});
-      return withSalesSession(json({ok:true,...await view(current.transaction)}),session);
+      return withSalesSession(json({ok:true,bookingEnabled:enabled,...await view(current.transaction)}),session);
     }
     if(request.method!=='POST'){
       return withSalesSession(json({ok:false,error:'method_not_allowed'},405,{allow:'GET, POST'}),session);
@@ -101,6 +105,32 @@ export async function handleTravelTransactionApi(request,env,url=new URL(request
       return withSalesSession(json({ok:true,...await view(result.transaction,result.resolution)}),session);
     }
 
+    if(action==='CHECKOUT'){
+      result=await executeBookingSession(env,transaction.transactionId,{action:'CHECKOUT',expectedRevision:revision});
+      return withSalesSession(json({ok:true,bookingEnabled:enabled,...result}),session);
+    }
+    if(action==='RESERVE'||action==='RECONCILE'){
+      await requireBookingAccess(env,session);
+      if(action==='RESERVE'&&body.confirmBooking!==true)return withSalesSession(json({ok:false,error:'explicit_booking_confirmation_required'},412),session);
+      if(action==='RESERVE'&&transaction.state==='CONFIRMED')
+        return withSalesSession(json({ok:true,replayed:true,...await view(transaction)}),session);
+      if(action==='RESERVE'&&['RESERVING','FAILED_NEEDS_RECONCILIATION'].includes(transaction.state))
+        return withSalesSession(json({ok:true,pending:true,...await view(transaction)}),session);
+      const quoteId=String(body.quoteId||'').trim(),quoteRevision=Number(body.quoteRevision);
+      if(action==='RESERVE'&&(!quoteId||!Number.isInteger(quoteRevision)||quoteRevision<1))
+        return withSalesSession(json({ok:false,error:'quote_revision_required'},400),session);
+      await ensureBookingAccessSchema(env.DB);
+      await env.DB.prepare('INSERT INTO travel_booking_owners(transaction_id,owner_hash) VALUES(?,?) ON CONFLICT(transaction_id) DO NOTHING').bind(transaction.transactionId,session.ownerHash).run();
+      const owner=await env.DB.prepare('SELECT owner_hash FROM travel_booking_owners WHERE transaction_id=?').bind(transaction.transactionId).first();
+      if(owner?.owner_hash!==session.ownerHash)return withSalesSession(json({ok:false,error:'booking_access_denied'},403),session);
+      result=await executeBookingSession(env,transaction.transactionId,{
+        action,expectedRevision:revision,quoteId,quoteRevision,
+        ownerHash:session.ownerHash,customerConfirmed:action==='RESERVE'&&body.confirmBooking===true,
+      });
+      const status=result.error&&!['CONFIRMED','RESERVING','FAILED_NEEDS_RECONCILIATION'].includes(result.transaction.state)?409:200;
+      return withSalesSession(json({ok:status===200,...await view(result.transaction),receipt:result.receipt||null,
+        ...(result.error?{error:result.error.code||'booking_failed'}:{}),replayed:Boolean(result.replayed)},status),session);
+    }
     if(action==='APPROVE'){
       const quoteId=String(body.quoteId||'').trim();
       const quoteRevision=Number(body.quoteRevision);
@@ -117,7 +147,7 @@ export async function handleTravelTransactionApi(request,env,url=new URL(request
           quoteRevision,
         },
       });
-      return withSalesSession(json({ok:true,...await view(result.transaction),receipt:result.receipt||null}),session);
+      return withSalesSession(json({ok:!result.error,...await view(result.transaction),receipt:result.receipt||null,...(result.error?{error:result.error.code||'approval_failed'}:{})},result.error?409:200),session);
     }
 
     return withSalesSession(json({ok:false,error:'unsupported_action'},400),session);

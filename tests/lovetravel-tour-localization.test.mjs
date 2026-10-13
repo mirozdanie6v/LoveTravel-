@@ -44,11 +44,11 @@ test('provider enums and formatting strings live in the unified semantic bundle'
 });
 
 test('semantic core and provider formatter load before runtime tour renderer and configurator',()=>{
-  const core=build.indexOf('<script src="/lovetravel-i18n.js?v=20261010-provider-information-v1" defer></script>');
+  const core=build.indexOf('<script src="/lovetravel-i18n.js?v=20261013-customer-booking-v1" defer></script>');
   const l10n=build.indexOf('<script src="/lovetravel-tour-locale.js?v=20261010-provider-information-v1" defer></script>');
   const runtime=build.indexOf('<script src="/runtime-api.js');
   const domain=build.indexOf('<script src="/lovetravel-domain-tour.js?v=20261010-provider-information-v1" defer></script>');
-  const booking=build.indexOf('<script src="/lovetravel-booking-configurator.js?v=20261013-sheet-reopen-v1" defer></script>');
+  const booking=build.indexOf('<script src="/lovetravel-booking-configurator.js?v=20261013-customer-booking-v1" defer></script>');
   assert.ok(core>=0 && l10n>core && runtime>l10n && domain>runtime && booking>domain);
 });
 

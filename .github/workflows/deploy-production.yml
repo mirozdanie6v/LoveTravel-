@@ -74,6 +74,9 @@ jobs:
       - name: Build release
         run: npm run build
 
+      - name: Configure customer booking credentials and verify read-only lookup
+        run: node scripts/provision-customer-booking.mjs
+
       - name: Deploy LoveTravel only
         shell: bash
         run: |
