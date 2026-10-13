@@ -1,8 +1,7 @@
 import assert from 'node:assert/strict';
-import {readFile,writeFile,mkdir} from 'node:fs/promises';
+import {writeFile,mkdir} from 'node:fs/promises';
 const {chromium}=await import(process.env.LOVE_TRAVEL_PLAYWRIGHT_MODULE||'playwright');
 const base='https://lovetravel.viiversion.com',folder='artifacts/customer-booking';
-const invite=(await readFile('artifacts/customer-booking-link.txt','utf8')).split('\n')[0];
 const report={realBookingsCreated:0,blockedReserveRequests:0,receiptSource:'controlled browser response; no provider submission',checks:[],errors:[]};
 await mkdir(folder,{recursive:true});
 const browser=await chromium.launch({headless:true,channel:process.env.LOVE_TRAVEL_BROWSER_CHANNEL||'chrome'});
@@ -27,15 +26,24 @@ await context.route('**/*',async route=>{
  return route.continue();
 });
 await page.addInitScript(()=>localStorage.setItem('max-tour-locale-v1','ru'));
-await page.goto(invite,{waitUntil:'domcontentloaded'});
+await page.goto(base,{waitUntil:'domcontentloaded'});
 await page.waitForFunction(()=>LOVE_TRAVEL_BOKUN_ACTIVE===true&&LoveTravelBookings?.snapshot().loaded,{},{timeout:60000});
 assert.equal(new URL(page.url()).hash,'');
 const access=await page.evaluate(async()=>await (await LoveTravelConversation.request('/api/travel-commerce/access')).json());
-assert.equal(access.bookingEnabled,true);report.checks.push('invited guest has booking access');
+assert.equal(access.bookingEnabled,true);report.checks.push('fresh guest has booking access at the plain public URL');
 const other=await browser.newContext();const otherPage=await other.newPage();
 await otherPage.goto(base,{waitUntil:'domcontentloaded'});
-const denied=await otherPage.evaluate(async()=>{await fetch('/api/travel-commerce/session');const r=await fetch('/api/travel-commerce/transaction',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'RESERVE',expectedRevision:1,confirmBooking:true,quoteId:'forged',quoteRevision:1})});return r.status;});
-assert.equal(denied,403);report.checks.push('uninvited guest cannot reserve');await other.close();
+await otherPage.waitForFunction(()=>globalThis.LoveTravelConversation?.request,{},{timeout:60000});
+const otherStatus=await otherPage.evaluate(async()=>{
+ const request=(...args)=>LoveTravelConversation.request(...args);
+ const access=await (await request('/api/travel-commerce/access')).json();
+ const history=await (await request('/api/travel-commerce/bookings')).json();
+ // Missing explicit consent is rejected before the provider is invoked.
+ const r=await request('/api/travel-commerce/transaction',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'RESERVE',expectedRevision:1,confirmBooking:false,quoteId:'forged',quoteRevision:1})});
+ return {bookingEnabled:access.bookingEnabled,bookings:history.bookings,status:r.status};
+});
+assert.equal(otherStatus.bookingEnabled,true);assert.deepEqual(otherStatus.bookings,[]);assert.equal(otherStatus.status,412);
+report.checks.push('second fresh guest has public access and isolated history; no-consent request is blocked');await other.close();
 await page.locator('#homeScreen [data-lt-action="ai"]').click();
 const answerPromise=page.waitForResponse(r=>new URL(r.url()).pathname==='/api/ai/chat'&&r.request().method()==='POST',{timeout:65000});
 await page.locator('#aiScreen textarea[name="message"]').fill('Хочу природу и красивые виды');

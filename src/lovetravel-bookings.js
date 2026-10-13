@@ -13,16 +13,7 @@ async function refresh(){
   return inFlight;
 }
 globalThis.LoveTravelBookings={refresh,snapshot:()=>({bookings,loaded,error})};
-async function access(){
-  const params=new URLSearchParams(location.hash.slice(1)),invite=params.get('booking-invite');
-  if(invite){
-    history.replaceState(null,'',location.pathname+location.search);
-    const response=await request('/api/travel-commerce/access',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({invite})});
-    const data=await response.json();
-    if(!response.ok||!data.bookingEnabled)globalThis.dispatchEvent(new CustomEvent('lovetravel:booking-access-error'));
-  }
-}
-access().then(refresh).catch(()=>{error=true;change();});
+refresh();
 globalThis.addEventListener('lovetravel:transaction-changed',event=>{
   if(['CONFIRMED','RESERVING','FAILED_NEEDS_RECONCILIATION'].includes(event.detail?.transaction?.state))refresh();
 });

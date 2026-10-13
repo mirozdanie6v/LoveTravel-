@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {startBookingUiHarness} from './helpers/booking-ui-harness.mjs';
+import {bookingAccess,bookingConfigured} from '../src/travel-booking-access.js';
 import {configurationDomains} from './fixtures/booking-configurator-domains.mjs';
 const post=(h,path,body,headers={})=>fetch(h.base+path,{method:'POST',headers:{'content-type':'application/json',...headers},body:JSON.stringify(body)});
 async function selection(h){
@@ -18,22 +19,36 @@ async function approve(h,tx){
  assert.equal(r.status,200);return r.json();
 }
 const reserveBody=tx=>({action:'RESERVE',confirmBooking:true,expectedRevision:tx.revision,quoteId:tx.quote.quoteId,quoteRevision:tx.quote.revision});
-test('only an invited owner can create a booking; secrets and forged client flags grant no access',async()=>{
+test('a fresh guest can book without an invitation; explicit confirmation is still required',async()=>{
  const h=await startBookingUiHarness(configurationDomains(),{booking:{}});
  try{
+  const granted=await (await fetch(h.base+'/api/travel-commerce/access')).json();
+  assert.equal(granted.bookingEnabled,true);assert.equal(granted.paymentMode,'EXTERNAL_PAYMENT');
+  assert.equal(JSON.stringify(granted).includes('fixture-provider-secret'),false);
+  const compatibility=await (await post(h,'/api/travel-commerce/access',{invite:'obsolete'})).json();
+  assert.equal(compatibility.bookingEnabled,true);
   const tx=await approve(h,await selection(h));
-  assert.equal((await post(h,'/api/travel-commerce/transaction',{...reserveBody(tx),demoToken:'forged'})).status,403);
-  assert.equal((await post(h,'/api/travel-commerce/access',{invite:'b'.repeat(64)})).status,403);
-  const granted=await (await post(h,'/api/travel-commerce/access',{invite:h.invite})).json();
-  assert.equal(granted.bookingEnabled,true);assert.equal(JSON.stringify(granted).includes('fixture-provider-secret'),false);
-  assert.equal((await post(h,'/api/travel-commerce/transaction',{...reserveBody(tx),confirmBooking:false})).status,412);
+  assert.equal((await post(h,'/api/travel-commerce/transaction',{...reserveBody(tx),confirmBooking:false,demoToken:'forged'})).status,412);
   assert.equal(h.reservationCalls(),0);assert.equal(h.upstreamCalls(),0);
+ }finally{await h.close();}
+});
+test('public booking still requires server configuration and a server-issued owner identity',async()=>{
+ const enabled={CLIENT_BOOKING_ENABLED:'true',BOKUN_CLIENT_BOOKING_TOKEN:'server-only'};
+ assert.equal(bookingConfigured(enabled),true);
+ assert.equal(await bookingAccess(enabled,{ownerHash:'a'.repeat(64)}),true);
+ assert.equal(await bookingAccess(enabled,{ownerHash:'forged'}),false);
+ assert.equal(bookingConfigured({...enabled,CLIENT_BOOKING_ENABLED:'false'}),false);
+ assert.equal(bookingConfigured({CLIENT_BOOKING_ENABLED:'true'}),false);
+ const h=await startBookingUiHarness(configurationDomains());
+ try{
+  const tx=await approve(h,await selection(h));
+  const r=await post(h,'/api/travel-commerce/transaction',{...reserveBody(tx),bookingEnabled:true,demoToken:'forged'});
+  assert.equal(r.status,423);assert.equal(h.reservationCalls(),0);assert.equal(h.upstreamCalls(),0);
  }finally{await h.close();}
 });
 test('parallel confirmed clicks create exactly one fixture booking, preserved on reload and isolated from another guest',async()=>{
  const h=await startBookingUiHarness(configurationDomains(),{booking:{delayMs:20}});
  try{
-  await post(h,'/api/travel-commerce/access',{invite:h.invite});
   const tx=await approve(h,await selection(h));
   const responses=await Promise.all([post(h,'/api/travel-commerce/transaction',reserveBody(tx)),post(h,'/api/travel-commerce/transaction',reserveBody(tx))]);
   const results=await Promise.all(responses.map(r=>r.json()));
@@ -50,7 +65,6 @@ test('parallel confirmed clicks create exactly one fixture booking, preserved on
 test('lost provider response is reconciled without another submission',async()=>{
  const h=await startBookingUiHarness(configurationDomains(),{booking:{lostResponse:true}});
  try{
-  await post(h,'/api/travel-commerce/access',{invite:h.invite});
   const tx=await approve(h,await selection(h));
   const result=await (await post(h,'/api/travel-commerce/transaction',reserveBody(tx))).json();
   assert.equal(result.state,'CONFIRMED');assert.equal(h.reservationCalls(),1);assert.equal(h.upstreamCalls(),0);
@@ -59,7 +73,6 @@ test('lost provider response is reconciled without another submission',async()=>
 test('missing readback stays pending, and retries or current revisions cannot create duplicates',async()=>{
  const h=await startBookingUiHarness(configurationDomains(),{booking:{missingReadback:true}});
  try{
-  await post(h,'/api/travel-commerce/access',{invite:h.invite});
   const tx=await approve(h,await selection(h));
   const result=await (await post(h,'/api/travel-commerce/transaction',reserveBody(tx))).json();
   assert.equal(result.state,'FAILED_NEEDS_RECONCILIATION');
@@ -70,7 +83,6 @@ test('missing readback stays pending, and retries or current revisions cannot cr
 test('final checkout price mismatch blocks reservation before any provider write',async()=>{
  const h=await startBookingUiHarness(configurationDomains(),{booking:{amount:101}});
  try{
-  await post(h,'/api/travel-commerce/access',{invite:h.invite});
   const selected=await selection(h);
   const checked=await (await post(h,'/api/travel-commerce/transaction',{action:'CHECKOUT',expectedRevision:selected.revision})).json();
   assert.equal(checked.priceMatches,false);assert.equal(checked.readyForReserve,false);
@@ -82,7 +94,6 @@ test('final checkout price mismatch blocks reservation before any provider write
 test('invalid contact email or phone is rejected before booking submission',async()=>{
  const h=await startBookingUiHarness(configurationDomains(),{booking:{}});
  try{
-  await post(h,'/api/travel-commerce/access',{invite:h.invite});
   const chosen=await selection(h);
   const invalid=await (await post(h,'/api/travel-commerce/transaction',{action:'SYNC_SELECTION',expectedRevision:chosen.revision,
     selection:{...chosen.selection,customer:{...chosen.selection.customer,email:'invalid-email',phoneNumber:'123'}}})).json();
@@ -95,7 +106,6 @@ test('invalid contact email or phone is rejected before booking submission',asyn
 test('Durable Object also requires explicit customer authority before invoking the provider',async()=>{
  const h=await startBookingUiHarness(configurationDomains(),{booking:{}});
  try{
-  await post(h,'/api/travel-commerce/access',{invite:h.invite});
   const tx=await approve(h,await selection(h));
   const object=h.env.BOOKING_SESSIONS.get(tx.transaction.transactionId);
   await assert.rejects(()=>object.perform({action:'RESERVE',transactionId:tx.transaction.transactionId,expectedRevision:tx.revision,quoteId:tx.quote.quoteId,quoteRevision:tx.quote.revision,demoToken:'forged'}),e=>e.code==='explicit_booking_confirmation_required');
