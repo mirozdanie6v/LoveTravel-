@@ -53,6 +53,19 @@ try{
    const chosen=await ask('',pricedCard);assert.equal(String(chosen.bookingSelection?.rateId),options[0].rateId);assert.equal(chosen.transaction.quote.price.amount,priced.optionCatalog.groups[0].options[0].price.amount);assert.equal(chosen.agent.mutationExecuted,false);
    assert.equal(await page.locator('#aiScreen [data-ai-contact]').count(),1);
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+   if(locale==='ru'){
+    assert.equal(await page.evaluate(()=>MaxTourAiBookingBridgeV25.openStructuredBooking('1287578')),true);
+    await page.locator('.lt-booking-sheet.is-open [data-lt-sheet-close-button]').waitFor({state:'visible'});
+    await page.evaluate(()=>{
+     const frames=[],original=window.requestAnimationFrame;window.requestAnimationFrame=callback=>{frames.push(callback);return frames.length;};
+     window.__readableTestFrames={frames,original};
+     document.querySelector('.lt-booking-sheet.is-open [data-lt-sheet-close-button]').click();LoveTravelBookingConfigurator.open('date');
+    });
+    await page.waitForTimeout(240);
+    assert.equal(await page.locator('.lt-booking-sheet').evaluate(node=>node.hidden),false,'An old close timer hid the reopened sheet before its animation frame');
+    await page.evaluate(()=>{const {frames,original}=window.__readableTestFrames;window.requestAnimationFrame=original;delete window.__readableTestFrames;for(const frame of frames)frame(performance.now());});
+    await page.locator('.lt-booking-sheet.is-open [data-lt-sheet-close-button]').click();
+   }
    assert.equal(h.upstreamCalls(),0);report.checks.push({locale,cards:options.length,honMunCards:4,contactBelowInput:true,paragraphs:true,emphasis:true,startingPrice:options[0].price,groupPrice:priced.optionCatalog.groups[0].options[0].price,selectedRateId:chosen.bookingSelection.rateId});
    console.log(JSON.stringify(report.checks.at(-1)));
   }finally{await context.close();await h.close();}
