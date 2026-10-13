@@ -125,6 +125,7 @@ function fakeProvider({
 }={}){
   const d=domain({soldOut,customPickup});
   let submits=0;
+  let saved=null;
   let resolveCalls=0;
   return {
     vendorId:'137689',
@@ -200,13 +201,13 @@ function fakeProvider({
     },
     async submitClientDemoBooking({checkoutRequestTemplate}){
       submits+=1;
-      return {
+      return saved={
         confirmationCode,
         status:'CONFIRMED',
         externalBookingReference:checkoutRequestTemplate.directBooking.externalBookingReference,
       };
     },
-    async reconcileBooking(){return null;},
+    async reconcileBooking(){return saved;},
     counts(){return {submits,resolveCalls};},
   };
 }
@@ -374,7 +375,7 @@ for(const locale of ['ru','en','vi','zh','ko']){
     const synced=await runtime.syncSelection({
       transactionId,
       expectedRevision:initialTx.revision,
-      selection:sales.offersPacket.data[0].selection,
+      selection:{...sales.offersPacket.data[0].selection,customer:{firstName:'Customer',lastName:'Acceptance',email:'acceptance@example.com',phoneNumber:'+84900000000'}},
     });
     assert.equal(synced.transaction.state,'READY_FOR_APPROVAL');
     assert.equal(synced.transaction.quote.price.amount,98);

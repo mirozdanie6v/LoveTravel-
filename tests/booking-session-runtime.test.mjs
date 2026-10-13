@@ -200,6 +200,7 @@ function fakeProvider({
   let reconciles=0;
   let resolves=0;
   let checkouts=0;
+  let saved=null;
   return {
     async resolveOffer({selection}){
       resolves+=1;
@@ -233,7 +234,7 @@ function fakeProvider({
     async submitClientDemoBooking({checkoutRequestTemplate}){
       submits+=1;
       if(submitError) throw submitError;
-      return {
+      return saved={
         ...submitResult,
         externalBookingReference:
           submitResult.externalBookingReference
@@ -244,7 +245,7 @@ function fakeProvider({
       reconciles+=1;
       return typeof reconcileResult==='function'
         ? reconcileResult()
-        : structuredClone(reconcileResult);
+        : structuredClone(reconcileResult||(!submitError?saved:null));
     },
     counts(){return {submits,reconciles,resolves,checkouts};},
   };
@@ -478,4 +479,21 @@ test('explicit reconciliation never calls provider submit',async()=>{
   assert.equal(result.transaction.state,'FAILED_NEEDS_RECONCILIATION');
   assert.equal(provider.counts().submits,submits);
   assert.ok(provider.counts().reconciles>=2);
+});
+
+test('changed revision cannot create another booking after confirmation',async()=>{
+  const tx=await approvedTransaction('txn-finished'),store=fakeStore(tx),provider=fakeProvider();
+  const runtime=createBookingSessionRuntime({store,provider,now:()=>tick(10)});
+  const first=await runtime.reserve({transactionId:tx.transactionId,expectedRevision:tx.revision,quoteId:tx.quote.quoteId,quoteRevision:tx.quote.revision,demoToken:'fixture'});
+  const second=await runtime.reserve({transactionId:tx.transactionId,expectedRevision:first.transaction.revision,quoteId:tx.quote.quoteId,quoteRevision:tx.quote.revision,demoToken:'fixture'});
+  assert.equal(first.transaction.state,'CONFIRMED');assert.equal(second.transaction.state,'CONFIRMED');
+  assert.equal(provider.counts().submits,1);assert.equal(provider.counts().reconciles,1);
+});
+test('successful submit without independent provider evidence is never shown as confirmed',async()=>{
+  const tx=await approvedTransaction('txn-unverified'),store=fakeStore(tx),provider=fakeProvider({reconcileResult:()=>null});
+  const runtime=createBookingSessionRuntime({store,provider,now:()=>tick(10)});
+  const first=await runtime.reserve({transactionId:tx.transactionId,expectedRevision:tx.revision,quoteId:tx.quote.quoteId,quoteRevision:tx.quote.revision,demoToken:'fixture'});
+  assert.equal(first.transaction.state,'FAILED_NEEDS_RECONCILIATION');assert.equal(first.transaction.providerBooking,undefined);
+  await runtime.reserve({transactionId:tx.transactionId,expectedRevision:first.transaction.revision,quoteId:tx.quote.quoteId,quoteRevision:tx.quote.revision,demoToken:'fixture'});
+  assert.equal(provider.counts().submits,1);
 });

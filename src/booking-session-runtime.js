@@ -75,7 +75,7 @@ function canonicalProviderBooking(raw,now=new Date()){
   if(!/^NHA-(?:T)?[0-9]+$/.test(confirmationCode)){
     fail('provider_confirmation_invalid','Provider did not return a valid Bókun confirmation code',502);
   }
-  const status=str(booking?.status).toUpperCase()||'CONFIRMED';
+  const status=str(booking?.status).toUpperCase();
   if(!['RESERVED','CONFIRMED'].includes(status)){
     fail('provider_booking_not_confirmed',`Unexpected provider booking status ${status}`,502);
   }
@@ -83,6 +83,8 @@ function canonicalProviderBooking(raw,now=new Date()){
     providerRef:bokunProviderRef('BOOKING',confirmationCode),
     confirmationCode,
     status,
+    paymentType:str(booking?.paymentType)||'UNKNOWN',
+    totalPaid:Number(booking?.totalPaid||0),
     ...(status==='CONFIRMED'?{confirmedAt:(now instanceof Date?now:new Date(now)).toISOString()}:{}),
   };
 }
@@ -150,7 +152,14 @@ async function assertFreshApprovedCommerce(transaction,provider){
   return {selection,...fresh};
 }
 
+function assertCustomerDetails(selection){
+  const customer=selection?.customer||{};
+  if(!str(customer.firstName)||!str(customer.lastName)||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(str(customer.email))||str(customer.phoneNumber).replace(/\D/g,'').length<6)
+    fail('invalid_customer_details','Valid name, email and phone number are required',400);
+}
+
 async function prepareProviderReservation(transaction,provider,externalBookingReference){
+  assertCustomerDetails(bokunSelectionFromTransaction(transaction));
   const fresh=await assertFreshApprovedCommerce(transaction,provider);
   const checkoutContract=await provider.getCheckoutContract({
     resolution:fresh.resolution,
@@ -162,6 +171,9 @@ async function prepareProviderReservation(transaction,provider,externalBookingRe
     checkoutContract,
     externalBookingReference,
   });
+  if(providerDraft.checkout && (!moneyEqual(providerDraft.checkout,transaction.quote.price))){
+    fail('checkout_price_changed','Final checkout amount differs from the approved Quote');
+  }
   if(!providerDraft.readyForReserve){
     fail('checkout_not_ready','Bókun checkout requirements are not satisfied');
   }
@@ -374,6 +386,9 @@ export function createBookingSessionRuntime({
     }
 
     const before=await current(transactionId);
+    if(before.state==='CONFIRMED')return {transaction:before,replayed:true};
+    if(['RESERVING','FAILED_NEEDS_RECONCILIATION'].includes(before.state))
+      return {...await reconcileCurrent(before,{demoToken}),replayed:true};
     if(before.revision!==expectedRevision){
       const rejected=executeTransactionCommand(before,command,{now:now()});
       const persisted=await store.persistRejectedCommand({
@@ -428,9 +443,13 @@ export function createBookingSessionRuntime({
         demoToken,
         currency:before.quote.price.currency,
       });
+      if(str(submitted.externalBookingReference)!==reference)throw new ProviderUpstreamError('external_reference_mismatch','Submitted booking belongs to another transaction',502);
+      const verified=await provider.reconcileBooking({externalBookingReference:reference,demoToken,bookingDate:before.quote.offer.date});
+      if(!verified||str((verified.booking||verified).confirmationCode)!==str(submitted.confirmationCode))
+        throw new ProviderUpstreamError('booking_readback_failed','Created booking could not be independently verified',502);
       const confirmed=applyProviderOutcome(reserving,{
         status:'SUCCEEDED',
-        providerBooking:canonicalProviderBooking(submitted,now()),
+        providerBooking:canonicalProviderBooking(verified,now()),
         now:now(),
       });
       const persisted=await store.commitSystemTransition({
@@ -485,6 +504,19 @@ export function createBookingSessionRuntime({
     }
   }
 
+  async function checkout({transactionId,expectedRevision}={}){
+    const tx=await current(transactionId);
+    if(tx.revision!==expectedRevision)fail('stale_revision','Configuration changed');
+    if(!tx.quote?.readyToBook)fail('quote_not_ready','Complete the booking details first');
+    assertCustomerDetails(bokunSelectionFromTransaction(tx));
+    const resolved=await provider.resolveOffer({selection:bokunSelectionFromTransaction(tx),currency:tx.quote.price.currency,includePickupPlaces:true,start:tx.quote.offer.date,end:tx.quote.offer.date});
+    const reference=await stableExternalBookingReference(transactionId);
+    const contract=await provider.getCheckoutContract({resolution:resolved.resolution,externalBookingReference:reference,currency:tx.quote.price.currency});
+    const draft=provider.createBookingDraft({resolution:resolved.resolution,checkoutContract:contract,externalBookingReference:reference});
+    const same=moneyEqual(draft.checkout,tx.quote.price)&&moneyEqual(resolved.offer?.price,tx.quote.price);
+    return {readyForReserve:Boolean(draft.readyForReserve&&same),issues:draft.issues||[],priceMatches:same,checkoutPrice:draft.checkout};
+  }
+
   async function reconcile({
     transactionId,
     expectedRevision,
@@ -502,6 +534,7 @@ export function createBookingSessionRuntime({
     dispatch,
     syncSelection,
     reserve,
+    checkout,
     reconcile,
   });
 }

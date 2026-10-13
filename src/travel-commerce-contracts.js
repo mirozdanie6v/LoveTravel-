@@ -586,7 +586,7 @@ function validateMutation(value, path, issues) {
 }
 
 function validateProviderBooking(value, path, issues) {
-  if (!exactObject(value, path, ['providerRef', 'confirmationCode', 'status', 'confirmedAt'], issues)) return;
+  if (!exactObject(value, path, ['providerRef', 'confirmationCode', 'status', 'confirmedAt', 'paymentType', 'totalPaid'], issues)) return;
   validateProviderRef(value.providerRef, `${path}.providerRef`, issues);
   optionalString(value.confirmationCode, `${path}.confirmationCode`, issues);
   if (!['RESERVED', 'CONFIRMED', 'CANCELLED', 'UNKNOWN'].includes(value.status)) issue(issues, 'invalid_provider_booking_status', `${path}.status`, 'invalid provider booking status');

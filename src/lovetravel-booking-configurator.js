@@ -26,6 +26,8 @@
   let sheetReturnStep = null;
   let sheetFocusRevision = 0;
   let transactionSnapshot = null;
+  let bookingEnabled=false;
+  let bookingInFlight=false;
   const bootstrapping = new Set();
   const bootstrapPromises = new Map();
 
@@ -39,6 +41,7 @@
     const data=await response.json().catch(()=>null);
     if(!response.ok||!data?.ok||!data?.transaction) throw new Error(data?.error||'transaction snapshot unavailable');
     transactionSnapshot=data.transaction;
+    bookingEnabled=data.bookingEnabled===true;
     const txSelection=data.selection;
     const productId=String(txSelection?.productId||'');
     if(applySelection&&PRODUCT_IDS.has(productId)) saveSelection(productId,txSelection);
@@ -55,6 +58,7 @@
       body:JSON.stringify({action,...payload}),
     });
     const data=await response.json().catch(()=>null);
+    if(data?.transaction)transactionSnapshot=data.transaction;
     if(!response.ok||!data?.ok){
       const error=new Error(data?.message||data?.error||('transaction '+action+' failed'));
       error.status=response.status;
@@ -68,6 +72,11 @@
 
   async function syncTransactionSelection(productId,{retryStale=true}={}){
     if(!transactionSnapshot) await loadTransaction({applySelection:false});
+    if(['CONFIRMED','RESERVING','FAILED_NEEDS_RECONCILIATION'].includes(transactionSnapshot?.state)){
+      const snapshot=await loadTransaction({applySelection:false});
+      const r=await conversationFetch('/api/bokun/booking-selection/resolve',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({selection:snapshot.selection,currency:transactionSnapshot.quote?.price?.currency||'USD',includePickupPlaces:true})});
+      const resolution=await r.json();if(!r.ok||resolution.ok!==true)throw new Error('booking_summary_unavailable');return {...snapshot,resolution};
+    }
     try{
       const data=await transactionAction('SYNC_SELECTION',{
         expectedRevision:Number(transactionSnapshot.revision),
@@ -492,7 +501,7 @@
     mount.querySelectorAll('[data-lt-step]').forEach(btn=>btn.addEventListener('click',()=>openSheet(productId,btn.dataset.ltStep)));
     mount.querySelector('[data-lt-config-continue]')?.addEventListener('click',()=>{
       const step=firstBlockingStep(r);
-      if(ready) openQuoteSheet(productId);
+      if(ready||['CONFIRMED','RESERVING','FAILED_NEEDS_RECONCILIATION'].includes(transactionSnapshot?.state)) openQuoteSheet(productId);
       else openSheet(productId,step);
     });
   }
@@ -1208,7 +1217,23 @@
   }
 
 
-  function openQuoteSheet(productId){
+  function openBookingResult(productId){
+    const tx=transactionSnapshot;
+    const b=tx?.providerBooking;
+    const pending=tx?.state!=='CONFIRMED';
+    const root=showSheet(pending?t().bookingPending:t().bookingCreated,
+      '<div class="lt-sheet-scroll"><div class="lt-form-section" role="status">'+
+      (b?'<p>'+esc(t().bookingNumber)+' <strong>'+esc(b.confirmationCode)+'</strong></p><p>'+esc(b.status==='CONFIRMED'?t().bookingConfirmed:t().bookingReserved)+'</p><p>'+esc(b.paymentType==='NOT_PAID'?t().bookingUnpaid:t().bookingPaymentUnknown)+'</p>':'<p>'+esc(t().bookingPendingNote)+'</p>')+
+      '</div><div class="lt-sheet-action">'+(pending?'<button type="button" class="lt-sheet-primary" data-lt-booking-recheck>'+esc(t().bookingRecheck)+'</button>':'<button type="button" class="lt-sheet-primary" data-lt-booking-trips>'+esc(i18n()?.t?.('navigation.trips'))+'</button>')+'</div><p class="lt-booking-note" data-lt-result-error hidden></p></div>');
+    root.querySelector('[data-lt-booking-trips]')?.addEventListener('click',()=>{closeSheet();if(typeof showScreen==='function')showScreen('trips');});
+    root.querySelector('[data-lt-booking-recheck]')?.addEventListener('click',async event=>{
+      const button=event.currentTarget;button.disabled=true;
+      try{await loadTransaction({applySelection:false});await transactionAction('RECONCILE',{expectedRevision:transactionSnapshot.revision});openBookingResult(productId);}
+      catch(_){const node=root.querySelector('[data-lt-result-error]');node.textContent=t().bookingPendingNote;node.hidden=false;button.disabled=false;}
+    });
+  }
+  async function openQuoteSheet(productId){
+    if(['CONFIRMED','RESERVING','FAILED_NEEDS_RECONCILIATION'].includes(transactionSnapshot?.state))return openBookingResult(productId);
     const r=resolutionByProduct.get(productId);
     if(!r?.readyToBook || !checkoutContactComplete(r)) return openContactSheet(productId);
     const tx=transactionSnapshot;
@@ -1216,26 +1241,61 @@
       return openContactSheet(productId);
     }
     const body='<div class="lt-sheet-scroll">'+
-      '<div class="lt-form-section"><span class="lt-form-caption">'+esc(t().total)+'</span><strong class="lt-demo-total">'+esc(money(tx.quote.price.amount,tx.quote.price.currency))+'</strong><p class="lt-booking-note">'+esc(t().bookingDisabled)+'</p></div>'+
-      '<div class="lt-sheet-action"><button type="button" class="lt-sheet-primary" data-lt-quote-approve '+(tx.state==='USER_APPROVED'?'disabled':'')+'>'+esc(tx.state==='USER_APPROVED'?t().quoteApproved:t().approveQuote)+'</button></div>'+
+      '<div class="lt-form-section lt-booking-review">'+[
+        [t().option,optionSummary(r)],[t().date,dateSummary(r)],[t().guests,guestSummary(r)],
+        [t().pickup,pickupSummary(r)],[t().contact,[r.selection?.customer?.firstName,r.selection?.customer?.lastName,r.selection?.customer?.email,r.selection?.customer?.phoneNumber].filter(Boolean).join(' · ')]
+      ].map(([label,value])=>'<p><small>'+esc(label)+'</small><strong>'+esc(value)+'</strong></p>').join('')+'</div>'+
+      '<div class="lt-form-section"><span class="lt-form-caption">'+esc(t().total)+'</span><strong class="lt-demo-total">'+esc(money(tx.quote.price.amount,tx.quote.price.currency))+'</strong><p class="lt-booking-note">'+esc(bookingEnabled?t().bookingConfirmNote:t().bookingDisabled)+'</p></div>'+
+      '<div class="lt-sheet-action"><button type="button" class="lt-sheet-primary" data-lt-quote-approve '+(tx.state==='USER_APPROVED'&&!bookingEnabled?'disabled':'')+'>'+esc(bookingEnabled?t().bookNow:tx.state==='USER_APPROVED'?t().quoteApproved:t().approveQuote)+'</button></div>'+
       '<p class="lt-booking-note" data-lt-quote-error hidden></p></div>';
     const root=showSheet(t().reviewQuote,body);
     // Approval is pinned to the quote the customer has just seen.
     const displayedQuote={quoteId:tx.quote.quoteId,quoteRevision:tx.quote.revision,expectedRevision:tx.revision};
+    if(bookingEnabled){
+      const button=root.querySelector('[data-lt-quote-approve]');
+      button.disabled=true;button.textContent=t().updating;
+      try{
+        const checked=await transactionAction('CHECKOUT',{expectedRevision:tx.revision});
+        if(!checked.readyForReserve){
+          const node=root.querySelector('[data-lt-quote-error]');
+          node.textContent=checked.priceMatches?t().bookingDetailsRequired:t().bookingPriceChanged;node.hidden=false;
+          button.textContent=t().bookingReviewAgain;
+          button.disabled=false;
+          button.addEventListener('click',async()=>{await resolve(productId,{quiet:true});openContactSheet(productId);},{once:true});
+          return;
+        }
+        button.disabled=false;button.textContent=t().bookNow;
+      }catch(error){const node=root.querySelector('[data-lt-quote-error]');node.textContent=error.code==='invalid_customer_details'?t().bookingDetailsRequired:t().refreshError;node.hidden=false;button.disabled=false;button.textContent=t().bookingReviewAgain;button.addEventListener('click',()=>openContactSheet(productId),{once:true});return;}
+    }
     root.querySelector('[data-lt-quote-approve]')?.addEventListener('click',async event=>{
       const button=event.currentTarget;
       const errorNode=root.querySelector('[data-lt-quote-error]');
+      if(bookingInFlight)return;
+      bookingInFlight=true;
       button.disabled=true;
       if(errorNode) errorNode.hidden=true;
       try{
-        await transactionAction('APPROVE',displayedQuote);
+        if(tx.state!=='USER_APPROVED')await transactionAction('APPROVE',displayedQuote);
+        if(bookingEnabled){
+          button.textContent=t().bookingSubmitting;
+          await transactionAction('RESERVE',{expectedRevision:transactionSnapshot.revision,quoteId:displayedQuote.quoteId,quoteRevision:displayedQuote.quoteRevision,confirmBooking:true});
+          openBookingResult(productId);return;
+        }
         button.textContent=t().quoteApproved;
         render(productId);
       }catch(error){
         console.error('[LoveTravel] quote approval failed',error);
-        button.disabled=false;
-        if(errorNode){errorNode.textContent=t().refreshError;errorNode.hidden=false;}
-      }
+        if(bookingEnabled){
+          try{await loadTransaction({applySelection:false});}catch(_){}
+          if(['CONFIRMED','RESERVING','FAILED_NEEDS_RECONCILIATION'].includes(transactionSnapshot?.state)){openBookingResult(productId);return;}
+          // A missing response never triggers another create request.
+          button.disabled=true;
+          if(errorNode){errorNode.textContent=t().bookingCheckBeforeRetry;errorNode.hidden=false;}
+          const retry=document.createElement('button');retry.type='button';retry.className='lt-sheet-secondary';retry.textContent=t().bookingRecheck;
+          retry.addEventListener('click',async()=>{await loadTransaction({applySelection:false});openQuoteSheet(productId);});
+          errorNode?.after(retry);
+        }else{button.disabled=false;if(errorNode){errorNode.textContent=t().refreshError;errorNode.hidden=false;}}
+      }finally{bookingInFlight=false;}
     });
   }
 

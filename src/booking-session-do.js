@@ -2,6 +2,7 @@ import { createBokunProvider } from './bokun-provider.js';
 import { createBookingSessionRuntime } from './booking-session-runtime.js';
 import { createTravelCommerceStore } from './travel-commerce-store.js';
 import { validateBookingTransaction } from './travel-commerce-contracts.js';
+import {bookingConfigured,requireBookingAccess} from './travel-booking-access.js';
 import { assertBookingMutationsAllowed } from './booking-mutation-policy.js';
 import {createLoveTravelSalesOrchestrator} from './travel-sales-orchestrator.js';
 import {handleTravelTransactionApi} from './travel-transaction-api.js';
@@ -50,6 +51,7 @@ export class BookingSession {
     return createBokunProvider({
       fetchImpl:fetch,
       baseUrl:this.env.BOKUN_INTEGRATION_BASE_URL||'https://integration.viiversion.com',
+      allowBookingMutations:bookingConfigured(this.env),
     });
   }
 
@@ -113,10 +115,17 @@ export class BookingSession {
     const action=String(body?.action||'').trim();
     if(['RESERVE','RECONCILE'].includes(action.toUpperCase())
       ||(action==='COMMAND'&&['RESERVE_BOOKING','RECONCILE_BOOKING'].includes(String(body?.type||'').toUpperCase()))){
-      assertBookingMutationsAllowed();
+      assertBookingMutationsAllowed({enabled:bookingConfigured(this.env)});
+      if(action==='COMMAND')throw Object.assign(new Error('Use the canonical reservation action'),{code:'unsupported_booking_session_action',status:403});
     }
     const transactionId=String(body?.transactionId||'').trim();
     await this.requireBound(transactionId);
+    if(['RESERVE','RECONCILE'].includes(action)){
+      if(action==='RESERVE'&&body.customerConfirmed!==true)throw Object.assign(new Error('Explicit customer confirmation required'),{code:'explicit_booking_confirmation_required',status:412});
+      await requireBookingAccess(this.env,{ownerHash:body.ownerHash});
+      const owner=await this.env.DB.prepare('SELECT owner_hash FROM travel_booking_owners WHERE transaction_id=?').bind(transactionId).first();
+      if(!owner||owner.owner_hash!==body.ownerHash)throw Object.assign(new Error('Booking owner mismatch'),{code:'booking_access_denied',status:403});
+    }
     const runtime=this.runtime();
 
     if(action==='GET'){
@@ -135,6 +144,7 @@ export class BookingSession {
       await this.state.storage.delete?.('last-known-transaction');
       return result;
     }
+    if(action==='CHECKOUT')return runtime.checkout({transactionId,expectedRevision:Number(body?.expectedRevision)});
     if(action==='SYNC_SELECTION'){
       const result=await runtime.syncSelection({
         transactionId,
@@ -150,7 +160,7 @@ export class BookingSession {
         expectedRevision:Number(body?.expectedRevision),
         quoteId:String(body?.quoteId||''),
         quoteRevision:Number(body?.quoteRevision),
-        demoToken:this.requireDemoToken(body?.demoToken),
+        demoToken:this.requireDemoToken(this.env.BOKUN_CLIENT_BOOKING_TOKEN),
       });
       await this.state.storage.delete?.('last-known-transaction');
       return result;
@@ -159,7 +169,7 @@ export class BookingSession {
       const result=await runtime.reconcile({
         transactionId,
         expectedRevision:Number(body?.expectedRevision),
-        demoToken:this.requireDemoToken(body?.demoToken),
+        demoToken:this.requireDemoToken(this.env.BOKUN_CLIENT_BOOKING_TOKEN),
       });
       await this.state.storage.delete?.('last-known-transaction');
       return result;

@@ -487,6 +487,7 @@ export function createBokunProvider({
   productIds=LOVE_TRAVEL_BOKUN_PRODUCT_IDS,
   canonicalProductIds=LOVE_TRAVEL_CANONICAL_PRODUCT_IDS,
   bookingTestToken='',
+  allowBookingMutations=false,
   readTimeoutMs=20000,
   now=()=>new Date(),
 }={}){
@@ -590,7 +591,7 @@ export function createBokunProvider({
     const response=await fetchImpl(buildUrl(baseUrl,'/api/bokun/checkout/options',{vendorId,currency}),{
       method:'POST',
       headers:{'content-type':'application/json','accept':'application/json'},
-      body:JSON.stringify(provisional),
+      body:JSON.stringify(provisional),signal:AbortSignal.timeout(readTimeoutMs),
     });
     return responseJson(response,'checkout_options_unavailable');
   }
@@ -604,7 +605,7 @@ export function createBokunProvider({
   }
 
   async function submitClientDemoBooking({checkoutRequestTemplate,demoToken,currency='USD'}={}){
-    assertBookingMutationsAllowed();
+    assertBookingMutationsAllowed({enabled:allowBookingMutations});
     if(!demoToken) throw new ProviderCapabilityError('demo_token_required','Demo token is required');
     const response=await fetchImpl(buildUrl(baseUrl,'/internal/lovetravel/bokun/demo-submit',{vendorId,currency}),{
       method:'POST',
@@ -614,7 +615,7 @@ export function createBokunProvider({
         'x-love-travel-demo-token':demoToken,
         'x-viiversion-booking-intent':'SUBMIT_LOVE_TRAVEL_CLIENT_DEMO_BOOKING',
       },
-      body:JSON.stringify(checkoutRequestTemplate),
+      body:JSON.stringify(checkoutRequestTemplate),signal:AbortSignal.timeout(60000),
     });
     const submitted=await responseJson(response,'demo_booking_submit_failed');
     const booking=submitted?.booking||null;
@@ -624,7 +625,7 @@ export function createBokunProvider({
     }
     return {
       confirmationCode,
-      status:str(booking?.status).toUpperCase()||'CONFIRMED',
+      status:str(booking?.status).toUpperCase(),
       paymentType:str(booking?.paymentType)||'NOT_PAID',
       totalPaid:Number(booking?.totalPaid||0),
       externalBookingReference:str(booking?.externalBookingReference||checkoutRequestTemplate?.directBooking?.externalBookingReference),
@@ -647,7 +648,7 @@ export function createBokunProvider({
     demoToken,
     bookingDate,
   }={}){
-    assertBookingMutationsAllowed();
+    assertBookingMutationsAllowed({enabled:allowBookingMutations});
     if(confirmationCode){
       const booking=await readBookingByConfirmationCode({confirmationCode});
       if(externalBookingReference&&str(booking?.externalBookingReference)!==str(externalBookingReference)){
@@ -671,7 +672,7 @@ export function createBokunProvider({
         'x-love-travel-demo-token':demoToken,
         'x-viiversion-booking-intent':'RECONCILE_LOVE_TRAVEL_CLIENT_DEMO_BOOKING',
       },
-      body:JSON.stringify({externalBookingReference:reference,bookingDate}),
+      body:JSON.stringify({externalBookingReference:reference,bookingDate}),signal:AbortSignal.timeout(readTimeoutMs),
     });
     const result=await responseJson(response,'booking_reconciliation_failed');
     if(!result?.found) return null;
