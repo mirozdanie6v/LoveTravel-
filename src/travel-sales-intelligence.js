@@ -493,7 +493,8 @@ export function deterministicExplicitIntentPatch({
 
   const wholeProduct=arr(products).find(row=>optionName(message).includes(optionName(row.product?.title||'missing title')))?.product?.productId;
   const changingProduct=/^(?:хочу|выбираю|поменяй|смени|book|choose|switch|change|chon|doi|选择|换|선택|변경).{0,35}(?:экскурси|тур\b|tour\b|행)/iu.test(text);
-  const scopedProduct=!wholeProduct&&!changingProduct?context.currentProductId||'':'';
+  const listingOptions=catalogListQuestion(message)||requestedOfferScope(message,context)==='ALL_OPTIONS';
+  const scopedProduct=!wholeProduct&&!changingProduct&&!listingOptions?context.currentProductId||'':'';
   const option=explicitCatalogOption(message,products,scopedProduct||context.currentProductId||'',Boolean(scopedProduct));
   const selectedProductId=option.option?.productId||wholeProduct||(scopedProduct&&explicitProductId(message,products)==='love-travel-hon-mun'?scopedProduct:explicitProductId(message,products));
   if(selectedProductId) patch.selectedProductId=selectedProductId;
@@ -557,7 +558,7 @@ export function requestedOfferScope(message,context={}){
  const text=normalizedText(message);
  const price=/стоим|цен|сколько.{0,15}стоят|\bprice|\bcost|how much|\bgia\b|价格|價錢|价钱|가격|요금/u.test(text);
  const options=/вариант|options?|phuong an|lua chon|选项|選項|옵션/u.test(text);
- const all=/все|всех|\ball\b|tat ca|所有|全部|모두|모든/u.test(text);
+ const all=/все|всех|\ball\b|tat ca|nhung|所有|哪些|全部|모두|모든/u.test(text);
  const pluralOptions=/варианты|вариантов|\boptions\b|cac\s+(?:phuong an|lua chon)|各.{0,5}(?:选项|選項)|여러\s*옵션/u.test(text);
  if(price&&options&&(all||pluralOptions))return 'ALL_OPTIONS';
  if(all&&(context.pendingQuestion?.kind==='PRICE_SCOPE'||context.offerScope==='ALL_OPTIONS'))return 'ALL_OPTIONS';

@@ -990,3 +990,13 @@ for(const locale of ['ru','en','vi','zh','ko'])test('Option advice shows canonic
  const result=await composeGroundedSalesPlan({env:{AI:{run:async()=>{throw Error('Must not need a model for verified option advice')}}},locale,message:messages[locale],goal:'DETAILS',intent:createInitialTravelIntent(locale),productFocus:focus,currentSelection:selection,evidence:[packet]});
  assert.equal(result.source,'provider-option-guide');assert.equal(result.recommendedProductId,focus);assert.equal(result.selectedOfferId,'');assert.equal(JSON.stringify(selection),before);assert.ok(result.reply.includes(packet.data[0].facts.options[1].title));assert.match(result.reply,/Hon Tam Mud Bath/);assert.ok(!result.reply.includes(packet.data[1].product.title));assert.equal(result.degraded,undefined);
 });
+
+test('listing another named tour never resolves its name as a destination of the previous tour',async()=>{
+ const packet=await catalogEvidence();
+ for(const [locale,message] of [['ru','Какие варианты экскурсии Hon Mun и цены?'],['en','What are all the options and starting prices for Hon Mun?'],['vi','Những phương án và giá từ của Hon Mun là gì?'],['ko','Hon Mun의 모든 옵션과 시작 가격은 무엇인가요?'],['zh','Hon Mun有哪些选项和起价？']]){
+  const result=await extractConversationIntent({message,locale,products:packet.data,currentIntent:createInitialTravelIntent(locale),context:{currentProductId:'love-travel-robinson-island'}});
+  assert.equal(result.selectedProductId,'love-travel-hon-mun',locale);assert.equal(result.patch.selectedOption,undefined,locale);
+ }
+ const continuation=await extractConversationIntent({message:'Choose the Hon Mun option.',locale:'en',products:packet.data,currentIntent:createInitialTravelIntent('en'),context:{currentProductId:'love-travel-robinson-island'}});
+ assert.equal(continuation.patch.selectedOption.productId,'love-travel-robinson-island');
+});

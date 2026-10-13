@@ -538,12 +538,12 @@
   }
   function closeSheet(){
     if(!sheet) return;
-    sheetFocusRevision++;
+    const closeRevision=++sheetFocusRevision;
     sheet.classList.remove('is-open');
     document.documentElement.classList.remove('lt-sheet-open');
     const target=sheetReturnFocus?.isConnected ? sheetReturnFocus : document.querySelector('[data-lt-config-ready] [data-lt-step="'+CSS.escape(sheetReturnStep||'date')+'"]');
     target?.focus({preventScroll:true});
-    setTimeout(()=>{ if(sheet&&!sheet.classList.contains('is-open')) sheet.hidden=true; },180);
+    setTimeout(()=>{ if(sheet&&closeRevision===sheetFocusRevision&&!sheet.classList.contains('is-open')) sheet.hidden=true; },180);
   }
   function showSheet(title,body){
     const root=ensureSheet();

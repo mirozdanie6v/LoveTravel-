@@ -46,13 +46,27 @@ try{
    assert.ok(bottomCard.y+bottomCard.height<=navBox.y+1,'Last option is obscured by navigation');
    await cards.last().screenshot({path:folder+'/'+locale+'-options-last.png'});
    await cards.first().scrollIntoViewIfNeeded();await page.screenshot({path:folder+'/'+locale+'-options-page.png',fullPage:true});
+   const hon=await ask(questions[locale].replace('Robinson','Hon Mun'));assert.equal(hon.optionCatalog.groups[0].externalProductId,'1287580');assert.equal(hon.optionCatalog.groups[0].options.length,4);assert.equal(await page.locator('#aiScreen .ai-msg.bot').last().locator('.ai-option-card').count(),4);assert.equal(hon.transaction.quote,null);
    const date=resolveBookingSelection(domains[0],{}).constraints.dates[0].date;
    const priced=await ask(priceQuestions[locale](date));assert.equal(priced.source,'provider-option-prices');assert.equal(priced.optionCatalog.groups[0].options[0].price.kind,'GROUP_TOTAL');
    const pricedCard=page.locator('#aiScreen .ai-msg.bot').last().locator('.ai-option-card').first();
    const chosen=await ask('',pricedCard);assert.equal(String(chosen.bookingSelection?.rateId),options[0].rateId);assert.equal(chosen.transaction.quote.price.amount,priced.optionCatalog.groups[0].options[0].price.amount);assert.equal(chosen.agent.mutationExecuted,false);
    assert.equal(await page.locator('#aiScreen [data-ai-contact]').count(),1);
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
-   assert.equal(h.upstreamCalls(),0);report.checks.push({locale,cards:options.length,contactBelowInput:true,paragraphs:true,emphasis:true,startingPrice:options[0].price,groupPrice:priced.optionCatalog.groups[0].options[0].price,selectedRateId:chosen.bookingSelection.rateId});
+   if(locale==='ru'){
+    assert.equal(await page.evaluate(()=>MaxTourAiBookingBridgeV25.openStructuredBooking('1287578')),true);
+    await page.locator('.lt-booking-sheet.is-open [data-lt-sheet-close-button]').waitFor({state:'visible'});
+    await page.evaluate(()=>{
+     const frames=[],original=window.requestAnimationFrame;window.requestAnimationFrame=callback=>{frames.push(callback);return frames.length;};
+     window.__readableTestFrames={frames,original};
+     document.querySelector('.lt-booking-sheet.is-open [data-lt-sheet-close-button]').click();LoveTravelBookingConfigurator.open('date');
+    });
+    await page.waitForTimeout(240);
+    assert.equal(await page.locator('.lt-booking-sheet').evaluate(node=>node.hidden),false,'An old close timer hid the reopened sheet before its animation frame');
+    await page.evaluate(()=>{const {frames,original}=window.__readableTestFrames;window.requestAnimationFrame=original;delete window.__readableTestFrames;for(const frame of frames)frame(performance.now());});
+    await page.locator('.lt-booking-sheet.is-open [data-lt-sheet-close-button]').click();
+   }
+   assert.equal(h.upstreamCalls(),0);report.checks.push({locale,cards:options.length,honMunCards:4,contactBelowInput:true,paragraphs:true,emphasis:true,startingPrice:options[0].price,groupPrice:priced.optionCatalog.groups[0].options[0].price,selectedRateId:chosen.bookingSelection.rateId});
    console.log(JSON.stringify(report.checks.at(-1)));
   }finally{await context.close();await h.close();}
  }

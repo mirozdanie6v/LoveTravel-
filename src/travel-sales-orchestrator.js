@@ -302,7 +302,7 @@ export function createLoveTravelSalesOrchestrator({
     let bookingSelection=null;
     let canonicalScopeUsed=false;
     const allOptionPrices=extracted.offerScope==='ALL_OPTIONS';
-    const focusProductId=shopping.intent.optionPreference?.productId||extracted.selectedProductId||activeProduct?.product.productId||memory.productFocus||'';
+    const focusProductId=((allOptionPrices||readOnlyQuestion)&&extracted.selectedProductId)||shopping.intent.optionPreference?.productId||extracted.selectedProductId||activeProduct?.product.productId||memory.productFocus||'';
     const focusProduct=productsPacket.data.find(row=>row.product.productId===focusProductId);
     const needsOption=COMMERCIAL_GOALS.includes(extracted.goal)&&!allOptionPrices&&!shopping.intent.optionPreference&&(!activeTransaction?.selection||activeProduct?.product.productId!==focusProductId)&&focusProduct?.facts?.options?.length>1;
     const currentQuoteRequest=!allOptionPrices&&COMMERCIAL_GOALS.includes(extracted.goal)&&!commercialPatch(extracted.explicitPatch||{});
@@ -361,7 +361,7 @@ export function createLoveTravelSalesOrchestrator({
     if(!extracted.pendingAdultCount&&!extracted.pendingChildAges&&(!canonicalScopeUsed||allOptionPrices)&&!needsOption&&offersRequested&&exactDate(shopping.intent)&&partyKnown(shopping.intent)){
       const productIds=canonicalToProviderProducts(
         productsPacket,
-        shopping.intent.optionPreference?.productId||extracted.selectedProductId||memory.productFocus,
+        focusProductId,
       );
       offersPacket=await broker.execute('searchOffers',{
         intent:allOptionPrices?{...shopping.intent,optionPreference:undefined}:shopping.intent,
