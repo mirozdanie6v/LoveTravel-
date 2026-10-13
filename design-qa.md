@@ -19,6 +19,8 @@ Chrome mobile viewport: 393 × 852 CSS pixels, touch enabled, DPR 1. The referen
 
 - P1, repaired: a delayed close timer could hide a reopened booking sheet before its animation frame ran. Close cleanup is now bound to its revision. A mobile browser regression deliberately delays the frame and confirms the reopened sheet remains visible and can be closed.
 
+- P2, repaired after screenshot 522.jpg: `.n-` before list items escaped the earlier newline cleanup. The exact user reply is now a two-item list on both server and client, including messages saved before the fix. The regression also verifies names, dates, amounts and URL paths are preserved. Mobile checks replay the broken saved reply after reload in all five locales.
+
 No remaining P0/P1/P2 presentation findings in the tested states. Card descriptions use the existing localized booking option copy. Prices are provider-derived, not screenshot constants. USD cents are preserved; unavailable prices are not invented. The final card can be scrolled entirely above bottom navigation. The permanent administrator link is below the composer, at least 44 pixels high, and appears exactly once after successful and failed replies.
 
 ## Verification evidence
@@ -27,6 +29,6 @@ No remaining P0/P1/P2 presentation findings in the tested states. Card descripti
 - `ru-options-first-three.png`: name/description/price layout matching the supplied example.
 - `ru-options-last.png`: last option visible without navigation overlap.
 - `report.json`: latest RU/EN/VI/KO/ZH mobile checks with local provider fixtures and controlled model responses, including switching between the two tour lists. Fresh public Bókun checks are also recorded in `artifacts/consultant-live/readable-browser-final.txt`.
-- 733 Node tests passed, including price authority, explicit card choice, text escaping and persistent contact.
+- 735 Node tests passed, including price authority, explicit card choice, text escaping and persistent contact.
 
 The browser report discloses controlled local model responses. Deployment and live-model acceptance are recorded separately; this document does not claim native-speaker translation review or real booking creation.

@@ -1,3 +1,4 @@
+import {screenshotReply,screenshotReplyClean} from './fixtures/chat-newline-artifacts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {normalizeReplyText,optionCardsPresentation} from '../src/travel-response-composer.js';
@@ -50,4 +51,10 @@ test('a missing dated offer never presents a catalogue starting price as a party
  const option={rateRef:{externalId:'rate-1'},title:'Beach',pricedPerPerson:true,fromPrice:{amount:35.77,currency:'USD'}};
  const result=optionCardsPresentation({plan:{source:'provider-option-prices',choices:[{productId:'tour-1',rateRef:option.rateRef}]},products:[{product:{productId:'tour-1',providerRef:{externalId:'tour-1'}},facts:{options:[option]}}],intent:{dateConstraint:{exact:'2026-10-17'}},locale:'ru'});
  assert.equal(result.groups[0].options[0].price,null);
+});
+
+test('screenshot .n- separators become real newlines before list items without altering names or values',()=>{
+ assert.equal(normalizeReplyText(screenshotReply),screenshotReplyClean);
+ for(const [broken,clean] of [['End.n- Item','End.\n- Item'],['End.nn- Item','End.\n- Item'],['End.n * Item','End.\n * Item'],['End!n• Item','End!\n• Item'],['End?n1. Item','End?\n1. Item'],['结束。n- 项目','结束。\n- 项目']])assert.equal(normalizeReplyText(broken),clean);
+ const preserved='Robinson, snorkeling, $35.77, 2026-10-17, https://example.test/n-guide, example.n-news';assert.equal(normalizeReplyText(preserved),preserved);
 });

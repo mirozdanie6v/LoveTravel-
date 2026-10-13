@@ -1,8 +1,9 @@
 import {stableJson} from './travel-commerce-quote.js';
 export function normalizeReplyText(value){
   return String(value??'').replace(/<br\s*\/?>/gi,'\n').replace(/\r\n?/g,'\n')
-    .replace(/\\+(?:r\\+)?n/g,'\n').replace(/\/n(?=[\s\d\-*•\p{Lu}])/gu,'\n')
+    .replace(/\\+(?:r\\+)?n/g,'\n').replace(/https?:\/\/\S+|\/n(?=[ \t]|\d{1,2}[.)][ \t]+|[-*•][ \t]+|\p{Lu})/gu,token=>token.startsWith('/n')?'\n':token)
     .replace(/\.n\./gu,'.\n\n').replace(/([.!?])n{1,2}(?=\p{Lu})/gu,'$1\n\n')
+    .replace(/([.!?。！？])n{1,2}(?=[ \t]*(?:[-*•]|\d{1,2}[.)])[ \t]+\S)/gu,'$1\n')
     .replace(/[ \t]{2,}(?=(?:[-*•]|\d{1,2}[.)])\s+\p{L})/gu,'\n')
     .replace(/\*\*([^*\n]+)\*\*/g,'$1').trim();
 }

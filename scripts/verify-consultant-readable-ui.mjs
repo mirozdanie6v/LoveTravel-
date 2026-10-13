@@ -1,3 +1,4 @@
+import {screenshotReply,screenshotReplyClean} from '../tests/fixtures/chat-newline-artifacts.mjs';
 import assert from 'node:assert/strict';
 import {mkdir,writeFile} from 'node:fs/promises';
 import {optionCatalogDomains} from '../tests/fixtures/travel-option-catalog.mjs';
@@ -7,7 +8,7 @@ const {chromium}=await import(process.env.LOVE_TRAVEL_PLAYWRIGHT_MODULE||'playwr
 const locales=['ru','en','vi','ko','zh'],live=process.argv.includes('--live-data');
 const folder='artifacts/consultant-stabilization/readable';await mkdir(folder,{recursive:true});
 const questions={ru:'Какие варианты экскурсии Robinson?',en:'What options does Robinson have?',vi:'Những phương án của Robinson là gì?',ko:'Robinson의 모든 옵션은 무엇인가요?',zh:'Robinson有哪些选项？'};
-const comparisons={ru:'Robinson Beach — пляжный отдых.n.Hòn Mun — снорклинг и морские виды.',en:'Robinson Beach — beach time.n.Hòn Mun — snorkeling and marine views.',vi:'Robinson Beach — nghỉ ngơi trên biển.n.Hòn Mun — lặn ống thở và ngắm biển.',ko:'Robinson Beach — 해변 휴식.n.Hòn Mun — 스노클링과 바다 풍경.',zh:'Robinson Beach — 海滩休闲.n.Hòn Mun — 浮潜与海景。'};
+const comparisons={ru:screenshotReply,en:'Two island tours.n- Robinson Beach — beach time.n- Hòn Mun — snorkeling and marine views.',vi:'Hai tour đảo.n- Robinson Beach — nghỉ ngơi trên biển.n- Hòn Mun — lặn ống thở và ngắm biển.',ko:'두 섬 투어.n- Robinson Beach — 해변 휴식.n- Hòn Mun — 스노클링과 바다 풍경.',zh:'两种海岛行程。n- Robinson Beach — 海滩休闲。n- Hòn Mun — 浮潜与海景。'};
 const priceQuestions={ru:date=>'Покажи цены всех вариантов Robinson на '+date+', 2 взрослых',en:date=>'Show all option prices for Robinson on '+date+', 2 adults',vi:date=>'Giá tất cả phương án Robinson ngày '+date+', 2 người lớn',ko:date=>'Robinson 모든 옵션 가격 '+date+', 성인 2명',zh:date=>'Robinson所有选项价格 '+date+'，2位成人'};
 const report={source:live?'local UI with fresh public read-only domains; controlled model replies':'local UI and provider fixtures; controlled model replies',checks:[],pageErrors:[]};
 const browser=await chromium.launch({headless:true,channel:process.env.LOVE_TRAVEL_BROWSER_CHANNEL||'chrome'});
@@ -29,8 +30,12 @@ try{
    const inputBox=await page.locator('#aiScreen [data-ai-form="chat"]').boundingBox(),contactBox=await contact.boundingBox();assert.ok(contactBox.y>=inputBox.y+inputBox.height-1);
    const ask=async(message,locator=null)=>{await page.waitForFunction(()=>!document.querySelector('#aiScreen textarea[name="message"]').disabled);const wait=page.waitForResponse(r=>new URL(r.url()).pathname==='/api/ai/chat'&&r.request().method()==='POST');if(locator)await locator.tap();else{await page.locator('#aiScreen textarea[name="message"]').fill(message);await page.locator('#aiScreen button[type="submit"]').tap();}const response=await wait,answer=await response.json();assert.ok(response.ok()&&answer.ok&&!answer.degraded,JSON.stringify(answer));await page.waitForFunction(()=>!document.querySelector('#aiScreen textarea[name="message"]').disabled);return answer;};
    const comparison=await ask('Compare Robinson and Hon Mun');assert.equal(comparison.source,'workers-ai-grounded-sales');
-   const reply=page.locator('#aiScreen .ai-msg.bot').last();assert.ok(await reply.locator('.ai-msg-text p').count()>=2);assert.ok(await reply.locator('strong').count()>=2);assert.ok(!(await reply.innerText()).includes('.n.'));
+   const reply=page.locator('#aiScreen .ai-msg.bot').last();assert.ok(await reply.locator('.ai-msg-text p,.ai-msg-text li').count()>=2);assert.ok(await reply.locator('strong').count()>=2);assert.equal(await reply.locator('li').count(),2);assert.ok(!/[.!?。！？]n(?:[-*•]|\.)/.test(await reply.innerText()));if(locale==='ru')assert.equal(comparison.reply,screenshotReplyClean);
    await page.locator('#aiScreen .ai-chat-panel').screenshot({path:folder+'/'+locale+'-reply-contact.png'});
+   await page.evaluate(raw=>{const key='lovetravel-ai-conversation-v1',saved=JSON.parse(sessionStorage.getItem(key));saved.messages.findLast(m=>m.role==='bot').text=raw;sessionStorage.setItem(key,JSON.stringify(saved));},comparisons[locale]);
+   await page.reload({waitUntil:'domcontentloaded'});await page.locator('#homeScreen [data-lt-action="ai"]').click();
+   const restored=page.locator('#aiScreen .ai-messages .ai-msg.bot').last();assert.equal(await restored.locator('li').count(),2);assert.ok(!/[.!?。！？]n(?:[-*•]|\.)/.test(await restored.innerText()));
+
    const catalog=await ask(questions[locale]);assert.equal(catalog.source,'provider-catalog-options');assert.equal(catalog.bookingSelection,null);
    const list=page.locator('#aiScreen .ai-msg.bot').last().locator('.ai-option-list');const cards=list.locator('.ai-option-card');const options=catalog.optionCatalog.groups[0].options;assert.equal(await cards.count(),options.length);assert.equal(options.length,7);
    for(const [i,option] of options.entries()){
