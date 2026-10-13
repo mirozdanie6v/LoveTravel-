@@ -29,7 +29,7 @@ import {
 } from './travel-commerce-transaction.js';
 import { createTravelCommerceStore } from './travel-commerce-store.js';
 import { ensureTravelCommerceRuntimeSchema } from './travel-commerce-migration.js';
-import {composeBookingResponse} from './travel-response-composer.js';
+import {composeBookingResponse,optionCardsPresentation} from './travel-response-composer.js';
 import {quoteDisplayBinding} from './travel-commerce-quote.js';
 import {
   ensureCommerceTransaction,
@@ -382,7 +382,7 @@ export function createLoveTravelSalesOrchestrator({
       shopping=next;
     }
 
-    let plan=needsOption&&exactDate(shopping.intent)&&partyKnown(shopping.intent)?composeCatalogOptions({locale,evidence,productId:focusProductId}):allOptionPrices&&offeredRows.some(row=>row.offer?.availability?.status==='AVAILABLE')?composeOptionPrices({locale,intent:shopping.intent,evidence,productFocus:memory.productFocus}):extracted.dateReminder&&!exactDate(shopping.intent)?{
+    let plan=((needsOption&&exactDate(shopping.intent)&&partyKnown(shopping.intent))||(allOptionPrices&&!extracted.dateClarificationNeeded&&(!exactDate(shopping.intent)||!partyKnown(shopping.intent))))?composeCatalogOptions({locale,evidence,productId:focusProductId}):allOptionPrices&&offeredRows.some(row=>row.offer?.availability?.status==='AVAILABLE')?composeOptionPrices({locale,intent:shopping.intent,evidence,productFocus:memory.productFocus}):extracted.dateReminder&&!exactDate(shopping.intent)?{
       reply:({ru:'Дата не сохранилась в параметрах этой поездки. Напишите её полностью, например 14 октября; остальные параметры сохранены.',en:'The date is missing from this trip’s saved parameters. Please give the full date; the other parameters are retained.',vi:'Ngày chưa được lưu cho chuyến đi này. Vui lòng ghi ngày và tháng đầy đủ; các thông tin khác vẫn được giữ.',zh:'此行程的日期尚未保存。请提供完整日期，其他参数仍保留。',ko:'이 여행의 날짜가 저장되지 않았습니다. 월과 날짜를 알려주세요. 다른 정보는 유지됩니다.'})[locale],
       recommendedProductId:memory.productFocus||'',selectedOfferId:'',action:'ASK_DATE',nextQuestionCode:'DATE',evidenceRefs:[productsPacket.evidenceId],source:'booking-continuation',degraded:false,
     }:extracted.dateClarificationNeeded?{
@@ -474,6 +474,7 @@ export function createLoveTravelSalesOrchestrator({
     const quoteSelection=responseTransaction?.selection?bokunSelectionFromCanonicalSelection(responseTransaction.selection):null;
     return {
       reply:plan.reply,
+      optionCatalog:optionCardsPresentation({plan,products:productsPacket.data,offers:offeredRows,intent:shopping.intent,locale}),
       degraded:Boolean(plan.degraded),
       generationFailed:Boolean(plan.replyFailureReason),
       tourId:externalTourId(productsPacket,plan.recommendedProductId),

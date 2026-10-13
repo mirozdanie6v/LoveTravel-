@@ -78,7 +78,10 @@ async function ask(page,question){
   const answer=await response.json();
   invariant(response.ok()&&answer.ok,'AI API failed: '+JSON.stringify(answer));
   invariant(answer.agent?.mutationExecuted===false,'AI reports a mutation');
-  await page.waitForFunction(reply=>[...document.querySelectorAll('#aiScreen .ai-msg.bot .ai-msg-text')].some(node=>node.textContent===reply),answer.reply,{timeout:15000});
+  if(answer.optionCatalog){
+    const expected=answer.optionCatalog.groups.flatMap(group=>group.options);
+    await page.waitForFunction(rows=>{const cards=[...document.querySelectorAll('#aiScreen .ai-msg.bot:last-child .ai-option-card')];return cards.length===rows.length&&rows.every((row,i)=>cards[i].dataset.rateId===row.rateId&&cards[i].querySelector('b').textContent.includes(row.title));},expected,{timeout:15000});
+  }else await page.waitForFunction(reply=>[...document.querySelectorAll('#aiScreen .ai-msg.bot .ai-msg-text')].some(node=>node.textContent===reply),answer.reply,{timeout:15000});
   return answer;
 }
 try{

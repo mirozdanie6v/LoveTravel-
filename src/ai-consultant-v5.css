@@ -141,3 +141,40 @@
   margin-top:4px;
 }
 #aiScreen .ai-catalog-card-v7 .price{font-size:22px;line-height:1.2}
+
+/* Readable dialogue and rate cards share the existing booking option style. */
+#aiScreen .ai-msg.bot .ai-msg-text{font-size:15px;font-weight:500;line-height:1.6}
+#aiScreen .ai-msg-text strong{font-weight:800;color:var(--lt-ink,var(--ink))}
+#aiScreen .ai-reply-list{display:grid;gap:9px;margin:12px 0 0;padding-left:0}
+#aiScreen .ai-reply-list li{padding:0;line-height:1.6}
+#aiScreen .ai-reply-list li+li{margin-top:0}
+#aiScreen .ai-administrator-contact{margin:8px 0 0;min-height:46px;width:100%;font-size:14px;box-shadow:none}
+#aiScreen .ai-msg.ai-msg-options{max-width:100%;width:100%;box-sizing:border-box;padding:14px}
+#aiScreen .ai-option-catalog{display:grid;gap:14px;margin-top:12px}
+#aiScreen .ai-option-group h3{margin:0 0 10px;font-size:15px;line-height:1.4;font-weight:800;color:var(--lt-ink,var(--ink))}
+#aiScreen .ai-option-list{display:grid;gap:10px}
+#aiScreen .ai-option-card{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;width:100%;min-height:88px;box-sizing:border-box;padding:14px;border:1px solid #e4e9ed;border-radius:20px;background:#fff;text-align:left;color:var(--lt-ink,var(--ink));font-family:inherit;cursor:pointer}
+@media(hover:hover){#aiScreen .ai-option-card:hover{border-color:#72afe5;background:#fbfdff}}
+#aiScreen .ai-option-card:focus-visible{outline:3px solid #3683e8;outline-offset:3px}
+#aiScreen .ai-option-card:disabled{cursor:wait;opacity:.65}
+#aiScreen .ai-option-copy{display:block;min-width:0}
+#aiScreen .ai-option-copy b{display:block;font-size:14px;line-height:1.4;font-weight:800;overflow-wrap:break-word}
+#aiScreen .ai-option-index{color:#607180;font-weight:600}
+#aiScreen .ai-option-description{display:block;margin-top:4px;color:#607180;font-size:13px;line-height:1.45;font-weight:500}
+#aiScreen .ai-option-price{display:grid;gap:3px;text-align:right;max-width:105px}
+#aiScreen .ai-option-price small{font-size:10px;font-weight:500;color:#607180;line-height:1.3}
+#aiScreen .ai-option-price strong{color:#ee7628;font-size:20px;font-weight:900;line-height:1.2;white-space:nowrap}
+#aiScreen .ai-option-note,#aiScreen .ai-option-question{margin:0;font-size:12px;line-height:1.5;font-weight:500;color:#52697c}
+#aiScreen .ai-option-question{font-size:14px;font-weight:700;color:var(--lt-ink,var(--ink))}
+@media(max-width:360px){#aiScreen .ai-option-card{padding:12px;gap:8px}#aiScreen .ai-option-price strong{font-size:18px}#aiScreen .ai-msg.ai-msg-options{padding:10px}}
+
+/* Override shell-wide centering and typography only within chat content. */
+#aiScreen .ai-msg.bot .ai-msg-text p,#aiScreen .ai-msg.bot .ai-msg-text li{font-size:15px!important;font-weight:500!important;line-height:1.6!important;letter-spacing:0!important;text-align:left}
+#aiScreen .ai-msg-text strong{font-weight:800!important}
+html.love-travel-branded #aiScreen .ai-msg.ai-msg-options{background:transparent!important;border:0!important;box-shadow:none;padding:0;white-space:normal}
+#aiScreen .ai-option-card{appearance:none;text-align:left!important;word-break:normal!important}
+#aiScreen .ai-option-copy,#aiScreen .ai-option-copy b,#aiScreen .ai-option-description{text-align:left!important;word-break:normal!important;overflow-wrap:break-word!important}
+#aiScreen .ai-option-price{max-width:none;min-width:0}
+#aiScreen .ai-option-price .ai-price-unavailable{font-size:12px;white-space:normal;max-width:95px;line-height:1.4}
+#aiScreen .ai-option-note{font-size:12px!important;font-weight:500!important;line-height:1.5!important}
+#aiScreen .ai-option-question{font-size:14px!important;font-weight:700!important;line-height:1.5!important}

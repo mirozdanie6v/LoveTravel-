@@ -243,7 +243,8 @@ try{
   await page.locator('.bottom-nav [data-nav="ai"]').click();
   const aiInput=page.locator('#aiScreen.active textarea[name="message"]');
   await aiInput.fill('What is included in Robinson Beach?');await aiInput.press('Enter');
-  const consultant=page.locator('#aiScreen .ai-msg.bot [data-ai-contact]').last();
+  const consultant=page.locator('#aiScreen .ai-administrator-contact[data-ai-contact]').last();
+  await page.locator('#aiScreen [data-ai-action="retry"]').waitFor({state:'visible',timeout:10000});
   await consultant.waitFor({state:'visible',timeout:10000});
   assert.equal(await consultant.getAttribute('href'),'https://nhatranglove.com/lien-he');
   assert.equal(await consultant.getAttribute('rel'),'noopener noreferrer');

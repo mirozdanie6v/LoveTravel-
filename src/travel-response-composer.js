@@ -1,4 +1,11 @@
 import {stableJson} from './travel-commerce-quote.js';
+export function normalizeReplyText(value){
+  return String(value??'').replace(/<br\s*\/?>/gi,'\n').replace(/\r\n?/g,'\n')
+    .replace(/\\+(?:r\\+)?n/g,'\n').replace(/\/n(?=[\s\d\-*•\p{Lu}])/gu,'\n')
+    .replace(/\.n\./gu,'.\n\n').replace(/([.!?])n{1,2}(?=\p{Lu})/gu,'$1\n\n')
+    .replace(/[ \t]{2,}(?=(?:[-*•]|\d{1,2}[.)])\s+\p{L})/gu,'\n')
+    .replace(/\*\*([^*\n]+)\*\*/g,'$1').trim();
+}
 const normalized=value=>String(value||'').trim().toLowerCase().normalize('NFD').replace(/([a-z])[\u0300-\u036f]+/g,'$1').normalize('NFC').replace(/đ/g,'d').replace(/[.!?。！？]+$/u,'').trim();
 export const acceptsBookingForm=message=>/^(?:да|yes|okay|ok|dong\s+y|vang|是|好的|네|예|давайте этот|беру этот|let'?s take (?:it|this)|choose this|chon cai nay|就选这个|이걸로 할게요)$/u.test(normalized(message));
 const copy={
@@ -28,5 +35,34 @@ export function composeBookingResponse({plan,transaction,memory={},locale='ru',m
     &&/входит|включ|includ|bao\s*gom|包含|包括|포함/iu.test(normalized(message))){
     result.reply=String(result.reply).replace(/(?:^|\s)(\d{1,2})[.)]\s+(?=\p{L})/gu,'\n- ').trim();
   }
+  result.reply=normalizeReplyText(result.reply);
   return {plan:result,presentation,uiAction};
+}
+
+const optionCopy={
+ ru:{summary:'Варианты и стартовые цены',group:'Итого за указанную группу на',note:'Цены «от» — ориентир. Точную сумму уточним по дате, составу группы и выбранным услугам.',question:'Нажмите на подходящий вариант, и я помогу с дальнейшим выбором.'},
+ en:{summary:'Options and starting prices',group:'Total for your specified party on',note:'Starting prices are a guide. The final total depends on your date, travellers and selected services.',question:'Tap an option and I will help with the next step.'},
+ vi:{summary:'Các phương án và giá từ',group:'Tổng giá cho nhóm đã nêu vào',note:'Giá từ chỉ để tham khảo. Tổng giá được xác nhận theo ngày, số khách và dịch vụ đã chọn.',question:'Chạm vào phương án phù hợp để tiếp tục.'},
+ zh:{summary:'行程方案与起价',group:'所述出行人员的总价，日期',note:'起价仅供参考，最终总价根据日期、出行人数和所选服务确认。',question:'点击合适的方案，我会协助您继续选择。'},
+ ko:{summary:'투어 옵션과 시작 가격',group:'입력한 전체 인원의 총액, 날짜',note:'시작 가격은 참고용입니다. 날짜, 인원 및 선택한 서비스에 따라 최종 금액을 확인합니다.',question:'원하는 옵션을 누르면 다음 단계를 도와드릴게요.'},
+};
+export function optionCardsPresentation({plan,products=[],offers=[],intent={},locale='ru'}={}){
+ if(!['provider-catalog-options','provider-option-prices'].includes(plan?.source)||!Array.isArray(plan.choices))return null;
+ const exact=plan.source==='provider-option-prices',groups=[];
+ for(const [index,choice] of plan.choices.entries()){
+  const row=products.find(row=>row.product.productId===choice.productId);
+  const option=row?.facts?.options?.find(option=>String(option.rateRef.externalId)===String(choice.rateRef?.externalId));
+  if(!row||!option)continue;
+  const quoted=exact?offers.find(item=>item.product?.productId===choice.productId&&String(item.offer?.rateRef?.externalId)===String(choice.rateRef?.externalId)):null;
+  const candidate=exact?quoted?.offer?.price:option.fromPrice;
+  const amount=candidate?.amount;
+  const price=typeof amount==='number'&&Number.isFinite(amount)&&amount>=0&&/^[A-Z]{3}$/.test(candidate.currency||'')
+   ?{amount,currency:candidate.currency,kind:exact?'GROUP_TOTAL':option.pricedPerPerson?'FROM_ADULT':'FROM_BOOKING'}:null;
+  let group=groups.find(group=>group.productId===choice.productId);
+  if(!group){group={productId:choice.productId,externalProductId:String(row.product.providerRef.externalId),title:row.facts.localizedTitle||row.product.title,options:[]};groups.push(group);}
+  group.options.push({index:index+1,rateId:String(option.rateRef.externalId),title:option.localizedTitle||option.title,description:option.description||'',price});
+ }
+ if(!groups.length)return null;
+ const copy=optionCopy[locale]||optionCopy.en;
+ return {groups,summary:exact?copy.group+' '+intent.dateConstraint.exact:copy.summary,footnote:exact?'':copy.note,question:copy.question};
 }

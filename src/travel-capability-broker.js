@@ -1,3 +1,4 @@
+import {resolveBookingSelection} from './booking-selection-engine.js';
 import {
   canonicalProductFromBokunDomain,
   bokunProviderRef,
@@ -209,7 +210,8 @@ export function selectionFromTravelIntent(domain,intent){
   };
 }
 
-function productFacts(domain,product,localizedTitles={}){
+function productFacts(domain,product,localizedTitles={},now=new Date()){
+  const prices=new Map(resolveBookingSelection(domain,{}, {now}).constraints.rates.map(rate=>[String(rate.id),rate.fromPrice]));
   return {
     product,
     facts:{
@@ -224,6 +226,8 @@ function productFacts(domain,product,localizedTitles={}){
         title:str(rate.title),
         localizedTitle:str(localizedTitles[String(rate.id)]||rate.title),
         description:str(rate.description),
+        pricedPerPerson:Boolean(rate.pricedPerPerson),
+        fromPrice:prices.get(String(rate.id))||null,
         minPerBooking:rate.minPerBooking??null,
         maxPerBooking:rate.maxPerBooking??null,
       })),
@@ -283,7 +287,7 @@ export function createTravelCapabilityBroker({
       const product=canonicalProductFromBokunDomain(domain,{
         vendorId:provider.vendorId,
       });
-      return productFacts(domain,product,await optionTitles(domain,args.locale||'en'));
+      return productFacts(domain,product,await optionTitles(domain,args.locale||'en'),now());
     }));
   }
 
@@ -316,7 +320,7 @@ export function createTravelCapabilityBroker({
     for(const domain of domains){
       const product=canonicalProductFromBokunDomain(domain,{vendorId:provider.vendorId});
       if(intent.optionPreference&&intent.optionPreference.productId!==product.productId) continue;
-      const facts=productFacts(domain,product,await optionTitles(domain,intent.locale)).facts;
+      const facts=productFacts(domain,product,await optionTitles(domain,intent.locale),now()).facts;
       const rateIntents=args.allOptions?(domain.rates||[]).map(rate=>({...intent,optionPreference:{productId:product.productId,rateRef:bokunProviderRef('RATE',rate.id,provider.vendorId)}})):[intent];
       for(const rateIntent of rateIntents){
       try{
